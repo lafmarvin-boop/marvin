@@ -1,0 +1,362 @@
+{
+  "nodes": [
+    {
+      "id": "readme_th",
+      "label": "README (Thai)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.th-TH.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_el",
+      "label": "README (Greek)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.el-GR.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_es",
+      "label": "README (Spanish)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.es-ES.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_ru",
+      "label": "README (Russian)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.ru-RU.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_cs",
+      "label": "README (Czech)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.cs-CZ.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_ja",
+      "label": "README (Japanese)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.ja-JP.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_id",
+      "label": "README (Indonesian)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.id-ID.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_vi",
+      "label": "README (Vietnamese)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.vi-VN.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_uk",
+      "label": "README (Ukrainian)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.uk-UA.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_hu",
+      "label": "README (Hungarian)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.hu-HU.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_it",
+      "label": "README (Italian)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.it-IT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_hi",
+      "label": "README (Hindi)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.hi-IN.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "attention_transformer",
+      "label": "Transformer Architecture (Vaswani et al. 2017)",
+      "file_type": "document",
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "source_url": "https://arxiv.org/abs/1706.03762",
+      "captured_at": null,
+      "author": "Vaswani et al.",
+      "contributor": null
+    },
+    {
+      "id": "attention_multihead",
+      "label": "Multi-Head Attention (h=8 parallel heads)",
+      "file_type": "document",
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "attention_scaled_dot_product",
+      "label": "Scaled Dot-Product Attention",
+      "file_type": "document",
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "attention_positional_encoding",
+      "label": "Positional Encoding (sin/cos)",
+      "file_type": "document",
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "attention_encoder_decoder",
+      "label": "Encoder-Decoder Structure (6 layers each)",
+      "file_type": "document",
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "attention_layer_norm",
+      "label": "Layer Normalization + Residual Connection",
+      "file_type": "document",
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "readme_th",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.th-TH.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_el",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.el-GR.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_es",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.es-ES.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_ru",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.ru-RU.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_ja",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.ja-JP.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_it",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.it-IT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_hi",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.hi-IN.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "attention_transformer",
+      "target": "attention_multihead",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "attention_transformer",
+      "target": "attention_encoder_decoder",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "attention_transformer",
+      "target": "attention_positional_encoding",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "attention_multihead",
+      "target": "attention_scaled_dot_product",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "attention_encoder_decoder",
+      "target": "attention_layer_norm",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "attention_multihead",
+      "target": "attention_encoder_decoder",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "weight": 0.9
+    },
+    {
+      "source": "attention_transformer",
+      "target": "worked_mixed_corpus",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md",
+      "source_location": null,
+      "weight": 0.85
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "transformer_core_components",
+      "label": "Transformer Core Components (Attention + Encoder/Decoder + Positional Encoding)",
+      "nodes": [
+        "attention_multihead",
+        "attention_encoder_decoder",
+        "attention_positional_encoding",
+        "attention_layer_norm"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

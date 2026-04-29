@@ -1,0 +1,493 @@
+{
+  "nodes": [
+    {
+      "id": "karpathy_repos_report",
+      "label": "Karpathy Repos Graph Report",
+      "file_type": "document",
+      "source_file": "graphify/worked/karpathy-repos/GRAPH_REPORT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "karpathy_repos_readme",
+      "label": "Karpathy Repos Example",
+      "file_type": "document",
+      "source_file": "graphify/worked/karpathy-repos/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "karpathy_repos_review",
+      "label": "Karpathy Repos Review",
+      "file_type": "document",
+      "source_file": "graphify/worked/karpathy-repos/review.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "httpx_report",
+      "label": "httpx Graph Report",
+      "file_type": "document",
+      "source_file": "graphify/worked/httpx/GRAPH_REPORT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "httpx_readme",
+      "label": "httpx Example",
+      "file_type": "document",
+      "source_file": "graphify/worked/httpx/README.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "httpx_review",
+      "label": "httpx Review",
+      "file_type": "document",
+      "source_file": "graphify/worked/httpx/review.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "httpx_client",
+      "label": "httpx Client (god node - 26 edges)",
+      "file_type": "document",
+      "source_file": "graphify/worked/httpx/GRAPH_REPORT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "httpx_asyncclient",
+      "label": "httpx AsyncClient (god node)",
+      "file_type": "document",
+      "source_file": "graphify/worked/httpx/GRAPH_REPORT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "httpx_response",
+      "label": "httpx Response (god node)",
+      "file_type": "document",
+      "source_file": "graphify/worked/httpx/GRAPH_REPORT.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "fixture_sample_md",
+      "label": "Test Fixture Sample (Markdown)",
+      "file_type": "document",
+      "source_file": "graphify/tests/fixtures/sample.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_nl",
+      "label": "README (Dutch)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.nl-NL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_ko",
+      "label": "README (Korean)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.ko-KR.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_fr",
+      "label": "README (French)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.fr-FR.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_pl",
+      "label": "README (Polish)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.pl-PL.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_no",
+      "label": "README (Norwegian)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.no-NO.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_fi",
+      "label": "README (Finnish)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.fi-FI.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_ar",
+      "label": "README (Arabic)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.ar-SA.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_tr",
+      "label": "README (Turkish)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.tr-TR.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_sv",
+      "label": "README (Swedish)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.sv-SE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_pt",
+      "label": "README (Portuguese)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.pt-BR.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_da",
+      "label": "README (Danish)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.da-DK.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_de",
+      "label": "README (German)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.de-DE.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_ro",
+      "label": "README (Romanian)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.ro-RO.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_zh_cn",
+      "label": "README (Simplified Chinese)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.zh-CN.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    },
+    {
+      "id": "readme_zh_tw",
+      "label": "README (Traditional Chinese)",
+      "file_type": "document",
+      "source_file": "graphify/docs/translations/README.zh-TW.md",
+      "source_location": null,
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "karpathy_repos_readme",
+      "target": "karpathy_repos_report",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/karpathy-repos/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "karpathy_repos_review",
+      "target": "karpathy_repos_report",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/karpathy-repos/review.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "httpx_readme",
+      "target": "httpx_report",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/httpx/README.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "httpx_review",
+      "target": "httpx_report",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/httpx/review.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "httpx_report",
+      "target": "httpx_client",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/httpx/GRAPH_REPORT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "httpx_report",
+      "target": "httpx_asyncclient",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/httpx/GRAPH_REPORT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "httpx_report",
+      "target": "httpx_response",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/httpx/GRAPH_REPORT.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "karpathy_repos_readme",
+      "target": "httpx_readme",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "graphify/worked/karpathy-repos/README.md",
+      "source_location": null,
+      "weight": 0.85
+    },
+    {
+      "source": "readme_nl",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.nl-NL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_ko",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.ko-KR.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_fr",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.fr-FR.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_de",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.de-DE.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_zh_cn",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.zh-CN.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_pt",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.pt-BR.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_ar",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.ar-SA.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "readme_tr",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.tr-TR.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "fixture_sample_md",
+      "target": "readme_graphify",
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.7,
+      "source_file": "graphify/tests/fixtures/sample.md",
+      "source_location": null,
+      "weight": 0.7
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "translations_group",
+      "label": "All README Translations (25+ languages)",
+      "nodes": [
+        "readme_nl",
+        "readme_ko",
+        "readme_fr",
+        "readme_pl",
+        "readme_no",
+        "readme_fi",
+        "readme_ar",
+        "readme_tr",
+        "readme_sv",
+        "readme_pt",
+        "readme_da",
+        "readme_de",
+        "readme_ro",
+        "readme_zh_cn",
+        "readme_zh_tw"
+      ],
+      "relation": "implement",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.fr-FR.md"
+    },
+    {
+      "id": "worked_examples_group",
+      "label": "Worked Examples (karpathy + httpx)",
+      "nodes": [
+        "karpathy_repos_readme",
+        "httpx_readme",
+        "worked_mixed_corpus"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "graphify/worked/karpathy-repos/README.md"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}
