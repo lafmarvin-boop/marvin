@@ -1,12 +1,11 @@
-# Graph Report - .  (2026-04-29)
+# Graph Report - .  (2026-04-30)
 
 ## Corpus Check
-- 143 files · ~167,658 words
-- Verdict: corpus is large enough that graph structure adds value.
+- Corpus is ~0 words - fits in a single context window. You may not need a graph.
 
 ## Summary
-- 1539 nodes · 3241 edges · 45 communities detected
-- Extraction: 63% EXTRACTED · 37% INFERRED · 0% AMBIGUOUS · INFERRED: 1198 edges (avg confidence: 0.74)
+- 77 nodes · 62 edges · 26 communities detected
+- Extraction: 81% EXTRACTED · 19% INFERRED · 0% AMBIGUOUS · INFERRED: 12 edges (avg confidence: 0.83)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -36,49 +35,30 @@
 - [[_COMMUNITY_PHP Static Properties|PHP Static Properties]]
 - [[_COMMUNITY_Transformer Model Fixture|Transformer Model Fixture]]
 - [[_COMMUNITY_Package Init|Package Init]]
-- [[_COMMUNITY_Security & URL Validation|Security & URL Validation]]
-- [[_COMMUNITY_Graphifyignore|Graphifyignore]]
-- [[_COMMUNITY_Label Sanitization|Label Sanitization]]
-- [[_COMMUNITY_OpenClaw Skill|OpenClaw Skill]]
-- [[_COMMUNITY_Trae Skill|Trae Skill]]
-- [[_COMMUNITY_Windows Skill|Windows Skill]]
-- [[_COMMUNITY_Factory Droid Skill|Factory Droid Skill]]
-- [[_COMMUNITY_README (Polish)|README (Polish)]]
-- [[_COMMUNITY_README (Norwegian)|README (Norwegian)]]
-- [[_COMMUNITY_README (Finnish)|README (Finnish)]]
-- [[_COMMUNITY_README (Swedish)|README (Swedish)]]
-- [[_COMMUNITY_README (Danish)|README (Danish)]]
-- [[_COMMUNITY_README (Romanian)|README (Romanian)]]
-- [[_COMMUNITY_README (Traditional Chinese)|README (Traditional Chinese)]]
-- [[_COMMUNITY_README (Czech)|README (Czech)]]
-- [[_COMMUNITY_README (Indonesian)|README (Indonesian)]]
-- [[_COMMUNITY_README (Vietnamese)|README (Vietnamese)]]
-- [[_COMMUNITY_README (Ukrainian)|README (Ukrainian)]]
-- [[_COMMUNITY_README (Hungarian)|README (Hungarian)]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `Response` - 47 edges
-2. `Request` - 43 edges
-3. `build_from_json()` - 41 edges
-4. `main()` - 37 edges
-5. `cluster()` - 36 edges
-6. `_labels()` - 34 edges
-7. `_make_id()` - 32 edges
-8. `Graphify` - 32 edges
-9. `detect()` - 31 edges
-10. `Cookies` - 28 edges
+1. `Graphify` - 32 edges
+2. `httpx Graph Report` - 5 edges
+3. `AST Extraction Pass` - 4 edges
+4. `Knowledge Graph Output` - 4 edges
+5. `Graphify Pipeline (detect→extract→build→cluster→analyze→report→export)` - 4 edges
+6. `Transformer Architecture (Vaswani et al. 2017)` - 4 edges
+7. `Semantic Extraction (Claude Subagents)` - 3 edges
+8. `Persistent graph.json` - 3 edges
+9. `Multi-Head Attention (h=8 parallel heads)` - 3 edges
+10. `Encoder-Decoder Structure (6 layers each)` - 3 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `test_make_id_strips_dots_and_underscores()` --calls--> `_make_id()`  [INFERRED]
-  tests/test_extract.py → graphify/extract.py
-- `test_make_id_no_leading_trailing_underscores()` --calls--> `_make_id()`  [INFERRED]
-  tests/test_extract.py → graphify/extract.py
-- `_query_subgraph_tokens()` --calls--> `add()`  [INFERRED]
-  graphify/benchmark.py → tests/fixtures/sample.zig
-- `test_print_benchmark_error_message()` --calls--> `print_benchmark()`  [INFERRED]
-  tests/test_benchmark.py → graphify/benchmark.py
-- `test_make_id_consistent()` --calls--> `_make_id()`  [INFERRED]
-  tests/test_extract.py → graphify/extract.py
+- `Graphify Logo Icon (SVG)` --conceptually_related_to--> `Graphify`  [INFERRED]
+  graphify/docs/logo-icon.svg → graphify/README.md
+- `Graphify Logo with Text (SVG)` --conceptually_related_to--> `Graphify`  [INFERRED]
+  graphify/docs/logo-text.svg → graphify/README.md
+- `Graphify Skill for Claude Code` --references--> `Graphify`  [EXTRACTED]
+  graphify/graphify/skill.md → graphify/README.md
+- `Graphify Skill for Codex` --references--> `Graphify`  [EXTRACTED]
+  graphify/graphify/skill-codex.md → graphify/README.md
+- `Mixed Corpus Example (docs + code)` --references--> `Graphify`  [EXTRACTED]
+  graphify/worked/mixed-corpus/README.md → graphify/README.md
 
 ## Hyperedges (group relationships)
 - **All Platform Skills (Claude, Codex, Aider, Kiro, Copilot, VS Code, Trae, Droid, Claw, OpenCode, Windows)** — skill_claude, skill_codex, skill_opencode, skill_aider, skill_kiro, skill_copilot, skill_vscode, skill_trae, skill_droid, skill_claw, skill_windows [EXTRACTED 1.00]
@@ -91,247 +71,169 @@
 ## Communities
 
 ### Community 0 - "HTTP Auth & Client Models"
-Cohesion: 0.03
-Nodes (101): Exception, Auth, BasicAuth, BearerAuth, DigestAuth, NetRCAuth, Authentication handlers. Auth objects are callables that modify a request before, Load credentials from ~/.netrc based on the request host. (+93 more)
+Cohesion: 0.08
+Nodes (24): Test Fixture Sample (Markdown), README (Arabic), README (German), README (Greek), README (Spanish), README (French), Graphify, README (Hindi) (+16 more)
 
 ### Community 1 - "Graphify CLI & Platform Install"
-Cohesion: 0.02
-Nodes (133): _agents_install(), _agents_uninstall(), _antigravity_install(), _antigravity_uninstall(), _check_skill_version(), claude_install(), claude_uninstall(), _clone_repo() (+125 more)
-
-### Community 2 - "Multi-Language AST Extraction"
-Cohesion: 0.03
-Nodes (120): extract_c(), extract_cpp(), extract_csharp(), extract_elixir(), extract_java(), extract_julia(), extract_kotlin(), extract_objc() (+112 more)
-
-### Community 3 - "Graph Export & Visualization"
-Cohesion: 0.04
-Nodes (101): build_graph(), Graph, attach_hyperedges(), Store hyperedges in the graph's metadata dict., _community_article(), _cross_community_links(), _god_node_article(), _index_md() (+93 more)
-
-### Community 4 - "Clustering & Community Detection"
-Cohesion: 0.04
-Nodes (89): cluster(), cohesion_score(), _partition(), Community detection on NetworkX graphs. Uses Leiden (graspologic) if available,, Run a second Leiden pass on a community subgraph to split it further., Context manager to suppress stdout/stderr during library calls.      graspologic, Ratio of actual intra-community edges to maximum possible., Run community detection. Returns {node_id: community_id}.      Tries Leiden (gra (+81 more)
-
-### Community 5 - "Graph Build & Core Pipeline"
-Cohesion: 0.04
-Nodes (95): add(), build_from_json(), Build a NetworkX graph from an extraction dict.      directed=True produces a Di, _check_tree_sitter_version(), _csharp_extra_walk(), extract(), extract_blade(), extract_dart() (+87 more)
-
-### Community 6 - "Export (HTML/Cypher/Obsidian)"
-Cohesion: 0.05
-Nodes (71): _cypher_escape(), _html_script(), _html_styles(), _hyperedge_script(), prune_dangling_edges(), Remove edges whose source or target node is not in the node set.      Returns th, Escape a string for safe embedding in a Cypher single-quoted literal., Generate an interactive vis.js HTML visualization of the graph.      Features: n (+63 more)
-
-### Community 7 - "Graph Analysis & Surprises"
-Cohesion: 0.05
-Nodes (70): _cross_community_surprises(), _cross_file_surprises(), _file_category(), god_nodes(), graph_diff(), _is_concept_node(), _is_file_node(), _node_community_map() (+62 more)
-
-### Community 8 - "Ingest & URL Fetching"
-Cohesion: 0.05
-Nodes (66): _detect_url_type(), _download_binary(), _fetch_arxiv(), _fetch_html(), _fetch_tweet(), _fetch_webpage(), _html_to_markdown(), ingest() (+58 more)
-
-### Community 9 - "File Detection & Classification"
-Cohesion: 0.05
-Nodes (70): Enum, classify_file(), convert_office_file(), count_words(), detect(), detect_incremental(), docx_to_markdown(), extract_pdf_text() (+62 more)
-
-### Community 10 - "Sample API & CRUD Handlers"
-Cohesion: 0.05
-Nodes (65): handle_delete(), handle_enrich(), handle_get(), handle_list(), handle_search(), handle_upload(), API module - exposes the document pipeline over HTTP. Thin layer over parser, va, Accept a list of file paths, run the full pipeline on each,     and return a sum (+57 more)
-
-### Community 11 - "Code Analysis Utilities"
-Cohesion: 0.05
-Nodes (55): Base, area(), Analyzer, compute_score(), normalize(), Fixture: functions and methods that call each other - for call-graph extraction, run_analysis(), Circle (+47 more)
-
-### Community 12 - "API Client Fixtures"
-Cohesion: 0.04
-Nodes (19): ApiClient, CacheManager, Config, createProcessor(), DataProcessor, Get-Data(), GraphifyDemo, HttpClient (+11 more)
-
-### Community 13 - "User Models & Cache Layer"
-Cohesion: 0.06
-Nodes (47): MyApp.Accounts.User, create(), find(), validate(), _body_content(), cache_dir(), cached_files(), check_semantic_cache() (+39 more)
-
-### Community 14 - "Documentation & Architecture"
-Cohesion: 0.05
-Nodes (48): Confidence Labels (EXTRACTED/INFERRED/AMBIGUOUS), Extraction Output Schema (nodes/edges dict), Graphify Pipeline (detect→extract→build→cluster→analyze→report→export), Encoder-Decoder Structure (6 layers each), Layer Normalization + Residual Connection, Multi-Head Attention (h=8 parallel heads), Positional Encoding (sin/cos), Scaled Dot-Product Attention (+40 more)
-
-### Community 15 - "Audio/Video Transcription"
-Cohesion: 0.08
-Nodes (34): build_whisper_prompt(), download_audio(), _get_whisper(), _get_yt_dlp(), is_url(), _model_name(), Transcribe a video/audio file or URL to a .txt transcript.      If video_path is, Transcribe a list of video/audio files or URLs, return paths to transcript .txt (+26 more)
-
-### Community 16 - "Git Hooks Integration"
-Cohesion: 0.12
-Nodes (32): _git_root(), _hooks_dir(), install(), _install_hook(), Walk up to find .git directory., Return the git hooks directory, respecting core.hooksPath if set (e.g. Husky)., Install a single git hook, appending if an existing hook is present., Remove graphify section from a git hook using start/end markers. (+24 more)
-
-### Community 17 - "Graph Build Utilities"
-Cohesion: 0.11
-Nodes (25): build(), build_merge(), deduplicate_by_label(), _norm_label(), _normalize_id(), Merge multiple extraction results into one graph.      directed=True produces a, Canonical dedup key — lowercase, alphanumeric only., Merge nodes that share a normalised label, rewriting edge references.      Prefe (+17 more)
-
-### Community 18 - "Token Benchmarking"
-Cohesion: 0.19
-Nodes (22): _estimate_tokens(), print_benchmark(), _query_subgraph_tokens(), Token-reduction benchmark - measures how much context graphify saves vs naive fu, Print a human-readable benchmark report., Run BFS from best-matching nodes and return estimated tokens in the subgraph con, Measure token reduction: corpus tokens vs graphify query tokens.      Args:, run_benchmark() (+14 more)
-
-### Community 19 - "httpx Worked Example"
 Cohesion: 0.22
 Nodes (9): httpx AsyncClient (god node), httpx Client (god node - 26 edges), httpx Example, httpx Graph Report, httpx Response (god node), httpx Review, Karpathy Repos Example, Karpathy Repos Graph Report (+1 more)
 
-### Community 20 - "PHP Event Listeners"
-Cohesion: 0.43
-Nodes (6): EventServiceProvider, NotifyAdmins, OrderPlaced, SendWelcomeEmail, ShipOrder, UserRegistered
-
-### Community 21 - "OOP Class Fixtures (Animal)"
+### Community 2 - "Multi-Language AST Extraction"
 Cohesion: 0.33
-Nodes (5): Animal, -initWithName, -speak, Dog, -fetch
+Nodes (7): Confidence Labels (EXTRACTED/INFERRED/AMBIGUOUS), Extraction Output Schema (nodes/edges dict), Graphify Pipeline (detect→extract→build→cluster→analyze→report→export), Cache Namespace Fix (ast/ vs semantic/ subdirs), AST Extraction Pass, Leiden Community Detection, Semantic Extraction (Claude Subagents)
 
-### Community 22 - "PHP DI Container"
-Cohesion: 0.67
-Nodes (4): AppServiceProvider, CashierGateway, PaymentGateway, StripeGateway
+### Community 3 - "Graph Export & Visualization"
+Cohesion: 0.33
+Nodes (7): Encoder-Decoder Structure (6 layers each), Layer Normalization + Residual Connection, Multi-Head Attention (h=8 parallel heads), Positional Encoding (sin/cos), Scaled Dot-Product Attention, Transformer Architecture (Vaswani et al. 2017), Mixed Corpus Example (docs + code)
 
-### Community 23 - "PHP Static Properties"
-Cohesion: 0.6
-Nodes (2): ColorResolver, DefaultPalette
+### Community 4 - "Clustering & Community Detection"
+Cohesion: 0.33
+Nodes (6): Shrink Guard (prevents overwriting graph with smaller data), Interactive HTML Visualization, Persistent graph.json, GRAPH_REPORT.md (audit report), Knowledge Graph Output, validate_graph_path() (must resolve inside graphify-out/)
 
-### Community 24 - "Transformer Model Fixture"
-Cohesion: 0.5
-Nodes (1): Transformer
+### Community 5 - "Graph Build & Core Pipeline"
+Cohesion: 1.0
+Nodes (2): Graphify Skill for Claude Code, Graphify Skill for Codex
 
-### Community 25 - "Package Init"
-Cohesion: 0.67
-Nodes (1): graphify - extract · build · cluster · analyze · report.
+### Community 6 - "Export (HTML/Cypher/Obsidian)"
+Cohesion: 1.0
+Nodes (2): Graphify Logo Icon (SVG), Graphify Logo with Text (SVG)
 
-### Community 26 - "Security & URL Validation"
+### Community 7 - "Graph Analysis & Surprises"
 Cohesion: 1.0
 Nodes (2): safe_fetch() (size cap + timeout), validate_url() (security)
 
-### Community 29 - "Graphifyignore"
+### Community 8 - "Ingest & URL Fetching"
 Cohesion: 1.0
 Nodes (1): .graphifyignore (exclusion file)
 
-### Community 30 - "Label Sanitization"
+### Community 9 - "File Detection & Classification"
 Cohesion: 1.0
 Nodes (1): sanitize_label() (strips control chars)
 
-### Community 31 - "OpenClaw Skill"
+### Community 10 - "Sample API & CRUD Handlers"
 Cohesion: 1.0
 Nodes (1): Graphify Skill for OpenClaw
 
-### Community 32 - "Trae Skill"
+### Community 11 - "Code Analysis Utilities"
 Cohesion: 1.0
 Nodes (1): Graphify Skill for Trae
 
-### Community 33 - "Windows Skill"
+### Community 12 - "API Client Fixtures"
 Cohesion: 1.0
 Nodes (1): Graphify Skill for Windows
 
-### Community 34 - "Factory Droid Skill"
+### Community 13 - "User Models & Cache Layer"
 Cohesion: 1.0
 Nodes (1): Graphify Skill for Factory Droid
 
-### Community 35 - "README (Polish)"
+### Community 14 - "Documentation & Architecture"
 Cohesion: 1.0
 Nodes (1): README (Polish)
 
-### Community 36 - "README (Norwegian)"
+### Community 15 - "Audio/Video Transcription"
 Cohesion: 1.0
 Nodes (1): README (Norwegian)
 
-### Community 37 - "README (Finnish)"
+### Community 16 - "Git Hooks Integration"
 Cohesion: 1.0
 Nodes (1): README (Finnish)
 
-### Community 38 - "README (Swedish)"
+### Community 17 - "Graph Build Utilities"
 Cohesion: 1.0
 Nodes (1): README (Swedish)
 
-### Community 39 - "README (Danish)"
+### Community 18 - "Token Benchmarking"
 Cohesion: 1.0
 Nodes (1): README (Danish)
 
-### Community 40 - "README (Romanian)"
+### Community 19 - "httpx Worked Example"
 Cohesion: 1.0
 Nodes (1): README (Romanian)
 
-### Community 41 - "README (Traditional Chinese)"
+### Community 20 - "PHP Event Listeners"
 Cohesion: 1.0
 Nodes (1): README (Traditional Chinese)
 
-### Community 42 - "README (Czech)"
+### Community 21 - "OOP Class Fixtures (Animal)"
 Cohesion: 1.0
 Nodes (1): README (Czech)
 
-### Community 43 - "README (Indonesian)"
+### Community 22 - "PHP DI Container"
 Cohesion: 1.0
 Nodes (1): README (Indonesian)
 
-### Community 44 - "README (Vietnamese)"
+### Community 23 - "PHP Static Properties"
 Cohesion: 1.0
 Nodes (1): README (Vietnamese)
 
-### Community 45 - "README (Ukrainian)"
+### Community 24 - "Transformer Model Fixture"
 Cohesion: 1.0
 Nodes (1): README (Ukrainian)
 
-### Community 46 - "README (Hungarian)"
+### Community 25 - "Package Init"
 Cohesion: 1.0
 Nodes (1): README (Hungarian)
 
 ## Knowledge Gaps
-- **414 isolated node(s):** `Token-reduction benchmark - measures how much context graphify saves vs naive fu`, `Run BFS from best-matching nodes and return estimated tokens in the subgraph con`, `Measure token reduction: corpus tokens vs graphify query tokens.      Args:`, `Print a human-readable benchmark report.`, `Return (community_label, edge_count) pairs for cross-community connections, sort` (+409 more)
+- **57 isolated node(s):** `Raw Folder Workflow (Karpathy)`, `Interactive HTML Visualization`, `GRAPH_REPORT.md (audit report)`, `.graphifyignore (exclusion file)`, `Confidence Labels (EXTRACTED/INFERRED/AMBIGUOUS)` (+52 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `PHP Static Properties`** (5 nodes): `ColorResolver`, `.accent()`, `.primary()`, `DefaultPalette`, `sample_php_static_prop.php`
+- **Thin community `Graph Build & Core Pipeline`** (2 nodes): `Graphify Skill for Claude Code`, `Graphify Skill for Codex`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Transformer Model Fixture`** (4 nodes): `Transformer`, `.forward()`, `.__init__()`, `sample.py`
+- **Thin community `Export (HTML/Cypher/Obsidian)`** (2 nodes): `Graphify Logo Icon (SVG)`, `Graphify Logo with Text (SVG)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Package Init`** (3 nodes): `__getattr__()`, `__init__.py`, `graphify - extract · build · cluster · analyze · report.`
+- **Thin community `Graph Analysis & Surprises`** (2 nodes): `safe_fetch() (size cap + timeout)`, `validate_url() (security)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Security & URL Validation`** (2 nodes): `safe_fetch() (size cap + timeout)`, `validate_url() (security)`
+- **Thin community `Ingest & URL Fetching`** (1 nodes): `.graphifyignore (exclusion file)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Graphifyignore`** (1 nodes): `.graphifyignore (exclusion file)`
+- **Thin community `File Detection & Classification`** (1 nodes): `sanitize_label() (strips control chars)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Label Sanitization`** (1 nodes): `sanitize_label() (strips control chars)`
+- **Thin community `Sample API & CRUD Handlers`** (1 nodes): `Graphify Skill for OpenClaw`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `OpenClaw Skill`** (1 nodes): `Graphify Skill for OpenClaw`
+- **Thin community `Code Analysis Utilities`** (1 nodes): `Graphify Skill for Trae`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Trae Skill`** (1 nodes): `Graphify Skill for Trae`
+- **Thin community `API Client Fixtures`** (1 nodes): `Graphify Skill for Windows`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Windows Skill`** (1 nodes): `Graphify Skill for Windows`
+- **Thin community `User Models & Cache Layer`** (1 nodes): `Graphify Skill for Factory Droid`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Factory Droid Skill`** (1 nodes): `Graphify Skill for Factory Droid`
+- **Thin community `Documentation & Architecture`** (1 nodes): `README (Polish)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Polish)`** (1 nodes): `README (Polish)`
+- **Thin community `Audio/Video Transcription`** (1 nodes): `README (Norwegian)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Norwegian)`** (1 nodes): `README (Norwegian)`
+- **Thin community `Git Hooks Integration`** (1 nodes): `README (Finnish)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Finnish)`** (1 nodes): `README (Finnish)`
+- **Thin community `Graph Build Utilities`** (1 nodes): `README (Swedish)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Swedish)`** (1 nodes): `README (Swedish)`
+- **Thin community `Token Benchmarking`** (1 nodes): `README (Danish)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Danish)`** (1 nodes): `README (Danish)`
+- **Thin community `httpx Worked Example`** (1 nodes): `README (Romanian)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Romanian)`** (1 nodes): `README (Romanian)`
+- **Thin community `PHP Event Listeners`** (1 nodes): `README (Traditional Chinese)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Traditional Chinese)`** (1 nodes): `README (Traditional Chinese)`
+- **Thin community `OOP Class Fixtures (Animal)`** (1 nodes): `README (Czech)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Czech)`** (1 nodes): `README (Czech)`
+- **Thin community `PHP DI Container`** (1 nodes): `README (Indonesian)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Indonesian)`** (1 nodes): `README (Indonesian)`
+- **Thin community `PHP Static Properties`** (1 nodes): `README (Vietnamese)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Vietnamese)`** (1 nodes): `README (Vietnamese)`
+- **Thin community `Transformer Model Fixture`** (1 nodes): `README (Ukrainian)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Ukrainian)`** (1 nodes): `README (Ukrainian)`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `README (Hungarian)`** (1 nodes): `README (Hungarian)`
+- **Thin community `Package Init`** (1 nodes): `README (Hungarian)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `main()` connect `Graphify CLI & Platform Install` to `Graph Export & Visualization`, `Clustering & Community Detection`, `Export (HTML/Cypher/Obsidian)`, `Graph Analysis & Surprises`, `Code Analysis Utilities`, `Git Hooks Integration`, `Token Benchmarking`?**
-  _High betweenness centrality (0.073) - this node is a cross-community bridge._
-- **Why does `_extract_generic()` connect `Graph Build & Core Pipeline` to `Multi-Language AST Extraction`, `Export (HTML/Cypher/Obsidian)`, `Graph Analysis & Surprises`?**
-  _High betweenness centrality (0.070) - this node is a cross-community bridge._
-- **Why does `Cookies` connect `HTTP Auth & Client Models` to `Clustering & Community Detection`, `Graph Build & Core Pipeline`?**
-  _High betweenness centrality (0.066) - this node is a cross-community bridge._
-- **Are the 86 inferred relationships involving `str` (e.g. with `_load_tsconfig_aliases()` and `_import_python()`) actually correct?**
-  _`str` has 86 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 41 inferred relationships involving `Response` (e.g. with `Timeout` and `Limits`) actually correct?**
-  _`Response` has 41 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 40 inferred relationships involving `Request` (e.g. with `Timeout` and `Limits`) actually correct?**
-  _`Request` has 40 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 39 inferred relationships involving `build_from_json()` (e.g. with `_rebuild_code()` and `main()`) actually correct?**
-  _`build_from_json()` has 39 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `Graphify` connect `HTTP Auth & Client Models` to `Multi-Language AST Extraction`, `Graph Export & Visualization`, `Clustering & Community Detection`, `Graph Build & Core Pipeline`, `Export (HTML/Cypher/Obsidian)`?**
+  _High betweenness centrality (0.359) - this node is a cross-community bridge._
+- **Why does `Mixed Corpus Example (docs + code)` connect `Graph Export & Visualization` to `HTTP Auth & Client Models`?**
+  _High betweenness centrality (0.086) - this node is a cross-community bridge._
+- **Why does `Knowledge Graph Output` connect `Clustering & Community Detection` to `HTTP Auth & Client Models`?**
+  _High betweenness centrality (0.076) - this node is a cross-community bridge._
+- **Are the 3 inferred relationships involving `Graphify` (e.g. with `Test Fixture Sample (Markdown)` and `Graphify Logo Icon (SVG)`) actually correct?**
+  _`Graphify` has 3 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 2 inferred relationships involving `AST Extraction Pass` (e.g. with `Semantic Extraction (Claude Subagents)` and `Cache Namespace Fix (ast/ vs semantic/ subdirs)`) actually correct?**
+  _`AST Extraction Pass` has 2 INFERRED edges - model-reasoned connections that need verification._
+- **What connects `Raw Folder Workflow (Karpathy)`, `Interactive HTML Visualization`, `GRAPH_REPORT.md (audit report)` to the rest of the system?**
+  _57 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `HTTP Auth & Client Models` be split into smaller, more focused modules?**
+  _Cohesion score 0.08 - nodes in this community are weakly interconnected._
