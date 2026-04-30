@@ -4,7 +4,7 @@
 - Corpus is ~0 words - fits in a single context window. You may not need a graph.
 
 ## Summary
-- 1552 nodes · 3245 edges · 55 communities detected
+- 1553 nodes · 3245 edges · 56 communities detected
 - Extraction: 63% EXTRACTED · 37% INFERRED · 0% AMBIGUOUS · INFERRED: 1198 edges (avg confidence: 0.74)
 - Token cost: 0 input · 0 output
 
@@ -64,6 +64,7 @@
 - [[_COMMUNITY_Community 54|Community 54]]
 - [[_COMMUNITY_Community 55|Community 55]]
 - [[_COMMUNITY_Community 56|Community 56]]
+- [[_COMMUNITY_Community 57|Community 57]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `Response` - 47 edges
@@ -90,6 +91,12 @@
   graphify/benchmark.py → tests/fixtures/sample.zig
 
 ## Hyperedges (group relationships)
+- **All Platform Skills (Claude, Codex, Aider, Kiro, Copilot, VS Code, Trae, Droid, Claw, OpenCode, Windows)** — skill_claude, skill_codex, skill_opencode, skill_aider, skill_kiro, skill_copilot, skill_vscode, skill_trae, skill_droid, skill_claw, skill_windows [EXTRACTED 1.00]
+- **Three Core Outputs (HTML + JSON + Report)** — readme_graph_html, readme_graph_json, readme_graph_report [EXTRACTED 1.00]
+- **Three Extraction Passes (AST + Whisper + Semantic)** — readme_ast_extraction, readme_semantic_extraction, readme_leiden_clustering [EXTRACTED 0.90]
+- **All README Translations (25+ languages)** — readme_nl, readme_ko, readme_fr, readme_pl, readme_no, readme_fi, readme_ar, readme_tr, readme_sv, readme_pt, readme_da, readme_de, readme_ro, readme_zh_cn, readme_zh_tw [EXTRACTED 1.00]
+- **Worked Examples (karpathy + httpx)** — karpathy_repos_readme, httpx_readme, worked_mixed_corpus [EXTRACTED 0.90]
+- **Transformer Core Components (Attention + Encoder/Decoder + Positional Encoding)** — attention_multihead, attention_encoder_decoder, attention_positional_encoding, attention_layer_norm [EXTRACTED 1.00]
 - **All Platform Skills (Claude, Codex, Aider, Kiro, Copilot, VS Code, Trae, Droid, Claw, OpenCode, Windows)** — skill_claude, skill_codex, skill_opencode, skill_aider, skill_kiro, skill_copilot, skill_vscode, skill_trae, skill_droid, skill_claw, skill_windows [EXTRACTED 1.00]
 - **Three Core Outputs (HTML + JSON + Report)** — readme_graph_html, readme_graph_json, readme_graph_report [EXTRACTED 1.00]
 - **Three Extraction Passes (AST + Whisper + Semantic)** — readme_ast_extraction, readme_semantic_extraction, readme_leiden_clustering [EXTRACTED 0.90]
@@ -361,8 +368,12 @@ Nodes (1): Conversation
 Cohesion: 1.0
 Nodes (1): Conversation
 
+### Community 57 - "Community 57"
+Cohesion: 1.0
+Nodes (1): Conversation
+
 ## Knowledge Gaps
-- **427 isolated node(s):** `Token-reduction benchmark - measures how much context graphify saves vs naive fu`, `Run BFS from best-matching nodes and return estimated tokens in the subgraph con`, `Measure token reduction: corpus tokens vs graphify query tokens.      Args:`, `Print a human-readable benchmark report.`, `Return (community_label, edge_count) pairs for cross-community connections, sort` (+422 more)
+- **428 isolated node(s):** `Token-reduction benchmark - measures how much context graphify saves vs naive fu`, `Run BFS from best-matching nodes and return estimated tokens in the subgraph con`, `Measure token reduction: corpus tokens vs graphify query tokens.      Args:`, `Print a human-readable benchmark report.`, `Return (community_label, edge_count) pairs for cross-community connections, sort` (+423 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **Thin community `Transformer Model Fixture`** (5 nodes): `ColorResolver`, `.accent()`, `.primary()`, `DefaultPalette`, `sample_php_static_prop.php`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -426,6 +437,8 @@ Nodes (1): Conversation
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 56`** (1 nodes): `Conversation`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 57`** (1 nodes): `Conversation`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -433,7 +446,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `main()` connect `Graphify CLI & Platform Install` to `Graph Export & Visualization`, `Graph Build & Core Pipeline`, `Export (HTML/Cypher/Obsidian)`, `File Detection & Classification`, `Sample API & CRUD Handlers`, `Git Hooks Integration`, `Token Benchmarking`, `httpx Worked Example`?**
   _High betweenness centrality (0.072) - this node is a cross-community bridge._
 - **Why does `_extract_generic()` connect `Clustering & Community Detection` to `Multi-Language AST Extraction`, `Graph Export & Visualization`, `Export (HTML/Cypher/Obsidian)`?**
-  _High betweenness centrality (0.070) - this node is a cross-community bridge._
+  _High betweenness centrality (0.069) - this node is a cross-community bridge._
 - **Why does `Cookies` connect `HTTP Auth & Client Models` to `Clustering & Community Detection`, `Export (HTML/Cypher/Obsidian)`?**
   _High betweenness centrality (0.066) - this node is a cross-community bridge._
 - **Are the 86 inferred relationships involving `str` (e.g. with `_load_tsconfig_aliases()` and `_import_python()`) actually correct?**
