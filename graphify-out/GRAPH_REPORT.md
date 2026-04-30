@@ -4,7 +4,7 @@
 - Corpus is ~0 words - fits in a single context window. You may not need a graph.
 
 ## Summary
-- 1548 nodes · 3245 edges · 51 communities detected
+- 1551 nodes · 3245 edges · 54 communities detected
 - Extraction: 63% EXTRACTED · 37% INFERRED · 0% AMBIGUOUS · INFERRED: 1198 edges (avg confidence: 0.74)
 - Token cost: 0 input · 0 output
 
@@ -60,6 +60,9 @@
 - [[_COMMUNITY_Community 50|Community 50]]
 - [[_COMMUNITY_Community 51|Community 51]]
 - [[_COMMUNITY_Community 52|Community 52]]
+- [[_COMMUNITY_Community 53|Community 53]]
+- [[_COMMUNITY_Community 54|Community 54]]
+- [[_COMMUNITY_Community 55|Community 55]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `Response` - 47 edges
@@ -86,6 +89,24 @@
   graphify/benchmark.py → tests/fixtures/sample.zig
 
 ## Hyperedges (group relationships)
+- **All Platform Skills (Claude, Codex, Aider, Kiro, Copilot, VS Code, Trae, Droid, Claw, OpenCode, Windows)** — skill_claude, skill_codex, skill_opencode, skill_aider, skill_kiro, skill_copilot, skill_vscode, skill_trae, skill_droid, skill_claw, skill_windows [EXTRACTED 1.00]
+- **Three Core Outputs (HTML + JSON + Report)** — readme_graph_html, readme_graph_json, readme_graph_report [EXTRACTED 1.00]
+- **Three Extraction Passes (AST + Whisper + Semantic)** — readme_ast_extraction, readme_semantic_extraction, readme_leiden_clustering [EXTRACTED 0.90]
+- **All README Translations (25+ languages)** — readme_nl, readme_ko, readme_fr, readme_pl, readme_no, readme_fi, readme_ar, readme_tr, readme_sv, readme_pt, readme_da, readme_de, readme_ro, readme_zh_cn, readme_zh_tw [EXTRACTED 1.00]
+- **Worked Examples (karpathy + httpx)** — karpathy_repos_readme, httpx_readme, worked_mixed_corpus [EXTRACTED 0.90]
+- **Transformer Core Components (Attention + Encoder/Decoder + Positional Encoding)** — attention_multihead, attention_encoder_decoder, attention_positional_encoding, attention_layer_norm [EXTRACTED 1.00]
+- **All Platform Skills (Claude, Codex, Aider, Kiro, Copilot, VS Code, Trae, Droid, Claw, OpenCode, Windows)** — skill_claude, skill_codex, skill_opencode, skill_aider, skill_kiro, skill_copilot, skill_vscode, skill_trae, skill_droid, skill_claw, skill_windows [EXTRACTED 1.00]
+- **Three Core Outputs (HTML + JSON + Report)** — readme_graph_html, readme_graph_json, readme_graph_report [EXTRACTED 1.00]
+- **Three Extraction Passes (AST + Whisper + Semantic)** — readme_ast_extraction, readme_semantic_extraction, readme_leiden_clustering [EXTRACTED 0.90]
+- **All README Translations (25+ languages)** — readme_nl, readme_ko, readme_fr, readme_pl, readme_no, readme_fi, readme_ar, readme_tr, readme_sv, readme_pt, readme_da, readme_de, readme_ro, readme_zh_cn, readme_zh_tw [EXTRACTED 1.00]
+- **Worked Examples (karpathy + httpx)** — karpathy_repos_readme, httpx_readme, worked_mixed_corpus [EXTRACTED 0.90]
+- **Transformer Core Components (Attention + Encoder/Decoder + Positional Encoding)** — attention_multihead, attention_encoder_decoder, attention_positional_encoding, attention_layer_norm [EXTRACTED 1.00]
+- **All Platform Skills (Claude, Codex, Aider, Kiro, Copilot, VS Code, Trae, Droid, Claw, OpenCode, Windows)** — skill_claude, skill_codex, skill_opencode, skill_aider, skill_kiro, skill_copilot, skill_vscode, skill_trae, skill_droid, skill_claw, skill_windows [EXTRACTED 1.00]
+- **Three Core Outputs (HTML + JSON + Report)** — readme_graph_html, readme_graph_json, readme_graph_report [EXTRACTED 1.00]
+- **Three Extraction Passes (AST + Whisper + Semantic)** — readme_ast_extraction, readme_semantic_extraction, readme_leiden_clustering [EXTRACTED 0.90]
+- **All README Translations (25+ languages)** — readme_nl, readme_ko, readme_fr, readme_pl, readme_no, readme_fi, readme_ar, readme_tr, readme_sv, readme_pt, readme_da, readme_de, readme_ro, readme_zh_cn, readme_zh_tw [EXTRACTED 1.00]
+- **Worked Examples (karpathy + httpx)** — karpathy_repos_readme, httpx_readme, worked_mixed_corpus [EXTRACTED 0.90]
+- **Transformer Core Components (Attention + Encoder/Decoder + Positional Encoding)** — attention_multihead, attention_encoder_decoder, attention_positional_encoding, attention_layer_norm [EXTRACTED 1.00]
 - **All Platform Skills (Claude, Codex, Aider, Kiro, Copilot, VS Code, Trae, Droid, Claw, OpenCode, Windows)** — skill_claude, skill_codex, skill_opencode, skill_aider, skill_kiro, skill_copilot, skill_vscode, skill_trae, skill_droid, skill_claw, skill_windows [EXTRACTED 1.00]
 - **Three Core Outputs (HTML + JSON + Report)** — readme_graph_html, readme_graph_json, readme_graph_report [EXTRACTED 1.00]
 - **Three Extraction Passes (AST + Whisper + Semantic)** — readme_ast_extraction, readme_semantic_extraction, readme_leiden_clustering [EXTRACTED 0.90]
@@ -317,8 +338,20 @@ Nodes (1): README (Hungarian)
 Cohesion: 1.0
 Nodes (1): Conversation
 
+### Community 53 - "Community 53"
+Cohesion: 1.0
+Nodes (1): Conversation
+
+### Community 54 - "Community 54"
+Cohesion: 1.0
+Nodes (1): Résumé de session — Automatisation graphify : ingestion conversations + SessionStart hook
+
+### Community 55 - "Community 55"
+Cohesion: 1.0
+Nodes (1): Conversation
+
 ## Knowledge Gaps
-- **423 isolated node(s):** `Token-reduction benchmark - measures how much context graphify saves vs naive fu`, `Run BFS from best-matching nodes and return estimated tokens in the subgraph con`, `Measure token reduction: corpus tokens vs graphify query tokens.      Args:`, `Print a human-readable benchmark report.`, `Return (community_label, edge_count) pairs for cross-community connections, sort` (+418 more)
+- **426 isolated node(s):** `Token-reduction benchmark - measures how much context graphify saves vs naive fu`, `Run BFS from best-matching nodes and return estimated tokens in the subgraph con`, `Measure token reduction: corpus tokens vs graphify query tokens.      Args:`, `Print a human-readable benchmark report.`, `Return (community_label, edge_count) pairs for cross-community connections, sort` (+421 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **Thin community `Transformer Model Fixture`** (5 nodes): `ColorResolver`, `.accent()`, `.primary()`, `DefaultPalette`, `sample_php_static_prop.php`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -373,6 +406,12 @@ Nodes (1): Conversation
 - **Thin community `Community 51`** (1 nodes): `README (Hungarian)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 52`** (1 nodes): `Conversation`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 53`** (1 nodes): `Conversation`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 54`** (1 nodes): `Résumé de session — Automatisation graphify : ingestion conversations + SessionStart hook`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 55`** (1 nodes): `Conversation`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions

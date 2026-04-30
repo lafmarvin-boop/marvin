@@ -972,6 +972,36 @@
       "summary": "Graphify est installé avec succès. Voici un résumé : **Installation terminée** — `graphify` v0.5.3 est installé depuis le dépôt `safishamsi/graphify`. C'est un assistant de coding IA qui transforme un dossier de code, docs ou images en un **graphe de connaissances queryable**. Commandes principales ",
       "source_file": "/home/user/marvin/raw/conversations/2026-04-30_16-19-11_369fc090.md",
       "source_location": "L1"
+    },
+    {
+      "id": "conversation:9920e00f",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_17-13-30_9920e00f.md",
+      "source_location": "L1",
+      "timestamp": "2026-04-30T17:13:30.767662",
+      "summary": "Session 'Conversation'. Outils: Write, Edit, Bash, Read. 45 appels."
+    },
+    {
+      "id": "resume:RESUME_2026-04-30",
+      "label": "Résumé de session — Automatisation graphify : ingestion conversations + SessionStart hook",
+      "type": "session_resume",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/RESUME_2026-04-30.md",
+      "source_location": "L1",
+      "timestamp": "2026-04-30T17:29:32.310294",
+      "summary": "# Résumé de session — Automatisation graphify : ingestion conversations + SessionStart hook\n> Date : 2026-04-30\n> Projet : marvin (`lafmarvin-boop/marvin`)\n> Branche git : `claude/install-graphify-8n5eG`\n\n## Contexte de départ\nSession reprise depuis une précédente conversation. Deux tâches restaient à faire : (1) envoyer automatiquement les résumés `/fin-de-session` dans graphify, (2) injecter le "
+    },
+    {
+      "id": "conversation:3a899a79",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_17-29-35_3a899a79.md",
+      "source_location": "L1",
+      "timestamp": "2026-04-30T17:29:35.917316",
+      "summary": "Session 'Conversation'. Outils: Read, Edit, Write, Bash. 47 appels."
     }
   ],
   "edges": [
