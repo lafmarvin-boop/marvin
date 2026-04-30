@@ -92,11 +92,11 @@ Nodes (6): Shrink Guard (prevents overwriting graph with smaller data), Interact
 
 ### Community 5 - "Graph Build & Core Pipeline"
 Cohesion: 1.0
-Nodes (2): Graphify Skill for Claude Code, Graphify Skill for Codex
+Nodes (2): Graphify Logo Icon (SVG), Graphify Logo with Text (SVG)
 
 ### Community 6 - "Export (HTML/Cypher/Obsidian)"
 Cohesion: 1.0
-Nodes (2): Graphify Logo Icon (SVG), Graphify Logo with Text (SVG)
+Nodes (2): Graphify Skill for Claude Code, Graphify Skill for Codex
 
 ### Community 7 - "Graph Analysis & Surprises"
 Cohesion: 1.0
@@ -177,9 +177,9 @@ Nodes (1): README (Hungarian)
 ## Knowledge Gaps
 - **57 isolated node(s):** `Raw Folder Workflow (Karpathy)`, `Interactive HTML Visualization`, `GRAPH_REPORT.md (audit report)`, `.graphifyignore (exclusion file)`, `Confidence Labels (EXTRACTED/INFERRED/AMBIGUOUS)` (+52 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Graph Build & Core Pipeline`** (2 nodes): `Graphify Skill for Claude Code`, `Graphify Skill for Codex`
+- **Thin community `Graph Build & Core Pipeline`** (2 nodes): `Graphify Logo Icon (SVG)`, `Graphify Logo with Text (SVG)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Export (HTML/Cypher/Obsidian)`** (2 nodes): `Graphify Logo Icon (SVG)`, `Graphify Logo with Text (SVG)`
+- **Thin community `Export (HTML/Cypher/Obsidian)`** (2 nodes): `Graphify Skill for Claude Code`, `Graphify Skill for Codex`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Graph Analysis & Surprises`** (2 nodes): `safe_fetch() (size cap + timeout)`, `validate_url() (security)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
