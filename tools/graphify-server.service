@@ -1,0 +1,11 @@
+[Unit]
+Description=Marvin graphify context server (localhost:7842)
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/python3 /home/user/marvin/tools/graphify-context-server.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
