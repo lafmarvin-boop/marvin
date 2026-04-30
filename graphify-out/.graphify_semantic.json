@@ -1002,6 +1002,16 @@
       "source_location": "L1",
       "timestamp": "2026-04-30T17:29:35.917316",
       "summary": "Session 'Conversation'. Outils: Read, Edit, Write, Bash. 47 appels."
+    },
+    {
+      "id": "conversation:17416ac2",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_18-40-31_17416ac2.md",
+      "source_location": "L1",
+      "timestamp": "2026-04-30T18:40:31.174419",
+      "summary": "Session 'Conversation'. Outils: Agent, Bash, Write, Edit, Read. 55 appels."
     }
   ],
   "edges": [
