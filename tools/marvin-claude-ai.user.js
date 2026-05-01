@@ -26,6 +26,7 @@
     function clearEditor() {
         const ed = findEditor();
         if (!ed) return;
+        if (ed.innerText.trim().length === 0) return;
         ed.focus();
         const sel = window.getSelection();
         const range = document.createRange();
@@ -36,11 +37,12 @@
     }
 
     function injectText(text) {
+        if (!text) return false;
         const ed = findEditor();
         if (!ed) return false;
         ed.focus();
         const ok = document.execCommand('insertText', false, text);
-        if (!ok) {
+        if (!ok && ed.innerText.trim().length === 0) {
             const ev = new InputEvent('input', {
                 bubbles: true, cancelable: true,
                 data: text, inputType: 'insertText'
@@ -58,6 +60,7 @@
             onload: function (res) {
                 if (res.status !== 200 || !res.responseText.trim()) return;
                 const text = res.responseText.trim();
+                if (!text) return;
                 clearEditor();
                 let tries = 0;
                 const t = setInterval(() => {
@@ -107,7 +110,9 @@
         if (url === lastUrl) return;
         lastUrl = url;
         if (url.match(/claude\.ai\/(new|chat\/new)/)) {
-            setTimeout(() => fetchAndInject(GIST_URL), 1500);
+            setTimeout(() => {
+                if (getEditorText().length === 0) fetchAndInject(GIST_URL);
+            }, 1500);
         }
     }
 
