@@ -1032,6 +1032,16 @@
       "source_location": "L1",
       "timestamp": "2026-05-01T09:03:52.273652",
       "summary": "Session 'Conversation'. Outils: WebFetch, Agent, Read, Write, Bash. 86 appels."
+    },
+    {
+      "id": "conversation:3c71451c",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-05-01_09-19-29_3c71451c.md",
+      "source_location": "L1",
+      "timestamp": "2026-05-01T09:19:29.619301",
+      "summary": "Session 'Conversation'. Outils: Read, Edit, Write, Bash, Agent. 110 appels."
     }
   ],
   "edges": [
