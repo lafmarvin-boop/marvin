@@ -16,7 +16,10 @@ def graph_stats() -> str:
     graph_json = GRAPHIFY_ROOT / "graphify-out" / "graph.json"
     if not graph_json.exists():
         return ""
-    g = json.loads(graph_json.read_text())
+    try:
+        g = json.loads(graph_json.read_text())
+    except (OSError, json.JSONDecodeError):
+        return ""
     nodes = g.get("nodes", [])
     links = g.get("links", [])
     degree = {}
@@ -72,7 +75,17 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             return
-        body = fn().encode("utf-8")
+        try:
+            body = fn().encode("utf-8")
+        except Exception as exc:
+            err = f"[graphify-server] {exc}".encode("utf-8")
+            self.send_response(500)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(err)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(err)
+            return
         self.send_response(200)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))

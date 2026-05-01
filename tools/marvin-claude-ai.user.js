@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Marvin — Graphify Context Injector
 // @namespace    https://github.com/lafmarvin-boop/marvin
-// @version      1.3
+// @version      1.4
 // @description  Injecte le contexte graphify au démarrage + intercepte /reprise-de-session
 // @match        https://claude.ai/*
 // @grant        GM_xmlhttpRequest
@@ -11,9 +11,17 @@
     'use strict';
 
     const GIST_URL = 'https://gist.githubusercontent.com/lafmarvin-boop/36254227eb7908ce5c178193117fcb6c/raw/marvin-context.md';
+    const COMMAND = '/reprise-de-session';
+    const NEW_CHAT_RE = /claude\.ai\/(new|chat\/new)\b/;
+
     let lastUrl = '';
+    let injectInProgress = false;
 
     function findEditor() {
+        const composer = document.querySelector(
+            'fieldset div[contenteditable="true"], div[aria-label*="Write"] [contenteditable="true"], div[aria-label*="prompt" i] [contenteditable="true"]'
+        );
+        if (composer) return composer;
         const all = document.querySelectorAll('div[contenteditable="true"]');
         return all.length ? all[all.length - 1] : null;
     }
@@ -53,39 +61,44 @@
     }
 
     function fetchAndInject(url) {
+        if (injectInProgress) return;
+        injectInProgress = true;
         GM_xmlhttpRequest({
             method: 'GET',
             url: url,
             timeout: 6000,
             onload: function (res) {
-                if (res.status !== 200 || !res.responseText.trim()) return;
-                const text = res.responseText.trim();
-                if (!text) return;
+                const text = (res && res.status === 200 && res.responseText) ? res.responseText.trim() : '';
+                if (!text) {
+                    injectInProgress = false;
+                    return;
+                }
                 clearEditor();
                 let tries = 0;
                 const t = setInterval(() => {
                     tries++;
-                    if (injectText(text)) clearInterval(t);
-                    else if (tries > 20) clearInterval(t);
+                    if (injectText(text) || tries > 20) {
+                        clearInterval(t);
+                        injectInProgress = false;
+                    }
                 }, 300);
             },
             onerror: function () {
+                injectInProgress = false;
                 console.warn('[Marvin] Impossible de charger le contexte depuis GitHub Gist');
             },
             ontimeout: function () {
+                injectInProgress = false;
                 console.warn('[Marvin] Timeout GitHub Gist');
             }
         });
     }
 
     function checkCommand() {
-        const text = getEditorText();
-        if (text === '/reprise-de-session') {
-            clearEditor();
-            fetchAndInject(GIST_URL);
-            return true;
-        }
-        return false;
+        if (getEditorText() !== COMMAND) return false;
+        clearEditor();
+        fetchAndInject(GIST_URL);
+        return true;
     }
 
     document.addEventListener('keydown', function (e) {
@@ -105,19 +118,30 @@
         }
     }, true);
 
+    let urlCheckScheduled = false;
     function onUrlChange() {
         const url = window.location.href;
         if (url === lastUrl) return;
         lastUrl = url;
-        if (url.match(/claude\.ai\/(new|chat\/new)/)) {
+        if (NEW_CHAT_RE.test(url)) {
             setTimeout(() => {
                 if (getEditorText().length === 0) fetchAndInject(GIST_URL);
             }, 1500);
         }
     }
 
-    const observer = new MutationObserver(onUrlChange);
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    function scheduleUrlCheck() {
+        if (urlCheckScheduled) return;
+        urlCheckScheduled = true;
+        requestAnimationFrame(() => {
+            urlCheckScheduled = false;
+            onUrlChange();
+        });
+    }
+
+    const observer = new MutationObserver(scheduleUrlCheck);
+    observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+    window.addEventListener('popstate', onUrlChange);
     onUrlChange();
 
 })();
