@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Marvin — Graphify Context Injector
 // @namespace    https://github.com/lafmarvin-boop/marvin
-// @version      1.2
+// @version      1.3
 // @description  Injecte le contexte graphify au démarrage + intercepte /reprise-de-session
 // @match        https://claude.ai/*
 // @grant        GM_xmlhttpRequest
@@ -10,15 +10,11 @@
 (function () {
     'use strict';
 
-    const SERVER = 'http://localhost:7842';
+    const GIST_URL = 'https://gist.githubusercontent.com/lafmarvin-boop/36254227eb7908ce5c178193117fcb6c/raw/marvin-context.md';
     let lastUrl = '';
 
-    // ── Editor helpers ──────────────────────────────────────────────────────
-
     function findEditor() {
-        // Claude.ai uses ProseMirror; the main input is the deepest contenteditable
         const all = document.querySelectorAll('div[contenteditable="true"]');
-        // Return the last one (the message input, not toolbar elements)
         return all.length ? all[all.length - 1] : null;
     }
 
@@ -31,7 +27,6 @@
         const ed = findEditor();
         if (!ed) return;
         ed.focus();
-        // Select all and delete
         const sel = window.getSelection();
         const range = document.createRange();
         range.selectNodeContents(ed);
@@ -44,23 +39,22 @@
         const ed = findEditor();
         if (!ed) return false;
         ed.focus();
-        // Use execCommand insertText — works with ProseMirror
         const ok = document.execCommand('insertText', false, text);
         if (!ok) {
-            // Fallback: dispatch InputEvent
-            const ev = new InputEvent('input', { bubbles: true, cancelable: true, data: text, inputType: 'insertText' });
+            const ev = new InputEvent('input', {
+                bubbles: true, cancelable: true,
+                data: text, inputType: 'insertText'
+            });
             ed.dispatchEvent(ev);
         }
         return ed.innerText.trim().length > 0;
     }
 
-    // ── Fetch context from local server ─────────────────────────────────────
-
-    function fetchAndInject(endpoint, onDone) {
+    function fetchAndInject(url) {
         GM_xmlhttpRequest({
             method: 'GET',
-            url: SERVER + endpoint,
-            timeout: 3000,
+            url: url,
+            timeout: 6000,
             onload: function (res) {
                 if (res.status !== 200 || !res.responseText.trim()) return;
                 const text = res.responseText.trim();
@@ -68,33 +62,29 @@
                 let tries = 0;
                 const t = setInterval(() => {
                     tries++;
-                    if (injectText(text)) { clearInterval(t); if (onDone) onDone(); }
+                    if (injectText(text)) clearInterval(t);
                     else if (tries > 20) clearInterval(t);
                 }, 300);
             },
             onerror: function () {
-                console.warn('[Marvin] Serveur graphify non disponible sur localhost:7842');
-                alert('[Marvin] Le serveur graphify n\'est pas démarré.\n\nLance :\n  python3 /home/user/marvin/tools/graphify-context-server.py &');
+                console.warn('[Marvin] Impossible de charger le contexte depuis GitHub Gist');
             },
             ontimeout: function () {
-                console.warn('[Marvin] Timeout localhost:7842');
+                console.warn('[Marvin] Timeout GitHub Gist');
             }
         });
     }
-
-    // ── Intercept /reprise-de-session ────────────────────────────────────────
 
     function checkCommand() {
         const text = getEditorText();
         if (text === '/reprise-de-session') {
             clearEditor();
-            fetchAndInject('/sessions');
+            fetchAndInject(GIST_URL);
             return true;
         }
         return false;
     }
 
-    // Listen on keydown (capture) to intercept Enter before claude.ai submits
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter' || e.shiftKey) return;
         if (checkCommand()) {
@@ -103,7 +93,6 @@
         }
     }, true);
 
-    // Also watch for button click (claude.ai has a send button)
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('button[type="submit"], button[aria-label*="Send"], button[data-testid*="send"]');
         if (!btn) return;
@@ -113,14 +102,12 @@
         }
     }, true);
 
-    // ── Auto-inject context on new conversation ──────────────────────────────
-
     function onUrlChange() {
         const url = window.location.href;
         if (url === lastUrl) return;
         lastUrl = url;
         if (url.match(/claude\.ai\/(new|chat\/new)/)) {
-            setTimeout(() => fetchAndInject('/context'), 1500);
+            setTimeout(() => fetchAndInject(GIST_URL), 1500);
         }
     }
 
