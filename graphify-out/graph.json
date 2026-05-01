@@ -1190,6 +1190,105 @@
         "confidence": "EXTRACTED",
         "confidence_score": 1.0,
         "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md"
+      },
+      {
+        "id": "all_platform_skills",
+        "label": "All Platform Skills (Claude, Codex, Aider, Kiro, Copilot, VS Code, Trae, Droid, Claw, OpenCode, Windows)",
+        "nodes": [
+          "skill_claude",
+          "skill_codex",
+          "skill_opencode",
+          "skill_aider",
+          "skill_kiro",
+          "skill_copilot",
+          "skill_vscode",
+          "skill_trae",
+          "skill_droid",
+          "skill_claw",
+          "skill_windows"
+        ],
+        "relation": "implement",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "graphify/README.md"
+      },
+      {
+        "id": "graphify_three_outputs",
+        "label": "Three Core Outputs (HTML + JSON + Report)",
+        "nodes": [
+          "readme_graph_html",
+          "readme_graph_json",
+          "readme_graph_report"
+        ],
+        "relation": "form",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "graphify/README.md"
+      },
+      {
+        "id": "graphify_three_passes",
+        "label": "Three Extraction Passes (AST + Whisper + Semantic)",
+        "nodes": [
+          "readme_ast_extraction",
+          "readme_semantic_extraction",
+          "readme_leiden_clustering"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 0.9,
+        "source_file": "graphify/README.md"
+      },
+      {
+        "id": "translations_group",
+        "label": "All README Translations (25+ languages)",
+        "nodes": [
+          "readme_nl",
+          "readme_ko",
+          "readme_fr",
+          "readme_pl",
+          "readme_no",
+          "readme_fi",
+          "readme_ar",
+          "readme_tr",
+          "readme_sv",
+          "readme_pt",
+          "readme_da",
+          "readme_de",
+          "readme_ro",
+          "readme_zh_cn",
+          "readme_zh_tw"
+        ],
+        "relation": "implement",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "graphify/docs/translations/README.fr-FR.md"
+      },
+      {
+        "id": "worked_examples_group",
+        "label": "Worked Examples (karpathy + httpx)",
+        "nodes": [
+          "karpathy_repos_readme",
+          "httpx_readme",
+          "worked_mixed_corpus"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 0.9,
+        "source_file": "graphify/worked/karpathy-repos/README.md"
+      },
+      {
+        "id": "transformer_core_components",
+        "label": "Transformer Core Components (Attention + Encoder/Decoder + Positional Encoding)",
+        "nodes": [
+          "attention_multihead",
+          "attention_encoder_decoder",
+          "attention_positional_encoding",
+          "attention_layer_norm"
+        ],
+        "relation": "form",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md"
       }
     ]
   },
@@ -15609,6 +15708,18 @@
       "summary": "Session 'Conversation'. Outils: Bash, Edit, Write, WebFetch, Read. 111 appels.",
       "id": "conversation:ae81eb3b",
       "community": 60,
+      "norm_label": "conversation"
+    },
+    {
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-05-01_09-41-37_4cd34234.md",
+      "source_location": "L1",
+      "timestamp": "2026-05-01T09:41:37.895786",
+      "summary": "Session 'Conversation'. Outils: WebFetch, Edit, Write, Read, Agent. 113 appels.",
+      "id": "conversation:4cd34234",
+      "community": 61,
       "norm_label": "conversation"
     }
   ],
@@ -54543,6 +54654,105 @@
     }
   ],
   "hyperedges": [
+    {
+      "id": "all_platform_skills",
+      "label": "All Platform Skills (Claude, Codex, Aider, Kiro, Copilot, VS Code, Trae, Droid, Claw, OpenCode, Windows)",
+      "nodes": [
+        "skill_claude",
+        "skill_codex",
+        "skill_opencode",
+        "skill_aider",
+        "skill_kiro",
+        "skill_copilot",
+        "skill_vscode",
+        "skill_trae",
+        "skill_droid",
+        "skill_claw",
+        "skill_windows"
+      ],
+      "relation": "implement",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/README.md"
+    },
+    {
+      "id": "graphify_three_outputs",
+      "label": "Three Core Outputs (HTML + JSON + Report)",
+      "nodes": [
+        "readme_graph_html",
+        "readme_graph_json",
+        "readme_graph_report"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/README.md"
+    },
+    {
+      "id": "graphify_three_passes",
+      "label": "Three Extraction Passes (AST + Whisper + Semantic)",
+      "nodes": [
+        "readme_ast_extraction",
+        "readme_semantic_extraction",
+        "readme_leiden_clustering"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "graphify/README.md"
+    },
+    {
+      "id": "translations_group",
+      "label": "All README Translations (25+ languages)",
+      "nodes": [
+        "readme_nl",
+        "readme_ko",
+        "readme_fr",
+        "readme_pl",
+        "readme_no",
+        "readme_fi",
+        "readme_ar",
+        "readme_tr",
+        "readme_sv",
+        "readme_pt",
+        "readme_da",
+        "readme_de",
+        "readme_ro",
+        "readme_zh_cn",
+        "readme_zh_tw"
+      ],
+      "relation": "implement",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/docs/translations/README.fr-FR.md"
+    },
+    {
+      "id": "worked_examples_group",
+      "label": "Worked Examples (karpathy + httpx)",
+      "nodes": [
+        "karpathy_repos_readme",
+        "httpx_readme",
+        "worked_mixed_corpus"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": "graphify/worked/karpathy-repos/README.md"
+    },
+    {
+      "id": "transformer_core_components",
+      "label": "Transformer Core Components (Attention + Encoder/Decoder + Positional Encoding)",
+      "nodes": [
+        "attention_multihead",
+        "attention_encoder_decoder",
+        "attention_positional_encoding",
+        "attention_layer_norm"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "graphify/worked/mixed-corpus/raw/attention_notes.md"
+    },
     {
       "id": "all_platform_skills",
       "label": "All Platform Skills (Claude, Codex, Aider, Kiro, Copilot, VS Code, Trae, Droid, Claw, OpenCode, Windows)",
