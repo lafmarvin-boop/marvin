@@ -573,7 +573,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 // MATH
 // ═══════════════════════════════════════════════════════
 const d2=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-const lerp=(a,b,t)=>a+(b-a)*t;
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const rnd=()=>Math.random();
 const rndI=n=>Math.floor(rnd()*n);
@@ -612,7 +611,6 @@ function buildPath(){
     {x:CW+50,    y:CH*.92},
   ];
 }
-function plen(){let l=0;for(let i=1;i<PATH.length;i++)l+=d2(PATH[i-1],PATH[i]);return l;}
 
 // ═══════════════════════════════════════════════════════
 // HERO SKILL POOLS — 20 UNIQUE skills per hero, NO OVERLAP
@@ -1344,7 +1342,8 @@ function sliceSupermanFrontSheet(){
     const cv=document.createElement('canvas');
     cv.width=FW;cv.height=FH;
     const cx=cv.getContext('2d');
-    cx.imageSmoothingEnabled=false;
+    cx.imageSmoothingEnabled=true;
+    cx.imageSmoothingQuality='high';
     cx.drawImage(sheet,i*FW,0,FW,FH,0,0,FW,FH);
     spriteCache['superman_front_anim_'+i]=cv;
   }
@@ -1495,6 +1494,7 @@ function drawPortrait(c,x,y,s,def,t=0,facing=1){
   let smDir='front';
   if(isSuperman && _currentHero){
     const h=_currentHero;
+    h._useFrontAnim=false;
     if(h.atkTimer>0){
       // ATTAQUE : 4 frames cyclées sur la durée
       const atkDur = .6;
@@ -1532,7 +1532,7 @@ function drawPortrait(c,x,y,s,def,t=0,facing=1){
         if(smDir==='front'){
           const fi = Math.floor(t*12) % 12;
           const animKey = 'superman_front_anim_'+fi;
-          if(spriteCache[animKey]) sprite=spriteCache[animKey];
+          if(spriteCache[animKey]){ sprite=spriteCache[animKey]; h._useFrontAnim=true; }
           else if(spriteCache[baseKey]) sprite=spriteCache[baseKey];
         } else {
           const fi = Math.floor(t*8) % 4;
@@ -1551,14 +1551,18 @@ function drawPortrait(c,x,y,s,def,t=0,facing=1){
     let sizeBoost=1;
     if(def.id==='smarine')sizeBoost=1.18;
     if(isSuperman)sizeBoost=1.05;
-    const w=s*1.1*sizeBoost,h=s*1.4*sizeBoost;
-    const yOffset=y-h*.42;
+    const useFrontAnim = isSuperman && _currentHero && _currentHero._useFrontAnim;
+    const h = s*1.4*sizeBoost;
+    // Ratio natif de la sprite-sheet 128:220 pour éviter l'étirement horizontal
+    const w = useFrontAnim ? h*(128/220) : s*1.1*sizeBoost;
+    const yOffset = y - h*.42;
 
-    c.save();c.imageSmoothingEnabled=false;
+    c.save();
+    // Lissage activé uniquement pour la sheet 12 frames (sprite haute déf)
+    c.imageSmoothingEnabled = useFrontAnim;
+    if(useFrontAnim) c.imageSmoothingQuality = 'high';
     // Pas de mirroir h.facing pour Superman (les sprites L/R sont déjà orientés)
-    // Mirroir uniquement si Superman vue back (cape symétrique : facing standard appliqué)
-    // OU si non-Superman.
-    const skipFlip = isSuperman; // sprites directionnels gèrent l'orientation
+    const skipFlip = isSuperman;
     if(facing===-1 && !skipFlip){c.translate(x*2,0);c.scale(-1,1);}
     c.drawImage(sprite,x-w/2,yOffset,w,h);
     c.restore();
@@ -3782,7 +3786,6 @@ let rageT=0, rageActive=false;
 // Reset entre RUNS uniquement (pas entre étages)
 function resetAltarBonuses(){altarLvl={lifesteal:0,mana:0,rage:0,defense:0,regen:0,crit:0};rageT=0;rageActive=false;}
 // Alias compat
-function resetFloorBonuses(){rageT=0;rageActive=false;}
 
 function startFissureRun(){
   // Reset run state
@@ -3803,66 +3806,6 @@ function startFissureRun(){
 const MAP_ROWS=7, MAP_COLS=5;
 let playerPos={row:-1,col:-1};
 
-// Vérifie si placer (r,c) créerait un bloc 2x2 plein
-function wouldForm2x2(grid,r,c){
-  for(let dr=-1;dr<=0;dr++){
-    for(let dc=-1;dc<=0;dc++){
-      const tlr=r+dr, tlc=c+dc;
-      if(tlr<0||tlc<0||tlr+1>=MAP_ROWS||tlc+1>=MAP_COLS)continue;
-      let count=0;
-      for(let i=0;i<2;i++)for(let j=0;j<2;j++){
-        const rr=tlr+i,cc=tlc+j;
-        if(rr===r&&cc===c)count++;
-        else if(grid[rr][cc].type)count++;
-      }
-      if(count===4)return true;
-    }
-  }
-  return false;
-}
-// Empêche 4 cases collées en ligne ou en colonne
-function wouldForm4InLine(grid,r,c){
-  // Horizontal: cherche 4 cases consécutives sur la même ligne incluant (r,c)
-  let h=1;
-  for(let i=c-1;i>=0&&grid[r][i].type;i--)h++;
-  for(let i=c+1;i<MAP_COLS&&grid[r][i].type;i++)h++;
-  if(h>=4)return true;
-  // Vertical: cherche 4 cases consécutives sur la même colonne incluant (r,c)
-  let v=1;
-  for(let i=r-1;i>=0&&grid[i][c].type;i--)v++;
-  for(let i=r+1;i<MAP_ROWS&&grid[i][c].type;i++)v++;
-  if(v>=4)return true;
-  return false;
-}
-// Empêche tout cluster compact de 4 cases (L, T, S, Z, carré...) dans une fenêtre 2x3 ou 3x2
-function wouldForm4Cluster(grid,r,c){
-  const wins=[[2,3],[3,2]];
-  for(const [wh,ww] of wins){
-    for(let tlr=Math.max(0,r-wh+1);tlr<=Math.min(MAP_ROWS-wh,r);tlr++){
-      for(let tlc=Math.max(0,c-ww+1);tlc<=Math.min(MAP_COLS-ww,c);tlc++){
-        let count=0;
-        for(let i=0;i<wh;i++)for(let j=0;j<ww;j++){
-          const rr=tlr+i,cc=tlc+j;
-          if((rr===r&&cc===c)||grid[rr][cc].type)count++;
-        }
-        if(count>=4)return true;
-      }
-    }
-  }
-  return false;
-}
-
-function validateNoBadCluster(grid){
-  for(let r=0;r<MAP_ROWS;r++)for(let c=0;c<MAP_COLS;c++){
-    if(!grid[r][c].type)continue;
-    const t=grid[r][c].type;
-    grid[r][c].type=null;
-    const bad=wouldForm2x2(grid,r,c)||wouldForm4InLine(grid,r,c)||wouldForm4Cluster(grid,r,c);
-    grid[r][c].type=t;
-    if(bad)return false;
-  }
-  return true;
-}
 function generateFloor(floorNum){
   // Système de chemins branchés type Slay the Spire
   return generateBranchingMap(floorNum);
@@ -4027,7 +3970,6 @@ function tryGenerateMap(floorNum){
 }
 
 // Fallback (gardé pour compatibilité)
-function generateFloorRaw(floorNum){return generateBranchingMap(floorNum);}
 
 function getReachableTiles(){
   // Voisines orthogonales de la position courante (jamais diagonale)
