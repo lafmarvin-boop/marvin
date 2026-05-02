@@ -1525,12 +1525,17 @@ function drawPortrait(c,x,y,s,def,t=0,facing=1){
           else                          smDir = dy>0 ? 'front' : 'back';
         }
       }
+      // Accumulateur de distance pour synchroniser l'animation avec le mouvement
+      const dist=Math.sqrt(vx*vx+vy*vy);
+      h._animDist=(h._animDist||0)+dist;
       h._prevX=h.x; h._prevY=h.y;
-      // Animation: 12 frames @ 12 FPS pour 'front' (sprite-sheet), 4 frames @ 8 FPS pour les autres directions
+      // Animation: 12 frames synchronisées avec la distance parcourue (front),
+      // 4 frames cyclées sur le temps pour les autres directions
       const baseKey = smDir==='front' ? 'superman' : 'superman_'+smDir;
       if(moving){
         if(smDir==='front'){
-          const fi = Math.floor(t*12) % 12;
+          // Une frame change tous les ~6 px de mouvement → cycle naturel walk
+          const fi = Math.floor(h._animDist*6) % 12;
           const animKey = 'superman_front_anim_'+fi;
           if(spriteCache[animKey]){ sprite=spriteCache[animKey]; h._useFrontAnim=true; }
           else if(spriteCache[baseKey]) sprite=spriteCache[baseKey];
@@ -1550,18 +1555,19 @@ function drawPortrait(c,x,y,s,def,t=0,facing=1){
   if(sprite){
     let sizeBoost=1;
     if(def.id==='smarine')sizeBoost=1.18;
-    if(isSuperman)sizeBoost=1.05;
-    const useFrontAnim = isSuperman && _currentHero && _currentHero._useFrontAnim;
+    if(isSuperman)sizeBoost=1.10;
     const h = s*1.4*sizeBoost;
-    // Ratio natif de la sprite-sheet 128:220 pour éviter l'étirement horizontal
-    const w = useFrontAnim ? h*(128/220) : s*1.1*sizeBoost;
-    const yOffset = y - h*.42;
+    // Aspect ratio natif pour TOUS les sprites Superman (idle 192x240 ET sheet 128x220)
+    const aw = sprite.naturalWidth || sprite.width || 1;
+    const ah = sprite.naturalHeight || sprite.height || 1;
+    const w = isSuperman ? h*(aw/ah) : s*1.1*sizeBoost;
+    // yOffset relevé pour Superman: 50% au-dessus de l'ancre au lieu de 42% → tête non clippée
+    const yOffset = y - h*(isSuperman ? 0.50 : 0.42);
 
     c.save();
-    // Lissage activé uniquement pour la sheet 12 frames (sprite haute déf)
-    c.imageSmoothingEnabled = useFrontAnim;
-    if(useFrontAnim) c.imageSmoothingQuality = 'high';
-    // Pas de mirroir h.facing pour Superman (les sprites L/R sont déjà orientés)
+    // Lissage activé pour TOUT Superman (sprite détaillé, pas pixel art)
+    c.imageSmoothingEnabled = isSuperman;
+    if(isSuperman) c.imageSmoothingQuality = 'high';
     const skipFlip = isSuperman;
     if(facing===-1 && !skipFlip){c.translate(x*2,0);c.scale(-1,1);}
     c.drawImage(sprite,x-w/2,yOffset,w,h);
