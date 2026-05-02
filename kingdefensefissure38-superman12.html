@@ -1338,13 +1338,16 @@ function sliceSupermanFrontSheet(){
   const FRAMES=12;
   const FW=Math.floor(sheet.naturalWidth/FRAMES);
   const FH=sheet.naturalHeight;
+  // Crop le bas (~17%) pour retirer la poussière/effet sol des frames
+  const FH_CROP=Math.floor(FH*0.83);
   for(let i=0;i<FRAMES;i++){
     const cv=document.createElement('canvas');
-    cv.width=FW;cv.height=FH;
+    cv.width=FW;cv.height=FH_CROP;
     const cx=cv.getContext('2d');
     cx.imageSmoothingEnabled=true;
     cx.imageSmoothingQuality='high';
-    cx.drawImage(sheet,i*FW,0,FW,FH,0,0,FW,FH);
+    // Source: frame i, hauteur = FH_CROP (top du frame, sans le sol)
+    cx.drawImage(sheet,i*FW,0,FW,FH_CROP,0,0,FW,FH_CROP);
     spriteCache['superman_front_anim_'+i]=cv;
   }
 }
@@ -1548,7 +1551,13 @@ function drawPortrait(c,x,y,s,def,t=0,facing=1){
           } else if(spriteCache[baseKey]) sprite=spriteCache[baseKey];
         }
       } else {
-        if(spriteCache[baseKey]) sprite=spriteCache[baseKey];
+        // Idle: utilise frame 0 de la sheet pour le face caméra (look cohérent avec la marche)
+        if(smDir==='front' && spriteCache['superman_front_anim_0']){
+          sprite=spriteCache['superman_front_anim_0'];
+          h._useFrontAnim=true;
+        } else if(spriteCache[baseKey]) {
+          sprite=spriteCache[baseKey];
+        }
       }
     }
   }
