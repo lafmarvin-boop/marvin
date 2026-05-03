@@ -1,6 +1,5 @@
 package com.marvin.assistant.audio
 
-import ai.picovoice.porcupine.Porcupine
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -9,7 +8,6 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
 import androidx.annotation.RequiresPermission
-import com.marvin.assistant.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -18,64 +16,55 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.io.File
-import java.io.FileOutputStream
+import org.json.JSONObject
+import org.vosk.Recognizer
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Always-on wake word detector backed by Picovoice Porcupine.
+ * Always-on wake word detector using Vosk's keyword-spotting mode.
  *
- * Le micro est libéré complètement quand on appelle [pause] – c'est nécessaire
- * parce que [SpeechToText] ouvre son propre AudioRecord sur la même source
- * (VOICE_RECOGNITION), et Android ne partage pas la source entre deux clients.
+ * Pourquoi Vosk plutôt qu'un moteur dédié type Porcupine:
+ *  - 100 % open-source, aucune inscription / clé API.
+ *  - Le modèle Vosk est déjà chargé pour la transcription (cf. [VoskModelHolder]),
+ *    donc zéro dépendance / asset supplémentaire.
  *
- * Setup (cf. README):
- *  1. Crée un compte gratuit sur https://console.picovoice.ai/.
- *  2. Entraîne un wake word "yo poto" pour Android (arm64), télécharge le .ppn.
- *  3. Pose-le dans app/src/main/assets/wakeword/yo_poto_android.ppn.
- *  4. Renseigne PICOVOICE_ACCESS_KEY=... dans local.properties.
+ * Compromis:
+ *  - Un peu plus gourmand en CPU que Porcupine (~5-10 % d'un cœur en continu),
+ *    négligeable sur un Snapdragon 8 Gen 3.
+ *
+ * Le micro est libéré complètement quand on appelle [pause] – nécessaire parce
+ * que [SpeechToText] ouvre son propre AudioRecord sur la même source
+ * (VOICE_RECOGNITION) et Android ne partage pas la source entre deux clients.
  */
-class WakeWordEngine(private val context: Context) {
+class WakeWordEngine(
+    private val context: Context,
+    private val voskModel: VoskModelHolder,
+    private val keyword: String = DEFAULT_KEYWORD
+) {
 
-    private var porcupine: Porcupine? = null
     private var audioRecord: AudioRecord? = null
     private var loopJob: Job? = null
     private val paused = AtomicBoolean(false)
     private var onDetectedCallback: (() -> Unit)? = null
 
-    @SuppressLint("MissingPermission")
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun start(onDetected: () -> Unit) {
-        if (loopJob != null) return // already running
+        if (loopJob != null) return
         onDetectedCallback = onDetected
-
-        val keywordPath = ensureKeywordFile()
-        val accessKey = BuildConfig.PICOVOICE_ACCESS_KEY
-        if (accessKey.isBlank()) {
-            Log.e(TAG, "Missing Picovoice access key (BuildConfig.PICOVOICE_ACCESS_KEY).")
-            return
-        }
-
-        val engine = Porcupine.Builder()
-            .setAccessKey(accessKey)
-            .setKeywordPath(keywordPath)
-            .setSensitivity(0.6f)
-            .build(context)
-        porcupine = engine
-
-        startRecorderAndLoop(engine, onDetected)
+        startRecorderAndLoop(onDetected)
     }
 
     @SuppressLint("MissingPermission")
-    private fun startRecorderAndLoop(engine: Porcupine, onDetected: () -> Unit) {
-        val sampleRate = engine.sampleRate
-        val frameLength = engine.frameLength
+    private fun startRecorderAndLoop(onDetected: () -> Unit) {
+        val sampleRate = SAMPLE_RATE
         val minBuffer = AudioRecord.getMinBufferSize(
             sampleRate,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT
         )
-        val bufferSize = maxOf(minBuffer, frameLength * 2)
+        // ~200 ms frames keeps Vosk fed without too much overhead.
+        val frameSize = sampleRate / 5
+        val bufferSize = maxOf(minBuffer, frameSize * 2 * 2)
 
         val recorder = AudioRecord(
             MediaRecorder.AudioSource.VOICE_RECOGNITION,
@@ -88,20 +77,34 @@ class WakeWordEngine(private val context: Context) {
         recorder.startRecording()
 
         loopJob = CoroutineScope(Dispatchers.Default).launch {
-            val buffer = ShortArray(frameLength)
-            while (isActive) {
-                if (paused.get()) { delay(50); continue }
-                val read = recorder.read(buffer, 0, frameLength)
-                if (read != frameLength) continue
-                try {
-                    val keywordIndex = engine.process(buffer)
-                    if (keywordIndex >= 0) {
-                        Log.i(TAG, "Wake word detected.")
+            // Grammar restricts decoding to the keyword – cheaper than full
+            // language model decoding, and any other speech maps to "[unk]".
+            val grammar = """["${keyword.lowercase()}", "[unk]"]"""
+            val recognizer = Recognizer(voskModel.get(), sampleRate.toFloat(), grammar)
+            val buffer = ShortArray(frameSize)
+            try {
+                while (isActive) {
+                    if (paused.get()) { delay(50); continue }
+                    val read = recorder.read(buffer, 0, frameSize)
+                    if (read <= 0) continue
+                    val finalized = try {
+                        recognizer.acceptWaveForm(buffer, read)
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "Vosk acceptWaveForm failed", t); false
+                    }
+                    val text = if (finalized) {
+                        JSONObject(recognizer.result).optString("text")
+                    } else {
+                        JSONObject(recognizer.partialResult).optString("partial")
+                    }
+                    if (text.isNotEmpty() && text.contains(keyword, ignoreCase = true)) {
+                        Log.i(TAG, "Wake word detected: \"$text\"")
+                        recognizer.reset()
                         onDetected()
                     }
-                } catch (t: Throwable) {
-                    Log.e(TAG, "Porcupine.process failed", t)
                 }
+            } finally {
+                recognizer.close()
             }
         }
     }
@@ -120,9 +123,8 @@ class WakeWordEngine(private val context: Context) {
     fun resume() {
         if (loopJob != null) return
         paused.set(false)
-        val engine = porcupine ?: return
         val cb = onDetectedCallback ?: return
-        startRecorderAndLoop(engine, cb)
+        startRecorderAndLoop(cb)
     }
 
     fun release() {
@@ -130,24 +132,12 @@ class WakeWordEngine(private val context: Context) {
         loopJob = null
         audioRecord?.runCatching { stop(); release() }
         audioRecord = null
-        porcupine?.delete()
-        porcupine = null
         onDetectedCallback = null
-    }
-
-    private fun ensureKeywordFile(): String {
-        val outDir = File(context.filesDir, "wakeword").apply { mkdirs() }
-        val outFile = File(outDir, KEYWORD_ASSET_NAME.substringAfterLast('/'))
-        if (!outFile.exists()) {
-            context.assets.open(KEYWORD_ASSET_NAME).use { input ->
-                FileOutputStream(outFile).use { input.copyTo(it) }
-            }
-        }
-        return outFile.absolutePath
     }
 
     companion object {
         private const val TAG = "WakeWord"
-        private const val KEYWORD_ASSET_NAME = "wakeword/yo_poto_android.ppn"
+        private const val SAMPLE_RATE = 16_000
+        const val DEFAULT_KEYWORD = "yo poto"
     }
 }

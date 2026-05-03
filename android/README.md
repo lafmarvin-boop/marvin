@@ -20,10 +20,10 @@ l'app concernée. Tout tourne **on-device** : pas de cloud, pas d'API payante.
 ## Architecture
 
 ```
-[Microphone] ──► WakeWordEngine (Porcupine, "yo poto")
+[Microphone] ──► WakeWordEngine (Vosk FR, keyword spotting "yo poto")
                        │ détection
                        ▼
-              SpeechToText (Vosk FR, offline)
+              SpeechToText (Vosk FR, transcription complète)
                        │ texte
                        ▼
               IntentParser (regex FR)
@@ -37,7 +37,8 @@ l'app concernée. Tout tourne **on-device** : pas de cloud, pas d'API payante.
 
 Tout vit dans un `ForegroundService` (`AssistantService`) avec une notification
 persistante – c'est obligatoire pour utiliser le micro en arrière-plan sur
-Android 14.
+Android 14. Le modèle Vosk est chargé une seule fois et partagé entre la
+détection du wake word et la transcription des commandes.
 
 ## Premier démarrage
 
@@ -52,22 +53,7 @@ Ouvre le dossier `android/` dans **Android Studio Hedgehog (2023.1.1) ou plus
 récent**. Laisse-le générer le wrapper Gradle si nécessaire (`File → Sync
 Project with Gradle Files`).
 
-### 2. Configurer le wake word « yo poto »
-
-1. Crée un compte gratuit sur https://console.picovoice.ai/
-2. Onglet **Porcupine → Train a wake word**
-   - Phrase : `Yo Poto`
-   - Plateforme : `Android (arm64)`
-3. Télécharge le `.ppn`, renomme-le **`yo_poto_android.ppn`**
-4. Pose-le dans `app/src/main/assets/wakeword/`
-5. Copie ton **AccessKey** (page d'accueil de la console) dans `local.properties` :
-   ```
-   PICOVOICE_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxx
-   ```
-
-> Le plan gratuit Picovoice autorise 3 appareils en usage personnel : large.
-
-### 3. Télécharger le modèle Vosk FR
+### 2. Télécharger le modèle Vosk FR
 
 ```bash
 curl -L -o vosk.zip https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip
@@ -78,7 +64,12 @@ mv vosk-model-small-fr-0.22/* app/src/main/assets/vosk-fr/
 (Le contenu du modèle doit atterrir directement dans `assets/vosk-fr/`,
 **pas** dans un sous-dossier.)
 
-### 4. Build & install
+> Pas de wake-word dédié à entraîner, pas de clé API : Vosk fait à la fois la
+> détection « yo poto » (mode keyword spotting) et la transcription des
+> commandes. Si la détection est trop sensible / pas assez sensible, ajuste
+> le mot-clé dans `WakeWordEngine.DEFAULT_KEYWORD`.
+
+### 3. Build & install
 
 Branche le S24 Ultra en USB (mode développeur + débogage USB activés), puis :
 
@@ -94,7 +85,7 @@ Lance l'app **Marvin** :
    marchent quand même via Intents).
 3. Tap **Démarrer Marvin**. La notification « Marvin écoute » apparaît.
 
-### 5. Tester
+### 4. Tester
 
 Dis :
 - « Yo poto, lance la musique »

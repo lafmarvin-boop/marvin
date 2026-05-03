@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 
 class AssistantService : LifecycleService() {
 
+    private lateinit var voskModel: com.marvin.assistant.audio.VoskModelHolder
     private lateinit var wakeWord: WakeWordEngine
     private lateinit var stt: SpeechToText
     private lateinit var tts: TextToSpeechEngine
@@ -35,8 +36,9 @@ class AssistantService : LifecycleService() {
         super.onCreate()
         startInForeground()
 
-        wakeWord = WakeWordEngine(this)
-        stt = SpeechToText(this)
+        voskModel = com.marvin.assistant.audio.VoskModelHolder(this)
+        wakeWord = WakeWordEngine(this, voskModel)
+        stt = SpeechToText(this, voskModel)
         tts = TextToSpeechEngine(this)
         parser = IntentParser()
         executor = ActionExecutor(this)
@@ -53,8 +55,8 @@ class AssistantService : LifecycleService() {
     override fun onDestroy() {
         pipelineJob?.cancel()
         wakeWord.release()
-        stt.release()
         tts.release()
+        voskModel.release()
         super.onDestroy()
     }
 

@@ -1,17 +1,8 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     kotlin("plugin.serialization") version "2.0.20"
 }
-
-val localProps = Properties().apply {
-    val f = rootProject.file("local.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
-}
-fun localProp(key: String, default: String = ""): String =
-    (localProps.getProperty(key) ?: System.getenv(key) ?: default)
 
 android {
     namespace = "com.marvin.assistant"
@@ -28,12 +19,6 @@ android {
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
-
-        buildConfigField(
-            "String",
-            "PICOVOICE_ACCESS_KEY",
-            "\"${localProp("PICOVOICE_ACCESS_KEY")}\""
-        )
     }
 
     buildTypes {
@@ -92,10 +77,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-    // Wake word: Picovoice Porcupine (free for personal use, custom "yo poto" via Console)
-    implementation("ai.picovoice:porcupine-android:3.0.2")
-
-    // Speech-to-text: Vosk (offline, French model)
+    // Wake word + STT: Vosk (offline, modèle français, mode keyword spotting
+    // pour le wake word + transcription complète pour la commande).
     implementation("com.alphacephei:vosk-android:0.3.47@aar")
     implementation("net.java.dev.jna:jna:5.13.0@aar")
 

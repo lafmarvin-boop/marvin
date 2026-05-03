@@ -5,7 +5,6 @@ build/
 local.properties
 
 # Big binary assets — fournis par l'utilisateur, pas versionnés
-app/src/main/assets/wakeword/*.ppn
 app/src/main/assets/vosk-fr/am/
 app/src/main/assets/vosk-fr/conf/
 app/src/main/assets/vosk-fr/graph/
