@@ -1,0 +1,36 @@
+package com.marvin.assistant.nlu
+
+/**
+ * Set of actions Marvin can dispatch. Add new intents here, then handle them
+ * in [com.marvin.assistant.actions.ActionExecutor].
+ */
+sealed class MarvinIntent {
+
+    data class SendSms(val recipient: String, val message: String) : MarvinIntent()
+    data class CallContact(val recipient: String) : MarvinIntent()
+    data class WhatsAppMessage(val recipient: String, val message: String) : MarvinIntent()
+
+    sealed class Spotify : MarvinIntent() {
+        data object Play : Spotify()
+        data object Pause : Spotify()
+        data object Next : Spotify()
+        data object Previous : Spotify()
+        data class Search(val query: String) : Spotify()
+    }
+
+    data class WazeNavigate(val destination: String) : MarvinIntent()
+
+    data class OpenApp(val appKey: String) : MarvinIntent()
+
+    /** Read-only banking: announce balance, recent ops. */
+    data class BankRead(val bank: BankKind, val request: BankRequest) : MarvinIntent()
+
+    data object FamilyWallShowLocations : MarvinIntent()
+    data class Ecovacs(val command: EcovacsAction) : MarvinIntent()
+
+    data class Unknown(val raw: String) : MarvinIntent()
+}
+
+enum class BankKind { BOURSOBANK, BANQUE_POP }
+enum class BankRequest { BALANCE, LAST_OPS }
+enum class EcovacsAction { START, PAUSE, DOCK }

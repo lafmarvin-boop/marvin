@@ -1,0 +1,7 @@
+# Copie ce fichier en `local.properties` (non versionné) et remplis les valeurs.
+
+# Chemin du SDK Android (Android Studio le configure automatiquement)
+# sdk.dir=/Users/<toi>/Library/Android/sdk
+
+# AccessKey Picovoice (gratuit, https://console.picovoice.ai/)
+PICOVOICE_ACCESS_KEY=

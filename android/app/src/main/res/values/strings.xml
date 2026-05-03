@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Marvin</string>
+    <string name="accessibility_service_label">Marvin – contrôle d\'apps</string>
+    <string name="notification_channel_id">marvin_listening</string>
+    <string name="notification_channel_name">Marvin – écoute</string>
+    <string name="notification_listening_title">Marvin écoute</string>
+    <string name="notification_listening_text">Dis « yo poto » pour me parler.</string>
+</resources>
