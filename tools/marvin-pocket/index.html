@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0d12" />
+  <title>Marvin Pocket</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Marvin <span class="dot"></span></h1>
+    <button id="tab-recap" class="tab active" data-view="recap">Recap</button>
+    <button id="tab-capture" class="tab" data-view="capture">Capture</button>
+    <button id="tab-ask" class="tab" data-view="ask">Ask</button>
+    <button id="tab-search" class="tab" data-view="search">Search</button>
+  </header>
+
+  <main>
+    <section id="view-recap" class="view active">
+      <div id="recap-stats" class="stats">…</div>
+      <h2 id="recap-title">…</h2>
+      <article id="recap-body" class="md">Chargement…</article>
+      <button id="refresh-recap" class="ghost">Rafraîchir</button>
+    </section>
+
+    <section id="view-capture" class="view">
+      <p class="hint">Une idée, une note, un truc à pas oublier. Parle ou écris, c'est sauvegardé dans <code>raw/conversations/</code> et re-graphifié au prochain run.</p>
+      <textarea id="capture-text" placeholder="Tape ou utilise le micro…" rows="8"></textarea>
+      <div class="row">
+        <button id="capture-mic" class="primary">🎙 Dicter</button>
+        <button id="capture-save" class="primary">💾 Enregistrer</button>
+      </div>
+      <div id="capture-status" class="status"></div>
+    </section>
+
+    <section id="view-ask" class="view">
+      <p class="hint">Pose une question à Marvin. Ton contexte (dernier résumé + nœuds centraux) est auto-injecté.</p>
+      <textarea id="ask-question" placeholder="Quelle est la dernière chose qu'on a faite sur graphify ?" rows="3"></textarea>
+      <div class="row">
+        <button id="ask-mic" class="ghost">🎙</button>
+        <button id="ask-send" class="primary">Demander</button>
+      </div>
+      <article id="ask-answer" class="md answer"></article>
+      <div id="ask-status" class="status"></div>
+    </section>
+
+    <section id="view-search" class="view">
+      <input id="search-input" type="search" placeholder="Chercher dans les 82 conversations…" />
+      <ul id="search-results" class="results"></ul>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

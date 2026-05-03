@@ -1,0 +1,15 @@
+{
+  "name": "Marvin Pocket",
+  "short_name": "Marvin",
+  "description": "Second cerveau Marvin dans la poche : capture vocale, recherche, ask Claude.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0d12",
+  "theme_color": "#0b0d12",
+  "lang": "fr",
+  "icons": [
+    { "src": "/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" }
+  ]
+}
