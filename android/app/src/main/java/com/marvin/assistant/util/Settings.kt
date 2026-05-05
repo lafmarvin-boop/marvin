@@ -57,6 +57,32 @@ class Settings(context: Context) {
         get() = secure.getString(KEY_ANTHROPIC_KEY, "") ?: ""
         set(value) { secure.edit().putString(KEY_ANTHROPIC_KEY, value).apply() }
 
+    /**
+     * Quand true, Marvin demande oralement confirmation avant les actions
+     * destructrices ou irréversibles (envoi SMS, appel, WhatsApp). Défaut: true.
+     */
+    var confirmSensitiveActions: Boolean
+        get() = plain.getBoolean(KEY_CONFIRM_SENSITIVE, true)
+        set(value) { plain.edit().putBoolean(KEY_CONFIRM_SENSITIVE, value).apply() }
+
+    /** Outil activé ? Défaut: true. */
+    fun isToolEnabled(toolName: String): Boolean =
+        plain.getBoolean("tool_enabled_$toolName", true)
+
+    fun setToolEnabled(toolName: String, enabled: Boolean) {
+        plain.edit().putBoolean("tool_enabled_$toolName", enabled).apply()
+    }
+
+    /**
+     * Efface toutes les données stockées par l'app (clé API, réglages, quota,
+     * compteur). N'efface PAS les modèles Vosk/Gemma (ce sont des assets, pas
+     * des données personnelles).
+     */
+    fun wipeAll() {
+        plain.edit().clear().apply()
+        secure.edit().clear().apply()
+    }
+
     /** Returns true and increments the counter if a request is allowed today. */
     @Synchronized
     fun consumeDailyQuota(): Boolean {
@@ -84,5 +110,32 @@ class Settings(context: Context) {
         private const val KEY_ANTHROPIC_KEY = "anthropic_api_key"
         private const val KEY_QUOTA_DAY = "quota_day"
         private const val KEY_QUOTA_USED = "quota_used"
+        private const val KEY_CONFIRM_SENSITIVE = "confirm_sensitive"
+
+        /** Liste de tous les outils que Claude peut appeler, pour les toggles UI. */
+        val ALL_TOOL_NAMES = listOf(
+            "get_weather",
+            "get_time",
+            "get_location",
+            "get_calendar_events",
+            "get_battery",
+            "get_device_info",
+            "get_recent_sms",
+            "get_recent_calls",
+            "get_unread_notifications"
+        )
+
+        /** Libellés FR pour l'écran de réglages. */
+        val TOOL_LABELS: Map<String, String> = mapOf(
+            "get_weather" to "Météo (Open-Meteo)",
+            "get_time" to "Heure / date",
+            "get_location" to "Position GPS",
+            "get_calendar_events" to "Agenda",
+            "get_battery" to "Batterie",
+            "get_device_info" to "Infos téléphone",
+            "get_recent_sms" to "Lecture SMS",
+            "get_recent_calls" to "Journal d'appels",
+            "get_unread_notifications" to "Notifications actives"
+        )
     }
 }

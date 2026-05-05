@@ -204,15 +204,84 @@ voir TODO.
 
 ## Sécurité
 
-- **Banques** : `BankAction` se contente d'ouvrir l'app — jamais de simulation
-  de clic sur un bouton « Valider ». L'`AccessibilityService` est restreint
-  dans `accessibility_service_config.xml` aux 4 packages cibles uniquement.
-- **Clé API Anthropic** : stockée dans des `EncryptedSharedPreferences`
-  (chiffrement AES-256 piloté par le keystore Android).
-- **Pas de cloud non-Anthropic** : aucune donnée n'est envoyée ailleurs que
-  chez Anthropic (et seulement en mode Cloud).
-- **Quota quotidien** : 50 req/jour côté Claude pour limiter les dégâts en
-  cas de boucle ou de bug.
+### Stockage local
+
+- **Clé API Anthropic** chiffrée dans `EncryptedSharedPreferences` (AES-256 GCM,
+  clé maître stockée dans l'Android Keystore — non-extractible même avec root).
+- Réglages, quota et historique en `SharedPreferences` standard. Pas sensible.
+- L'historique de discussion **n'est jamais persisté sur disque** — il vit en
+  RAM dans le `AssistantService` et meurt avec lui.
+
+### Confidentialité Anthropic (mode Cloud uniquement)
+
+- Anthropic conserve les requêtes **30 jours** pour détection d'abus, puis
+  supprime. Pas d'entraînement par défaut côté API.
+- Tout en TLS, juridiction US.
+- En mode local Gemma, **rien ne quitte le téléphone**.
+
+### Confirmation orale obligatoire
+
+Pour les actions destructrices ou irréversibles, Marvin demande oralement
+« tu confirmes ? » avant d'exécuter :
+
+| Action | Confirmation par défaut |
+|---|---|
+| Envoi SMS, appel, WhatsApp | ✅ activable/désactivable dans Réglages |
+| Wipe de toutes les données | ✅ **toujours obligatoire** + mot précis « efface » |
+| Banques (transactionnel) | N'existe pas — jamais automatisé |
+
+Toggle « Confirmer les actions sensibles » dans `Réglages Marvin` pour
+désactiver la confirmation des SMS/appels (à tes risques).
+
+### Toggles par outil
+
+Dans `Réglages Marvin → Outils que Claude peut appeler`, tu peux désactiver
+chaque outil individuellement. Si tu coupes `get_recent_sms`, Claude ne saura
+même pas que cet outil existe — il ne pourra pas y accéder, point. C'est la
+garantie la plus forte si tu veux bloquer une catégorie de données.
+
+### « Jarvis efface tout » — wipe complet
+
+Trois façons d'effacer toutes les données :
+
+1. **Voix** : « Jarvis, efface tout » → Marvin demande « dis "oui efface" pour
+   confirmer ». Le mot « efface » est obligatoire (un simple « oui »
+   accidentel ne déclenchera rien). Wipe + arrêt du service.
+2. **UI** : `Réglages Marvin → Zone de danger → Tout effacer` (bouton rouge)
+   avec dialogue de confirmation.
+3. **Manuel** : `adb shell pm clear com.marvin.assistant` (efface aussi
+   modèles Vosk/Gemma).
+
+Wipe efface : clé API Anthropic, réglages, quota, historique. **N'efface pas**
+les modèles Vosk/Gemma (ce sont des assets, pas des données personnelles —
+gain de temps pour ré-utiliser l'app après wipe).
+
+### Vecteurs d'attaque connus + mitigations
+
+| Vecteur | Risque | Mitigation actuelle | Vraie limite |
+|---|---|---|---|
+| Wake word déclenchable par n'importe qui | TV, voisin, haut-parleur dans ta poche | Confirmation orale pour SMS/appels/WhatsApp | Voice biometric (reconnaître TA voix) = projet à part, complexe en local |
+| Phone déverrouillé par un tiers | Accès total à l'app | Verrouillage écran Android (PIN/empreinte) | Pas de PIN propre dans l'app (à venir si demandé) |
+| APK décompilé | Reverse engineering du code | minSdk 29, R8 désactivé en debug | En release, activer `isMinifyEnabled=true` + ProGuard |
+| Réseau intercepté | Interception des appels Anthropic | TLS 1.3 obligatoire (OkHttp 4.12+) | Certificate pinning (à ajouter si tu veux du paranoïaque) |
+| App malveillante avec accès accessibilité | Pourrait simuler clics dans Marvin | `AccessibilityService` restreint à 4 packages | Mitigation Android standard |
+
+### Garde-fous bancaires
+
+- `BankAction` se contente d'ouvrir l'app, **jamais** de simuler un clic sur
+  « Valider » ou « Virer ».
+- `accessibility_service_config.xml` restreint l'AccessibilityService aux
+  packages bancaires explicites — Marvin ne reçoit aucun événement des
+  autres apps.
+- Aucune commande vocale ne peut déclencher un virement. Si on automatise
+  un jour la lecture du solde (étape 4), ce sera **lecture seule** et
+  documenté noir sur blanc.
+
+### Quotas et budgets
+
+- 50 requêtes Claude/jour (compteur reset à minuit) — éveille un mur si bug
+- `max_tokens=200` côté Claude — réponses bornées
+- Timeout 15 s par appel — pas de boucle infinie
 
 ## Roadmap
 

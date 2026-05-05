@@ -17,6 +17,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.marvin.assistant.service.NotificationCaptureService
 import com.marvin.assistant.util.Contacts
+import com.marvin.assistant.util.Settings
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -43,17 +44,24 @@ import kotlin.coroutines.resume
  * api.anthropic.com. C'est ton choix — si tu veux désactiver une catégorie,
  * dis-le et j'ajoute des toggles dans les Réglages.
  */
-class Tools(private val context: Context) {
+class Tools(
+    private val context: Context,
+    private val settings: Settings
+) {
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(5, TimeUnit.SECONDS)
         .build()
 
-    fun all(): List<Tool> = listOf(
+    /** Tous les outils déclarés. */
+    private fun allDeclared(): List<Tool> = listOf(
         getWeather, getTime, getLocation, getCalendarEvents,
         getBattery, getDeviceInfo, getRecentSms, getRecentCalls, getUnreadNotifications
     )
+
+    /** Outils activés par l'utilisateur (filtrés par les toggles des réglages). */
+    fun all(): List<Tool> = allDeclared().filter { settings.isToolEnabled(it.name) }
 
     private val getWeather = Tool(
         name = "get_weather",

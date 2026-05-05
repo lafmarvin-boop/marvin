@@ -58,7 +58,7 @@ class AssistantService : LifecycleService() {
         startInForeground()
 
         settings = Settings(this)
-        tools = Tools(this)
+        tools = Tools(this, settings)
         voskModel = VoskModelHolder(this)
         wakeWord = WakeWordEngine(this, voskModel)
         stt = SpeechToText(this, voskModel)
@@ -110,15 +110,86 @@ class AssistantService : LifecycleService() {
 
         val parsed = parser.parse(transcript)
         Log.i(TAG, "Parsed: $parsed")
+
+        // Wipe: confirmation orale obligatoire, indépendamment du toggle.
+        if (parsed is MarvinIntent.WipeAllData) {
+            if (awaitConfirmation(
+                    "Tu veux vraiment effacer toutes les données de Marvin — clé API, " +
+                        "réglages, historique ? Dis « oui efface » pour confirmer.",
+                    requirePositiveWord = "efface"
+                )) {
+                doWipe()
+            } else {
+                tts.speak("OK, j'efface rien.")
+            }
+            return
+        }
+
+        // Actions sensibles: confirmation si toggle activé.
+        if (isSensitive(parsed) && settings.confirmSensitiveActions) {
+            val desc = describe(parsed)
+            if (!awaitConfirmation("Je vais $desc. Tu confirmes ?")) {
+                tts.speak("OK, j'annule.")
+                return
+            }
+        }
+
         when (parsed) {
             is MarvinIntent.StartDiscussion -> enterDiscussion()
             is MarvinIntent.EndDiscussion -> { /* déjà hors discussion, no-op */ }
             is MarvinIntent.Unknown -> askBackend(transcript, useHistory = false)
+            is MarvinIntent.WipeAllData -> { /* géré au-dessus */ }
             else -> {
                 val feedback = executor.execute(parsed)
                 if (feedback.isNotBlank()) tts.speak(feedback)
             }
         }
+    }
+
+    private fun isSensitive(intent: MarvinIntent): Boolean = when (intent) {
+        is MarvinIntent.SendSms,
+        is MarvinIntent.CallContact,
+        is MarvinIntent.WhatsAppMessage -> true
+        else -> false
+    }
+
+    private fun describe(intent: MarvinIntent): String = when (intent) {
+        is MarvinIntent.SendSms -> "envoyer un SMS à ${intent.recipient}"
+        is MarvinIntent.CallContact -> "appeler ${intent.recipient}"
+        is MarvinIntent.WhatsAppMessage -> "ouvrir WhatsApp pour écrire à ${intent.recipient}"
+        else -> "exécuter cette action"
+    }
+
+    /**
+     * Demande confirmation orale. Renvoie true si la réponse contient un
+     * mot positif (oui, ok, confirme…). Si [requirePositiveWord] est fourni,
+     * la réponse doit contenir ce mot précis (ex: "efface" pour le wipe) —
+     * un simple "oui" ne suffit pas, pour éviter un wipe accidentel.
+     */
+    private suspend fun awaitConfirmation(
+        prompt: String,
+        requirePositiveWord: String? = null
+    ): Boolean {
+        tts.speak(prompt)
+        val answer = stt.listenOnce(silenceTimeoutMs = 1500L, maxDurationMs = 4_000L) ?: return false
+        val a = answer.lowercase().trim()
+        if (requirePositiveWord != null) {
+            return a.contains(requirePositiveWord, ignoreCase = true) &&
+                YES_PATTERN.containsMatchIn(a)
+        }
+        return YES_PATTERN.containsMatchIn(a) && !NO_PATTERN.containsMatchIn(a)
+    }
+
+    private suspend fun doWipe() {
+        Log.w(TAG, "Wiping all data on user request")
+        inDiscussion = false
+        discussionHistory.clear()
+        DiscussionStateHolder.reset()
+        settings.wipeAll()
+        tts.speak("Toutes les données effacées. Je m'arrête.")
+        // Petite pause pour que la TTS ait le temps de finir.
+        kotlinx.coroutines.delay(2000)
+        stopSelf()
     }
 
     /**
@@ -246,6 +317,15 @@ class AssistantService : LifecycleService() {
     companion object {
         private const val TAG = "MarvinService"
         private const val NOTIFICATION_ID = 0xCAFE
+
+        private val YES_PATTERN = Regex(
+            """\b(oui|ouais|yes|ok|d'accord|confirme(?:r)?|vas[- ]y|envoie|appelle|efface|supprime)\b""",
+            RegexOption.IGNORE_CASE
+        )
+        private val NO_PATTERN = Regex(
+            """\b(non|nan|annule(?:r)?|stop|laisse tomber|n'envoie pas|n'efface pas)\b""",
+            RegexOption.IGNORE_CASE
+        )
 
         fun start(context: Context) {
             val intent = Intent(context, AssistantService::class.java)

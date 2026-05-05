@@ -34,6 +34,9 @@ sealed class MarvinIntent {
     /** L'utilisateur veut sortir du mode discussion. */
     data object EndDiscussion : MarvinIntent()
 
+    /** Efface toutes les données stockées (clé API, réglages, historique). */
+    data object WipeAllData : MarvinIntent()
+
     /** Aucun match local — à transmettre au backend LLM (Claude ou Gemma). */
     data class Unknown(val raw: String) : MarvinIntent()
 }

@@ -31,6 +31,12 @@ class IntentParser {
             MarvinIntent.EndDiscussion
         },
 
+        // ---- Wipe complet ----
+        Rule(Regex("""(efface|supprime|détruis|détruit) tout""")) { MarvinIntent.WipeAllData },
+        Rule(Regex("""(efface|supprime) (?:toutes |toutes mes |mes )données""")) { MarvinIntent.WipeAllData },
+        Rule(Regex("""remise à zéro (?:complète|totale)?""")) { MarvinIntent.WipeAllData },
+        Rule(Regex("""reset (?:total|complet)?""")) { MarvinIntent.WipeAllData },
+
         // ---- Spotify ----
         Rule(Regex("""(joue|lance|mets) (?:de la )?musique""")) { MarvinIntent.Spotify.Play },
         Rule(Regex("""(?:mets|joue|lance) (.+?) sur spotify""")) {
