@@ -162,6 +162,11 @@ class WakeWordEngine(
         private const val SAMPLE_RATE = 16_000
         // "Jarvis" n'est pas un mot français; on liste les orthographes
         // probables que le modèle Vosk small FR pourrait produire.
-        val DEFAULT_KEYWORDS = listOf("jarvis", "djarvis", "djarviss", "djarvisse", "jarvisse")
+        // "bonjour" est inclus pour réveiller Jarvis quand il est en mode dodo
+        // ("bonjour Jarvis" → wake-up).
+        val DEFAULT_KEYWORDS = listOf(
+            "jarvis", "djarvis", "djarviss", "djarvisse", "jarvisse",
+            "bonjour"
+        )
     }
 }

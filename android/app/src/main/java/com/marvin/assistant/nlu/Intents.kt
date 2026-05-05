@@ -37,6 +37,9 @@ sealed class MarvinIntent {
     /** Efface toutes les données stockées (clé API, réglages, historique). */
     data object WipeAllData : MarvinIntent()
 
+    /** Mode dodo : Jarvis ne réagit plus qu'à « bonjour ». */
+    data object GoToSleep : MarvinIntent()
+
     /** Aucun match local — à transmettre au backend LLM (Claude ou Gemma). */
     data class Unknown(val raw: String) : MarvinIntent()
 }

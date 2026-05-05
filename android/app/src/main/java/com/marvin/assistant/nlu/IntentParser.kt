@@ -37,6 +37,12 @@ class IntentParser {
         Rule(Regex("""remise à zéro (?:complète|totale)?""")) { MarvinIntent.WipeAllData },
         Rule(Regex("""reset (?:total|complet)?""")) { MarvinIntent.WipeAllData },
 
+        // ---- Mode dodo ----
+        Rule(Regex("""fais (?:dodo|une sieste|la sieste)""")) { MarvinIntent.GoToSleep },
+        Rule(Regex("""va dormir""")) { MarvinIntent.GoToSleep },
+        Rule(Regex("""(?:mets[- ]toi |mets toi |va )en (?:pause|veille)""")) { MarvinIntent.GoToSleep },
+        Rule(Regex("""hors service""")) { MarvinIntent.GoToSleep },
+
         // ---- Spotify ----
         Rule(Regex("""(joue|lance|mets) (?:de la )?musique""")) { MarvinIntent.Spotify.Play },
         Rule(Regex("""(?:mets|joue|lance) (.+?) sur spotify""")) {

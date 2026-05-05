@@ -30,6 +30,7 @@ class ActionExecutor(private val context: Context) {
         // jamais atteindre ActionExecutor — branches vides pour exhaustivité.
         MarvinIntent.StartDiscussion,
         MarvinIntent.EndDiscussion,
+        MarvinIntent.GoToSleep,
         MarvinIntent.WipeAllData -> ""
     }
 }

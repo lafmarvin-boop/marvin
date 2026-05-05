@@ -133,6 +133,15 @@ class Settings(context: Context) {
         get() = plain.getFloat(KEY_VOICE_BIO_THRESHOLD, 0.5f)
         set(value) { plain.edit().putFloat(KEY_VOICE_BIO_THRESHOLD, value.coerceIn(0f, 1f)).apply() }
 
+    /**
+     * Mode dodo : Marvin écoute toujours le wake word, mais ignore tout
+     * sauf « bonjour » (qui le réveille). Persisté pour survivre aux
+     * redémarrages du service.
+     */
+    var isSleeping: Boolean
+        get() = plain.getBoolean(KEY_IS_SLEEPING, false)
+        set(value) { plain.edit().putBoolean(KEY_IS_SLEEPING, value).apply() }
+
     /** Returns true and increments the counter if a request is allowed today. */
     @Synchronized
     fun consumeDailyQuota(): Boolean {
@@ -165,6 +174,7 @@ class Settings(context: Context) {
         private const val KEY_SMS_ALLOWLIST = "sms_allowlist"
         private const val KEY_VOICE_BIO_ENABLED = "voice_bio_enabled"
         private const val KEY_VOICE_BIO_THRESHOLD = "voice_bio_threshold"
+        private const val KEY_IS_SLEEPING = "is_sleeping"
 
         /** Liste de tous les outils que Claude peut appeler, pour les toggles UI. */
         val ALL_TOOL_NAMES = listOf(

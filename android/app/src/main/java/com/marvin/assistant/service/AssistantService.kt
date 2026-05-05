@@ -82,8 +82,10 @@ class AssistantService : LifecycleService() {
         super.onStartCommand(intent, flags, startId)
         if (pipelineJob == null) {
             pipelineJob = lifecycleScope.launch(coroutineErrorHandler) {
-                wakeWord.start { onWakeWordDetected() }
+                wakeWord.start { transcript -> onWakeWordDetected(transcript) }
             }
+            // Met à jour la notification pour refléter l'état initial (réveillé/dodo).
+            updateNotification()
         }
         return START_STICKY
     }
@@ -103,15 +105,44 @@ class AssistantService : LifecycleService() {
         return null
     }
 
-    private fun onWakeWordDetected() {
+    private fun onWakeWordDetected(wakeTranscript: String) {
         lifecycleScope.launch(coroutineErrorHandler) {
-            wakeWord.pause()
-            try {
-                handleTurn()
-            } finally {
-                wakeWord.resume()
+            val sleeping = settings.isSleeping
+            val saidBonjour = wakeTranscript.contains("bonjour", ignoreCase = true)
+            val saidJarvis = JARVIS_VARIANTS.any { wakeTranscript.contains(it, ignoreCase = true) }
+
+            // Mode dodo : on ne réagit qu'à "bonjour" pour réveiller. Le reste
+            // (y compris un "Jarvis" perdu, la TV, la voisine) est ignoré
+            // silencieusement — pas de TTS, pas de "Oui ?".
+            if (sleeping) {
+                if (saidBonjour) {
+                    wakeWord.pause()
+                    try { wakeUp() } finally { wakeWord.resume() }
+                }
+                return@launch
             }
+
+            // Mode éveillé : "bonjour" tout seul (sans "jarvis") = juste un
+            // bonjour ambiant, on l'ignore pour ne pas répondre à chaque fois
+            // que tu salues quelqu'un. Faut "jarvis" (avec ou sans bonjour
+            // devant) pour activer.
+            if (!saidJarvis) return@launch
+
+            wakeWord.pause()
+            try { handleTurn() } finally { wakeWord.resume() }
         }
+    }
+
+    private suspend fun wakeUp() {
+        settings.isSleeping = false
+        updateNotification()
+        tts.speak("Bonjour, je suis là.")
+    }
+
+    private suspend fun goToSleep() {
+        settings.isSleeping = true
+        tts.speak("Bonne nuit. Dis « bonjour Jarvis » pour me réveiller.")
+        updateNotification()
     }
 
     private suspend fun handleTurn() {
@@ -149,6 +180,7 @@ class AssistantService : LifecycleService() {
         when (parsed) {
             is MarvinIntent.StartDiscussion -> enterDiscussion()
             is MarvinIntent.EndDiscussion -> { /* déjà hors discussion, no-op */ }
+            is MarvinIntent.GoToSleep -> goToSleep()
             is MarvinIntent.Unknown -> askBackend(transcript, useHistory = false)
             is MarvinIntent.WipeAllData -> { /* géré au-dessus */ }
             else -> {
@@ -297,29 +329,41 @@ class AssistantService : LifecycleService() {
     }
 
     private fun startInForeground() {
+        val notification = buildNotification()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    /** Met à jour la notif sans relancer le service (état dodo / éveillé). */
+    private fun updateNotification() {
+        val nm = getSystemService(android.app.NotificationManager::class.java) ?: return
+        nm.notify(NOTIFICATION_ID, buildNotification())
+    }
+
+    private fun buildNotification(): Notification {
         val openAppIntent = PendingIntent.getActivity(
             this,
             0,
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        val notification: Notification = NotificationCompat.Builder(
-            this,
-            getString(R.string.notification_channel_id)
-        )
-            .setContentTitle(getString(R.string.notification_listening_title))
-            .setContentText(getString(R.string.notification_listening_text))
+        val (title, text) = if (settings.isSleeping) {
+            "Marvin dort 💤" to "Dis « bonjour Jarvis » pour me réveiller."
+        } else {
+            getString(R.string.notification_listening_title) to
+                getString(R.string.notification_listening_text)
+        }
+        return NotificationCompat.Builder(this, getString(R.string.notification_channel_id))
+            .setContentTitle(title)
+            .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(openAppIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
     }
 
     private val coroutineErrorHandler = CoroutineExceptionHandler { _, throwable ->
@@ -329,6 +373,9 @@ class AssistantService : LifecycleService() {
     companion object {
         private const val TAG = "MarvinService"
         private const val NOTIFICATION_ID = 0xCAFE
+
+        /** Variantes de prononciation que Vosk peut produire pour "Jarvis". */
+        private val JARVIS_VARIANTS = listOf("jarvis", "djarvis", "djarviss", "djarvisse", "jarvisse")
 
         private val YES_PATTERN = Regex(
             """\b(oui|ouais|yes|ok|d'accord|confirme(?:r)?|vas[- ]y|envoie|appelle|efface|supprime)\b""",

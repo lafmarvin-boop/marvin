@@ -189,6 +189,16 @@ Mode discussion multi-tours :
 - *(tu enchaînes les questions, Claude garde le contexte)*
 - « Jarvis, merci » → sort du mode discussion (ou 30 s de silence)
 
+Mode dodo (mise en pause) :
+
+- « Jarvis, fais dodo » → Marvin entre en pause. La notif passe à
+  « Marvin dort 💤 ». Le wake word continue d'écouter (CPU minimal) mais
+  Marvin ignore tout sauf « bonjour ».
+- « Bonjour Jarvis » → Marvin se réveille, dit « Bonjour, je suis là. ».
+
+Variantes acceptées pour mettre en pause : « va dormir », « mets-toi en
+veille », « hors service ».
+
 ## Voix « façon Jarvis »
 
 `TtsEngineFactory` choisit automatiquement la meilleure voix disponible :
