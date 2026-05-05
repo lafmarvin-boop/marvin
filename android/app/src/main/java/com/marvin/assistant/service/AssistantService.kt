@@ -59,9 +59,11 @@ class AssistantService : LifecycleService() {
 
     override fun onCreate() {
         super.onCreate()
+        // Init settings AVANT startInForeground: buildNotification() lit
+        // settings.isSleeping pour choisir le titre de la notif.
+        settings = Settings(this)
         startInForeground()
 
-        settings = Settings(this)
         tools = Tools(this, settings)
         voskModel = VoskModelHolder(this)
         speakerVerifier = SpeakerVerifierFactory.create(this)
