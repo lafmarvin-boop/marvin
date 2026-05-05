@@ -52,6 +52,23 @@ object Contacts {
         return bestNumber
     }
 
+    /** Reverse lookup: given a phone number, find the contact display name. */
+    fun nameOfNumber(context: Context, phoneNumber: String): String? {
+        if (phoneNumber.isBlank()) return null
+        val uri = android.net.Uri.withAppendedPath(
+            ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+            android.net.Uri.encode(phoneNumber)
+        )
+        val cursor = context.contentResolver.query(
+            uri,
+            arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME),
+            null, null, null
+        ) ?: return null
+        return cursor.use {
+            if (it.moveToFirst()) it.getString(0) else null
+        }
+    }
+
     private fun normalize(s: String): String =
         Normalizer.normalize(s, Normalizer.Form.NFD)
             .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")

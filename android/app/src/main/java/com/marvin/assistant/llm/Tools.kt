@@ -6,10 +6,17 @@ import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
+import android.os.BatteryManager
+import android.os.Build
+import android.os.StatFs
 import android.provider.CalendarContract
+import android.provider.CallLog
+import android.provider.Telephony
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.marvin.assistant.service.NotificationCaptureService
+import com.marvin.assistant.util.Contacts
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -23,13 +30,18 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 
 /**
- * Quatre outils gratuits que Claude peut appeler en mode discussion :
- *  - get_weather  → Open-Meteo (gratuit, sans clé)
- *  - get_time     → horloge du téléphone
- *  - get_location → GPS via FusedLocationProvider
- *  - get_calendar → événements Android Calendar
+ * Outils que Claude peut appeler. Trois familles :
+ *  - **Sans permission** : weather, time, location, calendar, battery,
+ *    device_info.
+ *  - **Permissions runtime** : recent_sms (READ_SMS), recent_calls
+ *    (READ_CALL_LOG). Si la perm n'est pas accordée, l'outil renvoie un
+ *    message explicite.
+ *  - **Accès spécial** : unread_notifications (NotificationListenerService
+ *    activé dans Paramètres → Apps → Accès aux notifications).
  *
- * Tous fonctionnent offline ou sur APIs gratuites. Aucun coût additionnel.
+ * En mode Cloud, les contenus retournés par ces outils sont envoyés à
+ * api.anthropic.com. C'est ton choix — si tu veux désactiver une catégorie,
+ * dis-le et j'ajoute des toggles dans les Réglages.
  */
 class Tools(private val context: Context) {
 
@@ -38,7 +50,10 @@ class Tools(private val context: Context) {
         .readTimeout(5, TimeUnit.SECONDS)
         .build()
 
-    fun all(): List<Tool> = listOf(getWeather, getTime, getLocation, getCalendarEvents)
+    fun all(): List<Tool> = listOf(
+        getWeather, getTime, getLocation, getCalendarEvents,
+        getBattery, getDeviceInfo, getRecentSms, getRecentCalls, getUnreadNotifications
+    )
 
     private val getWeather = Tool(
         name = "get_weather",
@@ -256,4 +271,208 @@ class Tools(private val context: Context) {
         if (events.isEmpty()) return "Aucun événement ${if (whenArg == "tomorrow") "demain" else "aujourd'hui"}."
         return events.joinToString("; ")
     }
+
+    // ---- Batterie ----
+
+    private val getBattery = Tool(
+        name = "get_battery",
+        description = "Niveau de batterie du téléphone et état de charge.",
+        inputSchema = JSONObject().apply {
+            put("type", "object"); put("properties", JSONObject())
+        },
+        execute = {
+            val bm = context.getSystemService(BatteryManager::class.java)
+            val level = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+            val charging = bm?.isCharging == true
+            if (level < 0) "Niveau de batterie indisponible."
+            else "Batterie à $level%${if (charging) ", en charge" else ""}."
+        }
+    )
+
+    // ---- Infos device ----
+
+    private val getDeviceInfo = Tool(
+        name = "get_device_info",
+        description = "Informations techniques du téléphone : modèle, version Android, espace libre.",
+        inputSchema = JSONObject().apply {
+            put("type", "object"); put("properties", JSONObject())
+        },
+        execute = {
+            val freeBytes = try {
+                val stat = StatFs(context.filesDir.absolutePath)
+                stat.availableBlocksLong * stat.blockSizeLong
+            } catch (_: Throwable) { -1L }
+            val freeGb = if (freeBytes > 0) "%.1f".format(freeBytes / 1_000_000_000.0) else "?"
+            "Modèle: ${Build.MANUFACTURER} ${Build.MODEL}. " +
+                "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}). " +
+                "Espace libre: $freeGb Go."
+        }
+    )
+
+    // ---- SMS récents ----
+
+    private val getRecentSms = Tool(
+        name = "get_recent_sms",
+        description = "Lit les SMS récents (READ_SMS requis). Optionnel: filtre par contact.",
+        inputSchema = JSONObject().apply {
+            put("type", "object")
+            put("properties", JSONObject().apply {
+                put("from_contact", JSONObject().apply {
+                    put("type", "string")
+                    put("description", "Nom de contact pour filtrer (ex: \"Marie\"). Optionnel.")
+                })
+                put("limit", JSONObject().apply {
+                    put("type", "integer")
+                    put("description", "Nombre maximum de SMS à retourner (défaut 5, max 20).")
+                })
+            })
+        },
+        execute = { input -> readSms(input) }
+    )
+
+    @SuppressLint("MissingPermission")
+    private fun readSms(input: JSONObject): String {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.READ_SMS
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) return "Permission de lecture SMS refusée."
+
+        val limit = input.optInt("limit", 5).coerceIn(1, 20)
+        val contactFilter = input.optString("from_contact", "").trim()
+        val targetNumber = if (contactFilter.isNotBlank())
+            Contacts.findPhoneNumber(context, contactFilter) else null
+        if (contactFilter.isNotBlank() && targetNumber == null)
+            return "Contact \"$contactFilter\" introuvable."
+
+        val selection = if (targetNumber != null) "${Telephony.Sms.ADDRESS} LIKE ?" else null
+        val args = if (targetNumber != null)
+            arrayOf("%${targetNumber.takeLast(8)}%") else null
+
+        val cursor = context.contentResolver.query(
+            Telephony.Sms.Inbox.CONTENT_URI,
+            arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE),
+            selection, args,
+            "${Telephony.Sms.DATE} DESC LIMIT $limit"
+        ) ?: return "Pas de SMS accessibles."
+
+        val tf = SimpleDateFormat("d/MM HH:mm", Locale.FRENCH)
+        val items = mutableListOf<String>()
+        cursor.use {
+            while (it.moveToNext()) {
+                val from = it.getString(0) ?: ""
+                val body = it.getString(1)?.replace("\n", " ")?.take(140) ?: ""
+                val date = it.getLong(2)
+                val name = Contacts.nameOfNumber(context, from) ?: from
+                items += "[${tf.format(Date(date))}] $name: $body"
+            }
+        }
+        return if (items.isEmpty()) "Aucun SMS." else items.joinToString(" || ")
+    }
+
+    // ---- Appels récents ----
+
+    private val getRecentCalls = Tool(
+        name = "get_recent_calls",
+        description = "Liste les appels récents (READ_CALL_LOG requis). Type: entrant, sortant, manqué.",
+        inputSchema = JSONObject().apply {
+            put("type", "object")
+            put("properties", JSONObject().apply {
+                put("limit", JSONObject().apply {
+                    put("type", "integer")
+                    put("description", "Nombre d'appels à retourner (défaut 5, max 20).")
+                })
+                put("missed_only", JSONObject().apply {
+                    put("type", "boolean")
+                    put("description", "Si true, ne retourne que les appels manqués.")
+                })
+            })
+        },
+        execute = { input -> readCallLog(input) }
+    )
+
+    @SuppressLint("MissingPermission")
+    private fun readCallLog(input: JSONObject): String {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.READ_CALL_LOG
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) return "Permission de lecture du journal d'appels refusée."
+
+        val limit = input.optInt("limit", 5).coerceIn(1, 20)
+        val missedOnly = input.optBoolean("missed_only", false)
+        val selection = if (missedOnly) "${CallLog.Calls.TYPE} = ?" else null
+        val args = if (missedOnly) arrayOf(CallLog.Calls.MISSED_TYPE.toString()) else null
+
+        val cursor = context.contentResolver.query(
+            CallLog.Calls.CONTENT_URI,
+            arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.TYPE, CallLog.Calls.DATE,
+                CallLog.Calls.DURATION, CallLog.Calls.CACHED_NAME),
+            selection, args,
+            "${CallLog.Calls.DATE} DESC LIMIT $limit"
+        ) ?: return "Pas de journal d'appels accessible."
+
+        val tf = SimpleDateFormat("d/MM HH:mm", Locale.FRENCH)
+        val items = mutableListOf<String>()
+        cursor.use {
+            while (it.moveToNext()) {
+                val number = it.getString(0) ?: ""
+                val type = it.getInt(1)
+                val date = it.getLong(2)
+                val duration = it.getLong(3)
+                val cached = it.getString(4)
+                val who = if (!cached.isNullOrBlank()) cached
+                    else Contacts.nameOfNumber(context, number) ?: number
+                val typeStr = when (type) {
+                    CallLog.Calls.INCOMING_TYPE -> "entrant"
+                    CallLog.Calls.OUTGOING_TYPE -> "sortant"
+                    CallLog.Calls.MISSED_TYPE -> "manqué"
+                    CallLog.Calls.REJECTED_TYPE -> "rejeté"
+                    else -> "appel"
+                }
+                val durStr = if (duration > 0 && type != CallLog.Calls.MISSED_TYPE)
+                    " (${duration / 60}min ${duration % 60}s)" else ""
+                items += "[${tf.format(Date(date))}] $typeStr $who$durStr"
+            }
+        }
+        return if (items.isEmpty()) "Aucun appel récent." else items.joinToString(" || ")
+    }
+
+    // ---- Notifications non lues ----
+
+    private val getUnreadNotifications = Tool(
+        name = "get_unread_notifications",
+        description = "Liste les notifications actives sur le téléphone " +
+            "(toutes apps confondues). Nécessite que l'accès aux notifications soit activé pour Marvin.",
+        inputSchema = JSONObject().apply {
+            put("type", "object")
+            put("properties", JSONObject().apply {
+                put("limit", JSONObject().apply {
+                    put("type", "integer")
+                    put("description", "Nombre max de notifications (défaut 10, max 30).")
+                })
+            })
+        },
+        execute = { input ->
+            if (!NotificationCaptureService.isActive()) {
+                return@Tool "Accès aux notifications non activé. Va dans Paramètres → Apps → " +
+                    "Accès aux notifications → Marvin pour l'activer."
+            }
+            val limit = input.optInt("limit", 10).coerceIn(1, 30)
+            val notifs = NotificationCaptureService.snapshot(limit)
+            if (notifs.isEmpty()) {
+                "Aucune notification active."
+            } else {
+                val tf = SimpleDateFormat("HH:mm", Locale.FRENCH)
+                notifs.joinToString(" || ") { n ->
+                    val app = appLabel(n.packageName)
+                    val text = n.text.take(120).replace("\n", " ")
+                    "[${tf.format(Date(n.postedAtMs))}] $app — ${n.title}: $text"
+                }
+            }
+        }
+    )
+
+    private fun appLabel(packageName: String): String = try {
+        val pm = context.packageManager
+        pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+    } catch (_: Throwable) { packageName }
 }

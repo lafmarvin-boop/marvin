@@ -23,14 +23,35 @@ discussions multi-tours.
 ## Outils IA (mode Cloud uniquement)
 
 Quand le parser local ne reconnaît pas la commande, ou en mode discussion,
-Claude reçoit la question avec 4 outils gratuits qu'il peut appeler tout seul :
+Claude reçoit la question avec 9 outils qu'il peut appeler tout seul :
 
-| Outil | Source | Coût |
+| Outil | Source | Permission requise |
 |---|---|---|
-| `get_weather` | [Open-Meteo](https://open-meteo.com/) | Gratuit, pas de clé |
-| `get_time` | Horloge du téléphone | Gratuit |
-| `get_location` | GPS (FusedLocationProvider) | Gratuit |
-| `get_calendar_events` | Calendrier Android | Gratuit |
+| `get_weather` | [Open-Meteo](https://open-meteo.com/) | — |
+| `get_time` | Horloge du téléphone | — |
+| `get_location` | GPS (FusedLocationProvider) | `ACCESS_FINE_LOCATION` |
+| `get_calendar_events` | Calendrier Android | `READ_CALENDAR` |
+| `get_battery` | BatteryManager | — |
+| `get_device_info` | Build + StatFs | — |
+| `get_recent_sms` | SMS Provider | `READ_SMS` |
+| `get_recent_calls` | Call Log | `READ_CALL_LOG` |
+| `get_unread_notifications` | NotificationListenerService | Accès aux notifications (réglages) |
+
+⚠️ **Confidentialité** : en mode Cloud, le contenu des SMS / notifications / appels que Claude lit est envoyé à `api.anthropic.com` quand il appelle l'outil. Si tu veux désactiver une catégorie, on peut ajouter des toggles dans les Réglages.
+
+## Mode discussion — visualiseur "réacteur"
+
+Quand tu dis « jarvis discutons », Marvin lance un écran plein écran avec
+un visualiseur animé : anneaux concentriques en rotation, glow cyan, triangle
+central qui pulse. Le visuel change selon la phase :
+
+- **J'écoute** — pulsation rapide, cyan clair
+- **Je réfléchis** — pulsation plus lente, indigo
+- **Je parle** — pulsation très rapide, cyan saturé, le texte de la
+  réponse s'affiche dessous
+
+L'écran reste allumé pendant la discussion (`FLAG_KEEP_SCREEN_ON`) et se
+ferme automatiquement quand tu sors (« merci » ou silence prolongé).
 
 ## Architecture
 
@@ -126,12 +147,14 @@ Le contenu doit atterrir **directement** dans `assets/vosk-fr/` (donc
 
 Au premier lancement de l'app **Marvin** :
 
-1. **Permissions** : micro, SMS, contacts, téléphone, calendrier, position,
-   notifications
-2. **Service d'accessibilité** (Paramètres → Accessibilité → Marvin) — pour
-   les automatisations FamilyWall / Ecovacs / banques
-3. **Réglages Marvin** : choisis Cloud ou Local, colle ta clé API Claude
-4. **Démarrer Marvin** → la notification « Marvin écoute » apparaît
+1. **Permissions runtime** : micro, SMS (envoi + lecture), contacts,
+   téléphone, journal d'appels, calendrier, position, notifications
+2. **Accès aux notifications** (Paramètres → Apps → Accès spécial → Accès
+   aux notifications → Marvin) — pour l'outil `get_unread_notifications`
+3. **Service d'accessibilité** (Paramètres → Accessibilité → Marvin) —
+   pour les automatisations FamilyWall / Ecovacs / banques
+4. **Réglages Marvin** : choisis Cloud ou Local, colle ta clé API Claude
+5. **Démarrer Marvin** → la notification « Marvin écoute » apparaît
 
 ### 6. Optimisation batterie (One UI)
 

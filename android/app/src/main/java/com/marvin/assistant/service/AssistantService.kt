@@ -25,6 +25,9 @@ import com.marvin.assistant.llm.LlmResult
 import com.marvin.assistant.llm.Tools
 import com.marvin.assistant.nlu.IntentParser
 import com.marvin.assistant.nlu.MarvinIntent
+import com.marvin.assistant.ui.DiscussionActivity
+import com.marvin.assistant.ui.DiscussionPhase
+import com.marvin.assistant.ui.DiscussionStateHolder
 import com.marvin.assistant.ui.MainActivity
 import com.marvin.assistant.util.LlmBackendChoice
 import com.marvin.assistant.util.Settings
@@ -100,31 +103,11 @@ class AssistantService : LifecycleService() {
     }
 
     private suspend fun handleTurn() {
-        tts.speak(if (inDiscussion) "Oui ?" else "Oui ?")
-        val transcript = stt.listenOnce(silenceTimeoutMs = if (inDiscussion) 1500 else 1200)
+        tts.speak("Oui ?")
+        val transcript = stt.listenOnce(silenceTimeoutMs = 1200L)
         Log.i(TAG, "Transcript: $transcript")
-        if (transcript.isNullOrBlank()) {
-            if (inDiscussion) {
-                // Sortie automatique après silence en mode discussion.
-                exitDiscussion("Discussion terminée.")
-            } else {
-                tts.speak("J'ai rien entendu.")
-            }
-            return
-        }
+        if (transcript.isNullOrBlank()) { tts.speak("J'ai rien entendu."); return }
 
-        // En mode discussion: tout va au backend, sauf les triggers de sortie.
-        if (inDiscussion) {
-            val parsed = parser.parse(transcript)
-            if (parsed is MarvinIntent.EndDiscussion) {
-                exitDiscussion("OK, on arrête là.")
-                return
-            }
-            askBackend(transcript, useHistory = true)
-            return
-        }
-
-        // Mode normal: parser local en premier.
         val parsed = parser.parse(transcript)
         Log.i(TAG, "Parsed: $parsed")
         when (parsed) {
@@ -138,26 +121,53 @@ class AssistantService : LifecycleService() {
         }
     }
 
+    /**
+     * Boucle de discussion multi-tours. Une fois entré, on n'a plus besoin
+     * du wake word entre les tours — on repart en écoute après chaque
+     * réponse. Sortie sur "merci" / EndDiscussion ou silence prolongé.
+     */
     private suspend fun enterDiscussion() {
         inDiscussion = true
         discussionHistory.clear()
-        tts.speak("Je t'écoute. Dis « merci » quand t'as fini.")
-        // L'utilisateur va parler tout de suite — on relance une écoute.
-        val transcript = stt.listenOnce(silenceTimeoutMs = 2000) ?: return
-        if (transcript.isBlank()) return
-        askBackend(transcript, useHistory = true)
+        DiscussionStateHolder.reset()
+        startActivity(
+            Intent(this, DiscussionActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+        val intro = "Je t'écoute. Dis « merci » quand t'as fini."
+        DiscussionStateHolder.setPhase(DiscussionPhase.Speaking(intro))
+        tts.speak(intro)
+
+        while (inDiscussion) {
+            DiscussionStateHolder.setPhase(DiscussionPhase.Listening)
+            val transcript = stt.listenOnce(silenceTimeoutMs = 2500L, maxDurationMs = 12_000L)
+            if (transcript.isNullOrBlank()) {
+                exitDiscussion("Discussion terminée.")
+                break
+            }
+            val parsed = parser.parse(transcript)
+            if (parsed is MarvinIntent.EndDiscussion) {
+                exitDiscussion("OK, on arrête là.")
+                break
+            }
+            DiscussionStateHolder.setLastUserText(transcript)
+            askBackend(transcript, useHistory = true)
+        }
     }
 
     private suspend fun exitDiscussion(message: String) {
+        DiscussionStateHolder.setPhase(DiscussionPhase.Speaking(message))
+        tts.speak(message)
         inDiscussion = false
         discussionHistory.clear()
-        tts.speak(message)
+        DiscussionStateHolder.reset() // ferme automatiquement DiscussionActivity
     }
 
     private suspend fun askBackend(userText: String, useHistory: Boolean) {
+        if (inDiscussion) DiscussionStateHolder.setPhase(DiscussionPhase.Thinking)
         val backend = pickBackend()
         if (!backend.isReady()) {
-            tts.speak(notReadyMessage(backend))
+            speakWithPhase(notReadyMessage(backend))
             return
         }
         val history: List<ChatMessage> = if (useHistory) {
@@ -172,17 +182,22 @@ class AssistantService : LifecycleService() {
                 if (useHistory) {
                     discussionHistory.add(ChatMessage(ChatMessage.Role.ASSISTANT, result.text))
                 }
-                tts.speak(result.text)
+                speakWithPhase(result.text)
             }
-            is LlmResult.QuotaExceeded -> tts.speak(
-                "T'as atteint la limite de ${result.limit} questions par jour."
-            )
-            is LlmResult.NoNetwork -> tts.speak("Pas de réseau.")
+            is LlmResult.QuotaExceeded ->
+                speakWithPhase("T'as atteint la limite de ${result.limit} questions par jour.")
+            is LlmResult.NoNetwork -> speakWithPhase("Pas de réseau.")
             is LlmResult.Error -> {
                 Log.w(TAG, "Backend error: ${result.message}")
-                tts.speak(result.message)
+                speakWithPhase(result.message)
             }
         }
+    }
+
+    /** Speak + push phase Speaking pendant la lecture (utile pour le visualiseur). */
+    private suspend fun speakWithPhase(text: String) {
+        if (inDiscussion) DiscussionStateHolder.setPhase(DiscussionPhase.Speaking(text))
+        tts.speak(text)
     }
 
     private fun pickBackend(): LlmBackend = when (settings.backendChoice) {
