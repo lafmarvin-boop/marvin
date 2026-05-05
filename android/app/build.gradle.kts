@@ -103,16 +103,8 @@ android {
         // Vosk JNI libs ship per-ABI; let Gradle keep them.
         jniLibs.useLegacyPackaging = false
     }
-
-    sourceSets {
-        getByName("main") {
-            // Si l'AAR sherpa-onnx n'est pas présent, on exclut le fichier
-            // qui en dépend (sinon échec de compilation).
-            if (!sherpaPresent) {
-                java.exclude("**/SherpaSpeakerVerifier.kt")
-            }
-        }
-    }
+    // Note: SherpaSpeakerVerifier.kt utilise la reflection (pas d'imports
+    // sherpa-onnx directs), donc compile que l'AAR soit présent ou non.
 }
 
 dependencies {

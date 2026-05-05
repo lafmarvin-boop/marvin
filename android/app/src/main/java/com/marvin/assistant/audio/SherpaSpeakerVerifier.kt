@@ -2,8 +2,6 @@ package com.marvin.assistant.audio
 
 import android.content.Context
 import android.util.Log
-import com.k2fsa.sherpa.onnx.SpeakerEmbeddingExtractor
-import com.k2fsa.sherpa.onnx.SpeakerEmbeddingExtractorConfig
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
@@ -15,49 +13,59 @@ import kotlin.math.sqrt
  * Vérification de locuteur via sherpa-onnx + un modèle d'embedding
  * (WeSpeaker, 3D-Speaker, NeMo TitaNet…).
  *
+ * **Reflection-based** : zéro import direct des classes sherpa-onnx, donc
+ * ce fichier compile même sans le AAR sherpa-onnx-android dans `app/libs/`.
+ * À runtime :
+ *  - Si l'AAR est présent : la reflection trouve les classes, le verifier
+ *    fonctionne.
+ *  - Si l'AAR est absent : `Class.forName` lève `ClassNotFoundException`,
+ *    [isReady] renvoie false, le SpeakerVerifierFactory retombe sur NoOp.
+ *
  * Setup (cf. README, section Voice biometric) :
- *  1. Télécharge l'AAR sherpa-onnx-android et place-le dans `app/libs/`
- *     → permet au build de compiler ce fichier.
- *  2. Télécharge un modèle `.onnx` (recommandé:
- *     `3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx` ~26MB
- *     ou `wespeaker-en-voxceleb-resnet34-LM.onnx` ~25MB) et push:
- *       adb push <model>.onnx /sdcard/Android/data/com.marvin.assistant/files/speaker.onnx
+ *  1. Télécharge l'AAR sherpa-onnx-android et place-le dans `app/libs/`.
+ *  2. Télécharge un modèle `.onnx` (~26 MB) et push:
+ *       adb push speaker.onnx /sdcard/Android/data/com.marvin.assistant/files/
  *  3. Enrôle ta voix via Réglages → Voice biometric → Enrôler
  *  4. Active le toggle « Voice biometric »
- *
- * Pourquoi un modèle d'embedding plutôt qu'un système end-to-end:
- *  - Léger (25 MB vs 100+ MB)
- *  - Permet l'enrôlement avec très peu de samples (3-5 suffisent)
- *  - L'embedding extrait est un vecteur de ~192-256 floats — comparable
- *    par cosine similarity, c'est le standard de la litterature.
  */
-class SherpaSpeakerVerifier(context: Context) : SpeakerVerifier {
+class SherpaSpeakerVerifier(private val context: Context) : SpeakerVerifier {
 
     private val modelFile = File(context.filesDir, MODEL_FILENAME)
     private val referenceFile = File(context.filesDir, REFERENCE_FILENAME)
 
-    @Volatile private var extractor: SpeakerEmbeddingExtractor? = null
+    @Volatile private var extractor: Any? = null
     private val pendingEmbeddings = mutableListOf<FloatArray>()
     @Volatile private var reference: FloatArray? = loadReference()
 
-    override fun isReady(): Boolean = modelFile.exists() && modelFile.length() > 0
+    override fun isReady(): Boolean {
+        if (!modelFile.exists() || modelFile.length() <= 0) return false
+        // Vérifie aussi que les classes sherpa-onnx sont sur le classpath.
+        return try {
+            Class.forName(EXTRACTOR_CLASS); true
+        } catch (_: Throwable) { false }
+    }
 
     override fun isEnrolled(): Boolean = reference != null
 
     @Synchronized
-    private fun ensureExtractor(): SpeakerEmbeddingExtractor? {
+    private fun ensureExtractor(): Any? {
         extractor?.let { return it }
         if (!isReady()) return null
         return try {
-            val config = SpeakerEmbeddingExtractorConfig(
-                model = modelFile.absolutePath,
-                numThreads = 1,
-                debug = false,
-                provider = "cpu"
+            val configCls = Class.forName(CONFIG_CLASS)
+            // SpeakerEmbeddingExtractorConfig(model, numThreads, debug, provider)
+            val configCtor = configCls.getConstructor(
+                String::class.java,
+                Int::class.javaPrimitiveType,
+                Boolean::class.javaPrimitiveType,
+                String::class.java
             )
-            SpeakerEmbeddingExtractor(config).also { extractor = it }
+            val config = configCtor.newInstance(modelFile.absolutePath, 1, false, "cpu")
+            val extCls = Class.forName(EXTRACTOR_CLASS)
+            val extCtor = extCls.getConstructor(configCls)
+            extCtor.newInstance(config).also { extractor = it }
         } catch (t: Throwable) {
-            Log.e(TAG, "Failed to load sherpa-onnx extractor", t)
+            Log.e(TAG, "Failed to load sherpa-onnx extractor via reflection", t)
             null
         }
     }
@@ -101,7 +109,9 @@ class SherpaSpeakerVerifier(context: Context) : SpeakerVerifier {
     }
 
     override fun release() {
-        extractor?.release()
+        try {
+            extractor?.let { it::class.java.getMethod("release").invoke(it) }
+        } catch (_: Throwable) { /* best-effort */ }
         extractor = null
     }
 
@@ -109,16 +119,23 @@ class SherpaSpeakerVerifier(context: Context) : SpeakerVerifier {
         val ext = ensureExtractor() ?: return null
         return try {
             val floats = FloatArray(samples.size) { samples[it].toFloat() / 32768f }
-            val stream = ext.createStream()
-            // sherpa-onnx Android API: acceptWaveform(samples: FloatArray, sampleRate: Int)
-            stream.acceptWaveform(floats, sampleRate)
-            stream.inputFinished()
-            val raw = ext.compute(stream)
-            stream.release()
+            // val stream = extractor.createStream()
+            val stream = ext::class.java.getMethod("createStream").invoke(ext) ?: return null
+            // stream.acceptWaveform(floats: FloatArray, sampleRate: Int)
+            stream::class.java
+                .getMethod("acceptWaveform", FloatArray::class.java, Int::class.javaPrimitiveType)
+                .invoke(stream, floats, sampleRate)
+            // stream.inputFinished()
+            stream::class.java.getMethod("inputFinished").invoke(stream)
+            // raw = extractor.compute(stream)
+            val raw = ext::class.java
+                .getMethod("compute", Class.forName(STREAM_CLASS))
+                .invoke(ext, stream) as FloatArray
+            // stream.release()
+            stream::class.java.getMethod("release").invoke(stream)
             normalize(raw)
         } catch (t: Throwable) {
-            Log.e(TAG, "extractEmbedding failed", t)
-            null
+            Log.e(TAG, "extractEmbedding failed", t); null
         }
     }
 
@@ -155,12 +172,14 @@ class SherpaSpeakerVerifier(context: Context) : SpeakerVerifier {
         private const val REFERENCE_FILENAME = "speaker_reference.bin"
         private const val REFERENCE_MAGIC = 0x4D5650FF.toInt() // "MVP\xff"
 
-        /** Cosine similarity entre deux vecteurs normalisés. */
+        private const val CONFIG_CLASS = "com.k2fsa.sherpa.onnx.SpeakerEmbeddingExtractorConfig"
+        private const val EXTRACTOR_CLASS = "com.k2fsa.sherpa.onnx.SpeakerEmbeddingExtractor"
+        private const val STREAM_CLASS = "com.k2fsa.sherpa.onnx.OnlineStream"
+
         fun cosine(a: FloatArray, b: FloatArray): Float {
             if (a.size != b.size) return 0f
             var dot = 0.0
             for (i in a.indices) dot += a[i] * b[i]
-            // Vecteurs déjà normalisés → cosine = dot product.
             return dot.toFloat().coerceIn(-1f, 1f)
         }
 
