@@ -151,22 +151,61 @@ class AssistantService : LifecycleService() {
     private suspend fun wakeUp() {
         settings.isSleeping = false
         updateNotification()
-        tts.speak("Bonjour, je suis là.")
+        openJarvisVisual()
+        try {
+            speakWithPhase("Bonjour, je suis là.")
+            kotlinx.coroutines.delay(600)
+        } finally {
+            DiscussionStateHolder.reset()
+        }
     }
 
     private suspend fun goToSleep() {
         settings.isSleeping = true
-        tts.speak("Bonne nuit. Dis « bonjour Jarvis » pour me réveiller.")
+        speakWithPhase("Bonne nuit. Dis « bonjour Jarvis » pour me réveiller.")
         updateNotification()
     }
 
     private suspend fun handleTurn() {
+        // Ouvre l'écran "réacteur" futuriste pour CHAQUE interaction Jarvis.
+        // Reste affiché pendant l'écoute / la réflexion / la réponse, puis
+        // se ferme tout seul (DiscussionActivity finish() sur Phase.Idle).
+        openJarvisVisual()
+        try {
+            handleTurnInner()
+        } finally {
+            // Petite pause pour laisser l'utilisateur voir la dernière phase
+            // avant que l'écran se ferme.
+            kotlinx.coroutines.delay(600)
+            // Si on a basculé en mode discussion (loop), enterDiscussion garde
+            // le visuel ouvert lui-même. Sinon on ferme.
+            if (!inDiscussion) DiscussionStateHolder.reset()
+        }
+    }
+
+    private fun openJarvisVisual() {
+        val phase = DiscussionStateHolder.phase.value
+        if (phase == DiscussionPhase.Idle) {
+            startActivity(
+                Intent(this, DiscussionActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+        DiscussionStateHolder.setPhase(DiscussionPhase.Listening)
+    }
+
+    private suspend fun handleTurnInner() {
         // Plus de TTS "Oui ?" qui chevauche ta voix : juste un bip court +
         // écoute immédiate. Tu peux enchaîner "Jarvis ... [pause 200ms] ... commande".
         playWakeBeep()
         val transcript = stt.listenOnce(silenceTimeoutMs = 1800L, maxDurationMs = 8_000L)
         Log.i(TAG, "Transcript: $transcript")
-        if (transcript.isNullOrBlank()) { tts.speak("J'ai rien entendu."); return }
+        if (transcript.isNullOrBlank()) {
+            speakWithPhase("J'ai rien entendu.")
+            return
+        }
+        DiscussionStateHolder.setLastUserText(transcript)
+        DiscussionStateHolder.setPhase(DiscussionPhase.Thinking)
 
         val parsed = parser.parse(transcript)
         Log.i(TAG, "Parsed: $parsed")
@@ -180,7 +219,7 @@ class AssistantService : LifecycleService() {
                 )) {
                 doWipe()
             } else {
-                tts.speak("OK, j'efface rien.")
+                speakWithPhase("OK, j'efface rien.")
             }
             return
         }
@@ -189,7 +228,7 @@ class AssistantService : LifecycleService() {
         if (isSensitive(parsed) && settings.confirmSensitiveActions) {
             val desc = describe(parsed)
             if (!awaitConfirmation("Je vais $desc. Tu confirmes ?")) {
-                tts.speak("OK, j'annule.")
+                speakWithPhase("OK, j'annule.")
                 return
             }
         }
@@ -202,7 +241,7 @@ class AssistantService : LifecycleService() {
             is MarvinIntent.WipeAllData -> { /* géré au-dessus */ }
             else -> {
                 val feedback = executor.execute(parsed)
-                if (feedback.isNotBlank()) tts.speak(feedback)
+                if (feedback.isNotBlank()) speakWithPhase(feedback)
             }
         }
     }
