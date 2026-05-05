@@ -110,7 +110,6 @@ android {
             // qui en dépend (sinon échec de compilation).
             if (!sherpaPresent) {
                 java.exclude("**/SherpaSpeakerVerifier.kt")
-                kotlin.exclude("**/SherpaSpeakerVerifier.kt")
             }
         }
     }
