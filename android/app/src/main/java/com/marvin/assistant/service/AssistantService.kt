@@ -5,6 +5,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -49,6 +51,10 @@ class AssistantService : LifecycleService() {
     private lateinit var settings: Settings
     private lateinit var tools: Tools
     private lateinit var speakerVerifier: SpeakerVerifier
+    private val toneGen by lazy {
+        try { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80) }
+        catch (_: Throwable) { null }
+    }
     private var claudeBackend: ClaudeBackend? = null
     private var gemmaBackend: GemmaBackend? = null
     private var pipelineJob: Job? = null
@@ -92,6 +98,12 @@ class AssistantService : LifecycleService() {
         return START_STICKY
     }
 
+    private fun playWakeBeep() {
+        // Bip court (~80 ms) qui remplace le TTS "Oui ?". N'overlap pas la
+        // voix de l'utilisateur et confirme audiblement que Jarvis a entendu.
+        toneGen?.startTone(ToneGenerator.TONE_PROP_PROMPT, 80)
+    }
+
     override fun onDestroy() {
         pipelineJob?.cancel()
         wakeWord.release()
@@ -99,6 +111,7 @@ class AssistantService : LifecycleService() {
         voskModel.release()
         gemmaBackend?.release()
         speakerVerifier.release()
+        toneGen?.release()
         super.onDestroy()
     }
 
@@ -148,7 +161,9 @@ class AssistantService : LifecycleService() {
     }
 
     private suspend fun handleTurn() {
-        tts.speak("Oui ?")
+        // Plus de TTS "Oui ?" qui chevauche ta voix : juste un bip court +
+        // écoute immédiate. Tu peux enchaîner "Jarvis ... [pause 200ms] ... commande".
+        playWakeBeep()
         val transcript = stt.listenOnce(silenceTimeoutMs = 1800L, maxDurationMs = 8_000L)
         Log.i(TAG, "Transcript: $transcript")
         if (transcript.isNullOrBlank()) { tts.speak("J'ai rien entendu."); return }
