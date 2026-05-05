@@ -77,6 +77,11 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             Settings.ALL_TOOL_NAMES.forEach { name -> put(name, settings.isToolEnabled(name)) }
         }
     }
+    var pinSet by remember { mutableStateOf(settings.isPinSet()) }
+    var newPin by remember { mutableStateOf("") }
+    var smsAllowlistText by remember {
+        mutableStateOf(settings.smsAllowlist.joinToString(", "))
+    }
     val quotaUsed = remember { settings.quotaUsedToday() }
 
     Column(
@@ -163,6 +168,68 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             onChange = { confirmSensitive = it }
         )
 
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "PIN d'accès aux Réglages",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+        )
+        Text(
+            if (pinSet) "PIN actif. Saisis 4-6 chiffres pour le changer, ou laisse vide et appuie « Désactiver le PIN »."
+            else "Pas de PIN. Saisis 4-6 chiffres pour en créer un.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        OutlinedTextField(
+            value = newPin,
+            onValueChange = { input -> newPin = input.filter { it.isDigit() }.take(6) },
+            label = { Text("Nouveau PIN (4-6 chiffres)") },
+            visualTransformation = PasswordVisualTransformation(),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = {
+                    if (newPin.length in 4..6) {
+                        settings.setPin(newPin)
+                        pinSet = true
+                        newPin = ""
+                    }
+                },
+                enabled = newPin.length in 4..6,
+                modifier = Modifier.weight(1f)
+            ) { Text(if (pinSet) "Changer le PIN" else "Activer le PIN") }
+            if (pinSet) {
+                Button(
+                    onClick = {
+                        settings.setPin("")
+                        pinSet = false
+                        newPin = ""
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF607D8B)),
+                    modifier = Modifier.weight(1f)
+                ) { Text("Désactiver") }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+        Text(
+            "Allowlist SMS (optionnel)",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+        )
+        Text(
+            "Si non vide, Claude ne peut lire que les SMS de contacts dont le nom contient un de ces fragments. Sépare par des virgules. Ex: « Marie, Papa, école ».",
+            style = MaterialTheme.typography.bodySmall
+        )
+        OutlinedTextField(
+            value = smsAllowlistText,
+            onValueChange = { smsAllowlistText = it },
+            label = { Text("Contacts autorisés (vide = tous)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
         // ------ OUTILS IA ------
         Spacer(Modifier.height(28.dp))
         Divider()
@@ -197,6 +264,11 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 Settings.ALL_TOOL_NAMES.forEach { name ->
                     settings.setToolEnabled(name, toolEnabled[name] ?: true)
                 }
+                settings.smsAllowlist = smsAllowlistText
+                    .split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                    .toSet()
                 onClose()
             },
             modifier = Modifier.fillMaxWidth()

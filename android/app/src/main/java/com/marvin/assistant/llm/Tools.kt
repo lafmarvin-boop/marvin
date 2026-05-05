@@ -356,11 +356,15 @@ class Tools(
         val args = if (targetNumber != null)
             arrayOf("%${targetNumber.takeLast(8)}%") else null
 
+        // Allowlist contacts: si non vide, on charge plus large et on filtre.
+        val allowlist = settings.smsAllowlist
+        val effectiveLimit = if (allowlist.isNotEmpty()) limit * 5 else limit
+
         val cursor = context.contentResolver.query(
             Telephony.Sms.Inbox.CONTENT_URI,
             arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE),
             selection, args,
-            "${Telephony.Sms.DATE} DESC LIMIT $limit"
+            "${Telephony.Sms.DATE} DESC LIMIT $effectiveLimit"
         ) ?: return "Pas de SMS accessibles."
 
         val tf = SimpleDateFormat("d/MM HH:mm", Locale.FRENCH)
@@ -371,10 +375,30 @@ class Tools(
                 val body = it.getString(1)?.replace("\n", " ")?.take(140) ?: ""
                 val date = it.getLong(2)
                 val name = Contacts.nameOfNumber(context, from) ?: from
+                if (allowlist.isNotEmpty() && !matchesAllowlist(name, allowlist)) continue
                 items += "[${tf.format(Date(date))}] $name: $body"
+                if (items.size >= limit) break
             }
         }
-        return if (items.isEmpty()) "Aucun SMS." else items.joinToString(" || ")
+        return when {
+            items.isNotEmpty() -> items.joinToString(" || ")
+            allowlist.isNotEmpty() -> "Aucun SMS d'un contact autorisé (allowlist active)."
+            else -> "Aucun SMS."
+        }
+    }
+
+    /** Renvoie true si [contactName] contient un des fragments de l'allowlist
+     *  (insensible à la casse et aux accents). */
+    private fun matchesAllowlist(contactName: String, allowlist: Set<String>): Boolean {
+        val n = java.text.Normalizer.normalize(contactName, java.text.Normalizer.Form.NFD)
+            .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+            .lowercase(Locale.FRENCH)
+        return allowlist.any { fragment ->
+            val f = java.text.Normalizer.normalize(fragment, java.text.Normalizer.Form.NFD)
+                .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+                .lowercase(Locale.FRENCH)
+            f.isNotBlank() && n.contains(f)
+        }
     }
 
     // ---- Appels récents ----

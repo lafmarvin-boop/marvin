@@ -60,7 +60,12 @@ class MainActivity : ComponentActivity() {
                             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                         },
                         onOpenMarvinSettings = {
-                            startActivity(Intent(this, SettingsActivity::class.java))
+                            // Si un PIN est configuré, on passe d'abord par l'écran de saisie.
+                            val target = if (com.marvin.assistant.util.Settings(this).isPinSet())
+                                PinUnlockActivity::class.java
+                            else
+                                SettingsActivity::class.java
+                            startActivity(Intent(this, target))
                         },
                         onStartService = { AssistantService.start(this) },
                         onStopService = { AssistantService.stop(this) },

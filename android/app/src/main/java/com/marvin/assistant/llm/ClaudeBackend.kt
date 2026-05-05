@@ -8,6 +8,7 @@ import com.marvin.assistant.util.ClaudeModel
 import com.marvin.assistant.util.Settings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.CertificatePinner
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,11 +45,39 @@ class ClaudeBackend(
 
     override fun isReady(): Boolean = settings.anthropicApiKey.isNotBlank()
 
-    private val http = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .writeTimeout(10, TimeUnit.SECONDS)
-        .build()
+    private val http = buildHttpClient()
+
+    private fun buildHttpClient(): OkHttpClient {
+        val builder = OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+
+        // Certificate pinning. Désactivé par défaut tant que les pins ne sont
+        // pas extraits du certificat réel d'api.anthropic.com (cf. README,
+        // section Sécurité → Certificate pinning).
+        //
+        // Pour activer:
+        //  1. Extraire le SPKI hash:
+        //       echo | openssl s_client -servername api.anthropic.com \
+        //         -connect api.anthropic.com:443 2>/dev/null \
+        //         | openssl x509 -pubkey -noout \
+        //         | openssl pkey -pubin -outform der \
+        //         | openssl dgst -sha256 -binary | base64
+        //  2. Extraire aussi un pin de l'intermediate CA (backup):
+        //       openssl s_client -showcerts -servername api.anthropic.com \
+        //         -connect api.anthropic.com:443 < /dev/null
+        //     puis prendre le 2e cert et faire le même calcul.
+        //  3. Coller ci-dessous, mettre PINS_ENABLED = true.
+        if (PINS_ENABLED && CERT_PINS.isNotEmpty()) {
+            val pinner = CertificatePinner.Builder().apply {
+                CERT_PINS.forEach { pin -> add("api.anthropic.com", pin) }
+            }.build()
+            builder.certificatePinner(pinner)
+        }
+
+        return builder.build()
+    }
 
     override suspend fun ask(history: List<ChatMessage>): LlmResult = withContext(Dispatchers.IO) {
         if (!hasNetwork()) return@withContext LlmResult.NoNetwork("Pas de réseau.")
@@ -194,6 +223,17 @@ class ClaudeBackend(
         private const val TAG = "ClaudeBackend"
         private const val MAX_OUTPUT_TOKENS = 200
         private const val MAX_TOOL_ITERATIONS = 4
+
+        /** Active le certificate pinning. Garde à false tant que les pins
+         *  ne sont pas vérifiés sur ton réseau (cf. extraction dans README). */
+        private const val PINS_ENABLED = false
+
+        /** SPKI sha256 hashes au format OkHttp ("sha256/<base64>").
+         *  Au moins 2 pins recommandés (leaf + backup intermediate ou backup leaf). */
+        private val CERT_PINS = listOf<String>(
+            // "sha256/REPLACE_ME_WITH_LEAF_SPKI_HASH",
+            // "sha256/REPLACE_ME_WITH_BACKUP_INTERMEDIATE_HASH",
+        )
 
         private const val SYSTEM_PROMPT = """Tu es Marvin, un assistant vocal personnel en français.
 

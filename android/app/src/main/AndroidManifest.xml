@@ -71,6 +71,12 @@
             android:label="Réglages Marvin"
             android:parentActivityName=".ui.MainActivity" />
 
+        <activity
+            android:name=".ui.PinUnlockActivity"
+            android:exported="false"
+            android:label="Marvin"
+            android:parentActivityName=".ui.MainActivity" />
+
         <service
             android:name=".service.AssistantService"
             android:exported="false"

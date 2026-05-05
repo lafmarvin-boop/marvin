@@ -1,8 +1,19 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     kotlin("plugin.serialization") version "2.0.20"
 }
+
+// Lit local.properties pour le keystore (jamais commité). Si absent, le build
+// release retombe sur le keystore debug — pratique pour tester localement,
+// mais à NE PAS distribuer (la clé debug est partagée et publique).
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun localProp(key: String): String? = localProps.getProperty(key) ?: System.getenv(key)
 
 android {
     namespace = "com.marvin.assistant"
@@ -21,13 +32,41 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val storeFilePath = localProp("MARVIN_KEYSTORE_PATH")
+            val storePass = localProp("MARVIN_KEYSTORE_PASSWORD")
+            val keyAliasProp = localProp("MARVIN_KEY_ALIAS")
+            val keyPass = localProp("MARVIN_KEY_PASSWORD")
+            if (storeFilePath != null && storePass != null && keyAliasProp != null && keyPass != null) {
+                storeFile = file(storeFilePath)
+                storePassword = storePass
+                keyAlias = keyAliasProp
+                keyPassword = keyPass
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            // Si les 4 props MARVIN_* sont dans local.properties, on signe
+            // proprement. Sinon on retombe sur le keystore debug (pratique
+            // pour tester ./gradlew installRelease en local).
+            signingConfig = if (localProp("MARVIN_KEYSTORE_PATH") != null)
+                signingConfigs.getByName("release")
+            else
+                signingConfigs.getByName("debug")
         }
         debug {
             isMinifyEnabled = false
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
         }
     }
 

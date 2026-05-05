@@ -83,6 +83,38 @@ class Settings(context: Context) {
         secure.edit().clear().apply()
     }
 
+    /**
+     * PIN à 4-6 chiffres pour ouvrir l'écran Réglages. Stocké chiffré.
+     * Vide = pas de PIN configuré.
+     */
+    fun isPinSet(): Boolean = secure.getString(KEY_PIN, "")?.isNotEmpty() == true
+
+    fun setPin(pin: String) {
+        if (pin.isEmpty()) secure.edit().remove(KEY_PIN).apply()
+        else secure.edit().putString(KEY_PIN, pin).apply()
+    }
+
+    fun checkPin(input: String): Boolean {
+        val stored = secure.getString(KEY_PIN, "") ?: return false
+        // Comparaison constant-time pour éviter les timing attacks (négligeable
+        // sur 4 chiffres mais bonne pratique).
+        if (input.length != stored.length) return false
+        var diff = 0
+        for (i in input.indices) diff = diff or (input[i].code xor stored[i].code)
+        return diff == 0
+    }
+
+    /**
+     * Allowlist SMS: si non vide, l'outil [com.marvin.assistant.llm.Tools.getRecentSms]
+     * ne retourne que les SMS provenant d'un contact dont le nom contient un
+     * des fragments listés (insensible à la casse / accents).
+     */
+    var smsAllowlist: Set<String>
+        get() = plain.getStringSet(KEY_SMS_ALLOWLIST, emptySet()) ?: emptySet()
+        set(value) {
+            plain.edit().putStringSet(KEY_SMS_ALLOWLIST, value).apply()
+        }
+
     /** Returns true and increments the counter if a request is allowed today. */
     @Synchronized
     fun consumeDailyQuota(): Boolean {
@@ -111,6 +143,8 @@ class Settings(context: Context) {
         private const val KEY_QUOTA_DAY = "quota_day"
         private const val KEY_QUOTA_USED = "quota_used"
         private const val KEY_CONFIRM_SENSITIVE = "confirm_sensitive"
+        private const val KEY_PIN = "pin"
+        private const val KEY_SMS_ALLOWLIST = "sms_allowlist"
 
         /** Liste de tous les outils que Claude peut appeler, pour les toggles UI. */
         val ALL_TOOL_NAMES = listOf(

@@ -256,15 +256,147 @@ Wipe efface : clé API Anthropic, réglages, quota, historique. **N'efface pas**
 les modèles Vosk/Gemma (ce sont des assets, pas des données personnelles —
 gain de temps pour ré-utiliser l'app après wipe).
 
+### PIN d'accès aux Réglages
+
+- Configurable dans `Réglages → Sécurité → PIN d'accès aux Réglages` (4-6 chiffres).
+- PIN stocké chiffré dans `EncryptedSharedPreferences` (clé maître liée au keystore).
+- Comparaison constant-time pour éviter les timing attacks.
+- 5 mauvais essais consécutifs → lockout 30 secondes.
+- Si tu oublies le PIN : `adb shell pm clear com.marvin.assistant` (perd toutes les données) — c'est l'unique moyen de reset.
+
+### Allowlist SMS
+
+Dans `Réglages → Sécurité → Allowlist SMS`, tu peux mettre une liste de fragments
+de noms (séparés par virgules, ex: « Marie, Papa, école »). Si la liste est non
+vide, l'outil `get_recent_sms` ne retourne **que** les SMS provenant de contacts
+dont le nom contient un de ces fragments — Claude ne verra jamais les autres.
+
+Insensible à la casse et aux accents.
+
+### Certificate pinning sur api.anthropic.com
+
+Le code est en place dans `ClaudeBackend.kt` mais **désactivé par défaut**
+(`PINS_ENABLED = false`). Pour l'activer :
+
+1. Extraire le SPKI hash du leaf cert :
+
+   ```bash
+   echo | openssl s_client -servername api.anthropic.com \
+     -connect api.anthropic.com:443 2>/dev/null \
+     | openssl x509 -pubkey -noout \
+     | openssl pkey -pubin -outform der \
+     | openssl dgst -sha256 -binary | base64
+   ```
+
+2. Extraire un pin de backup (intermediate CA), pour ne pas casser l'app
+   si Anthropic rotate le leaf :
+
+   ```bash
+   openssl s_client -showcerts -servername api.anthropic.com \
+     -connect api.anthropic.com:443 < /dev/null 2>/dev/null \
+     | awk '/BEGIN/,/END/{print}' \
+     | awk 'BEGIN{n=0} /BEGIN/{n++} {print > "cert_" n ".pem"}'
+   # Puis sur cert_2.pem (intermediate):
+   openssl x509 -in cert_2.pem -pubkey -noout \
+     | openssl pkey -pubin -outform der \
+     | openssl dgst -sha256 -binary | base64
+   ```
+
+3. Coller dans `ClaudeBackend.kt` :
+
+   ```kotlin
+   private const val PINS_ENABLED = true
+   private val CERT_PINS = listOf(
+       "sha256/<leaf hash>",
+       "sha256/<intermediate hash>"
+   )
+   ```
+
+⚠️ **Risque** : si Anthropic rotate les certs et que tu n'as pas mis à jour
+les pins, l'app sera incapable de joindre l'API jusqu'à ce que tu refasses
+l'extraction. C'est pour ça que c'est off par défaut.
+
+### Build release durci
+
+Le build debug (`./gradlew installDebug`) est OK pour développer mais
+décompile facilement. Pour distribuer (toi-même, à toi-même), build release :
+
+1. Génère un keystore une fois :
+
+   ```bash
+   keytool -genkey -v -keystore marvin-release.jks \
+     -keyalg RSA -keysize 2048 -validity 10000 -alias marvin
+   ```
+
+2. Mets les valeurs dans `local.properties` :
+
+   ```
+   MARVIN_KEYSTORE_PATH=/chemin/vers/marvin-release.jks
+   MARVIN_KEYSTORE_PASSWORD=...
+   MARVIN_KEY_ALIAS=marvin
+   MARVIN_KEY_PASSWORD=...
+   ```
+
+3. Build :
+
+   ```bash
+   ./gradlew assembleRelease
+   # APK: app/build/outputs/apk/release/app-release.apk
+   ```
+
+   En release : `isMinifyEnabled=true` + `isShrinkResources=true` → ProGuard/R8
+   obfusque le code, supprime le code mort. Reverse engineering nettement
+   plus pénible.
+
+> Si tu skip le keystore, le build release retombe sur le keystore debug
+> (signature partagée publiquement, OK pour tester localement, **pas pour
+> distribuer**).
+
 ### Vecteurs d'attaque connus + mitigations
 
-| Vecteur | Risque | Mitigation actuelle | Vraie limite |
-|---|---|---|---|
-| Wake word déclenchable par n'importe qui | TV, voisin, haut-parleur dans ta poche | Confirmation orale pour SMS/appels/WhatsApp | Voice biometric (reconnaître TA voix) = projet à part, complexe en local |
-| Phone déverrouillé par un tiers | Accès total à l'app | Verrouillage écran Android (PIN/empreinte) | Pas de PIN propre dans l'app (à venir si demandé) |
-| APK décompilé | Reverse engineering du code | minSdk 29, R8 désactivé en debug | En release, activer `isMinifyEnabled=true` + ProGuard |
-| Réseau intercepté | Interception des appels Anthropic | TLS 1.3 obligatoire (OkHttp 4.12+) | Certificate pinning (à ajouter si tu veux du paranoïaque) |
-| App malveillante avec accès accessibilité | Pourrait simuler clics dans Marvin | `AccessibilityService` restreint à 4 packages | Mitigation Android standard |
+| Vecteur | Mitigation actuelle | Vraie limite |
+|---|---|---|
+| Wake word déclenchable par n'importe qui | Confirmation orale pour SMS/appels/WhatsApp | Voice biometric pas encore (cf. plan ci-dessous) |
+| Phone déverrouillé par un tiers | Verrouillage Android + **PIN d'app** sur l'écran Réglages | Le service tourne sans PIN — un tiers pourrait dire « jarvis lance Spotify ». Pour les actions sensibles, la confirmation orale couvre. |
+| APK décompilé | Build release : `isMinifyEnabled=true` + ProGuard/R8 | Obfuscation, pas chiffrement — un attaquant déterminé peut toujours reverse |
+| Réseau intercepté | TLS 1.3, **certificate pinning prêt à activer** (cf. ci-dessus) | Désactivé par défaut tant que les pins ne sont pas extraits |
+| Clé API extraite | EncryptedSharedPreferences (AES-256 keystore) | Si quelqu'un a root, il peut extraire la clé maître |
+| App malveillante avec accès accessibilité | `AccessibilityService` Marvin restreint à 4 packages | Une autre app accessibility pourrait observer Marvin (mitigation Android standard) |
+
+### Voice biometric — pourquoi c'est différé
+
+L'idée séduisante : « Marvin ne se déclenche que si c'est *moi* qui dit
+"jarvis", pas un autre ». Techniquement c'est faisable mais c'est un projet
+à part de plusieurs jours. Ce que ça demande honnêtement :
+
+1. **Modèle d'embedding vocal** type WeSpeaker / SpeechBrain / pyannote,
+   compilé pour Android. Les libs prêtes-à-l'emploi sont rares :
+   - **sherpa-onnx** (k2-fsa, MIT) : a un sample `speaker-identification`
+     Android, mais demande de vendrer un AAR + télécharger un modèle (~15 MB).
+   - **Picovoice Eagle** : un SDK propre, mais on a déjà vu qu'ils demandent
+     un AccessKey (même piège que Porcupine au début).
+2. **Phase d'enrôlement** : enregistrer 3-5 fois la phrase « Jarvis » pour
+   capturer ton empreinte vocale, calculer un embedding moyen, le stocker.
+3. **Vérif au moment du wake word** : ré-extraire un embedding du segment
+   audio qui a déclenché Vosk, calculer la similarité cosinus avec ton
+   empreinte, rejeter si seuil < 0.7 (typique).
+4. **Faux positifs / négatifs** : même les meilleurs modèles ont 1-5 % de
+   FAR/FRR. Tu seras parfois rejeté quand tu es enrhumé, ou un sosie vocal
+   passera. Pas d'illusion.
+
+**Pourquoi je l'ai différé honnêtement** : pour un assistant perso sur ton
+téléphone (pas une enceinte connectée laissée seule), la vraie surface
+d'attaque c'est :
+
+- Quelqu'un qui a déverrouillé ton téléphone → couvert par le verrouillage
+  Android et les confirmations orales pour les actions sensibles.
+- La TV / un voisin qui dit « jarvis » → pas une attaque, juste un agacement.
+  Au pire ça déclenche une écoute qui timeout dans 6 s sans rien faire.
+
+Le voice biometric apporte un vrai gain pour des cas de niche (assistant
+laissé sur la table en open-space, partenaire taquin, etc.). Si tu en veux
+vraiment, dis-le et je l'attaque comme étape dédiée — il y a ~300 lignes +
+intégration sherpa-onnx.
 
 ### Garde-fous bancaires
 
