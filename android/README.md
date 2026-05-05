@@ -191,16 +191,24 @@ Mode discussion multi-tours :
 
 ## Voix « façon Jarvis »
 
-Marvin utilise le TTS Android natif avec :
+`TtsEngineFactory` choisit automatiquement la meilleure voix disponible :
 
-- Locale : `fr_FR`
-- Voix masculine FR détectée automatiquement (sinon défaut)
-- Pitch : 0.85 (un peu plus grave)
-- Vitesse : 0.95 (légèrement plus posé)
+1. **Piper TTS via sherpa-onnx** (recommandé) — voix masculine grave naturelle
+   façon majordome. Nécessite l'AAR sherpa-onnx + un modèle Piper français.
+   Cf. `app/libs/README.md` pour la procédure complète. Le modèle
+   `vits-piper-fr_FR-tom-medium` (~30 MB) donne le meilleur rendu.
 
-Pour aller plus loin (qualité cinéma), on pourra brancher [Piper TTS](https://github.com/rhasspy/piper)
-offline ou [ElevenLabs](https://elevenlabs.io/) (~5 $/mois) en remplacement —
-voir TODO.
+2. **TTS Android natif** (fallback automatique) — utilisé si Piper n'est pas
+   configuré. Configuré pour piocher une voix masculine FR si dispo, avec
+   pitch à 0.85 et vitesse à 0.95.
+
+Pour ajuster encore la voix Android, va dans :
+**Paramètres Android → Gestion générale → Texte par synthèse vocale** →
+moteur Samsung TTS, vitesse 0.85×, hauteur 0.8×, voix française masculine.
+
+> Note : impossible de cloner la voix précise de Paul Bettany dans Iron Man
+> (droits à l'image vocale + copyright Marvel). Piper donne le vibe sans
+> copier l'acteur.
 
 ## Sécurité
 
@@ -421,16 +429,31 @@ pour ne pas alerter un intrus / ne pas t'agacer si la TV a parlé).
 - Si tu as oublié ton PIN ET que la voix biometric te bloque : `adb shell
   pm clear com.marvin.assistant` (perd toutes les données mais débloque tout).
 
-### Garde-fous bancaires
+### Garde-fous bancaires (lecture du solde)
 
-- `BankAction` se contente d'ouvrir l'app, **jamais** de simuler un clic sur
-  « Valider » ou « Virer ».
-- `accessibility_service_config.xml` restreint l'AccessibilityService aux
-  packages bancaires explicites — Marvin ne reçoit aucun événement des
-  autres apps.
-- Aucune commande vocale ne peut déclencher un virement. Si on automatise
-  un jour la lecture du solde (étape 4), ce sera **lecture seule** et
-  documenté noir sur blanc.
+`BankAction` peut maintenant **lire** ton solde affiché à l'écran via
+l'AccessibilityService — dans ce mode strictement passif :
+
+1. Tu dis « Jarvis quel est mon solde Boursobank »
+2. L'app Boursobank s'ouvre (tu te logges manuellement si besoin)
+3. Le service d'accessibilité scanne l'écran à la recherche d'un montant
+   en € matchant un pattern strict (ex: `1 234,56 €`)
+4. Marvin lit le montant le plus visible à voix haute
+5. Si rien trouvé en 25 s : « Je n'ai pas pu lire ton solde. »
+
+**Le code n'effectue jamais** :
+- `performAction(ACTION_CLICK)` sur quoi que ce soit dans une app bancaire
+- D'envoi de SMS / OTP / validation 2FA
+- D'aucune action transactionnelle
+
+`accessibility_service_config.xml` restreint l'AccessibilityService aux
+4 packages cibles uniquement (FamilyWall, Ecovacs, Boursobank, Banque Pop) —
+Marvin ne reçoit aucun événement des autres apps.
+
+Si l'heuristique se trompe et lit le mauvais montant (ex: une transaction
+récente au lieu du solde), c'est une limitation honnête : on prend le
+montant avec la plus grande aire visible à l'écran. Pour Boursobank et
+Banque Pop, c'est en pratique le solde principal sur l'écran d'accueil.
 
 ### Quotas et budgets
 

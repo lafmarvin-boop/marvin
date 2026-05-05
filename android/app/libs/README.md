@@ -3,14 +3,18 @@
 Place ici les `.aar` qui ne viennent pas de Maven. Le `build.gradle.kts`
 détecte leur présence automatiquement.
 
-## Voice biometric — sherpa-onnx
+## sherpa-onnx — pour voice biometric ET Piper TTS
 
-Pour activer la vérif d'identité vocale (« Marvin n'écoute que toi ») :
+Le **même AAR** débloque deux fonctionnalités :
 
-1. Télécharge le dernier `sherpa-onnx-android.aar` depuis
+- **Voice biometric** : « Jarvis n'écoute que toi »
+- **Piper TTS** : voix masculine grave naturelle (façon majordome)
+
+### Installation
+
+1. Télécharge le dernier `sherpa-onnx-VERSION.aar` depuis
    https://github.com/k2-fsa/sherpa-onnx/releases
-   (cherche un asset nommé `sherpa-onnx-VERSION.aar` ou similaire,
-   contenant les bindings Java + libs natives ARM64).
+   (cherche un asset incluant les bindings Kotlin/Java + libs natives ARM64)
 
 2. Renomme-le exactement `sherpa-onnx-android.aar` et place-le ici, à côté
    de ce README.
@@ -20,20 +24,40 @@ Pour activer la vérif d'identité vocale (« Marvin n'écoute que toi ») :
    Voice biometric: sherpa-onnx AAR trouvé
    ```
 
-4. Télécharge un modèle d'embedding vocal `.onnx` (recommandé:
-   `3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx` ~26 MB,
-   marche bien sur voix française) :
-   ```
-   wget https://huggingface.co/csukuangfj/speaker-embedding-models/resolve/main/3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx
-   ```
-   Renomme en `speaker.onnx` et push :
-   ```bash
-   adb push speaker.onnx /sdcard/Android/data/com.marvin.assistant/files/
-   ```
+### Modèles à pousser sur le téléphone
 
-5. Dans l'app : `Réglages → Voice biometric → Enrôler ma voix` (5 samples
-   de "Jarvis"), puis active le toggle.
+#### Pour le voice biometric (~26 MB)
 
-Si le fichier n'est pas présent ici, l'app build quand même — le voice
-biometric sera juste désactivé silencieusement, le reste fonctionne
-normalement.
+```bash
+wget https://huggingface.co/csukuangfj/speaker-embedding-models/resolve/main/3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx
+adb push 3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx \
+  /sdcard/Android/data/com.marvin.assistant/files/speaker.onnx
+```
+
+#### Pour Piper TTS — voix masculine FR (~30 MB)
+
+Recommandé : `vits-piper-fr_FR-tom-medium` (homme posé, grave, voix de
+narration française). Page modèle :
+https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/vits-piper.html
+
+```bash
+# Télécharge le bundle complet (.tar.bz2)
+wget https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-tom-medium.tar.bz2
+tar -xf vits-piper-fr_FR-tom-medium.tar.bz2
+cd vits-piper-fr_FR-tom-medium
+
+# Push les fichiers requis (le voice model, les tokens, et le dossier espeak-ng-data)
+adb shell mkdir -p /sdcard/Android/data/com.marvin.assistant/files/piper
+adb push fr_FR-tom-medium.onnx /sdcard/Android/data/com.marvin.assistant/files/piper/voice.onnx
+adb push tokens.txt            /sdcard/Android/data/com.marvin.assistant/files/piper/tokens.txt
+adb push espeak-ng-data        /sdcard/Android/data/com.marvin.assistant/files/piper/espeak-ng-data
+```
+
+Au prochain démarrage de Marvin, le `TtsEngineFactory` détecte automatiquement
+les fichiers + l'AAR et bascule sur Piper. Sinon, fallback transparent vers
+le TTS Android natif.
+
+### Si l'AAR n'est pas là
+
+L'app build et tourne quand même — voice biometric et Piper TTS sont juste
+désactivés silencieusement, le TTS Android prend le relais.

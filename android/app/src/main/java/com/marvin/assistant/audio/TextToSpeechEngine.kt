@@ -9,11 +9,13 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.resume
 
-class TextToSpeechEngine(context: Context) {
+class TextToSpeechEngine(context: Context) : TtsEngine {
 
     private val pending = ConcurrentHashMap<String, () -> Unit>()
     @Volatile private var ready = false
     private val tts: TextToSpeech
+
+    override fun isReady(): Boolean = ready
 
     init {
         tts = TextToSpeech(context.applicationContext) { status ->
@@ -48,14 +50,14 @@ class TextToSpeechEngine(context: Context) {
         return voices.firstOrNull { it.locale.language == "fr" && !it.isNetworkConnectionRequired }
     }
 
-    suspend fun speak(text: String) = suspendCancellableCoroutine<Unit> { cont ->
+    override suspend fun speak(text: String) = suspendCancellableCoroutine<Unit> { cont ->
         if (!ready) { cont.resume(Unit); return@suspendCancellableCoroutine }
         val id = UUID.randomUUID().toString()
         pending[id] = { if (cont.isActive) cont.resume(Unit) }
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
     }
 
-    fun release() {
+    override fun release() {
         tts.stop()
         tts.shutdown()
     }

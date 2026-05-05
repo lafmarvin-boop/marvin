@@ -16,7 +16,8 @@ import com.marvin.assistant.actions.ActionExecutor
 import com.marvin.assistant.audio.SpeakerVerifier
 import com.marvin.assistant.audio.SpeakerVerifierFactory
 import com.marvin.assistant.audio.SpeechToText
-import com.marvin.assistant.audio.TextToSpeechEngine
+import com.marvin.assistant.audio.TtsEngine
+import com.marvin.assistant.audio.TtsEngineFactory
 import com.marvin.assistant.audio.VoskModelHolder
 import com.marvin.assistant.audio.WakeWordEngine
 import com.marvin.assistant.llm.ChatMessage
@@ -42,7 +43,7 @@ class AssistantService : LifecycleService() {
     private lateinit var voskModel: VoskModelHolder
     private lateinit var wakeWord: WakeWordEngine
     private lateinit var stt: SpeechToText
-    private lateinit var tts: TextToSpeechEngine
+    private lateinit var tts: TtsEngine
     private lateinit var parser: IntentParser
     private lateinit var executor: ActionExecutor
     private lateinit var settings: Settings
@@ -72,7 +73,7 @@ class AssistantService : LifecycleService() {
             voiceBiometricThreshold = { settings.voiceBiometricThreshold }
         )
         stt = SpeechToText(this, voskModel)
-        tts = TextToSpeechEngine(this)
+        tts = TtsEngineFactory.create(this)
         parser = IntentParser()
         executor = ActionExecutor(this)
     }
@@ -115,7 +116,7 @@ class AssistantService : LifecycleService() {
 
     private suspend fun handleTurn() {
         tts.speak("Oui ?")
-        val transcript = stt.listenOnce(silenceTimeoutMs = 1200L)
+        val transcript = stt.listenOnce(silenceTimeoutMs = 1800L, maxDurationMs = 8_000L)
         Log.i(TAG, "Transcript: $transcript")
         if (transcript.isNullOrBlank()) { tts.speak("J'ai rien entendu."); return }
 
