@@ -1,6 +1,7 @@
 package com.marvin.assistant.ui
 
 import android.app.AlertDialog
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.marvin.assistant.audio.SpeakerVerifierFactory
 import com.marvin.assistant.service.AssistantService
 import com.marvin.assistant.util.ClaudeModel
 import com.marvin.assistant.util.LlmBackendChoice
@@ -82,6 +84,11 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var smsAllowlistText by remember {
         mutableStateOf(settings.smsAllowlist.joinToString(", "))
     }
+    var voiceBioEnabled by remember { mutableStateOf(settings.voiceBiometricEnabled) }
+    var voiceBioThreshold by remember { mutableStateOf(settings.voiceBiometricThreshold) }
+    val verifier = remember { SpeakerVerifierFactory.create(ctx) }
+    var voiceBioReady by remember { mutableStateOf(verifier.isReady()) }
+    var voiceBioEnrolled by remember { mutableStateOf(verifier.isEnrolled()) }
     val quotaUsed = remember { settings.quotaUsedToday() }
 
     Column(
@@ -230,6 +237,74 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             modifier = Modifier.fillMaxWidth()
         )
 
+        Spacer(Modifier.height(20.dp))
+        Text(
+            "Voice biometric",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+        )
+        when {
+            !voiceBioReady -> Text(
+                "Modèle d'embedding vocal absent. Pour activer cette protection, " +
+                    "télécharge un modèle (ex. WeSpeaker) et pousse-le dans le " +
+                    "stockage de l'app sous le nom speaker.onnx (cf. README).",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF607D8B)
+            )
+            !voiceBioEnrolled -> Text(
+                "Pas encore enrôlé. Tape « Enrôler ma voix » pour enregistrer 5 " +
+                    "échantillons de toi disant « Jarvis ». Une fois enrôlé, tu " +
+                    "pourras activer le toggle.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            else -> {
+                Text(
+                    "Voix enrôlée. Active le toggle pour rejeter les wake words " +
+                        "qui ne correspondent pas à ta voix.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(8.dp))
+                ToggleRow(
+                    label = "Activer la vérif d'identité vocale",
+                    description = "Marvin n'écoutera que toi (sous réserve de la qualité du modèle).",
+                    checked = voiceBioEnabled,
+                    onChange = { voiceBioEnabled = it }
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Seuil : ${"%.2f".format(voiceBioThreshold)} (plus haut = plus strict)",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                androidx.compose.material3.Slider(
+                    value = voiceBioThreshold,
+                    onValueChange = { voiceBioThreshold = it },
+                    valueRange = 0.3f..0.9f,
+                    steps = 11
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = {
+                    ctx.startActivity(Intent(ctx, EnrollmentActivity::class.java))
+                },
+                enabled = voiceBioReady,
+                modifier = Modifier.weight(1f)
+            ) { Text(if (voiceBioEnrolled) "Ré-enrôler" else "Enrôler ma voix") }
+            if (voiceBioEnrolled) {
+                Button(
+                    onClick = {
+                        verifier.clearEnrollment()
+                        voiceBioEnrolled = false
+                        voiceBioEnabled = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF607D8B)),
+                    modifier = Modifier.weight(1f)
+                ) { Text("Effacer la voix") }
+            }
+        }
+
         // ------ OUTILS IA ------
         Spacer(Modifier.height(28.dp))
         Divider()
@@ -269,6 +344,9 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                     .map { it.trim() }
                     .filter { it.isNotEmpty() }
                     .toSet()
+                // Voice biometric: ne s'active que si on est enrôlé.
+                settings.voiceBiometricEnabled = voiceBioEnabled && voiceBioEnrolled
+                settings.voiceBiometricThreshold = voiceBioThreshold
                 onClose()
             },
             modifier = Modifier.fillMaxWidth()

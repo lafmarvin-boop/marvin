@@ -6,6 +6,8 @@ local.properties
 
 # Big binary assets — fournis par l'utilisateur, pas versionnés
 app/src/main/assets/vosk-fr/am/
+app/libs/*.aar
+app/libs/*.jar
 app/src/main/assets/vosk-fr/conf/
 app/src/main/assets/vosk-fr/graph/
 app/src/main/assets/vosk-fr/ivector/

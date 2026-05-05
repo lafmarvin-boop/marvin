@@ -13,6 +13,8 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.marvin.assistant.R
 import com.marvin.assistant.actions.ActionExecutor
+import com.marvin.assistant.audio.SpeakerVerifier
+import com.marvin.assistant.audio.SpeakerVerifierFactory
 import com.marvin.assistant.audio.SpeechToText
 import com.marvin.assistant.audio.TextToSpeechEngine
 import com.marvin.assistant.audio.VoskModelHolder
@@ -45,6 +47,7 @@ class AssistantService : LifecycleService() {
     private lateinit var executor: ActionExecutor
     private lateinit var settings: Settings
     private lateinit var tools: Tools
+    private lateinit var speakerVerifier: SpeakerVerifier
     private var claudeBackend: ClaudeBackend? = null
     private var gemmaBackend: GemmaBackend? = null
     private var pipelineJob: Job? = null
@@ -60,7 +63,14 @@ class AssistantService : LifecycleService() {
         settings = Settings(this)
         tools = Tools(this, settings)
         voskModel = VoskModelHolder(this)
-        wakeWord = WakeWordEngine(this, voskModel)
+        speakerVerifier = SpeakerVerifierFactory.create(this)
+        wakeWord = WakeWordEngine(
+            context = this,
+            voskModel = voskModel,
+            speakerVerifier = speakerVerifier,
+            voiceBiometricEnabled = { settings.voiceBiometricEnabled && speakerVerifier.isEnrolled() },
+            voiceBiometricThreshold = { settings.voiceBiometricThreshold }
+        )
         stt = SpeechToText(this, voskModel)
         tts = TextToSpeechEngine(this)
         parser = IntentParser()
@@ -83,6 +93,7 @@ class AssistantService : LifecycleService() {
         tts.release()
         voskModel.release()
         gemmaBackend?.release()
+        speakerVerifier.release()
         super.onDestroy()
     }
 

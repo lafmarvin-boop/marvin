@@ -77,6 +77,12 @@
             android:label="Marvin"
             android:parentActivityName=".ui.MainActivity" />
 
+        <activity
+            android:name=".ui.EnrollmentActivity"
+            android:exported="false"
+            android:label="Enrôlement vocal"
+            android:parentActivityName=".ui.SettingsActivity" />
+
         <service
             android:name=".service.AssistantService"
             android:exported="false"

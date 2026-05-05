@@ -15,6 +15,13 @@ val localProps = Properties().apply {
 }
 fun localProp(key: String): String? = localProps.getProperty(key) ?: System.getenv(key)
 
+// Voice biometric: si l'AAR sherpa-onnx est dans app/libs/, on l'inclut
+// au build et on garde SherpaSpeakerVerifier.kt. Sinon le fichier est
+// exclu et le SpeakerVerifierFactory retombe sur NoOp à runtime.
+val sherpaAar = rootProject.file("app/libs/sherpa-onnx-android.aar")
+val sherpaPresent = sherpaAar.exists() && sherpaAar.length() > 1024
+println("Voice biometric: sherpa-onnx AAR ${if (sherpaPresent) "trouvé" else "absent"} (${sherpaAar.absolutePath})")
+
 android {
     namespace = "com.marvin.assistant"
     compileSdk = 34
@@ -96,6 +103,17 @@ android {
         // Vosk JNI libs ship per-ABI; let Gradle keep them.
         jniLibs.useLegacyPackaging = false
     }
+
+    sourceSets {
+        getByName("main") {
+            // Si l'AAR sherpa-onnx n'est pas présent, on exclut le fichier
+            // qui en dépend (sinon échec de compilation).
+            if (!sherpaPresent) {
+                java.exclude("**/SherpaSpeakerVerifier.kt")
+                kotlin.exclude("**/SherpaSpeakerVerifier.kt")
+            }
+        }
+    }
 }
 
 dependencies {
@@ -133,4 +151,10 @@ dependencies {
 
     // JSON for intent parsing
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+    // Voice biometric — sherpa-onnx (optionnel, vendoré dans app/libs/).
+    // Si absent: l'app build quand même mais le SpeakerVerifier retombe sur NoOp.
+    if (sherpaPresent) {
+        implementation(files(sherpaAar))
+    }
 }

@@ -39,13 +39,18 @@ import java.util.concurrent.atomic.AtomicBoolean
 class WakeWordEngine(
     private val context: Context,
     private val voskModel: VoskModelHolder,
-    private val keywords: List<String> = DEFAULT_KEYWORDS
+    private val keywords: List<String> = DEFAULT_KEYWORDS,
+    private val speakerVerifier: SpeakerVerifier = NoOpSpeakerVerifier(),
+    /** Lambda lue à chaque détection — permet de toggle live depuis Settings. */
+    private val voiceBiometricEnabled: () -> Boolean = { false },
+    private val voiceBiometricThreshold: () -> Float = { 0.5f }
 ) {
 
     private var audioRecord: AudioRecord? = null
     private var loopJob: Job? = null
     private val paused = AtomicBoolean(false)
     private var onDetectedCallback: ((String) -> Unit)? = null
+    private val audioBuffer = RollingAudioBuffer(durationSec = 2, sampleRate = SAMPLE_RATE)
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun start(onDetected: (transcript: String) -> Unit) {
@@ -89,6 +94,8 @@ class WakeWordEngine(
                     if (paused.get()) { delay(50); continue }
                     val read = recorder.read(buffer, 0, frameSize)
                     if (read <= 0) continue
+                    // Alimente le buffer audio circulaire pour la vérif d'identité vocale.
+                    audioBuffer.write(buffer, read)
                     val finalized = try {
                         recognizer.acceptWaveForm(buffer, read)
                     } catch (t: Throwable) {
@@ -102,6 +109,19 @@ class WakeWordEngine(
                     if (text.isNotEmpty() && keywords.any { text.contains(it, ignoreCase = true) }) {
                         Log.i(TAG, "Wake word detected: \"$text\"")
                         recognizer.reset()
+
+                        // Voice biometric: si activé + enrôlé, vérifier que c'est bien le locuteur.
+                        if (voiceBiometricEnabled() && speakerVerifier.isReady() && speakerVerifier.isEnrolled()) {
+                            val snapshot = audioBuffer.snapshot()
+                            val similarity = speakerVerifier.verify(snapshot, sampleRate)
+                            val threshold = voiceBiometricThreshold()
+                            if (similarity < threshold) {
+                                Log.i(TAG, "Wake word REJECTED — speaker mismatch ($similarity < $threshold)")
+                                continue // silencieux: pas de TTS pour pas alerter un intrus
+                            }
+                            Log.i(TAG, "Wake word accepted — speaker match ($similarity >= $threshold)")
+                        }
+
                         onDetected(text)
                     }
                 }

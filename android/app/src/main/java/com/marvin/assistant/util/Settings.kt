@@ -115,6 +115,24 @@ class Settings(context: Context) {
             plain.edit().putStringSet(KEY_SMS_ALLOWLIST, value).apply()
         }
 
+    /**
+     * Voice biometric: ne déclenche le wake word que si la voix matche
+     * l'empreinte enrôlée. Off par défaut (activable seulement après
+     * enrôlement réussi).
+     */
+    var voiceBiometricEnabled: Boolean
+        get() = plain.getBoolean(KEY_VOICE_BIO_ENABLED, false)
+        set(value) { plain.edit().putBoolean(KEY_VOICE_BIO_ENABLED, value).apply() }
+
+    /**
+     * Seuil de cosine similarity (0-1). Plus haut = plus strict (plus de
+     * faux rejets, moins de faux positifs). Défaut 0.5 (équilibre raisonnable
+     * pour les modèles WeSpeaker / 3D-Speaker sur voix française).
+     */
+    var voiceBiometricThreshold: Float
+        get() = plain.getFloat(KEY_VOICE_BIO_THRESHOLD, 0.5f)
+        set(value) { plain.edit().putFloat(KEY_VOICE_BIO_THRESHOLD, value.coerceIn(0f, 1f)).apply() }
+
     /** Returns true and increments the counter if a request is allowed today. */
     @Synchronized
     fun consumeDailyQuota(): Boolean {
@@ -145,6 +163,8 @@ class Settings(context: Context) {
         private const val KEY_CONFIRM_SENSITIVE = "confirm_sensitive"
         private const val KEY_PIN = "pin"
         private const val KEY_SMS_ALLOWLIST = "sms_allowlist"
+        private const val KEY_VOICE_BIO_ENABLED = "voice_bio_enabled"
+        private const val KEY_VOICE_BIO_THRESHOLD = "voice_bio_threshold"
 
         /** Liste de tous les outils que Claude peut appeler, pour les toggles UI. */
         val ALL_TOOL_NAMES = listOf(

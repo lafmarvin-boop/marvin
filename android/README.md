@@ -363,40 +363,63 @@ décompile facilement. Pour distribuer (toi-même, à toi-même), build release 
 | Clé API extraite | EncryptedSharedPreferences (AES-256 keystore) | Si quelqu'un a root, il peut extraire la clé maître |
 | App malveillante avec accès accessibilité | `AccessibilityService` Marvin restreint à 4 packages | Une autre app accessibility pourrait observer Marvin (mitigation Android standard) |
 
-### Voice biometric — pourquoi c'est différé
+### Voice biometric — vérif d'identité vocale
 
-L'idée séduisante : « Marvin ne se déclenche que si c'est *moi* qui dit
-"jarvis", pas un autre ». Techniquement c'est faisable mais c'est un projet
-à part de plusieurs jours. Ce que ça demande honnêtement :
+Le code est en place ; il faut juste fournir 1 AAR + 1 modèle ONNX. Tant
+que ce n'est pas fait, l'app fonctionne normalement avec voice biometric
+désactivé silencieusement (NoOp verifier).
 
-1. **Modèle d'embedding vocal** type WeSpeaker / SpeechBrain / pyannote,
-   compilé pour Android. Les libs prêtes-à-l'emploi sont rares :
-   - **sherpa-onnx** (k2-fsa, MIT) : a un sample `speaker-identification`
-     Android, mais demande de vendrer un AAR + télécharger un modèle (~15 MB).
-   - **Picovoice Eagle** : un SDK propre, mais on a déjà vu qu'ils demandent
-     un AccessKey (même piège que Porcupine au début).
-2. **Phase d'enrôlement** : enregistrer 3-5 fois la phrase « Jarvis » pour
-   capturer ton empreinte vocale, calculer un embedding moyen, le stocker.
-3. **Vérif au moment du wake word** : ré-extraire un embedding du segment
-   audio qui a déclenché Vosk, calculer la similarité cosinus avec ton
-   empreinte, rejeter si seuil < 0.7 (typique).
-4. **Faux positifs / négatifs** : même les meilleurs modèles ont 1-5 % de
-   FAR/FRR. Tu seras parfois rejeté quand tu es enrhumé, ou un sosie vocal
-   passera. Pas d'illusion.
+**Setup en 4 étapes :**
 
-**Pourquoi je l'ai différé honnêtement** : pour un assistant perso sur ton
-téléphone (pas une enceinte connectée laissée seule), la vraie surface
-d'attaque c'est :
+1. **AAR sherpa-onnx** (~10 MB) :
+   - Télécharger depuis https://github.com/k2-fsa/sherpa-onnx/releases
+   - Renommer en `sherpa-onnx-android.aar`
+   - Placer dans `app/libs/`
+   - Resync Gradle (le build affiche `Voice biometric: sherpa-onnx AAR trouvé`)
 
-- Quelqu'un qui a déverrouillé ton téléphone → couvert par le verrouillage
-  Android et les confirmations orales pour les actions sensibles.
-- La TV / un voisin qui dit « jarvis » → pas une attaque, juste un agacement.
-  Au pire ça déclenche une écoute qui timeout dans 6 s sans rien faire.
+2. **Modèle d'embedding vocal** (~26 MB) — par exemple le modèle 3D-Speaker :
+   ```bash
+   wget https://huggingface.co/csukuangfj/speaker-embedding-models/resolve/main/3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx
+   adb push 3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx \
+     /sdcard/Android/data/com.marvin.assistant/files/speaker.onnx
+   ```
 
-Le voice biometric apporte un vrai gain pour des cas de niche (assistant
-laissé sur la table en open-space, partenaire taquin, etc.). Si tu en veux
-vraiment, dis-le et je l'attaque comme étape dédiée — il y a ~300 lignes +
-intégration sherpa-onnx.
+3. **Enrôlement** : `Réglages → Voice biometric → Enrôler ma voix`. L'app
+   te demande 5 échantillons de toi disant « Jarvis » (~2 s chacun).
+   L'embedding moyen est calculé et stocké dans `filesDir/speaker_reference.bin`.
+
+4. **Activation** : dans Réglages, bascule le toggle « Activer la vérif
+   d'identité vocale ». Slider de seuil par défaut à 0.50 (cosine similarity) :
+   - **0.30-0.40** : très permissif (peu de faux rejets, mais peu sécurisé)
+   - **0.50-0.55** : équilibre raisonnable (ma reco)
+   - **0.65+** : strict (peut te rejeter si tu es enrhumé / fatigué)
+
+**Comment ça marche** : à chaque détection du wake word « jarvis », Marvin
+récupère les 2 dernières secondes d'audio, en extrait un embedding via
+sherpa-onnx, et compare la similarité cosinus avec ta référence enrôlée.
+Si en dessous du seuil, le wake word est silencieusement ignoré (pas de TTS
+pour ne pas alerter un intrus / ne pas t'agacer si la TV a parlé).
+
+**Limites honnêtes :**
+
+- Modèle 3D-Speaker entraîné sur voix chinoises principalement, mais marche
+  étonnamment bien sur le français (les caractéristiques du locuteur sont
+  langue-indépendantes au premier ordre). Si tu sens trop de faux rejets,
+  essaie le modèle WeSpeaker (`wespeaker-en-voxceleb-resnet34-LM.onnx`,
+  ~25 MB, entraîné voix anglaises).
+- Les modèles d'embedding ont typiquement 1-5 % de FRR (faux rejet) et
+  1-3 % de FAR (faux acceptation). Si tu es enrhumé, tu seras parfois
+  rejeté ; un sosie vocal proche peut passer. Pas de magie.
+- Bruits de fond et distance au micro affectent la précision.
+- Si tu actives sans avoir enrôlé, le toggle est désactivé automatiquement
+  au save (sécurité : pas d'activation à vide).
+
+**Bypass / récup en cas de souci** :
+
+- Si tu te fais rejeter en boucle : ouvre l'app via le launcher, va dans
+  Réglages, désactive le toggle ou ré-enrôle.
+- Si tu as oublié ton PIN ET que la voix biometric te bloque : `adb shell
+  pm clear com.marvin.assistant` (perd toutes les données mais débloque tout).
 
 ### Garde-fous bancaires
 
