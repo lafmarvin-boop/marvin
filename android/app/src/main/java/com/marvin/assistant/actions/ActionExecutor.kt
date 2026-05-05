@@ -26,5 +26,10 @@ class ActionExecutor(private val context: Context) {
         MarvinIntent.FamilyWallShowLocations -> familyWall.showLocations()
         is MarvinIntent.Ecovacs -> ecovacs.handle(intent.command)
         is MarvinIntent.Unknown -> "Désolé, j'ai pas compris."
+        // Ces intents sont gérés en amont par AssistantService et ne devraient
+        // jamais atteindre ActionExecutor — branches vides pour exhaustivité.
+        MarvinIntent.StartDiscussion,
+        MarvinIntent.EndDiscussion,
+        MarvinIntent.WipeAllData -> ""
     }
 }

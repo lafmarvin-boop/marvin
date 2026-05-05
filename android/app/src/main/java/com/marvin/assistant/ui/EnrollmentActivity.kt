@@ -10,7 +10,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -27,7 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -162,71 +161,70 @@ private fun EnrollmentScreen(
             )
             Spacer(Modifier.height(24.dp))
             Button(onClick = onDone) { Text("Retour") }
-            return
-        }
-
-        Text(
-            "Dis « Jarvis » à voix naturelle, $target fois.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Text(
-            "Varie un peu : intonation normale, plus posée, plus rapide. " +
-                "Évite les bruits de fond.",
-            style = MaterialTheme.typography.bodySmall
-        )
-        Spacer(Modifier.height(24.dp))
-
-        Text("Échantillons : $samplesRecorded / $target", fontSize = 18.sp, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.height(16.dp))
-
-        if (recording) {
-            RecordingPulse()
-            Spacer(Modifier.height(8.dp))
-            Text("J'enregistre… Dis « Jarvis »", color = Color(0xFF1976D2))
-        }
-        if (error != null) {
-            Text(error!!, color = Color(0xFFB71C1C))
-            Spacer(Modifier.height(8.dp))
-        }
-
-        Spacer(Modifier.height(24.dp))
-        if (samplesRecorded < target) {
-            Button(
-                onClick = {
-                    scope.launch {
-                        recording = true
-                        error = null
-                        // Petite pause pour laisser le user se préparer
-                        delay(300)
-                        val ok = captureSample()
-                        recording = false
-                        if (ok) {
-                            samplesRecorded += 1
-                        } else {
-                            error = "Pas assez de son détecté. Approche-toi du micro."
-                        }
-                    }
-                },
-                enabled = !recording,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(if (samplesRecorded == 0) "Enregistrer le 1er échantillon" else "Enregistrer le suivant") }
         } else {
-            Button(
-                onClick = {
-                    finalize()
-                    onDone()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF388E3C)),
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Valider l'enrôlement") }
-        }
+            Text(
+                "Dis « Jarvis » à voix naturelle, $target fois.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                "Varie un peu : intonation normale, plus posée, plus rapide. " +
+                    "Évite les bruits de fond.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.height(24.dp))
 
-        Spacer(Modifier.height(8.dp))
-        Button(
-            onClick = cancel,
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF607D8B)),
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Annuler") }
+            Text("Échantillons : $samplesRecorded / $target", fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.height(16.dp))
+
+            if (recording) {
+                RecordingPulse()
+                Spacer(Modifier.height(8.dp))
+                Text("J'enregistre… Dis « Jarvis »", color = Color(0xFF1976D2))
+            }
+            if (error != null) {
+                Text(error!!, color = Color(0xFFB71C1C))
+                Spacer(Modifier.height(8.dp))
+            }
+
+            Spacer(Modifier.height(24.dp))
+            if (samplesRecorded < target) {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            recording = true
+                            error = null
+                            // Petite pause pour laisser le user se préparer
+                            delay(300)
+                            val ok = captureSample()
+                            recording = false
+                            if (ok) {
+                                samplesRecorded += 1
+                            } else {
+                                error = "Pas assez de son détecté. Approche-toi du micro."
+                            }
+                        }
+                    },
+                    enabled = !recording,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(if (samplesRecorded == 0) "Enregistrer le 1er échantillon" else "Enregistrer le suivant") }
+            } else {
+                Button(
+                    onClick = {
+                        finalize()
+                        onDone()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF388E3C)),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Valider l'enrôlement") }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = cancel,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF607D8B)),
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Annuler") }
+        }
     }
 }
 

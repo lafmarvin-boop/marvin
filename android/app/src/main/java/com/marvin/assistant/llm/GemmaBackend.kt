@@ -64,7 +64,6 @@ class GemmaBackend(private val context: Context) : LlmBackend {
             val options = LlmInferenceOptions.builder()
                 .setModelPath(modelFile.absolutePath)
                 .setMaxTokens(512)
-                .setMaxTopK(40)
                 .build()
             LlmInference.createFromOptions(context, options).also { llm = it }
         } catch (t: Throwable) {
