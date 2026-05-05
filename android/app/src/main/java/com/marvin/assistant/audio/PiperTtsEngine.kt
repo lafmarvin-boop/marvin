@@ -35,7 +35,13 @@ import java.io.File
  */
 class PiperTtsEngine(private val context: Context) : TtsEngine {
 
-    private val piperDir = File(context.filesDir, "piper")
+    // External files dir = /sdcard/Android/data/<pkg>/files/, accessible via
+    // adb push sans root. Fallback sur filesDir (interne) si l'externe n'est
+    // pas dispo (cas rare: tablettes sans stockage externe émulé).
+    private val piperDir = File(
+        context.getExternalFilesDir(null) ?: context.filesDir,
+        "piper"
+    )
     private val modelFile = File(piperDir, "voice.onnx")
     private val tokensFile = File(piperDir, "tokens.txt")
     private val espeakDir = File(piperDir, "espeak-ng-data")

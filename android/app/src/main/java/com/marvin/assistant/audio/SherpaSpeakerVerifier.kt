@@ -30,7 +30,11 @@ import kotlin.math.sqrt
  */
 class SherpaSpeakerVerifier(private val context: Context) : SpeakerVerifier {
 
-    private val modelFile = File(context.filesDir, MODEL_FILENAME)
+    // External files dir = /sdcard/Android/data/<pkg>/files/, accessible via
+    // adb push sans root. La référence enrôlée reste en interne (filesDir)
+    // pour qu'elle survive si l'utilisateur supprime le modèle externe.
+    private val externalDir = context.getExternalFilesDir(null) ?: context.filesDir
+    private val modelFile = File(externalDir, MODEL_FILENAME)
     private val referenceFile = File(context.filesDir, REFERENCE_FILENAME)
 
     @Volatile private var extractor: Any? = null
