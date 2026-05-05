@@ -28,6 +28,13 @@ sealed class MarvinIntent {
     data object FamilyWallShowLocations : MarvinIntent()
     data class Ecovacs(val command: EcovacsAction) : MarvinIntent()
 
+    /** L'utilisateur veut entrer en mode discussion multi-tours. */
+    data object StartDiscussion : MarvinIntent()
+
+    /** L'utilisateur veut sortir du mode discussion. */
+    data object EndDiscussion : MarvinIntent()
+
+    /** Aucun match local — à transmettre au backend LLM (Claude ou Gemma). */
     data class Unknown(val raw: String) : MarvinIntent()
 }
 

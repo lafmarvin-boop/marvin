@@ -69,6 +69,13 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-service:2.8.6")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // HTTP client for Claude API
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Google Play Services for fused location (free tools)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 
     // Compose UI
     implementation(platform("androidx.compose:compose-bom:2024.09.03"))

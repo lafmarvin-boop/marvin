@@ -14,7 +14,9 @@ class OpenAppAction(private val context: Context) {
         "banque pop" to "fr.banquepopulaire.cyberplus",
         "banque populaire" to "fr.banquepopulaire.cyberplus",
         "ecovacs" to "com.eco.global.app",
-        "ecovacs home" to "com.eco.global.app"
+        "ecovacs home" to "com.eco.global.app",
+        "météo" to "com.samsung.android.weather",
+        "meteo" to "com.samsung.android.weather"
     )
 
     fun open(appKey: String): String {

@@ -59,6 +59,9 @@ class MainActivity : ComponentActivity() {
                         onOpenAccessibilitySettings = {
                             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                         },
+                        onOpenMarvinSettings = {
+                            startActivity(Intent(this, SettingsActivity::class.java))
+                        },
                         onStartService = { AssistantService.start(this) },
                         onStopService = { AssistantService.stop(this) },
                         hasPermissions = { hasAllPermissions() }
@@ -77,6 +80,7 @@ class MainActivity : ComponentActivity() {
 private fun HomeScreen(
     onRequestPermissions: () -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
+    onOpenMarvinSettings: () -> Unit,
     onStartService: () -> Unit,
     onStopService: () -> Unit,
     hasPermissions: () -> Boolean
@@ -89,7 +93,7 @@ private fun HomeScreen(
     ) {
         Text("Marvin", style = MaterialTheme.typography.headlineLarge)
         Spacer(Modifier.height(8.dp))
-        Text("Dis « yo poto » pour me parler.")
+        Text("Dis « jarvis » pour me parler.")
         Spacer(Modifier.height(24.dp))
 
         Button(onClick = {
@@ -101,6 +105,10 @@ private fun HomeScreen(
         Spacer(Modifier.height(8.dp))
         Button(onClick = onOpenAccessibilitySettings) {
             Text("Activer le service d'accessibilité")
+        }
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = onOpenMarvinSettings) {
+            Text("Réglages Marvin (clé API, modèle…)")
         }
         Spacer(Modifier.height(24.dp))
         Button(onClick = onStartService) { Text("Démarrer Marvin") }

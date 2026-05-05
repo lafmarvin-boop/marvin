@@ -39,23 +39,23 @@ import java.util.concurrent.atomic.AtomicBoolean
 class WakeWordEngine(
     private val context: Context,
     private val voskModel: VoskModelHolder,
-    private val keyword: String = DEFAULT_KEYWORD
+    private val keywords: List<String> = DEFAULT_KEYWORDS
 ) {
 
     private var audioRecord: AudioRecord? = null
     private var loopJob: Job? = null
     private val paused = AtomicBoolean(false)
-    private var onDetectedCallback: (() -> Unit)? = null
+    private var onDetectedCallback: ((String) -> Unit)? = null
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
-    fun start(onDetected: () -> Unit) {
+    fun start(onDetected: (transcript: String) -> Unit) {
         if (loopJob != null) return
         onDetectedCallback = onDetected
         startRecorderAndLoop(onDetected)
     }
 
     @SuppressLint("MissingPermission")
-    private fun startRecorderAndLoop(onDetected: () -> Unit) {
+    private fun startRecorderAndLoop(onDetected: (String) -> Unit) {
         val sampleRate = SAMPLE_RATE
         val minBuffer = AudioRecord.getMinBufferSize(
             sampleRate,
@@ -77,9 +77,11 @@ class WakeWordEngine(
         recorder.startRecording()
 
         loopJob = CoroutineScope(Dispatchers.Default).launch {
-            // Grammar restricts decoding to the keyword – cheaper than full
-            // language model decoding, and any other speech maps to "[unk]".
-            val grammar = """["${keyword.lowercase()}", "[unk]"]"""
+            // "jarvis" est un nom anglais; on liste plusieurs orthographes
+            // probables pour que le modèle FR de Vosk en accroche au moins une.
+            // Le terminal "[unk]" route le reste vers l'unknown-word model.
+            val grammar = (keywords.map { "\"${it.lowercase()}\"" } + "\"[unk]\"")
+                .joinToString(prefix = "[", postfix = "]")
             val recognizer = Recognizer(voskModel.get(), sampleRate.toFloat(), grammar)
             val buffer = ShortArray(frameSize)
             try {
@@ -97,10 +99,10 @@ class WakeWordEngine(
                     } else {
                         JSONObject(recognizer.partialResult).optString("partial")
                     }
-                    if (text.isNotEmpty() && text.contains(keyword, ignoreCase = true)) {
+                    if (text.isNotEmpty() && keywords.any { text.contains(it, ignoreCase = true) }) {
                         Log.i(TAG, "Wake word detected: \"$text\"")
                         recognizer.reset()
-                        onDetected()
+                        onDetected(text)
                     }
                 }
             } finally {
@@ -138,6 +140,8 @@ class WakeWordEngine(
     companion object {
         private const val TAG = "WakeWord"
         private const val SAMPLE_RATE = 16_000
-        const val DEFAULT_KEYWORD = "yo poto"
+        // "Jarvis" n'est pas un mot français; on liste les orthographes
+        // probables que le modèle Vosk small FR pourrait produire.
+        val DEFAULT_KEYWORDS = listOf("jarvis", "djarvis", "djarviss", "djarvisse", "jarvisse")
     }
 }

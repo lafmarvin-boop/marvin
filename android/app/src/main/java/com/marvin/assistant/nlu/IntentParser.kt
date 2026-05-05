@@ -23,6 +23,14 @@ class IntentParser {
     private data class Rule(val regex: Regex, val build: (MatchResult) -> MarvinIntent)
 
     private val rules: List<Rule> = listOf(
+        // ---- Mode discussion ----
+        Rule(Regex("""^(discutons|on discute|j'aimerais discuter|on parle|parlons)\b""")) {
+            MarvinIntent.StartDiscussion
+        },
+        Rule(Regex("""^(merci|fin (?:de la )?discussion|stop|arrête (?:la )?discussion|c'est tout)\b""")) {
+            MarvinIntent.EndDiscussion
+        },
+
         // ---- Spotify ----
         Rule(Regex("""(joue|lance|mets) (?:de la )?musique""")) { MarvinIntent.Spotify.Play },
         Rule(Regex("""(?:mets|joue|lance) (.+?) sur spotify""")) {
@@ -54,6 +62,9 @@ class IntentParser {
         },
 
         // ---- Banque (lecture seule) ----
+        Rule(Regex("""combien (?:il )?(?:me )?reste (?:d'argent )?sur (?:mon )?compte""")) {
+            MarvinIntent.BankRead(BankKind.BOURSOBANK, BankRequest.BALANCE)
+        },
         Rule(Regex("""(?:quel est |donne |montre |c'est quoi )?(?:mon )?solde (?:sur |de )?boursobank""")) {
             MarvinIntent.BankRead(BankKind.BOURSOBANK, BankRequest.BALANCE)
         },

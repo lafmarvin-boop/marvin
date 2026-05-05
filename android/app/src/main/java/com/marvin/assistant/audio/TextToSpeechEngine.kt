@@ -18,7 +18,12 @@ class TextToSpeechEngine(context: Context) {
     init {
         tts = TextToSpeech(context.applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                this@TextToSpeechEngine.tts.language = Locale.FRENCH
+                val engine = this@TextToSpeechEngine.tts
+                engine.language = Locale.FRENCH
+                // Best-effort: pick a deep male French voice if available.
+                pickMaleFrenchVoice(engine)?.let { engine.voice = it }
+                engine.setPitch(0.85f) // un peu plus grave que la voix par défaut
+                engine.setSpeechRate(0.95f) // légèrement plus posé
                 ready = true
             }
         }
@@ -28,6 +33,19 @@ class TextToSpeechEngine(context: Context) {
             @Deprecated("Deprecated in Java")
             override fun onError(utteranceId: String?) { pending.remove(utteranceId)?.invoke() }
         })
+    }
+
+    private fun pickMaleFrenchVoice(engine: TextToSpeech): android.speech.tts.Voice? {
+        val voices = try { engine.voices } catch (_: Throwable) { null } ?: return null
+        // 1) FR + nom contenant "male" (mais pas "female")
+        val explicitMale = voices.firstOrNull {
+            it.locale.language == "fr" &&
+                it.name.contains("male", ignoreCase = true) &&
+                !it.name.contains("female", ignoreCase = true)
+        }
+        if (explicitMale != null) return explicitMale
+        // 2) FR sans réseau, premier dispo
+        return voices.firstOrNull { it.locale.language == "fr" && !it.isNetworkConnectionRequired }
     }
 
     suspend fun speak(text: String) = suspendCancellableCoroutine<Unit> { cont ->
