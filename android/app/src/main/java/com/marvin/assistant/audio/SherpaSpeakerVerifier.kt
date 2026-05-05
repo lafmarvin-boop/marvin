@@ -110,7 +110,8 @@ class SherpaSpeakerVerifier(context: Context) : SpeakerVerifier {
         return try {
             val floats = FloatArray(samples.size) { samples[it].toFloat() / 32768f }
             val stream = ext.createStream()
-            stream.acceptWaveform(sampleRate, floats)
+            // sherpa-onnx Android API: acceptWaveform(samples: FloatArray, sampleRate: Int)
+            stream.acceptWaveform(floats, sampleRate)
             stream.inputFinished()
             val raw = ext.compute(stream)
             stream.release()

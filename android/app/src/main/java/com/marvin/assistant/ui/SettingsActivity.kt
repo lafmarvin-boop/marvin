@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -179,7 +181,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
         Text(
             "PIN d'accès aux Réglages",
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+            fontWeight = FontWeight.Medium
         )
         Text(
             if (pinSet) "PIN actif. Saisis 4-6 chiffres pour le changer, ou laisse vide et appuie « Désactiver le PIN »."
@@ -223,7 +225,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
         Text(
             "Allowlist SMS (optionnel)",
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+            fontWeight = FontWeight.Medium
         )
         Text(
             "Si non vide, Claude ne peut lire que les SMS de contacts dont le nom contient un de ces fragments. Sépare par des virgules. Ex: « Marie, Papa, école ».",
@@ -241,7 +243,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
         Text(
             "Voice biometric",
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+            fontWeight = FontWeight.Medium
         )
         when {
             !voiceBioReady -> Text(
@@ -275,7 +277,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                     "Seuil : ${"%.2f".format(voiceBioThreshold)} (plus haut = plus strict)",
                     style = MaterialTheme.typography.bodySmall
                 )
-                androidx.compose.material3.Slider(
+                Slider(
                     value = voiceBioThreshold,
                     onValueChange = { voiceBioThreshold = it },
                     valueRange = 0.3f..0.9f,
