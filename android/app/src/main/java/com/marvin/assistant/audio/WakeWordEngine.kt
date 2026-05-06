@@ -135,6 +135,8 @@ class WakeWordEngine(
                         try {
                             val deadline = System.currentTimeMillis() + POST_WAKE_LISTEN_MS
                             var lastChange = System.currentTimeMillis()
+                            val accumulated = StringBuilder()
+                            var currentPartial = ""
                             while (isActive && System.currentTimeMillis() < deadline) {
                                 val readMore = recorder.read(buffer, 0, frameSize)
                                 if (readMore <= 0) continue
@@ -145,27 +147,37 @@ class WakeWordEngine(
                                     Log.e(TAG, "Vosk acceptWaveForm failed (post-wake)", t); false
                                 }
                                 if (moreFinalized) {
+                                    // Vosk a détecté un break (micro-silence). On
+                                    // accumule mais on ne sort PAS — l'utilisateur
+                                    // peut continuer à parler.
                                     val res = JSONObject(freeRecognizer.result).optString("text")
-                                    if (res.isNotEmpty()) commandText = res
-                                    break
-                                } else {
-                                    val partial = JSONObject(freeRecognizer.partialResult).optString("partial")
-                                    if (partial.isNotEmpty() && partial != commandText) {
-                                        commandText = partial
+                                    if (res.isNotEmpty()) {
+                                        if (accumulated.isNotEmpty()) accumulated.append(' ')
+                                        accumulated.append(res)
                                         lastChange = System.currentTimeMillis()
                                     }
-                                    // Si la transcription n'évolue plus depuis 700 ms,
-                                    // on considère que l'utilisateur a fini.
-                                    if (commandText.isNotEmpty() &&
-                                        System.currentTimeMillis() - lastChange > 700
-                                    ) break
+                                    currentPartial = ""
+                                } else {
+                                    val partial = JSONObject(freeRecognizer.partialResult).optString("partial")
+                                    if (partial.isNotEmpty() && partial != currentPartial) {
+                                        currentPartial = partial
+                                        lastChange = System.currentTimeMillis()
+                                    }
+                                }
+                                // Sortie sur silence prolongé : si rien n'a bougé
+                                // depuis 1 s ET qu'on a déjà du contenu, l'utilisateur
+                                // a fini de parler.
+                                if (accumulated.isNotEmpty() || currentPartial.isNotEmpty()) {
+                                    if (System.currentTimeMillis() - lastChange > POST_WAKE_SILENCE_MS) break
                                 }
                             }
-                            // Force la finalisation si on a un partial mais pas de result.
-                            if (commandText.isNotEmpty()) {
-                                val forced = JSONObject(freeRecognizer.finalResult).optString("text")
-                                if (forced.isNotEmpty()) commandText = forced
+                            // Force la finalisation pour récupérer ce qui restait dans le buffer.
+                            val forced = JSONObject(freeRecognizer.finalResult).optString("text")
+                            if (forced.isNotEmpty()) {
+                                if (accumulated.isNotEmpty()) accumulated.append(' ')
+                                accumulated.append(forced)
                             }
+                            commandText = accumulated.toString().trim().replace(Regex("\\s+"), " ")
                         } finally {
                             freeRecognizer.close()
                         }
@@ -211,10 +223,14 @@ class WakeWordEngine(
     companion object {
         private const val TAG = "WakeWord"
         private const val SAMPLE_RATE = 16_000
-        // Combien de temps on garde le micro après "jarvis" pour attraper une
-        // commande enchaînée. 1500 ms = compromis entre fluidité et latence
-        // si l'utilisateur dit juste "jarvis" tout seul.
-        private const val POST_WAKE_LISTEN_MS = 1500L
+        // Combien de temps max on garde le micro après "jarvis" pour
+        // attraper une commande enchaînée. 3000 ms couvre une phrase courte
+        // type "jarvis donne moi la météo de demain à Paris".
+        private const val POST_WAKE_LISTEN_MS = 3000L
+        // Silence prolongé après lequel on considère que l'utilisateur a fini
+        // de parler. 1000 ms tolère les petites pauses naturelles entre les
+        // mots tout en évitant de laisser le micro ouvert inutilement.
+        private const val POST_WAKE_SILENCE_MS = 1000L
         // "Jarvis" n'est pas un mot français; on liste les orthographes
         // probables que le modèle Vosk small FR pourrait produire.
         // "bonjour" est inclus pour réveiller Jarvis quand il est en mode dodo
