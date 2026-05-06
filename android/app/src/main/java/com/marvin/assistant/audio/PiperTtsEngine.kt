@@ -75,10 +75,16 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
             // Args nommés + valeurs par défaut Kotlin → les champs qu'on ne
             // connaît pas (ajouts d'une version à l'autre) prennent leur
             // défaut automatiquement, plus de signature mismatch.
+            // Paramètres pour un débit posé "majordome": plus lent, moins
+            // d'intonation excessive. lengthScale > 1.0 = plus lent.
+            // noiseScale < 0.667 = moins de variation = plus contrôlé.
             val vits = OfflineTtsVitsModelConfig(
                 model = modelFile.absolutePath,
                 tokens = tokensFile.absolutePath,
                 dataDir = espeakDir.absolutePath,
+                noiseScale = 0.5f,        // défaut 0.667 — plus contrôlé
+                noiseScaleW = 0.6f,       // défaut 0.8  — moins de variations
+                lengthScale = 1.15f,      // défaut 1.0  — 15 % plus lent, plus posé
             )
             val modelCfg = OfflineTtsModelConfig(
                 vits = vits,
