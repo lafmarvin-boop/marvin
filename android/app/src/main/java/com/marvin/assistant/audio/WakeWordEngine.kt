@@ -231,12 +231,15 @@ class WakeWordEngine(
         // de parler. 1000 ms tolère les petites pauses naturelles entre les
         // mots tout en évitant de laisser le micro ouvert inutilement.
         private const val POST_WAKE_SILENCE_MS = 1000L
-        // "Jarvis" n'est pas un mot français; on liste les orthographes
-        // probables que le modèle Vosk small FR pourrait produire.
-        // "bonjour" est inclus pour réveiller Jarvis quand il est en mode dodo
-        // ("bonjour Jarvis" → wake-up).
+        // "Jarvis" n'est pas un mot français — Vosk le transcrit souvent
+        // de façons très variées selon la prononciation. On accepte large
+        // pour ne pas rater le wake word. Quitte à avoir quelques faux
+        // positifs (rares en pratique), c'est mieux que de manquer.
+        // "bonjour" sert de wake word pour sortir du mode dodo.
         val DEFAULT_KEYWORDS = listOf(
             "jarvis", "djarvis", "djarviss", "djarvisse", "jarvisse",
+            "jarvi", "yarvis", "djarvi", "charvis", "tchavis", "charvi",
+            "jarvice", "yves", "yvre", "tarvis",
             "bonjour"
         )
     }

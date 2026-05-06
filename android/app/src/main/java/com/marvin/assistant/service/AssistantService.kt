@@ -487,8 +487,14 @@ class AssistantService : LifecycleService() {
         private const val VISUAL_REQUEST_CODE = 0xC0DE
         const val VISUAL_CHANNEL_ID = "marvin_visual"
 
-        /** Variantes de prononciation que Vosk peut produire pour "Jarvis". */
-        private val JARVIS_VARIANTS = listOf("jarvis", "djarvis", "djarviss", "djarvisse", "jarvisse")
+        /** Variantes de prononciation que Vosk peut produire pour "Jarvis".
+         *  Volontairement large pour ne pas rater le wake word. La voix
+         *  biométrique (si activée) filtre les faux positifs côté locuteur. */
+        private val JARVIS_VARIANTS = listOf(
+            "jarvis", "djarvis", "djarviss", "djarvisse", "jarvisse",
+            "jarvi", "yarvis", "djarvi", "charvis", "tchavis", "charvi",
+            "jarvice", "yves", "yvre", "tarvis"
+        )
 
         private val YES_PATTERN = Regex(
             """\b(oui|ouais|yes|ok|d'accord|confirme(?:r)?|vas[- ]y|envoie|appelle|efface|supprime)\b""",
