@@ -123,36 +123,54 @@ class WakeWordEngine(
                             Log.i(TAG, "Wake word accepted — speaker match ($similarity >= $threshold)")
                         }
 
-                        // Continuer à écouter ~1.5 s pour capturer une commande
-                        // enchaînée du style "jarvis donne-moi l'heure". On break
-                        // dès que Vosk finalise (silence détecté) ou quand on
-                        // atteint le deadline.
-                        val deadline = System.currentTimeMillis() + POST_WAKE_LISTEN_MS
-                        var fullText = text
-                        while (isActive && System.currentTimeMillis() < deadline) {
-                            val readMore = recorder.read(buffer, 0, frameSize)
-                            if (readMore <= 0) continue
-                            audioBuffer.write(buffer, readMore)
-                            val moreFinalized = try {
-                                recognizer.acceptWaveForm(buffer, readMore)
-                            } catch (t: Throwable) {
-                                Log.e(TAG, "Vosk acceptWaveForm failed (post-wake)", t); false
-                            }
-                            if (moreFinalized) {
-                                fullText = JSONObject(recognizer.result).optString("text").ifEmpty { fullText }
-                                break
-                            } else {
-                                val partial = JSONObject(recognizer.partialResult).optString("partial")
-                                if (partial.isNotEmpty()) fullText = partial
-                            }
-                        }
-                        // Si on a atteint le deadline sans finalisation, on force
-                        // la finalisation pour récupérer la transcription complète.
-                        if (System.currentTimeMillis() >= deadline) {
-                            val forced = JSONObject(recognizer.finalResult).optString("text")
-                            if (forced.isNotEmpty()) fullText = forced
-                        }
                         recognizer.reset()
+
+                        // Bascule sur un recognizer SANS grammaire (vocabulaire
+                        // complet du modèle) pour transcrire la commande qui
+                        // suit "jarvis". Le recognizer à grammaire ne peut
+                        // produire que les mots-clés + [unk] et ne sait pas
+                        // transcrire des phrases libres.
+                        val freeRecognizer = Recognizer(voskModel.get(), sampleRate.toFloat())
+                        var commandText = ""
+                        try {
+                            val deadline = System.currentTimeMillis() + POST_WAKE_LISTEN_MS
+                            var lastChange = System.currentTimeMillis()
+                            while (isActive && System.currentTimeMillis() < deadline) {
+                                val readMore = recorder.read(buffer, 0, frameSize)
+                                if (readMore <= 0) continue
+                                audioBuffer.write(buffer, readMore)
+                                val moreFinalized = try {
+                                    freeRecognizer.acceptWaveForm(buffer, readMore)
+                                } catch (t: Throwable) {
+                                    Log.e(TAG, "Vosk acceptWaveForm failed (post-wake)", t); false
+                                }
+                                if (moreFinalized) {
+                                    val res = JSONObject(freeRecognizer.result).optString("text")
+                                    if (res.isNotEmpty()) commandText = res
+                                    break
+                                } else {
+                                    val partial = JSONObject(freeRecognizer.partialResult).optString("partial")
+                                    if (partial.isNotEmpty() && partial != commandText) {
+                                        commandText = partial
+                                        lastChange = System.currentTimeMillis()
+                                    }
+                                    // Si la transcription n'évolue plus depuis 700 ms,
+                                    // on considère que l'utilisateur a fini.
+                                    if (commandText.isNotEmpty() &&
+                                        System.currentTimeMillis() - lastChange > 700
+                                    ) break
+                                }
+                            }
+                            // Force la finalisation si on a un partial mais pas de result.
+                            if (commandText.isNotEmpty()) {
+                                val forced = JSONObject(freeRecognizer.finalResult).optString("text")
+                                if (forced.isNotEmpty()) commandText = forced
+                            }
+                        } finally {
+                            freeRecognizer.close()
+                        }
+                        // Concatène : "jarvis" + " " + commande
+                        val fullText = if (commandText.isNotEmpty()) "$text $commandText" else text
                         Log.i(TAG, "Wake word + post-wake: \"$fullText\"")
 
                         onDetected(fullText)
