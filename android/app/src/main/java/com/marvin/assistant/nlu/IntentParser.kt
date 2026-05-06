@@ -69,7 +69,9 @@ class IntentParser {
         },
 
         // ---- Appels ----
-        Rule(Regex("""(?:appelle|appel|téléphone à|téléphone a) ([\p{L}\s'-]+)""")) {
+        // Ancré au début pour ne pas matcher "comment je m'appelle marvin"
+        // (où "appelle" apparaît au milieu après "m'").
+        Rule(Regex("""^(?:appelle|appel|téléphone à|téléphone a)\s+([\p{L}\s'-]+)""")) {
             MarvinIntent.CallContact(it.groupValues[1].trim())
         },
 
