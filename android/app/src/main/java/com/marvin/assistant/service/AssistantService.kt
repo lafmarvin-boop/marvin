@@ -143,9 +143,24 @@ class AssistantService : LifecycleService() {
             // devant) pour activer.
             if (!saidJarvis) return@launch
 
+            // Si la phrase contient déjà la commande après "jarvis"
+            // (ex. "jarvis donne moi l'heure"), on évite le double-listen
+            // et on dispatche directement la commande.
+            val command = stripWakeWord(wakeTranscript)
+
             wakeWord.pause()
-            try { handleTurn() } finally { wakeWord.resume() }
+            try {
+                handleTurn(prefilledTranscript = command.takeIf { it.split(' ').size >= 2 })
+            } finally { wakeWord.resume() }
         }
+    }
+
+    private fun stripWakeWord(transcript: String): String {
+        var result = transcript
+        for (variant in JARVIS_VARIANTS + listOf("bonjour")) {
+            result = result.replace(variant, "", ignoreCase = true)
+        }
+        return result.trim().replace(Regex("\\s+"), " ")
     }
 
     private suspend fun wakeUp() {
@@ -166,13 +181,13 @@ class AssistantService : LifecycleService() {
         updateNotification()
     }
 
-    private suspend fun handleTurn() {
+    private suspend fun handleTurn(prefilledTranscript: String? = null) {
         // Ouvre l'écran "réacteur" futuriste pour CHAQUE interaction Jarvis.
         // Reste affiché pendant l'écoute / la réflexion / la réponse, puis
         // se ferme tout seul (DiscussionActivity finish() sur Phase.Idle).
         openJarvisVisual()
         try {
-            handleTurnInner()
+            handleTurnInner(prefilledTranscript)
         } finally {
             // Petite pause pour laisser l'utilisateur voir la dernière phase
             // avant que l'écran se ferme.
@@ -194,12 +209,19 @@ class AssistantService : LifecycleService() {
         DiscussionStateHolder.setPhase(DiscussionPhase.Listening)
     }
 
-    private suspend fun handleTurnInner() {
-        // Plus de TTS "Oui ?" qui chevauche ta voix : juste un bip court +
-        // écoute immédiate. Tu peux enchaîner "Jarvis ... [pause 200ms] ... commande".
-        playWakeBeep()
-        val transcript = stt.listenOnce(silenceTimeoutMs = 1800L, maxDurationMs = 8_000L)
-        Log.i(TAG, "Transcript: $transcript")
+    private suspend fun handleTurnInner(prefilledTranscript: String? = null) {
+        // Si l'utilisateur a enchaîné le wake word + commande
+        // (ex. "jarvis donne moi l'heure"), on a déjà la commande, pas
+        // besoin de bip + nouvelle écoute STT. Sinon on bipe + écoute.
+        val transcript = if (!prefilledTranscript.isNullOrBlank()) {
+            Log.i(TAG, "Using prefilled transcript from wake-word stream: $prefilledTranscript")
+            prefilledTranscript
+        } else {
+            playWakeBeep()
+            val captured = stt.listenOnce(silenceTimeoutMs = 1800L, maxDurationMs = 8_000L)
+            Log.i(TAG, "Transcript: $captured")
+            captured
+        }
         if (transcript.isNullOrBlank()) {
             speakWithPhase("J'ai rien entendu.")
             return

@@ -108,21 +108,54 @@ class WakeWordEngine(
                     }
                     if (text.isNotEmpty() && keywords.any { text.contains(it, ignoreCase = true) }) {
                         Log.i(TAG, "Wake word detected: \"$text\"")
-                        recognizer.reset()
 
                         // Voice biometric: si activé + enrôlé, vérifier que c'est bien le locuteur.
+                        // Snapshot AVANT d'étendre l'écoute pour rester sur l'audio du wake word.
                         if (voiceBiometricEnabled() && speakerVerifier.isReady() && speakerVerifier.isEnrolled()) {
                             val snapshot = audioBuffer.snapshot()
                             val similarity = speakerVerifier.verify(snapshot, sampleRate)
                             val threshold = voiceBiometricThreshold()
                             if (similarity < threshold) {
                                 Log.i(TAG, "Wake word REJECTED — speaker mismatch ($similarity < $threshold)")
+                                recognizer.reset()
                                 continue // silencieux: pas de TTS pour pas alerter un intrus
                             }
                             Log.i(TAG, "Wake word accepted — speaker match ($similarity >= $threshold)")
                         }
 
-                        onDetected(text)
+                        // Continuer à écouter ~1.5 s pour capturer une commande
+                        // enchaînée du style "jarvis donne-moi l'heure". On break
+                        // dès que Vosk finalise (silence détecté) ou quand on
+                        // atteint le deadline.
+                        val deadline = System.currentTimeMillis() + POST_WAKE_LISTEN_MS
+                        var fullText = text
+                        while (isActive && System.currentTimeMillis() < deadline) {
+                            val readMore = recorder.read(buffer, 0, frameSize)
+                            if (readMore <= 0) continue
+                            audioBuffer.write(buffer, readMore)
+                            val moreFinalized = try {
+                                recognizer.acceptWaveForm(buffer, readMore)
+                            } catch (t: Throwable) {
+                                Log.e(TAG, "Vosk acceptWaveForm failed (post-wake)", t); false
+                            }
+                            if (moreFinalized) {
+                                fullText = JSONObject(recognizer.result).optString("text").ifEmpty { fullText }
+                                break
+                            } else {
+                                val partial = JSONObject(recognizer.partialResult).optString("partial")
+                                if (partial.isNotEmpty()) fullText = partial
+                            }
+                        }
+                        // Si on a atteint le deadline sans finalisation, on force
+                        // la finalisation pour récupérer la transcription complète.
+                        if (System.currentTimeMillis() >= deadline) {
+                            val forced = JSONObject(recognizer.finalResult).optString("text")
+                            if (forced.isNotEmpty()) fullText = forced
+                        }
+                        recognizer.reset()
+                        Log.i(TAG, "Wake word + post-wake: \"$fullText\"")
+
+                        onDetected(fullText)
                     }
                 }
             } finally {
@@ -160,6 +193,10 @@ class WakeWordEngine(
     companion object {
         private const val TAG = "WakeWord"
         private const val SAMPLE_RATE = 16_000
+        // Combien de temps on garde le micro après "jarvis" pour attraper une
+        // commande enchaînée. 1500 ms = compromis entre fluidité et latence
+        // si l'utilisateur dit juste "jarvis" tout seul.
+        private const val POST_WAKE_LISTEN_MS = 1500L
         // "Jarvis" n'est pas un mot français; on liste les orthographes
         // probables que le modèle Vosk small FR pourrait produire.
         // "bonjour" est inclus pour réveiller Jarvis quand il est en mode dodo
