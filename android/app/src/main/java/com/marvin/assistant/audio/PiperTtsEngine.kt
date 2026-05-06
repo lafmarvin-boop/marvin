@@ -50,10 +50,28 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
     @Volatile private var sampleRate: Int = 22050
 
     override fun isReady(): Boolean {
-        if (!modelFile.exists() || !tokensFile.exists() || !espeakDir.exists()) return false
+        // Diagnostic verbeux pour qu'on voie dans Logcat exactement quelle
+        // vérification échoue (et pas juste un "not ready" silencieux).
+        val haveModel = modelFile.exists()
+        val haveTokens = tokensFile.exists()
+        val haveEspeak = espeakDir.exists() && espeakDir.isDirectory
+        if (!haveModel || !haveTokens || !haveEspeak) {
+            Log.i(
+                TAG,
+                "isReady=false — voice.onnx=$haveModel ($modelFile), " +
+                    "tokens.txt=$haveTokens ($tokensFile), " +
+                    "espeak-ng-data=$haveEspeak ($espeakDir)"
+            )
+            return false
+        }
         return try {
-            Class.forName("com.k2fsa.sherpa.onnx.OfflineTts"); true
-        } catch (_: Throwable) { false }
+            Class.forName("com.k2fsa.sherpa.onnx.OfflineTts")
+            Log.i(TAG, "isReady=true — files OK + OfflineTts class loaded")
+            true
+        } catch (t: Throwable) {
+            Log.e(TAG, "isReady=false — OfflineTts class NOT loaded: ${t.javaClass.simpleName}: ${t.message}", t)
+            false
+        }
     }
 
     @Synchronized
