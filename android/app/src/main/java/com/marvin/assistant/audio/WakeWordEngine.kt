@@ -109,6 +109,11 @@ class WakeWordEngine(
 
                     if (finalized) {
                         val text = JSONObject(recognizer.result).optString("text")
+                        // DIAGNOSTIC : on log TOUTE finalisation pour voir ce
+                        // que Vosk produit quand l'utilisateur parle. Si
+                        // "jarvis" arrive systématiquement comme un autre
+                        // mot, il faut le rajouter aux variantes.
+                        if (text.isNotEmpty()) Log.i(TAG, "Vosk final: \"$text\"")
                         val matched = text.isNotEmpty() && (
                             keywords.any { text.contains(it, ignoreCase = true) } ||
                                 JARVIS_FUZZY.containsMatchIn(text)
