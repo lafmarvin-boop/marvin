@@ -30,11 +30,19 @@ import kotlin.math.sqrt
  */
 class SherpaSpeakerVerifier(private val context: Context) : SpeakerVerifier {
 
-    // External files dir = /sdcard/Android/data/<pkg>/files/, accessible via
-    // adb push sans root. La référence enrôlée reste en interne (filesDir)
-    // pour qu'elle survive si l'utilisateur supprime le modèle externe.
-    private val externalDir = context.getExternalFilesDir(null) ?: context.filesDir
-    private val modelFile = File(externalDir, MODEL_FILENAME)
+    // On cherche le modèle d'abord en interne (filesDir/speaker.onnx) puis
+    // en externe (getExternalFilesDir/speaker.onnx). Sur Samsung One UI le
+    // scoped storage bloque parfois l'accès au dossier externe de l'app —
+    // l'interne via `adb shell run-as` est plus fiable.
+    private val modelFile: File = run {
+        val internal = File(context.filesDir, MODEL_FILENAME)
+        val external = File(context.getExternalFilesDir(null) ?: context.filesDir, MODEL_FILENAME)
+        when {
+            internal.exists() -> internal
+            external.exists() -> external
+            else -> internal
+        }
+    }
     private val referenceFile = File(context.filesDir, REFERENCE_FILENAME)
 
     @Volatile private var extractor: Any? = null

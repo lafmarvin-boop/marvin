@@ -35,13 +35,22 @@ import java.io.File
  */
 class PiperTtsEngine(private val context: Context) : TtsEngine {
 
-    // External files dir = /sdcard/Android/data/<pkg>/files/, accessible via
-    // adb push sans root. Fallback sur filesDir (interne) si l'externe n'est
-    // pas dispo (cas rare: tablettes sans stockage externe émulé).
-    private val piperDir = File(
-        context.getExternalFilesDir(null) ?: context.filesDir,
-        "piper"
-    )
+    // On regarde dans 2 endroits possibles, dans cet ordre:
+    //  1. filesDir/piper (interne, accessible via `adb shell run-as`)
+    //  2. getExternalFilesDir/piper (externe, accessible via `adb push` direct)
+    // Le 1er qui contient voice.onnx gagne. Sur Samsung One UI, l'externe est
+    // souvent bloqué par le scoped storage même pour le dossier de l'app, donc
+    // l'interne est plus fiable.
+    private val piperDir: File = run {
+        val internal = File(context.filesDir, "piper")
+        val external = (context.getExternalFilesDir(null) ?: context.filesDir)
+            .let { File(it, "piper") }
+        when {
+            File(internal, "voice.onnx").exists() -> internal
+            File(external, "voice.onnx").exists() -> external
+            else -> internal // par défaut, on cherche dans l'interne
+        }
+    }
     private val modelFile = File(piperDir, "voice.onnx")
     private val tokensFile = File(piperDir, "tokens.txt")
     private val espeakDir = File(piperDir, "espeak-ng-data")
