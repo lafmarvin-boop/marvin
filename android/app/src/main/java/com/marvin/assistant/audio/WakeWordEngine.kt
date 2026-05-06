@@ -82,21 +82,19 @@ class WakeWordEngine(
         recorder.startRecording()
 
         loopJob = CoroutineScope(Dispatchers.Default).launch {
-            // Recognizer FULL VOCAB (sans grammaire). On veut détecter
-            // "jarvis" et capturer la commande qui suit dans le MEME flux —
-            // switcher de recognizer en plein milieu produisait du garbage
-            // (Vosk ne se cale pas correctement sur un mid-utterance frais).
-            // Le full Vosk model est largement assez précis et le S24 Ultra
-            // encaisse le CPU sans broncher.
+            // Recognizer FULL VOCAB (sans grammaire). Stratégie :
+            //  - On laisse Vosk accumuler l'audio en continu.
+            //  - Dès qu'on voit "jarvis" dans le partial, on note que
+            //    la phrase courante doit être traitée comme un wake.
+            //  - On attend la FINALISATION Vosk (déclenchée par silence
+            //    naturel à la fin de la phrase) pour avoir le texte
+            //    complet — ça capte "jarvis donne moi l'heure" en entier.
+            //  - Filet de sécurité : si pas de finalize dans
+            //    POST_WAKE_LISTEN_MS, on force.
             val recognizer = Recognizer(voskModel.get(), sampleRate.toFloat())
             val buffer = ShortArray(frameSize)
-            // État : on est soit en mode "spotting" (on cherche jarvis),
-            // soit en mode "capturing" (on accumule la commande après jarvis).
-            var capturing = false
-            var captureDeadline = 0L
-            var captureLastChange = 0L
-            val captureBuf = StringBuilder()
-            var capturePartial = ""
+            var wakeArmed = false
+            var wakeArmedAt = 0L
             try {
                 while (isActive) {
                     if (paused.get()) { delay(50); continue }
@@ -108,83 +106,41 @@ class WakeWordEngine(
                     } catch (t: Throwable) {
                         Log.e(TAG, "Vosk acceptWaveForm failed", t); false
                     }
-                    val finalizedText = if (finalized) JSONObject(recognizer.result).optString("text") else ""
-                    val partialText = if (!finalized) JSONObject(recognizer.partialResult).optString("partial") else ""
 
-                    if (!capturing) {
-                        // Mode spotting : surveille les partials/finalisations
-                        // pour détecter "jarvis" ou un alias.
-                        val text = if (finalized) finalizedText else partialText
-                        val matched = text.isNotEmpty() &&
-                            keywords.any { text.contains(it, ignoreCase = true) }
-                        if (matched) {
-                            Log.i(TAG, "Wake word detected: \"$text\"")
-
-                            // Voice biometric : snapshot de l'audio jusqu'à
-                            // maintenant pour vérifier le locuteur.
-                            if (voiceBiometricEnabled() && speakerVerifier.isReady() && speakerVerifier.isEnrolled()) {
-                                val snapshot = audioBuffer.snapshot()
-                                val similarity = speakerVerifier.verify(snapshot, sampleRate)
-                                val threshold = voiceBiometricThreshold()
-                                if (similarity < threshold) {
-                                    Log.i(TAG, "Wake word REJECTED — speaker mismatch ($similarity < $threshold)")
-                                    recognizer.reset()
-                                    continue
-                                }
-                                Log.i(TAG, "Wake word accepted — speaker match ($similarity >= $threshold)")
-                            }
-
-                            // Bascule en mode capture. On garde le SAME
-                            // recognizer qui est déjà calé sur l'audio en
-                            // cours, donc on ne perd pas la suite de la phrase.
-                            capturing = true
-                            captureDeadline = System.currentTimeMillis() + POST_WAKE_LISTEN_MS
-                            captureLastChange = System.currentTimeMillis()
-                            captureBuf.clear()
-                            capturePartial = ""
-                            // Si on était sur un finalized contenant "jarvis ...",
-                            // on récupère ce qui est déjà transcrit.
-                            if (finalized && finalizedText.isNotEmpty()) {
-                                captureBuf.append(finalizedText)
-                            } else if (partialText.isNotEmpty()) {
-                                capturePartial = partialText
-                            }
-                        } else if (finalized) {
-                            // Pas de wake mot dans le finalized. Reset pour
-                            // ne pas accumuler des phrases sans intérêt.
-                            recognizer.reset()
+                    if (finalized) {
+                        val text = JSONObject(recognizer.result).optString("text")
+                        val matched = text.isNotEmpty() && keywords.any {
+                            text.contains(it, ignoreCase = true)
                         }
+                        if (matched || wakeArmed) {
+                            // Finalise — on dispatche maintenant.
+                            handleWake(text)
+                            wakeArmed = false
+                        }
+                        // Reset pour repartir sur un buffer vierge (sinon Vosk
+                        // accumule indéfiniment et finalise rarement).
+                        recognizer.reset()
                     } else {
-                        // Mode capturing : accumule jusqu'à silence prolongé
-                        // ou deadline.
-                        if (finalized) {
-                            if (finalizedText.isNotEmpty()) {
-                                if (captureBuf.isNotEmpty()) captureBuf.append(' ')
-                                captureBuf.append(finalizedText)
-                                captureLastChange = System.currentTimeMillis()
+                        val partial = JSONObject(recognizer.partialResult).optString("partial")
+                        if (!wakeArmed && partial.isNotEmpty() && keywords.any {
+                                partial.contains(it, ignoreCase = true)
                             }
-                            capturePartial = ""
-                        } else {
-                            if (partialText.isNotEmpty() && partialText != capturePartial) {
-                                capturePartial = partialText
-                                captureLastChange = System.currentTimeMillis()
-                            }
+                        ) {
+                            // On a vu jarvis dans le partial — on arme le
+                            // wake. Le dispatch se fera sur finalisation.
+                            wakeArmed = true
+                            wakeArmedAt = System.currentTimeMillis()
+                            Log.i(TAG, "Wake word armed (partial=\"$partial\")")
                         }
-                        val now = System.currentTimeMillis()
-                        val silentLong = (captureBuf.isNotEmpty() || capturePartial.isNotEmpty()) &&
-                            (now - captureLastChange > POST_WAKE_SILENCE_MS)
-                        if (silentLong || now >= captureDeadline) {
-                            // Force la finalisation de ce qui reste dans le buffer.
+                        // Filet de sécurité : si Vosk ne finalise jamais
+                        // (cas rare, audio continu), on force après
+                        // POST_WAKE_LISTEN_MS pour ne pas bloquer.
+                        if (wakeArmed && System.currentTimeMillis() - wakeArmedAt > POST_WAKE_LISTEN_MS) {
                             val forced = JSONObject(recognizer.finalResult).optString("text")
-                            if (forced.isNotEmpty()) {
-                                if (captureBuf.isNotEmpty()) captureBuf.append(' ')
-                                captureBuf.append(forced)
-                            }
-                            val full = captureBuf.toString().trim().replace(Regex("\\s+"), " ")
-                            Log.i(TAG, "Wake word + post-wake: \"$full\"")
+                            Log.i(TAG, "Wake forced-finalize after timeout")
+                            handleWake(forced)
+                            wakeArmed = false
                             recognizer.reset()
-                            capturing = false
-                            onDetected(full)
                         }
                     }
                 }
@@ -192,6 +148,23 @@ class WakeWordEngine(
                 recognizer.close()
             }
         }
+    }
+
+    private fun handleWake(text: String) {
+        Log.i(TAG, "Wake word + phrase: \"$text\"")
+        // Voice biometric (si activé + enrôlé) : vérifie que c'est bien
+        // l'utilisateur enrôlé qui parle.
+        if (voiceBiometricEnabled() && speakerVerifier.isReady() && speakerVerifier.isEnrolled()) {
+            val snapshot = audioBuffer.snapshot()
+            val similarity = speakerVerifier.verify(snapshot, SAMPLE_RATE)
+            val threshold = voiceBiometricThreshold()
+            if (similarity < threshold) {
+                Log.i(TAG, "Wake word REJECTED — speaker mismatch ($similarity < $threshold)")
+                return
+            }
+            Log.i(TAG, "Wake word accepted — speaker match ($similarity >= $threshold)")
+        }
+        onDetectedCallback?.invoke(text)
     }
 
     /** Stops the loop and releases the AudioRecord so STT can grab the mic. */
