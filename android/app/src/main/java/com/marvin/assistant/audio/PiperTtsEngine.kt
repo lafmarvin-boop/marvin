@@ -49,6 +49,7 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
 
     @Volatile private var tts: OfflineTts? = null
     @Volatile private var sampleRate: Int = 22050
+    @Volatile private var currentTrack: AudioTrack? = null
 
     override fun isReady(): Boolean {
         val haveModel = modelFile.exists()
@@ -126,7 +127,15 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
         }
     }
 
+    override fun stop() {
+        // Stoppe la lecture audio en cours (pas le moteur TTS) — utilisé
+        // pour la barge-in : l'utilisateur dit "jarvis" pendant que Jarvis
+        // parle → on coupe et on écoute la nouvelle requête.
+        currentTrack?.runCatching { stop() }
+    }
+
     override fun release() {
+        stop()
         try { tts?.release() } catch (_: Throwable) {}
         tts = null
     }
@@ -151,11 +160,13 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
             .setBufferSizeInBytes(minBuf)
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
+        currentTrack = track
         try {
             track.play()
             var offset = 0
             val chunk = 4096
             while (offset < samples.size) {
+                if (track.playState != AudioTrack.PLAYSTATE_PLAYING) break // stop() externe
                 val n = minOf(chunk, samples.size - offset)
                 val written = track.write(samples, offset, n, AudioTrack.WRITE_BLOCKING)
                 if (written < 0) {
@@ -164,12 +175,14 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
                 }
                 offset += written
             }
-            while (track.playbackHeadPosition < samples.size) {
+            while (track.playbackHeadPosition < samples.size &&
+                track.playState == AudioTrack.PLAYSTATE_PLAYING) {
                 delay(40)
             }
         } catch (t: Throwable) {
             Log.e(TAG, "playAudio failed", t)
         } finally {
+            currentTrack = null
             runCatching { track.stop() }
             track.release()
         }

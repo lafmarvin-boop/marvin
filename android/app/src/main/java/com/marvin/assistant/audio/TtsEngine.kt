@@ -13,6 +13,11 @@ interface TtsEngine {
     /** Joue le texte et suspend jusqu'à la fin (ou abandonne en cas d'erreur). */
     suspend fun speak(text: String)
 
+    /** Interrompt immédiatement la lecture en cours. Pour la barge-in :
+     *  l'utilisateur dit "jarvis ..." pendant que Jarvis parle → on coupe.
+     *  No-op si rien ne joue. */
+    fun stop() {}
+
     /** Disponible et prêt à être appelé. */
     fun isReady(): Boolean = true
 

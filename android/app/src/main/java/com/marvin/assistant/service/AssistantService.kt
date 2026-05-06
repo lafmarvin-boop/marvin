@@ -124,37 +124,43 @@ class AssistantService : LifecycleService() {
     }
 
     private fun onWakeWordDetected(wakeTranscript: String) {
-        lifecycleScope.launch(coroutineErrorHandler) {
-            val sleeping = settings.isSleeping
-            val saidBonjour = wakeTranscript.contains("bonjour", ignoreCase = true)
-            val saidJarvis = JARVIS_VARIANTS.any { wakeTranscript.contains(it, ignoreCase = true) }
+        val sleeping = settings.isSleeping
+        val saidBonjour = wakeTranscript.contains("bonjour", ignoreCase = true)
+        val saidJarvis = JARVIS_VARIANTS.any { wakeTranscript.contains(it, ignoreCase = true) }
 
-            // Mode dodo : on ne réagit qu'à "bonjour" pour réveiller. Le reste
-            // (y compris un "Jarvis" perdu, la TV, la voisine) est ignoré
-            // silencieusement — pas de TTS, pas de "Oui ?".
-            if (sleeping) {
-                if (saidBonjour) {
+        // Mode dodo : on ne réagit qu'à "bonjour" pour réveiller.
+        if (sleeping) {
+            if (saidBonjour) {
+                pipelineJob?.cancel()
+                pipelineJob = lifecycleScope.launch(coroutineErrorHandler) {
                     wakeWord.pause()
                     try { wakeUp() } finally { wakeWord.resume() }
                 }
-                return@launch
             }
+            return
+        }
 
-            // Mode éveillé : "bonjour" tout seul (sans "jarvis") = juste un
-            // bonjour ambiant, on l'ignore pour ne pas répondre à chaque fois
-            // que tu salues quelqu'un. Faut "jarvis" (avec ou sans bonjour
-            // devant) pour activer.
-            if (!saidJarvis) return@launch
+        // Mode éveillé : "bonjour" tout seul (sans "jarvis") = juste un
+        // bonjour ambiant, on l'ignore.
+        if (!saidJarvis) return
 
-            // Si la phrase contient déjà la commande après "jarvis"
-            // (ex. "jarvis donne moi l'heure"), on évite le double-listen
-            // et on dispatche directement la commande.
-            val command = stripWakeWord(wakeTranscript)
+        // Strip wake word pour extraire la commande éventuelle.
+        val command = stripWakeWord(wakeTranscript).takeIf { it.split(' ').size >= 2 }
 
-            wakeWord.pause()
-            try {
-                handleTurn(prefilledTranscript = command.takeIf { it.split(' ').size >= 2 })
-            } finally { wakeWord.resume() }
+        // BARGE-IN : si une réponse Jarvis est en cours, on l'interrompt
+        // et on cancel le pipeline. Si l'utilisateur a juste dit "jarvis"
+        // (sans commande), on s'arrête là — pas de nouveau bip qui dirait
+        // "j'ai rien entendu".
+        val wasActive = pipelineJob?.isActive == true
+        if (wasActive) {
+            Log.i(TAG, "Barge-in : annulation du pipeline en cours")
+            tts.stop()
+            pipelineJob?.cancel()
+            if (command == null) return // rien à enchaîner, juste un "stop Jarvis"
+        }
+
+        pipelineJob = lifecycleScope.launch(coroutineErrorHandler) {
+            handleTurn(prefilledTranscript = command)
         }
     }
 
@@ -253,7 +259,10 @@ class AssistantService : LifecycleService() {
             prefilledTranscript
         } else {
             playWakeBeep()
-            val captured = stt.listenOnce(silenceTimeoutMs = 1800L, maxDurationMs = 8_000L)
+            wakeWord.pause()
+            val captured = try {
+                stt.listenOnce(silenceTimeoutMs = 1800L, maxDurationMs = 8_000L)
+            } finally { wakeWord.resume() }
             Log.i(TAG, "Transcript: $captured")
             captured
         }
@@ -320,7 +329,10 @@ class AssistantService : LifecycleService() {
             // Auto-close après 5 s de silence : la conversation reste ouverte
             // 5 s pour permettre une question de suivi naturelle, puis se
             // ferme toute seule si l'utilisateur ne dit rien.
-            val rawFollowUp = stt.listenOnce(silenceTimeoutMs = 5_000L, maxDurationMs = 12_000L)
+            wakeWord.pause()
+            val rawFollowUp = try {
+                stt.listenOnce(silenceTimeoutMs = 5_000L, maxDurationMs = 12_000L)
+            } finally { wakeWord.resume() }
             if (rawFollowUp.isNullOrBlank()) return // silence → retour au wake word
             val followUp = sttCorrections.apply(rawFollowUp)
 
@@ -381,7 +393,10 @@ class AssistantService : LifecycleService() {
         requirePositiveWord: String? = null
     ): Boolean {
         tts.speak(prompt)
-        val answer = stt.listenOnce(silenceTimeoutMs = 1500L, maxDurationMs = 4_000L) ?: return false
+        wakeWord.pause()
+        val answer = try {
+            stt.listenOnce(silenceTimeoutMs = 1500L, maxDurationMs = 4_000L)
+        } finally { wakeWord.resume() } ?: return false
         val a = answer.lowercase().trim()
         if (requirePositiveWord != null) {
             return a.contains(requirePositiveWord, ignoreCase = true) &&
@@ -421,7 +436,10 @@ class AssistantService : LifecycleService() {
 
         while (inDiscussion) {
             DiscussionStateHolder.setPhase(DiscussionPhase.Listening)
-            val transcript = stt.listenOnce(silenceTimeoutMs = 2500L, maxDurationMs = 12_000L)
+            wakeWord.pause()
+            val transcript = try {
+                stt.listenOnce(silenceTimeoutMs = 2500L, maxDurationMs = 12_000L)
+            } finally { wakeWord.resume() }
             if (transcript.isNullOrBlank()) {
                 exitDiscussion("Discussion terminée.")
                 break
