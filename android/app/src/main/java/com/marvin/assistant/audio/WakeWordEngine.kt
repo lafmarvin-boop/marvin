@@ -109,9 +109,10 @@ class WakeWordEngine(
 
                     if (finalized) {
                         val text = JSONObject(recognizer.result).optString("text")
-                        val matched = text.isNotEmpty() && keywords.any {
-                            text.contains(it, ignoreCase = true)
-                        }
+                        val matched = text.isNotEmpty() && (
+                            keywords.any { text.contains(it, ignoreCase = true) } ||
+                                JARVIS_FUZZY.containsMatchIn(text)
+                        )
                         if (matched || wakeArmed) {
                             // Finalise — on dispatche maintenant.
                             handleWake(text)
@@ -122,9 +123,10 @@ class WakeWordEngine(
                         recognizer.reset()
                     } else {
                         val partial = JSONObject(recognizer.partialResult).optString("partial")
-                        if (!wakeArmed && partial.isNotEmpty() && keywords.any {
-                                partial.contains(it, ignoreCase = true)
-                            }
+                        if (!wakeArmed && partial.isNotEmpty() && (
+                                keywords.any { partial.contains(it, ignoreCase = true) } ||
+                                    JARVIS_FUZZY.containsMatchIn(partial)
+                            )
                         ) {
                             // On a vu jarvis dans le partial — on arme le
                             // wake. Le dispatch se fera sur finalisation.
@@ -214,6 +216,18 @@ class WakeWordEngine(
             "jarvi", "yarvis", "djarvi", "charvis", "tchavis", "charvi",
             "jarvice", "yves", "yvre", "tarvis",
             "bonjour"
+        )
+
+        /**
+         * Filet large : tout mot contenant "arv" précédé d'une consonne
+         * tipique de Jarvis (j/dj/ch/y/sh) attrape les transcriptions
+         * fantaisistes type "djarvise", "chervi", "yarbis" etc.
+         * À combiner avec la voice biometric pour éviter les faux positifs
+         * (un cri "marv'!" vers Jarvis activerait sinon le wake).
+         */
+        private val JARVIS_FUZZY = Regex(
+            """\b(j|dj|tch|ch|sh|y)\w{0,3}(arv|erv|arb|arf|abv)\w*\b""",
+            RegexOption.IGNORE_CASE
         )
     }
 }

@@ -288,14 +288,53 @@ class AssistantService : LifecycleService() {
         }
 
         when (parsed) {
-            is MarvinIntent.StartDiscussion -> enterDiscussion()
-            is MarvinIntent.EndDiscussion -> { /* déjà hors discussion, no-op */ }
-            is MarvinIntent.GoToSleep -> goToSleep()
-            is MarvinIntent.Unknown -> askBackend(transcript, useHistory = false)
-            is MarvinIntent.WipeAllData -> { /* géré au-dessus */ }
+            is MarvinIntent.StartDiscussion -> { enterDiscussion(); return }
+            is MarvinIntent.EndDiscussion -> { /* déjà hors discussion, no-op */ return }
+            is MarvinIntent.GoToSleep -> { goToSleep(); return }
+            is MarvinIntent.Unknown -> askBackend(transcript, useHistory = true)
+            is MarvinIntent.WipeAllData -> return
             else -> {
                 val feedback = executor.execute(parsed)
                 if (feedback.isNotBlank()) speakWithPhase(feedback)
+            }
+        }
+
+        // Conversation continue : après avoir répondu, on écoute encore
+        // ~5 s pour une éventuelle question de suivi. Si l'utilisateur
+        // parle, on enchaîne en gardant la mémoire de discussion. Sinon,
+        // on retourne au wake word.
+        followUpLoop()
+    }
+
+    private suspend fun followUpLoop() {
+        while (true) {
+            DiscussionStateHolder.setPhase(DiscussionPhase.Listening)
+            val followUp = stt.listenOnce(silenceTimeoutMs = 1500L, maxDurationMs = 6_000L)
+            if (followUp.isNullOrBlank()) return // silence → retour au wake word
+
+            val parsedFu = parser.parse(followUp)
+            if (parsedFu is MarvinIntent.EndDiscussion) { speakWithPhase("OK."); return }
+            if (parsedFu is MarvinIntent.GoToSleep) { goToSleep(); return }
+            if (parsedFu is MarvinIntent.WipeAllData) {
+                if (awaitConfirmation(
+                        "Tu veux vraiment effacer toutes les données ? Dis « oui efface ».",
+                        requirePositiveWord = "efface"
+                    )) doWipe() else speakWithPhase("OK, j'efface rien.")
+                return
+            }
+            if (isSensitive(parsedFu) && settings.confirmSensitiveActions) {
+                if (!awaitConfirmation("Je vais ${describe(parsedFu)}. Tu confirmes ?")) {
+                    speakWithPhase("OK, j'annule.")
+                    continue
+                }
+            }
+            DiscussionStateHolder.setLastUserText(followUp)
+            when (parsedFu) {
+                is MarvinIntent.Unknown -> askBackend(followUp, useHistory = true)
+                else -> {
+                    val feedback = executor.execute(parsedFu)
+                    if (feedback.isNotBlank()) speakWithPhase(feedback)
+                }
             }
         }
     }
@@ -389,7 +428,7 @@ class AssistantService : LifecycleService() {
     }
 
     private suspend fun askBackend(userText: String, useHistory: Boolean) {
-        if (inDiscussion) DiscussionStateHolder.setPhase(DiscussionPhase.Thinking)
+        DiscussionStateHolder.setPhase(DiscussionPhase.Thinking)
         val backend = pickBackend()
         if (!backend.isReady()) {
             speakWithPhase(notReadyMessage(backend))
@@ -421,7 +460,7 @@ class AssistantService : LifecycleService() {
 
     /** Speak + push phase Speaking pendant la lecture (utile pour le visualiseur). */
     private suspend fun speakWithPhase(text: String) {
-        if (inDiscussion) DiscussionStateHolder.setPhase(DiscussionPhase.Speaking(text))
+        DiscussionStateHolder.setPhase(DiscussionPhase.Speaking(text))
         tts.speak(text)
     }
 
