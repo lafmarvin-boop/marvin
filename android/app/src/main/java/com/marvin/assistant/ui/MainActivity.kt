@@ -55,7 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.marvin.assistant.service.AssistantService
-import com.marvin.assistant.util.Settings
+import com.marvin.assistant.util.Settings as MarvinSettings
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
                         startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                     },
                     onOpenMarvinSettings = {
-                        val target = if (Settings(this).isPinSet())
+                        val target = if (MarvinSettings(this).isPinSet())
                             PinUnlockActivity::class.java
                         else
                             SettingsActivity::class.java
