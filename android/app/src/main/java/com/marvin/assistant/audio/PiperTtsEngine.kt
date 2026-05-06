@@ -5,6 +5,10 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.util.Log
+import com.k2fsa.sherpa.onnx.OfflineTts
+import com.k2fsa.sherpa.onnx.OfflineTtsConfig
+import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
+import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -14,33 +18,21 @@ import java.io.File
  * Synthèse vocale via Piper (sherpa-onnx). Voix masculine grave française
  * (selon le modèle téléchargé), bien plus naturelle que le TTS Android.
  *
- * Reflection-based : compile et tourne même sans l'AAR sherpa-onnx
- * (auquel cas [isReady] renvoie false et le [TtsEngineFactory] retombe
- * sur le TTS Android natif).
+ * Utilise les imports directs des classes sherpa-onnx (l'AAR
+ * `app/libs/sherpa-onnx-android.aar` les fournit). Si l'AAR est absent,
+ * le projet ne compile pas — c'est OK puisqu'on a déjà documenté que
+ * l'AAR est nécessaire pour cette feature.
  *
- * Setup (cf. README, section Piper TTS) :
- *  1. AAR sherpa-onnx-android dans `app/libs/`
- *  2. Télécharger un modèle Piper FR depuis le model zoo sherpa-onnx :
- *       https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/vits-piper.html
- *     Recommandé : `vits-piper-fr_FR-tom-medium` (voix masculine posée)
- *  3. Pousser sur le tel — 3 fichiers + 1 dossier dans `filesDir/piper/`:
- *       adb push fr_FR-tom-medium.onnx \
- *         /sdcard/Android/data/com.marvin.assistant/files/piper/voice.onnx
- *       adb push fr_FR-tom-medium.onnx.json \
- *         /sdcard/Android/data/com.marvin.assistant/files/piper/voice.onnx.json
- *       adb push tokens.txt \
- *         /sdcard/Android/data/com.marvin.assistant/files/piper/tokens.txt
- *       adb push -r espeak-ng-data \
- *         /sdcard/Android/data/com.marvin.assistant/files/piper/espeak-ng-data
+ * [TtsEngineFactory] retombe gracieusement sur le TTS Android natif
+ * si [isReady] retourne false (modèle absent, par ex.).
  */
 class PiperTtsEngine(private val context: Context) : TtsEngine {
 
     // On regarde dans 2 endroits possibles, dans cet ordre:
     //  1. filesDir/piper (interne, accessible via `adb shell run-as`)
     //  2. getExternalFilesDir/piper (externe, accessible via `adb push` direct)
-    // Le 1er qui contient voice.onnx gagne. Sur Samsung One UI, l'externe est
-    // souvent bloqué par le scoped storage même pour le dossier de l'app, donc
-    // l'interne est plus fiable.
+    // Sur Samsung One UI, l'externe est souvent bloqué par le scoped storage
+    // même pour le dossier de l'app, donc l'interne est plus fiable.
     private val piperDir: File = run {
         val internal = File(context.filesDir, "piper")
         val external = (context.getExternalFilesDir(null) ?: context.filesDir)
@@ -48,19 +40,17 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
         when {
             File(internal, "voice.onnx").exists() -> internal
             File(external, "voice.onnx").exists() -> external
-            else -> internal // par défaut, on cherche dans l'interne
+            else -> internal
         }
     }
     private val modelFile = File(piperDir, "voice.onnx")
     private val tokensFile = File(piperDir, "tokens.txt")
     private val espeakDir = File(piperDir, "espeak-ng-data")
 
-    @Volatile private var tts: Any? = null
+    @Volatile private var tts: OfflineTts? = null
     @Volatile private var sampleRate: Int = 22050
 
     override fun isReady(): Boolean {
-        // Diagnostic verbeux pour qu'on voie dans Logcat exactement quelle
-        // vérification échoue (et pas juste un "not ready" silencieux).
         val haveModel = modelFile.exists()
         val haveTokens = tokensFile.exists()
         val haveEspeak = espeakDir.exists() && espeakDir.isDirectory
@@ -73,133 +63,70 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
             )
             return false
         }
-        return try {
-            Class.forName("com.k2fsa.sherpa.onnx.OfflineTts")
-            Log.i(TAG, "isReady=true — files OK + OfflineTts class loaded")
-            true
-        } catch (t: Throwable) {
-            Log.e(TAG, "isReady=false — OfflineTts class NOT loaded: ${t.javaClass.simpleName}: ${t.message}", t)
-            false
-        }
+        Log.i(TAG, "isReady=true — files OK")
+        return true
     }
 
     @Synchronized
-    private fun ensureTts(): Any? {
+    private fun ensureTts(): OfflineTts? {
         tts?.let { return it }
         if (!isReady()) return null
         return try {
-            // OfflineTtsVitsModelConfig(model, lexicon, tokens, dataDir, noiseScale, noiseScaleW, lengthScale, dictDir)
-            val vitsCls = Class.forName("com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig")
-            val vits = vitsCls.getConstructor(
-                String::class.java, String::class.java, String::class.java, String::class.java,
-                Float::class.javaPrimitiveType, Float::class.javaPrimitiveType, Float::class.javaPrimitiveType,
-                String::class.java
-            ).newInstance(
-                modelFile.absolutePath, "", tokensFile.absolutePath, espeakDir.absolutePath,
-                0.667f, 0.8f, 1.0f, ""
+            // Args nommés + valeurs par défaut Kotlin → les champs qu'on ne
+            // connaît pas (ajouts d'une version à l'autre) prennent leur
+            // défaut automatiquement, plus de signature mismatch.
+            val vits = OfflineTtsVitsModelConfig(
+                model = modelFile.absolutePath,
+                tokens = tokensFile.absolutePath,
+                dataDir = espeakDir.absolutePath,
             )
-
-            // Matcha et Kokoro: instances vides via constructeur sans-arg si dispo,
-            // sinon tous les args à valeurs neutres.
-            val matcha = newDefault("com.k2fsa.sherpa.onnx.OfflineTtsMatchaModelConfig")
-            val kokoro = newDefault("com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig")
-
-            // OfflineTtsModelConfig(vits, matcha, kokoro, numThreads, debug, provider)
-            val modelCfgCls = Class.forName("com.k2fsa.sherpa.onnx.OfflineTtsModelConfig")
-            val modelCfg = modelCfgCls.getConstructor(
-                vitsCls, matcha::class.java, kokoro::class.java,
-                Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType, String::class.java
-            ).newInstance(vits, matcha, kokoro, 2, false, "cpu")
-
-            // OfflineTtsConfig(model, ruleFsts, ruleFars, maxNumSentences)
-            val cfgCls = Class.forName("com.k2fsa.sherpa.onnx.OfflineTtsConfig")
-            val cfg = cfgCls.getConstructor(
-                modelCfgCls, String::class.java, String::class.java, Int::class.javaPrimitiveType
-            ).newInstance(modelCfg, "", "", 1)
-
-            // OfflineTts(config)
-            val ttsCls = Class.forName("com.k2fsa.sherpa.onnx.OfflineTts")
-            val instance = ttsCls.getConstructor(cfgCls).newInstance(cfg)
-
-            // Lit le sample rate du modèle (typiquement 22050 Hz pour Piper)
-            sampleRate = try {
-                ttsCls.getMethod("getSampleRate").invoke(instance) as Int
-            } catch (_: Throwable) { 22050 }
-
+            val modelCfg = OfflineTtsModelConfig(
+                vits = vits,
+                numThreads = 2,
+                debug = false,
+                provider = "cpu",
+            )
+            val cfg = OfflineTtsConfig(model = modelCfg)
+            val instance = OfflineTts(config = cfg)
+            sampleRate = try { instance.sampleRate() } catch (_: Throwable) { 22050 }
+            Log.i(TAG, "Piper TTS engine loaded, sampleRate=$sampleRate")
             instance.also { tts = it }
         } catch (t: Throwable) {
-            Log.e(TAG, "Failed to load Piper TTS via reflection", t)
+            Log.e(TAG, "Failed to instantiate OfflineTts", t)
             null
         }
-    }
-
-    /** Tente le constructeur sans-arg, sinon le constructeur primaire (data class) avec defaults. */
-    private fun newDefault(className: String): Any {
-        val cls = Class.forName(className)
-        // Tente le no-arg
-        cls.declaredConstructors
-            .firstOrNull { it.parameterCount == 0 }
-            ?.let { it.isAccessible = true; return it.newInstance() }
-        // Sinon le ctor primaire avec valeurs par défaut numériques/strings
-        val ctor = cls.declaredConstructors.minBy { it.parameterCount }
-        ctor.isAccessible = true
-        val args = ctor.parameterTypes.map { defaultValue(it) }.toTypedArray()
-        return ctor.newInstance(*args)
-    }
-
-    private fun defaultValue(t: Class<*>): Any? = when {
-        t == String::class.java -> ""
-        t == Int::class.javaPrimitiveType || t == Integer::class.java -> 0
-        t == Float::class.javaPrimitiveType || t == java.lang.Float::class.java -> 0f
-        t == Boolean::class.javaPrimitiveType || t == java.lang.Boolean::class.java -> false
-        t == Long::class.javaPrimitiveType || t == java.lang.Long::class.java -> 0L
-        t == Double::class.javaPrimitiveType || t == java.lang.Double::class.java -> 0.0
-        else -> null
     }
 
     override suspend fun speak(text: String) = withContext(Dispatchers.IO) {
         val cleaned = text.trim()
         Log.i(TAG, "speak() called, len=${cleaned.length}")
-        if (cleaned.isEmpty()) {
-            Log.i(TAG, "speak: empty text, skip")
-            return@withContext
-        }
-        val tts = ensureTts()
-        if (tts == null) {
-            Log.e(TAG, "speak: ensureTts() returned null — TTS engine non chargé")
+        if (cleaned.isEmpty()) return@withContext
+        val engine = ensureTts()
+        if (engine == null) {
+            Log.e(TAG, "speak: ensureTts returned null — TTS pas chargé")
             return@withContext
         }
         try {
-            val generateMethod = tts::class.java.getMethod(
-                "generate",
-                String::class.java,
-                Int::class.javaPrimitiveType,
-                Float::class.javaPrimitiveType
-            )
-            Log.i(TAG, "speak: invoking generate()")
-            val audio = generateMethod.invoke(tts, cleaned, 0, 1.0f)
-            if (audio == null) {
-                Log.e(TAG, "speak: generate returned null")
+            val audio = engine.generate(text = cleaned, sid = 0, speed = 1.0f)
+            if (audio.samples.isEmpty()) {
+                Log.e(TAG, "speak: generate retourné 0 samples")
                 return@withContext
             }
-            val samples = audio::class.java.getMethod("getSamples").invoke(audio) as? FloatArray
-            val sr = audio::class.java.getMethod("getSampleRate").invoke(audio) as? Int
-            if (samples == null || samples.isEmpty()) {
-                Log.e(TAG, "speak: samples null/empty")
-                return@withContext
-            }
-            Log.i(TAG, "speak: got audio (${samples.size} samples @ ${sr ?: sampleRate} Hz)")
-            playAudio(samples, sr ?: sampleRate)
-            Log.i(TAG, "speak: playback finished")
+            Log.i(TAG, "speak: ${audio.samples.size} samples @ ${audio.sampleRate} Hz")
+            playAudio(audio.samples, audio.sampleRate)
+            Log.i(TAG, "speak: playback fini")
         } catch (t: Throwable) {
-            Log.e(TAG, "Piper TTS generate/play failed", t)
+            Log.e(TAG, "speak failed", t)
         }
+    }
+
+    override fun release() {
+        try { tts?.release() } catch (_: Throwable) {}
+        tts = null
     }
 
     private suspend fun playAudio(samples: FloatArray, sampleRate: Int) {
         if (samples.isEmpty()) return
-        // MODE_STREAM est plus fiable que MODE_STATIC pour l'audio TTS de
-        // longueur variable, et permet une attente plus précise.
         val attrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ASSISTANT)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
@@ -231,7 +158,6 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
                 }
                 offset += written
             }
-            // Attend que le buffer soit drainé.
             while (track.playbackHeadPosition < samples.size) {
                 delay(40)
             }
@@ -241,11 +167,6 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
             runCatching { track.stop() }
             track.release()
         }
-    }
-
-    override fun release() {
-        try { tts?.let { it::class.java.getMethod("release").invoke(it) } } catch (_: Throwable) {}
-        tts = null
     }
 
     companion object { private const val TAG = "PiperTts" }
