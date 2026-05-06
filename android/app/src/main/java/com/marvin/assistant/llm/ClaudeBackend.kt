@@ -89,11 +89,24 @@ class ClaudeBackend(
 
         val toolList = tools.all()
         val toolsJson = JSONArray().apply {
+            // Outils locaux (météo, heure, SMS…)
             toolList.forEach { t ->
                 put(JSONObject().apply {
                     put("name", t.name)
                     put("description", t.description)
                     put("input_schema", t.inputSchema)
+                })
+            }
+            // Web search côté serveur Anthropic. Claude fait les recherches
+            // tout seul et reçoit les résultats automatiquement, on n'a rien
+            // à exécuter côté client. Coût : ~1 ¢ par recherche.
+            // max_uses=3 limite le nombre de recherches par requête pour
+            // éviter une explosion de coûts si Claude part en boucle.
+            if (settings.webSearchEnabled) {
+                put(JSONObject().apply {
+                    put("type", "web_search_20250305")
+                    put("name", "web_search")
+                    put("max_uses", 3)
                 })
             }
         }
@@ -221,7 +234,9 @@ class ClaudeBackend(
 
     companion object {
         private const val TAG = "ClaudeBackend"
-        private const val MAX_OUTPUT_TOKENS = 200
+        // 400 tokens = ~300 mots = ~50 s de TTS. Suffisant pour les
+        // recherches web qui peuvent avoir besoin de résumer plus d'infos.
+        private const val MAX_OUTPUT_TOKENS = 400
         private const val MAX_TOOL_ITERATIONS = 4
 
         /** Active le certificate pinning. Garde à false tant que les pins
@@ -240,12 +255,22 @@ class ClaudeBackend(
 Règles strictes:
 - Tu t'appelles Jarvis. Si on te demande qui tu es ou ton nom, dis "Jarvis".
 - Réponds toujours en français.
-- Réponses courtes (2-3 phrases max), ton naturel, comme à l'oral.
+- Réponses courtes et claires, ton naturel, comme à l'oral.
 - Pas de listes à puces, pas de markdown — c'est lu à voix haute.
 - Si tu utilises un outil, intègre la donnée dans une phrase complète (ex: « Il fait 18 degrés à Paris. »).
 - Pour la météo sans ville précisée, appelle d'abord get_location.
 - Pour l'heure, utilise get_time. Pour la batterie, get_battery. Pour les SMS, get_recent_sms. Etc.
-- Si tu ne sais pas et qu'aucun outil ne peut t'aider, dis-le simplement.
-- N'invente pas de données factuelles (date, position, agenda, batterie) — utilise les outils."""
+- N'invente pas de données factuelles (date, position, agenda, batterie) — utilise les outils.
+
+Recherche web (web_search) :
+- Utilise web_search dès que la question concerne des FAITS ACTUELS,
+  des informations qui peuvent changer (actualités, scores, prix,
+  événements récents, météo précise hors get_weather, infos sur
+  des personnes/entreprises, recherche de produits, horaires, etc.)
+- Pour les connaissances générales stables (histoire, science,
+  définitions), réponds directement sans web_search.
+- Quand tu utilises web_search, ne mentionne pas explicitement que
+  tu cherches sur internet — donne juste la réponse naturellement.
+- Cite la source seulement si c'est pertinent (ex: « Selon Le Monde, … »)."""
     }
 }

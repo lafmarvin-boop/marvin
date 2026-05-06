@@ -142,6 +142,16 @@ class Settings(context: Context) {
         get() = plain.getBoolean(KEY_IS_SLEEPING, false)
         set(value) { plain.edit().putBoolean(KEY_IS_SLEEPING, value).apply() }
 
+    /**
+     * Recherche web Anthropic (server-side tool). Permet à Claude de chercher
+     * sur internet pour répondre aux questions factuelles d'actualité.
+     * Coût : ~1 ¢ par recherche (max 3 par requête). Désactivable pour
+     * limiter les frais ou si Wi-Fi instable.
+     */
+    var webSearchEnabled: Boolean
+        get() = plain.getBoolean(KEY_WEB_SEARCH, true)
+        set(value) { plain.edit().putBoolean(KEY_WEB_SEARCH, value).apply() }
+
     /** Returns true and increments the counter if a request is allowed today. */
     @Synchronized
     fun consumeDailyQuota(): Boolean {
@@ -175,6 +185,7 @@ class Settings(context: Context) {
         private const val KEY_VOICE_BIO_ENABLED = "voice_bio_enabled"
         private const val KEY_VOICE_BIO_THRESHOLD = "voice_bio_threshold"
         private const val KEY_IS_SLEEPING = "is_sleeping"
+        private const val KEY_WEB_SEARCH = "web_search_enabled"
 
         /** Liste de tous les outils que Claude peut appeler, pour les toggles UI. */
         val ALL_TOOL_NAMES = listOf(

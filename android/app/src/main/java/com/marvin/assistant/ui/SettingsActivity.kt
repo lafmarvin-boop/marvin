@@ -88,6 +88,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     }
     var voiceBioEnabled by remember { mutableStateOf(settings.voiceBiometricEnabled) }
     var voiceBioThreshold by remember { mutableStateOf(settings.voiceBiometricThreshold) }
+    var webSearchEnabled by remember { mutableStateOf(settings.webSearchEnabled) }
     val verifier = remember { SpeakerVerifierFactory.create(ctx) }
     var voiceBioReady by remember { mutableStateOf(verifier.isReady()) }
     var voiceBioEnrolled by remember { mutableStateOf(verifier.isEnrolled()) }
@@ -328,6 +329,16 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             )
         }
 
+        Spacer(Modifier.height(12.dp))
+        ToggleRow(
+            label = "Recherche web",
+            description = "Permet à Jarvis de chercher sur internet pour les questions " +
+                "factuelles d'actualité (météo précise, news, prix, etc.). Coût ~1 ¢ " +
+                "par recherche, max 3 par requête.",
+            checked = webSearchEnabled,
+            onChange = { webSearchEnabled = it }
+        )
+
         // ------ ENREGISTRER ------
         Spacer(Modifier.height(28.dp))
         Divider()
@@ -349,6 +360,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 // Voice biometric: ne s'active que si on est enrôlé.
                 settings.voiceBiometricEnabled = voiceBioEnabled && voiceBioEnrolled
                 settings.voiceBiometricThreshold = voiceBioThreshold
+                settings.webSearchEnabled = webSearchEnabled
                 onClose()
             },
             modifier = Modifier.fillMaxWidth()
