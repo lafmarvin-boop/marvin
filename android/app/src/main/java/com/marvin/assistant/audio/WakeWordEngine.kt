@@ -95,6 +95,7 @@ class WakeWordEngine(
             val buffer = ShortArray(frameSize)
             var wakeArmed = false
             var wakeArmedAt = 0L
+            var armedPartial = ""
             try {
                 while (isActive) {
                     if (paused.get()) { delay(50); continue }
@@ -122,6 +123,7 @@ class WakeWordEngine(
                             // Finalise — on dispatche maintenant.
                             handleWake(text)
                             wakeArmed = false
+                            armedPartial = ""
                         }
                         // Reset pour repartir sur un buffer vierge (sinon Vosk
                         // accumule indéfiniment et finalise rarement).
@@ -137,16 +139,33 @@ class WakeWordEngine(
                             // wake. Le dispatch se fera sur finalisation.
                             wakeArmed = true
                             wakeArmedAt = System.currentTimeMillis()
+                            armedPartial = partial
                             Log.i(TAG, "Wake word armed (partial=\"$partial\")")
+                        } else if (wakeArmed && partial.isNotEmpty() && partial != armedPartial) {
+                            // Le partial évolue → l'utilisateur enchaîne une
+                            // commande. On garde le mode "wait full" (jusqu'à
+                            // POST_WAKE_LISTEN_MS).
+                            armedPartial = partial
+                            wakeArmedAt = System.currentTimeMillis()
                         }
-                        // Filet de sécurité : si Vosk ne finalise jamais
-                        // (cas rare, audio continu), on force après
-                        // POST_WAKE_LISTEN_MS pour ne pas bloquer.
-                        if (wakeArmed && System.currentTimeMillis() - wakeArmedAt > POST_WAKE_LISTEN_MS) {
+                        // Si le wake est armé et que le partial n'a pas évolué
+                        // depuis FAST_FIRE_MS, l'utilisateur a dit juste
+                        // "jarvis" tout seul. On fire immédiatement pour pas
+                        // attendre la finalisation Vosk (~1 s de silence).
+                        if (wakeArmed && System.currentTimeMillis() - wakeArmedAt > FAST_FIRE_MS) {
+                            Log.i(TAG, "Wake fast-fire (partial stable=\"$armedPartial\")")
+                            handleWake(armedPartial)
+                            wakeArmed = false
+                            armedPartial = ""
+                            recognizer.reset()
+                        } else if (wakeArmed && System.currentTimeMillis() - wakeArmedAt > POST_WAKE_LISTEN_MS) {
+                            // Filet de sécurité : si l'utilisateur a parlé
+                            // longtemps sans pause, on force la finalisation.
                             val forced = JSONObject(recognizer.finalResult).optString("text")
                             Log.i(TAG, "Wake forced-finalize after timeout")
                             handleWake(forced)
                             wakeArmed = false
+                            armedPartial = ""
                             recognizer.reset()
                         }
                     }
@@ -207,10 +226,11 @@ class WakeWordEngine(
         // attraper une commande enchaînée. 3000 ms couvre une phrase courte
         // type "jarvis donne moi la météo de demain à Paris".
         private const val POST_WAKE_LISTEN_MS = 3000L
-        // Silence prolongé après lequel on considère que l'utilisateur a fini
-        // de parler. 1000 ms tolère les petites pauses naturelles entre les
-        // mots tout en évitant de laisser le micro ouvert inutilement.
-        private const val POST_WAKE_SILENCE_MS = 1000L
+        // Si l'utilisateur dit juste "jarvis" tout seul (le partial reste
+        // stable, pas d'enchaînement), on fire après ce délai sans attendre
+        // la finalisation Vosk (qui prend ~1 s de silence). Beaucoup plus
+        // réactif pour le cas "jarvis seul → bip → commande".
+        private const val FAST_FIRE_MS = 500L
         // "Jarvis" n'est pas un mot français — Vosk le transcrit souvent
         // de façons très variées selon la prononciation. On accepte large
         // pour ne pas rater le wake word. Quitte à avoir quelques faux

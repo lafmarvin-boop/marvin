@@ -309,7 +309,10 @@ class AssistantService : LifecycleService() {
     private suspend fun followUpLoop() {
         while (true) {
             DiscussionStateHolder.setPhase(DiscussionPhase.Listening)
-            val followUp = stt.listenOnce(silenceTimeoutMs = 1500L, maxDurationMs = 6_000L)
+            // Auto-close après 5 s de silence : la conversation reste ouverte
+            // 5 s pour permettre une question de suivi naturelle, puis se
+            // ferme toute seule si l'utilisateur ne dit rien.
+            val followUp = stt.listenOnce(silenceTimeoutMs = 5_000L, maxDurationMs = 12_000L)
             if (followUp.isNullOrBlank()) return // silence → retour au wake word
 
             val parsedFu = parser.parse(followUp)
