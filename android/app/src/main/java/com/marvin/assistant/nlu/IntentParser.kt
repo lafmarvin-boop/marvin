@@ -37,6 +37,14 @@ class IntentParser {
         Rule(Regex("""remise à zéro (?:complète|totale)?""")) { MarvinIntent.WipeAllData },
         Rule(Regex("""reset (?:total|complet)?""")) { MarvinIntent.WipeAllData },
 
+        // ---- Apprentissage : corrections de prononciation ----
+        // "quand je dis l'air comprends l'heure"
+        // "quand j'dis X tu comprends Y"
+        // "quand je dis X tu entends Y"
+        Rule(Regex("""quand (?:je|j')\s*dis (.+?) (?:tu )?(?:comprends|entends|note|enregistre|c'est) (.+)""")) {
+            MarvinIntent.AddCorrection(it.groupValues[1].trim(), it.groupValues[2].trim())
+        },
+
         // ---- Mode dodo ----
         Rule(Regex("""fais (?:dodo|une sieste|la sieste)""")) { MarvinIntent.GoToSleep },
         Rule(Regex("""va dormir""")) { MarvinIntent.GoToSleep },

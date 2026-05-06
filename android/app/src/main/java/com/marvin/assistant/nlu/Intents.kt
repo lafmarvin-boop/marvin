@@ -40,6 +40,9 @@ sealed class MarvinIntent {
     /** Mode dodo : Jarvis ne réagit plus qu'à « bonjour ». */
     data object GoToSleep : MarvinIntent()
 
+    /** Apprentissage : "quand je dis X comprends Y" → ajoute une correction. */
+    data class AddCorrection(val heard: String, val meant: String) : MarvinIntent()
+
     /** Aucun match local — à transmettre au backend LLM (Claude ou Gemma). */
     data class Unknown(val raw: String) : MarvinIntent()
 }

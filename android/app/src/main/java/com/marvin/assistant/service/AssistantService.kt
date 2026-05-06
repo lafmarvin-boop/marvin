@@ -18,6 +18,7 @@ import com.marvin.assistant.actions.ActionExecutor
 import com.marvin.assistant.audio.SpeakerVerifier
 import com.marvin.assistant.audio.SpeakerVerifierFactory
 import com.marvin.assistant.audio.SpeechToText
+import com.marvin.assistant.audio.SttCorrections
 import com.marvin.assistant.audio.TtsEngine
 import com.marvin.assistant.audio.TtsEngineFactory
 import com.marvin.assistant.audio.VoskModelHolder
@@ -51,6 +52,7 @@ class AssistantService : LifecycleService() {
     private lateinit var settings: Settings
     private lateinit var tools: Tools
     private lateinit var speakerVerifier: SpeakerVerifier
+    private lateinit var sttCorrections: SttCorrections
     private val toneGen by lazy {
         try { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80) }
         catch (_: Throwable) { null }
@@ -73,6 +75,7 @@ class AssistantService : LifecycleService() {
         tools = Tools(this, settings)
         voskModel = VoskModelHolder(this)
         speakerVerifier = SpeakerVerifierFactory.create(this)
+        sttCorrections = SttCorrections(this)
         wakeWord = WakeWordEngine(
             context = this,
             voskModel = voskModel,
@@ -245,7 +248,7 @@ class AssistantService : LifecycleService() {
         // Si l'utilisateur a enchaîné le wake word + commande
         // (ex. "jarvis donne moi l'heure"), on a déjà la commande, pas
         // besoin de bip + nouvelle écoute STT. Sinon on bipe + écoute.
-        val transcript = if (!prefilledTranscript.isNullOrBlank()) {
+        val rawTranscript = if (!prefilledTranscript.isNullOrBlank()) {
             Log.i(TAG, "Using prefilled transcript from wake-word stream: $prefilledTranscript")
             prefilledTranscript
         } else {
@@ -254,10 +257,11 @@ class AssistantService : LifecycleService() {
             Log.i(TAG, "Transcript: $captured")
             captured
         }
-        if (transcript.isNullOrBlank()) {
+        if (rawTranscript.isNullOrBlank()) {
             speakWithPhase("J'ai rien entendu.")
             return
         }
+        val transcript = sttCorrections.apply(rawTranscript)
         DiscussionStateHolder.setLastUserText(transcript)
         DiscussionStateHolder.setPhase(DiscussionPhase.Thinking)
 
@@ -291,6 +295,10 @@ class AssistantService : LifecycleService() {
             is MarvinIntent.StartDiscussion -> { enterDiscussion(); return }
             is MarvinIntent.EndDiscussion -> { /* déjà hors discussion, no-op */ return }
             is MarvinIntent.GoToSleep -> { goToSleep(); return }
+            is MarvinIntent.AddCorrection -> {
+                sttCorrections.add(parsed.heard, parsed.meant)
+                speakWithPhase("OK, désormais quand j'entends « ${parsed.heard} » je comprendrai « ${parsed.meant} ».")
+            }
             is MarvinIntent.Unknown -> askBackend(transcript, useHistory = true)
             is MarvinIntent.WipeAllData -> return
             else -> {
@@ -312,12 +320,18 @@ class AssistantService : LifecycleService() {
             // Auto-close après 5 s de silence : la conversation reste ouverte
             // 5 s pour permettre une question de suivi naturelle, puis se
             // ferme toute seule si l'utilisateur ne dit rien.
-            val followUp = stt.listenOnce(silenceTimeoutMs = 5_000L, maxDurationMs = 12_000L)
-            if (followUp.isNullOrBlank()) return // silence → retour au wake word
+            val rawFollowUp = stt.listenOnce(silenceTimeoutMs = 5_000L, maxDurationMs = 12_000L)
+            if (rawFollowUp.isNullOrBlank()) return // silence → retour au wake word
+            val followUp = sttCorrections.apply(rawFollowUp)
 
             val parsedFu = parser.parse(followUp)
             if (parsedFu is MarvinIntent.EndDiscussion) { speakWithPhase("OK."); return }
             if (parsedFu is MarvinIntent.GoToSleep) { goToSleep(); return }
+            if (parsedFu is MarvinIntent.AddCorrection) {
+                sttCorrections.add(parsedFu.heard, parsedFu.meant)
+                speakWithPhase("OK, c'est noté : « ${parsedFu.heard} » sera compris comme « ${parsedFu.meant} ».")
+                continue
+            }
             if (parsedFu is MarvinIntent.WipeAllData) {
                 if (awaitConfirmation(
                         "Tu veux vraiment effacer toutes les données ? Dis « oui efface ».",
