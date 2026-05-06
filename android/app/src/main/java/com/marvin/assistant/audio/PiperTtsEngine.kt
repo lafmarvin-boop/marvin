@@ -159,21 +159,38 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
 
     override suspend fun speak(text: String) = withContext(Dispatchers.IO) {
         val cleaned = text.trim()
-        if (cleaned.isEmpty()) return@withContext
-        val tts = ensureTts() ?: return@withContext
+        Log.i(TAG, "speak() called, len=${cleaned.length}")
+        if (cleaned.isEmpty()) {
+            Log.i(TAG, "speak: empty text, skip")
+            return@withContext
+        }
+        val tts = ensureTts()
+        if (tts == null) {
+            Log.e(TAG, "speak: ensureTts() returned null — TTS engine non chargé")
+            return@withContext
+        }
         try {
-            // generate(text, sid: Int = 0, speed: Float = 1.0f) -> GeneratedAudio
             val generateMethod = tts::class.java.getMethod(
                 "generate",
                 String::class.java,
                 Int::class.javaPrimitiveType,
                 Float::class.javaPrimitiveType
             )
-            val audio = generateMethod.invoke(tts, cleaned, 0, 1.0f) ?: return@withContext
-            val samples = (audio::class.java.getMethod("getSamples").invoke(audio) as? FloatArray)
-                ?: return@withContext
-            val sr = (audio::class.java.getMethod("getSampleRate").invoke(audio) as? Int) ?: sampleRate
-            playAudio(samples, sr)
+            Log.i(TAG, "speak: invoking generate()")
+            val audio = generateMethod.invoke(tts, cleaned, 0, 1.0f)
+            if (audio == null) {
+                Log.e(TAG, "speak: generate returned null")
+                return@withContext
+            }
+            val samples = audio::class.java.getMethod("getSamples").invoke(audio) as? FloatArray
+            val sr = audio::class.java.getMethod("getSampleRate").invoke(audio) as? Int
+            if (samples == null || samples.isEmpty()) {
+                Log.e(TAG, "speak: samples null/empty")
+                return@withContext
+            }
+            Log.i(TAG, "speak: got audio (${samples.size} samples @ ${sr ?: sampleRate} Hz)")
+            playAudio(samples, sr ?: sampleRate)
+            Log.i(TAG, "speak: playback finished")
         } catch (t: Throwable) {
             Log.e(TAG, "Piper TTS generate/play failed", t)
         }
@@ -181,6 +198,8 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
 
     private suspend fun playAudio(samples: FloatArray, sampleRate: Int) {
         if (samples.isEmpty()) return
+        // MODE_STREAM est plus fiable que MODE_STATIC pour l'audio TTS de
+        // longueur variable, et permet une attente plus précise.
         val attrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ASSISTANT)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
@@ -190,21 +209,34 @@ class PiperTtsEngine(private val context: Context) : TtsEngine {
             .setSampleRate(sampleRate)
             .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
             .build()
-        val byteSize = samples.size * 4
         val minBuf = AudioTrack.getMinBufferSize(
             sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT
-        ).coerceAtLeast(4096)
-        val track = AudioTrack(
-            attrs, format, maxOf(minBuf, byteSize), AudioTrack.MODE_STATIC, 0
-        )
+        ).coerceAtLeast(8192)
+        val track = AudioTrack.Builder()
+            .setAudioAttributes(attrs)
+            .setAudioFormat(format)
+            .setBufferSizeInBytes(minBuf)
+            .setTransferMode(AudioTrack.MODE_STREAM)
+            .build()
         try {
-            track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
             track.play()
-            // Attend la fin de la lecture en yield-ant le coroutine
-            val totalFrames = samples.size
-            while (track.playbackHeadPosition < totalFrames && track.playState == AudioTrack.PLAYSTATE_PLAYING) {
+            var offset = 0
+            val chunk = 4096
+            while (offset < samples.size) {
+                val n = minOf(chunk, samples.size - offset)
+                val written = track.write(samples, offset, n, AudioTrack.WRITE_BLOCKING)
+                if (written < 0) {
+                    Log.e(TAG, "AudioTrack.write returned $written, abort")
+                    break
+                }
+                offset += written
+            }
+            // Attend que le buffer soit drainé.
+            while (track.playbackHeadPosition < samples.size) {
                 delay(40)
             }
+        } catch (t: Throwable) {
+            Log.e(TAG, "playAudio failed", t)
         } finally {
             runCatching { track.stop() }
             track.release()
