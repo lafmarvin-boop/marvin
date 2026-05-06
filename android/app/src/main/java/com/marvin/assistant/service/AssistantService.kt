@@ -201,12 +201,44 @@ class AssistantService : LifecycleService() {
     private fun openJarvisVisual() {
         val phase = DiscussionStateHolder.phase.value
         if (phase == DiscussionPhase.Idle) {
-            startActivity(
-                Intent(this, DiscussionActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
+            val intent = Intent(this, DiscussionActivity::class.java)
+                .addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+                )
+            try {
+                startActivity(intent)
+            } catch (t: Throwable) {
+                Log.w(TAG, "startActivity bloqué (background-launch?), fallback notif full-screen", t)
+            }
+            // Fallback : poste une notif heads-up avec full-screen-intent —
+            // Android 10+ bloque startActivity depuis background, mais
+            // une fullScreenIntent passe (notamment sur lockscreen).
+            postFullScreenIntent(intent)
         }
         DiscussionStateHolder.setPhase(DiscussionPhase.Listening)
+    }
+
+    private fun postFullScreenIntent(targetIntent: Intent) {
+        val pi = PendingIntent.getActivity(
+            this,
+            VISUAL_REQUEST_CODE,
+            targetIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val notif = Notification.Builder(this, VISUAL_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("Jarvis")
+            .setContentText("Écoute en cours…")
+            .setPriority(Notification.PRIORITY_MAX)
+            .setCategory(Notification.CATEGORY_CALL)
+            .setFullScreenIntent(pi, true)
+            .setAutoCancel(true)
+            .setOngoing(false)
+            .build()
+        getSystemService(android.app.NotificationManager::class.java)
+            ?.notify(VISUAL_NOTIFICATION_ID, notif)
     }
 
     private suspend fun handleTurnInner(prefilledTranscript: String? = null) {
@@ -451,6 +483,9 @@ class AssistantService : LifecycleService() {
     companion object {
         private const val TAG = "MarvinService"
         private const val NOTIFICATION_ID = 0xCAFE
+        private const val VISUAL_NOTIFICATION_ID = 0xCAFF
+        private const val VISUAL_REQUEST_CODE = 0xC0DE
+        const val VISUAL_CHANNEL_ID = "marvin_visual"
 
         /** Variantes de prononciation que Vosk peut produire pour "Jarvis". */
         private val JARVIS_VARIANTS = listOf("jarvis", "djarvis", "djarviss", "djarvisse", "jarvisse")

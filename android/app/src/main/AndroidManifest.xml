@@ -9,6 +9,12 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Permet de lancer DiscussionActivity même quand l'écran est verrouillé
+         ou que l'app est en background (via notification full-screen-intent). -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Permet à AssistantService de redémarrer immédiatement si Samsung
+         le tue en background (lance une activité depuis le service). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- Action permissions -->
     <uses-permission android:name="android.permission.SEND_SMS" />
