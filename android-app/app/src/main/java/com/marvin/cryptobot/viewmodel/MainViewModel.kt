@@ -99,6 +99,22 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         _ui.value = _ui.value.copy(message = "Wallet réinitialisé (50 €)")
     }
 
+    fun addWallet(name: String, type: StrategyType, symbol: String, initialCash: Double) {
+        if (initialCash < 0) return
+        val w = container.walletStore.addWallet(name, type, symbol, initialCash)
+        _ui.value = _ui.value.copy(message = "Wallet '${w.name}' créé avec ${"%.2f".format(initialCash)} €")
+    }
+
+    fun removeWallet(id: String) {
+        val w = wallets.value.firstOrNull { it.id == id } ?: return
+        container.walletStore.removeWallet(id)
+        // Si plus aucun wallet n'est actif, on stoppe le worker.
+        if (wallets.value.none { it.enabled }) {
+            TradingWorker.cancel(CryptoBotApp.instance)
+        }
+        _ui.value = _ui.value.copy(message = "Wallet '${w.name}' supprimé")
+    }
+
     fun transferBetweenWallets(fromId: String, toId: String, amount: Double) {
         container.walletStore.transfer(fromId, toId, amount)
             .onSuccess {

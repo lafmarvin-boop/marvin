@@ -10,14 +10,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.marvin.cryptobot.domain.model.StrategyType
 import com.marvin.cryptobot.domain.model.TradingMode
 import com.marvin.cryptobot.domain.model.Wallet
+import com.marvin.cryptobot.ui.component.AddWalletDialog
 import com.marvin.cryptobot.ui.component.TransferDialog
 import com.marvin.cryptobot.viewmodel.MainViewModel
 
@@ -42,6 +49,8 @@ fun DashboardScreen(vm: MainViewModel) {
     val prices by vm.prices.collectAsStateWithLifecycle()
 
     var showTransfer by remember { mutableStateOf(false) }
+    var showAdd by remember { mutableStateOf(false) }
+    var pendingDeleteId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(wallets.map { it.symbol }.toSet()) { vm.refreshPrices() }
 
@@ -58,7 +67,10 @@ fun DashboardScreen(vm: MainViewModel) {
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { vm.refreshPrices() }) { Text("Rafraîchir") }
-            OutlinedButton(onClick = { showTransfer = true }) { Text("Transférer") }
+            OutlinedButton(onClick = { showTransfer = true }, enabled = wallets.size >= 2) {
+                Text("Transférer")
+            }
+            Button(onClick = { showAdd = true }) { Text("+ Wallet") }
         }
 
         wallets.forEach { wallet ->
@@ -67,6 +79,7 @@ fun DashboardScreen(vm: MainViewModel) {
                 price = prices[wallet.symbol],
                 onToggle = { vm.setWalletEnabled(wallet.id, it) },
                 onRunNow = { vm.runWalletNow(wallet.id) },
+                onDelete = { pendingDeleteId = wallet.id },
             )
         }
 
@@ -80,6 +93,40 @@ fun DashboardScreen(vm: MainViewModel) {
             onConfirm = { from, to, amount ->
                 vm.transferBetweenWallets(from, to, amount)
                 showTransfer = false
+            },
+        )
+    }
+
+    if (showAdd) {
+        AddWalletDialog(
+            onDismiss = { showAdd = false },
+            onConfirm = { name, type, symbol, cash ->
+                vm.addWallet(name, type, symbol, cash)
+                showAdd = false
+            },
+        )
+    }
+
+    pendingDeleteId?.let { id ->
+        val w = wallets.firstOrNull { it.id == id }
+        AlertDialog(
+            onDismissRequest = { pendingDeleteId = null },
+            title = { Text("Supprimer ${w?.name} ?") },
+            text = {
+                Text(
+                    "Le wallet sera supprimé. Les trades passés restent dans l'historique " +
+                        "(marqués avec l'ancien identifiant). Le cash et les holdings " +
+                        "simulés sont perdus."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.removeWallet(id)
+                    pendingDeleteId = null
+                }) { Text("Supprimer") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteId = null }) { Text("Annuler") }
             },
         )
     }
@@ -148,6 +195,7 @@ private fun WalletCard(
     price: Double?,
     onToggle: (Boolean) -> Unit,
     onRunNow: () -> Unit,
+    onDelete: () -> Unit,
 ) {
     val typeLabel = when (wallet.type) {
         StrategyType.DCA -> "📅 DCA"
@@ -176,6 +224,13 @@ private fun WalletCard(
                     modifier = Modifier.weight(1f),
                 )
                 Switch(checked = wallet.enabled, onCheckedChange = onToggle)
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = "Supprimer",
+                        tint = MaterialTheme.colorScheme.outline,
+                    )
+                }
             }
             Text("Mode: $modeText  •  Symbole: ${wallet.symbol}", color = modeColor)
 

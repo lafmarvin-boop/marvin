@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 /**
  * Persistance des wallets. Stockés en JSON dans SharedPreferences.
@@ -33,6 +34,38 @@ class WalletStore(context: Context) {
     fun replaceAll(list: List<Wallet>) {
         _wallets.value = list
         save(list)
+    }
+
+    fun addWallet(
+        name: String,
+        type: StrategyType,
+        symbol: String,
+        initialCash: Double,
+    ): Wallet {
+        val w = Wallet(
+            id = UUID.randomUUID().toString(),
+            name = name.ifBlank { typeDefaultName(type, symbol) },
+            type = type,
+            symbol = symbol.uppercase(),
+            balanceQuote = initialCash,
+            cashInjected = initialCash,
+            // Defaults raisonnables; l'utilisateur peut éditer après dans Réglages.
+            dcaAmount = if (type == StrategyType.DCA) 5.0 else 0.0,
+            dcaIntervalHours = 12,
+            gridStepPercent = if (type == StrategyType.GRID) 2.0 else 0.0,
+            gridAmountPerStep = if (type == StrategyType.GRID) 5.0 else 0.0,
+        )
+        replaceAll(_wallets.value + w)
+        return w
+    }
+
+    fun removeWallet(id: String) {
+        replaceAll(_wallets.value.filter { it.id != id })
+    }
+
+    private fun typeDefaultName(type: StrategyType, symbol: String): String = when (type) {
+        StrategyType.DCA -> "DCA $symbol"
+        StrategyType.GRID -> "Grid $symbol"
     }
 
     /** Transfert d'EUR (cash) entre deux wallets. Les holdings BTC ne bougent pas. */
