@@ -11,7 +11,7 @@ import com.marvin.cryptobot.data.remote.BinanceClient
 class AppContainer(private val context: Context) {
 
     val secureKeyStore: SecureKeyStore by lazy { SecureKeyStore(context) }
-    val configStore: ConfigStore by lazy { ConfigStore(context) }
+    val walletStore: WalletStore by lazy { WalletStore(context) }
     val tradeDao: TradeDao by lazy { AppDatabase.get(context).tradeDao() }
 
     /** Construit un client avec les clés stockées (ou un client public si absentes). */

@@ -1,9 +1,14 @@
-# CryptoBot — bot DCA Binance pour Android
+# CryptoBot — bot multi-stratégie Binance pour Android
 
-Application Android Kotlin / Jetpack Compose qui exécute une stratégie
-**Dollar Cost Averaging (DCA)** sur Binance : achat automatique d'un montant
-fixe en quote-currency à intervalle régulier, en mode simulation (paper) ou
-réel (live).
+Application Android Kotlin / Jetpack Compose qui gère plusieurs **portefeuilles
+indépendants** (wallets), chacun pilotant sa propre stratégie sur Binance Spot :
+
+- **DCA** (Dollar Cost Averaging) : achat régulier d'un montant fixe
+- **Grid Trading** : achat/revente automatique sur des paliers de prix (en %)
+
+Chaque wallet a son propre cash, ses propres holdings, son propre mode (paper
+ou live). Tu peux **transférer du cash** d'un wallet à l'autre directement
+dans l'app.
 
 ## ⚠️ Avertissements importants
 

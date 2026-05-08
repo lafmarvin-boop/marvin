@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [TradeEntity::class], version = 1, exportSchema = false)
+@Database(entities = [TradeEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun tradeDao(): TradeDao
 
@@ -17,7 +17,11 @@ abstract class AppDatabase : RoomDatabase() {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "cryptobot.db",
-            ).build().also { INSTANCE = it }
+            )
+                // OK en phase de test: on écrase la base si le schéma change
+                .fallbackToDestructiveMigration()
+                .build()
+                .also { INSTANCE = it }
         }
     }
 }

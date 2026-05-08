@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,11 +24,13 @@ import java.util.Date
 @Composable
 fun HistoryScreen(vm: MainViewModel) {
     val trades by vm.trades.collectAsStateWithLifecycle()
+    val wallets by vm.wallets.collectAsStateWithLifecycle()
     val df = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+    val nameById = wallets.associate { it.id to it.name }
 
     if (trades.isEmpty()) {
         Column(Modifier.fillMaxSize().padding(24.dp)) {
-            Text("Aucun trade encore. Lance ton premier achat depuis le tableau.")
+            Text("Aucun trade encore. Lance un wallet ou clique \"Exécuter maintenant\".")
         }
         return
     }
@@ -38,22 +41,29 @@ fun HistoryScreen(vm: MainViewModel) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(trades, key = { it.id }) { t ->
-            Card {
+            val sideColor = when {
+                t.status != "OK" -> Color(0xFFC62828)
+                t.side == "BUY" -> Color(0xFF1565C0)
+                else -> Color(0xFF2E7D32)
+            }
+            Card(colors = CardDefaults.cardColors()) {
                 Column(Modifier.padding(12.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(df.format(Date(t.timestamp)), style = MaterialTheme.typography.labelSmall)
-                        val tag = if (t.mode == "PAPER") "📝 PAPER" else "💰 LIVE"
+                        val walletName = nameById[t.walletId] ?: t.walletId
+                        Text("• $walletName", style = MaterialTheme.typography.labelSmall)
+                        val tag = if (t.mode == "PAPER") "📝" else "💰"
                         Text(tag, style = MaterialTheme.typography.labelSmall)
-                        val statusColor = if (t.status == "OK") Color(0xFF2E7D32) else Color(0xFFC62828)
-                        Text(t.status, color = statusColor, style = MaterialTheme.typography.labelSmall)
                     }
                     Text(
                         "${t.side} ${t.symbol}",
                         style = MaterialTheme.typography.titleSmall,
+                        color = sideColor,
                     )
                     if (t.status == "OK") {
                         Text("Quantité: %.8f @ %.2f".format(t.quantity, t.price))
-                        Text("Total: %.2f".format(t.quoteSpent))
+                        val sign = if (t.side == "BUY") "-" else "+"
+                        Text("Cash: $sign%.2f €".format(t.quoteAmount))
                     } else {
                         Text(t.message ?: "(erreur)", color = Color(0xFFC62828))
                     }

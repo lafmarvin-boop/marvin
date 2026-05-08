@@ -31,21 +31,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.marvin.cryptobot.domain.model.StrategyType
 import com.marvin.cryptobot.domain.model.TradingMode
+import com.marvin.cryptobot.domain.model.Wallet
 import com.marvin.cryptobot.viewmodel.MainViewModel
 
 @Composable
 fun SettingsScreen(vm: MainViewModel) {
-    val config by vm.config.collectAsStateWithLifecycle()
+    val wallets by vm.wallets.collectAsStateWithLifecycle()
     val ui by vm.ui.collectAsStateWithLifecycle()
 
-    var symbol by remember(config.symbol) { mutableStateOf(config.symbol) }
-    var amount by remember(config.quoteAmount) { mutableStateOf(config.quoteAmount.toString()) }
-    var interval by remember(config.intervalHours) { mutableStateOf(config.intervalHours.toString()) }
-    var maxSpend by remember(config.maxTotalSpend) { mutableStateOf(config.maxTotalSpend.toString()) }
     var apiKey by remember { mutableStateOf("") }
     var apiSecret by remember { mutableStateOf("") }
-    var confirmLive by remember { mutableStateOf(false) }
+    var pendingLiveWalletId by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -56,72 +54,20 @@ fun SettingsScreen(vm: MainViewModel) {
     ) {
         Text("Réglages", style = MaterialTheme.typography.headlineSmall)
 
-        Card {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Mode de trading", style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = config.mode == TradingMode.PAPER,
-                        onClick = { vm.setMode(TradingMode.PAPER) },
-                        label = { Text("Paper (simulation)") },
-                    )
-                    FilterChip(
-                        selected = config.mode == TradingMode.LIVE,
-                        onClick = { confirmLive = true },
-                        label = { Text("LIVE (réel)") },
-                    )
-                }
-                Text(
-                    "En mode paper, aucun ordre n'est envoyé à Binance. Le bot simule avec les vrais prix.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-        }
-
-        Card {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Stratégie DCA", style = MaterialTheme.typography.titleMedium)
-                OutlinedTextField(
-                    value = symbol,
-                    onValueChange = { symbol = it },
-                    label = { Text("Symbole (ex: BTCEUR)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = { Text("Montant par achat (en quote-currency)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = interval,
-                    onValueChange = { interval = it },
-                    label = { Text("Intervalle entre achats (heures)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = maxSpend,
-                    onValueChange = { maxSpend = it },
-                    label = { Text("Plafond cumulé (0 = illimité)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Button(
-                    onClick = {
-                        vm.setSymbol(symbol)
-                        amount.toDoubleOrNull()?.let { vm.setQuoteAmount(it) }
-                        interval.toIntOrNull()?.let { vm.setIntervalHours(it) }
-                        maxSpend.toDoubleOrNull()?.let { vm.setMaxSpend(it) }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Enregistrer la stratégie") }
-            }
+        wallets.forEach { wallet ->
+            WalletSettingsCard(
+                wallet = wallet,
+                onSetSymbol = { vm.setSymbol(wallet.id, it) },
+                onSetMode = { mode ->
+                    if (mode == TradingMode.LIVE) pendingLiveWalletId = wallet.id
+                    else vm.setMode(wallet.id, mode)
+                },
+                onSetDca = { amount, hours -> vm.setDcaParams(wallet.id, amount, hours) },
+                onSetGrid = { step, amount -> vm.setGridParams(wallet.id, step, amount) },
+                onSetMaxSpend = { vm.setMaxSpend(wallet.id, it) },
+                onDeposit = { vm.depositToWallet(wallet.id, it) },
+                onReset = { vm.resetWallet(wallet.id) },
+            )
         }
 
         Card {
@@ -152,14 +98,12 @@ fun SettingsScreen(vm: MainViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = {
-                            if (apiKey.isNotBlank() && apiSecret.isNotBlank()) {
-                                vm.saveApiCredentials(apiKey, apiSecret)
-                                apiKey = ""; apiSecret = ""
-                            }
+                    Button(onClick = {
+                        if (apiKey.isNotBlank() && apiSecret.isNotBlank()) {
+                            vm.saveApiCredentials(apiKey, apiSecret)
+                            apiKey = ""; apiSecret = ""
                         }
-                    ) { Text("Enregistrer") }
+                    }) { Text("Enregistrer") }
                     OutlinedButton(onClick = { vm.clearApiCredentials() }) { Text("Effacer") }
                 }
             }
@@ -168,25 +112,25 @@ fun SettingsScreen(vm: MainViewModel) {
         Spacer(Modifier.height(24.dp))
     }
 
-    if (confirmLive) {
+    pendingLiveWalletId?.let { id ->
+        val w = wallets.firstOrNull { it.id == id }
         AlertDialog(
-            onDismissRequest = { confirmLive = false },
-            title = { Text("⚠️ Activer le mode LIVE ?") },
+            onDismissRequest = { pendingLiveWalletId = null },
+            title = { Text("⚠️ Activer LIVE pour ${w?.name} ?") },
             text = {
                 Text(
-                    "En mode LIVE, le bot dépensera de l'argent réel sur ton compte Binance. " +
-                        "Vérifie ta stratégie, ton plafond, et tes clés API (sans permission de retrait). " +
-                        "Tu confirmes ?"
+                    "En mode LIVE, ce wallet enverra de vrais ordres sur ton compte Binance. " +
+                        "Vérifie ton plafond, ta stratégie et tes clés API (sans permission de retrait)."
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.setMode(TradingMode.LIVE)
-                    confirmLive = false
+                    vm.setMode(id, TradingMode.LIVE)
+                    pendingLiveWalletId = null
                 }) { Text("Activer LIVE") }
             },
             dismissButton = {
-                TextButton(onClick = { confirmLive = false }) { Text("Annuler") }
+                TextButton(onClick = { pendingLiveWalletId = null }) { Text("Annuler") }
             },
         )
     }
@@ -199,5 +143,150 @@ fun SettingsScreen(vm: MainViewModel) {
             text = { Text(msg) },
             confirmButton = { TextButton(onClick = { vm.consumeMessage() }) { Text("OK") } },
         )
+    }
+}
+
+@Composable
+private fun WalletSettingsCard(
+    wallet: Wallet,
+    onSetSymbol: (String) -> Unit,
+    onSetMode: (TradingMode) -> Unit,
+    onSetDca: (Double, Int) -> Unit,
+    onSetGrid: (Double, Double) -> Unit,
+    onSetMaxSpend: (Double) -> Unit,
+    onDeposit: (Double) -> Unit,
+    onReset: () -> Unit,
+) {
+    var symbol by remember(wallet.symbol) { mutableStateOf(wallet.symbol) }
+    var dcaAmount by remember(wallet.dcaAmount) { mutableStateOf(wallet.dcaAmount.toString()) }
+    var dcaInterval by remember(wallet.dcaIntervalHours) { mutableStateOf(wallet.dcaIntervalHours.toString()) }
+    var gridStep by remember(wallet.gridStepPercent) { mutableStateOf(wallet.gridStepPercent.toString()) }
+    var gridAmount by remember(wallet.gridAmountPerStep) { mutableStateOf(wallet.gridAmountPerStep.toString()) }
+    var maxSpend by remember(wallet.maxTotalSpend) { mutableStateOf(wallet.maxTotalSpend.toString()) }
+    var depositAmount by remember { mutableStateOf("") }
+    val typeLabel = when (wallet.type) {
+        StrategyType.DCA -> "📅 DCA"
+        StrategyType.GRID -> "📈 Grid"
+    }
+
+    Card {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("$typeLabel  ${wallet.name}", style = MaterialTheme.typography.titleMedium)
+
+            // Mode
+            Text("Mode de trading", style = MaterialTheme.typography.labelMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = wallet.mode == TradingMode.PAPER,
+                    onClick = { onSetMode(TradingMode.PAPER) },
+                    label = { Text("Paper") },
+                )
+                FilterChip(
+                    selected = wallet.mode == TradingMode.LIVE,
+                    onClick = { onSetMode(TradingMode.LIVE) },
+                    label = { Text("LIVE") },
+                )
+            }
+            if (wallet.type == StrategyType.GRID && wallet.mode == TradingMode.LIVE) {
+                Text(
+                    "⚠️ Grid LIVE pas encore supporté — reste en PAPER",
+                    color = Color(0xFFC62828),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+
+            OutlinedTextField(
+                value = symbol,
+                onValueChange = { symbol = it },
+                label = { Text("Symbole") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            when (wallet.type) {
+                StrategyType.DCA -> {
+                    OutlinedTextField(
+                        value = dcaAmount,
+                        onValueChange = { dcaAmount = it },
+                        label = { Text("Montant par achat (EUR)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = dcaInterval,
+                        onValueChange = { dcaInterval = it },
+                        label = { Text("Intervalle (heures)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                StrategyType.GRID -> {
+                    OutlinedTextField(
+                        value = gridStep,
+                        onValueChange = { gridStep = it },
+                        label = { Text("Pas (%) — déclenche un trade à chaque ±X%") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = gridAmount,
+                        onValueChange = { gridAmount = it },
+                        label = { Text("Montant par trade (EUR)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = maxSpend,
+                onValueChange = { maxSpend = it },
+                label = { Text("Plafond cumulé (0 = illimité)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Button(
+                onClick = {
+                    onSetSymbol(symbol)
+                    when (wallet.type) {
+                        StrategyType.DCA -> onSetDca(
+                            dcaAmount.toDoubleOrNull() ?: wallet.dcaAmount,
+                            dcaInterval.toIntOrNull() ?: wallet.dcaIntervalHours,
+                        )
+                        StrategyType.GRID -> onSetGrid(
+                            gridStep.toDoubleOrNull() ?: wallet.gridStepPercent,
+                            gridAmount.toDoubleOrNull() ?: wallet.gridAmountPerStep,
+                        )
+                    }
+                    onSetMaxSpend(maxSpend.toDoubleOrNull() ?: wallet.maxTotalSpend)
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Enregistrer") }
+
+            Text("Capital", style = MaterialTheme.typography.labelMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = depositAmount,
+                    onValueChange = { depositAmount = it },
+                    label = { Text("Dépôt simulé (EUR)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedButton(
+                    onClick = {
+                        depositAmount.toDoubleOrNull()?.let { onDeposit(it) }
+                        depositAmount = ""
+                    }
+                ) { Text("Déposer") }
+            }
+            OutlinedButton(onClick = onReset) { Text("Réinitialiser le wallet") }
+        }
     }
 }

@@ -6,10 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.marvin.cryptobot.CryptoBotApp
 import com.marvin.cryptobot.data.AppContainer
 import com.marvin.cryptobot.data.db.TradeEntity
-import com.marvin.cryptobot.domain.model.BotConfig
+import com.marvin.cryptobot.domain.model.StrategyType
 import com.marvin.cryptobot.domain.model.TradingMode
+import com.marvin.cryptobot.domain.model.Wallet
 import com.marvin.cryptobot.domain.strategy.DcaStrategy
-import com.marvin.cryptobot.worker.DcaWorker
+import com.marvin.cryptobot.domain.strategy.GridStrategy
+import com.marvin.cryptobot.domain.strategy.Strategy
+import com.marvin.cryptobot.domain.strategy.StrategyOutcome
+import com.marvin.cryptobot.worker.TradingWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,7 +24,7 @@ import kotlinx.coroutines.launch
 
 class MainViewModel(private val container: AppContainer) : ViewModel() {
 
-    val config: StateFlow<BotConfig> = container.configStore.config
+    val wallets: StateFlow<List<Wallet>> = container.walletStore.wallets
 
     val trades: StateFlow<List<TradeEntity>> = container.tradeDao.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -28,36 +32,87 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
     private val _ui = MutableStateFlow(UiState())
     val ui: StateFlow<UiState> = _ui.asStateFlow()
 
-    private val _lastPrice = MutableStateFlow<Double?>(null)
-    val lastPrice: StateFlow<Double?> = _lastPrice.asStateFlow()
+    private val _prices = MutableStateFlow<Map<String, Double>>(emptyMap())
+    val prices: StateFlow<Map<String, Double>> = _prices.asStateFlow()
 
     val hasCredentials: Boolean get() = container.secureKeyStore.hasCredentials()
 
-    fun setEnabled(enabled: Boolean) {
-        container.configStore.update { it.copy(enabled = enabled) }
+    fun setWalletEnabled(id: String, enabled: Boolean) {
+        container.walletStore.update(id) { it.copy(enabled = enabled) }
+        // Si au moins un wallet est actif, le worker tourne. Sinon on l'arrête.
+        val anyEnabled = wallets.value.any { it.enabled }
         val ctx = CryptoBotApp.instance
-        if (enabled) DcaWorker.schedule(ctx, config.value) else DcaWorker.cancel(ctx)
+        if (anyEnabled) TradingWorker.schedule(ctx) else TradingWorker.cancel(ctx)
     }
 
-    fun setMode(mode: TradingMode) {
-        container.configStore.update { it.copy(mode = mode) }
+    fun setMode(id: String, mode: TradingMode) {
+        container.walletStore.update(id) { it.copy(mode = mode) }
     }
 
-    fun setSymbol(symbol: String) {
-        container.configStore.update { it.copy(symbol = symbol.uppercase().trim()) }
+    fun setSymbol(id: String, symbol: String) {
+        container.walletStore.update(id) {
+            it.copy(symbol = symbol.uppercase().trim(), gridReferencePrice = 0.0)
+        }
     }
 
-    fun setQuoteAmount(amount: Double) {
-        container.configStore.update { it.copy(quoteAmount = amount) }
+    fun setDcaParams(id: String, amount: Double, intervalHours: Int) {
+        container.walletStore.update(id) {
+            it.copy(dcaAmount = amount, dcaIntervalHours = intervalHours.coerceAtLeast(1))
+        }
     }
 
-    fun setIntervalHours(hours: Int) {
-        container.configStore.update { it.copy(intervalHours = hours.coerceAtLeast(1)) }
-        if (config.value.enabled) DcaWorker.schedule(CryptoBotApp.instance, config.value)
+    fun setGridParams(id: String, stepPercent: Double, amountPerStep: Double) {
+        container.walletStore.update(id) {
+            it.copy(
+                gridStepPercent = stepPercent,
+                gridAmountPerStep = amountPerStep,
+                gridReferencePrice = 0.0, // reset reference quand on change
+            )
+        }
     }
 
-    fun setMaxSpend(value: Double) {
-        container.configStore.update { it.copy(maxTotalSpend = value) }
+    fun setMaxSpend(id: String, value: Double) {
+        container.walletStore.update(id) { it.copy(maxTotalSpend = value) }
+    }
+
+    fun depositToWallet(id: String, amount: Double) {
+        if (amount <= 0) return
+        container.walletStore.update(id) {
+            it.copy(
+                balanceQuote = it.balanceQuote + amount,
+                cashInjected = it.cashInjected + amount,
+            )
+        }
+        _ui.value = _ui.value.copy(message = "Dépôt simulé: +%.2f €".format(amount))
+    }
+
+    fun resetWallet(id: String) {
+        container.walletStore.update(id) {
+            it.copy(
+                balanceQuote = 50.0,
+                holdingsBase = 0.0,
+                totalInvested = 0.0,
+                cashInjected = 50.0,
+                gridReferencePrice = 0.0,
+            )
+        }
+        _ui.value = _ui.value.copy(message = "Wallet réinitialisé (50 €)")
+    }
+
+    fun transferBetweenWallets(fromId: String, toId: String, amount: Double) {
+        container.walletStore.transfer(fromId, toId, amount)
+            .onSuccess {
+                _ui.value = _ui.value.copy(
+                    message = "Transfert: %.2f € de %s vers %s".format(
+                        amount,
+                        wallets.value.first { it.id == fromId }.name,
+                        wallets.value.first { it.id == toId }.name,
+                    )
+                )
+            }
+            .onFailure {
+                _ui.value = _ui.value.copy(message = "Échec transfert: ${it.message}")
+            }
     }
 
     fun saveApiCredentials(apiKey: String, apiSecret: String) {
@@ -71,21 +126,33 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         _ui.value = _ui.value.copy(message = "Clés API supprimées")
     }
 
-    fun refreshPrice() {
+    fun refreshPrices() {
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { container.newBinanceClient().lastPrice(config.value.symbol) }
-                .onSuccess { _lastPrice.value = it }
-                .onFailure { _ui.value = _ui.value.copy(message = "Prix indisponible: ${it.message}") }
+            val symbols = wallets.value.map { it.symbol }.distinct()
+            val client = container.newBinanceClient()
+            val results = symbols.associateWith { sym ->
+                runCatching { client.lastPrice(sym) }.getOrNull()
+            }.filterValues { it != null }.mapValues { it.value!! }
+            _prices.value = results
         }
     }
 
-    fun runOnceNow() {
+    fun runWalletNow(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val outcome = DcaStrategy(container).runOnce(config.value.copy(enabled = true))
+            val wallet = wallets.value.firstOrNull { it.id == id } ?: return@launch
+            val strategy: Strategy = when (wallet.type) {
+                StrategyType.DCA -> DcaStrategy(container)
+                StrategyType.GRID -> GridStrategy(container)
+            }
+            val outcome = strategy.runOnce(wallet.copy(enabled = true))
             val msg = when (outcome) {
-                is DcaStrategy.Outcome.Success -> "Achat enregistré (${outcome.trade.mode})"
-                is DcaStrategy.Outcome.Skipped -> "Ignoré: ${outcome.reason}"
-                is DcaStrategy.Outcome.Failure -> "Échec: ${outcome.reason}"
+                is StrategyOutcome.Executed -> {
+                    container.walletStore.update(id) { outcome.updatedWallet }
+                    if (outcome.trades.isEmpty()) "Initialisé (réf grid posée)"
+                    else "${outcome.trades.size} trade(s) exécuté(s)"
+                }
+                is StrategyOutcome.Skipped -> "Ignoré: ${outcome.reason}"
+                is StrategyOutcome.Failure -> "Échec: ${outcome.reason}"
             }
             _ui.value = _ui.value.copy(message = msg)
         }

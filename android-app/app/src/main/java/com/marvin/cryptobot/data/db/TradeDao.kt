@@ -14,12 +14,15 @@ interface TradeDao {
     @Query("SELECT * FROM trades ORDER BY timestamp DESC")
     fun observeAll(): Flow<List<TradeEntity>>
 
-    @Query("SELECT COALESCE(SUM(quoteSpent), 0) FROM trades WHERE mode = :mode AND status = 'OK'")
-    suspend fun totalSpent(mode: String): Double
+    @Query("SELECT * FROM trades WHERE walletId = :walletId ORDER BY timestamp DESC")
+    fun observeByWallet(walletId: String): Flow<List<TradeEntity>>
 
-    @Query("SELECT COALESCE(SUM(quantity), 0) FROM trades WHERE symbol = :symbol AND mode = :mode AND side = 'BUY' AND status = 'OK'")
-    suspend fun totalBought(symbol: String, mode: String): Double
+    @Query("""
+        SELECT COALESCE(SUM(CASE WHEN side = 'BUY' THEN quoteAmount ELSE 0 END), 0)
+        FROM trades WHERE walletId = :walletId AND status = 'OK'
+    """)
+    suspend fun totalSpent(walletId: String): Double
 
-    @Query("SELECT MAX(timestamp) FROM trades WHERE status = 'OK'")
-    suspend fun lastSuccessfulTimestamp(): Long?
+    @Query("SELECT MAX(timestamp) FROM trades WHERE walletId = :walletId AND status = 'OK'")
+    suspend fun lastSuccessfulTimestamp(walletId: String): Long?
 }
