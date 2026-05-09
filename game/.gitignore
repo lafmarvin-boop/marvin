@@ -1,0 +1,9 @@
+# Cache et imports générés par Godot
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+
+# Builds
+build/
+*.import
