@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Traducteur de Chat",
+    "slug": "cat-translator",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#1a1a2e"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.cattranslator",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Cette application utilise le micro pour enregistrer et analyser les miaulements de votre chat."
+      }
+    },
+    "android": {
+      "package": "com.example.cattranslator",
+      "permissions": ["RECORD_AUDIO"]
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Autoriser l'app à utiliser le micro pour analyser les miaulements."
+        }
+      ]
+    ]
+  }
+}
