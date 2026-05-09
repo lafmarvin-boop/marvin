@@ -6,4 +6,3 @@ export_presets.cfg
 
 # Builds
 build/
-*.import

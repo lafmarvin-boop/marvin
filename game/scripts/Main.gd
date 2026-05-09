@@ -21,6 +21,16 @@ func show_dungeon_map() -> void:
 	add_child(map)
 	current_screen = map
 	map.battle_requested.connect(_on_battle_requested)
+	map.sprite_demo_requested.connect(_on_sprite_demo_requested)
+	if hud:
+		hud.refresh()
+
+func _on_sprite_demo_requested() -> void:
+	_clear_screen()
+	var demo: Node2D = load("res://scripts/SpriteDemo.gd").new()
+	add_child(demo)
+	current_screen = demo
+	demo.back_pressed.connect(show_dungeon_map)
 	if hud:
 		hud.refresh()
 
