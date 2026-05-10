@@ -9,6 +9,7 @@ import java.util.Date
 import java.util.Locale
 
 enum class LlmBackendChoice { CLOUD_CLAUDE, LOCAL_GEMMA }
+enum class TtsBackend { AUTO, ELEVENLABS, PIPER, ANDROID }
 enum class ClaudeModel(val id: String) {
     HAIKU("claude-haiku-4-5"),
     SONNET("claude-sonnet-4-6")
@@ -66,6 +67,23 @@ class Settings(context: Context) {
     var homeAssistantToken: String
         get() = secure.getString(KEY_HA_TOKEN, "") ?: ""
         set(value) { secure.edit().putString(KEY_HA_TOKEN, value).apply() }
+
+    /** Clé API ElevenLabs (TTS premium). Vide = utilise Piper local. */
+    var elevenLabsApiKey: String
+        get() = secure.getString(KEY_ELEVEN_KEY, "") ?: ""
+        set(value) { secure.edit().putString(KEY_ELEVEN_KEY, value).apply() }
+
+    /** Voice ID ElevenLabs. Vide = "Adam" (voix masculine multilingue). */
+    var elevenLabsVoiceId: String
+        get() = plain.getString(KEY_ELEVEN_VOICE, "") ?: ""
+        set(value) { plain.edit().putString(KEY_ELEVEN_VOICE, value).apply() }
+
+    /** Backend TTS choisi. Auto = ElevenLabs si clé dispo + réseau, sinon Piper. */
+    var ttsBackend: TtsBackend
+        get() = TtsBackend.entries.firstOrNull {
+            it.name == plain.getString(KEY_TTS_BACKEND, TtsBackend.AUTO.name)
+        } ?: TtsBackend.AUTO
+        set(value) { plain.edit().putString(KEY_TTS_BACKEND, value.name).apply() }
 
     /**
      * Quand true, Marvin demande oralement confirmation avant les actions
@@ -234,6 +252,9 @@ class Settings(context: Context) {
         private const val KEY_ANTHROPIC_KEY = "anthropic_api_key"
         private const val KEY_HA_URL = "ha_url"
         private const val KEY_HA_TOKEN = "ha_token"
+        private const val KEY_ELEVEN_KEY = "eleven_api_key"
+        private const val KEY_ELEVEN_VOICE = "eleven_voice_id"
+        private const val KEY_TTS_BACKEND = "tts_backend"
         private const val KEY_QUOTA_DAY = "quota_day"
         private const val KEY_QUOTA_USED = "quota_used"
         private const val KEY_CONFIRM_SENSITIVE = "confirm_sensitive"

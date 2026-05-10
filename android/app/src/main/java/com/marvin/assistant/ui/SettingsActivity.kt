@@ -99,6 +99,9 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var showAudit by remember { mutableStateOf(false) }
     var haUrl by remember { mutableStateOf(settings.homeAssistantUrl) }
     var haToken by remember { mutableStateOf(settings.homeAssistantToken) }
+    var elevenKey by remember { mutableStateOf(settings.elevenLabsApiKey) }
+    var elevenVoice by remember { mutableStateOf(settings.elevenLabsVoiceId) }
+    var ttsBackend by remember { mutableStateOf(settings.ttsBackend) }
 
     // Corrections STT : on lit a` chaque recomposition pour refléter les
     // ajouts faits via voix. Une carte par entrée + bouton supprimer.
@@ -391,6 +394,45 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             onChange = { proactiveCal = it }
         )
 
+        // ------ VOIX (TTS) ------
+        Spacer(Modifier.height(20.dp))
+        Text("Voix de Jarvis", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Choisis le moteur de synthèse vocale. ElevenLabs nécessite une " +
+                "clé API (~5 €/mois pour 30 000 caractères).",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(Modifier.height(8.dp))
+        com.marvin.assistant.util.TtsBackend.entries.forEach { mode ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = ttsBackend == mode, onClick = { ttsBackend = mode })
+                val label = when (mode) {
+                    com.marvin.assistant.util.TtsBackend.AUTO -> "Auto (ElevenLabs si dispo, sinon Piper)"
+                    com.marvin.assistant.util.TtsBackend.ELEVENLABS -> "ElevenLabs (cloud, premium)"
+                    com.marvin.assistant.util.TtsBackend.PIPER -> "Piper (local, gratuit)"
+                    com.marvin.assistant.util.TtsBackend.ANDROID -> "Android (qualité moindre)"
+                }
+                Text(label, modifier = Modifier.padding(start = 6.dp))
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = elevenKey,
+            onValueChange = { elevenKey = it },
+            label = { Text("Clé API ElevenLabs") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(4.dp))
+        OutlinedTextField(
+            value = elevenVoice,
+            onValueChange = { elevenVoice = it },
+            label = { Text("Voice ID ElevenLabs (vide = Adam)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
         // ------ WAKE WORD ------
         Spacer(Modifier.height(20.dp))
         Text("Mot d'activation",
@@ -666,6 +708,9 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 settings.homeAssistantUrl = haUrl.trim()
                 settings.homeAssistantToken = haToken.trim()
                 settings.localOnlyMode = localOnly
+                settings.elevenLabsApiKey = elevenKey.trim()
+                settings.elevenLabsVoiceId = elevenVoice.trim()
+                settings.ttsBackend = ttsBackend
                 if (settings.wakeWord != wakeWord) {
                     settings.wakeWord = wakeWord
                     // Redémarre le service pour reprendre le nouveau wake word
