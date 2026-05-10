@@ -172,6 +172,14 @@ class Settings(context: Context) {
         get() = plain.getBoolean(KEY_PROACTIVE_NOTIFS, false)
         set(value) { plain.edit().putBoolean(KEY_PROACTIVE_NOTIFS, value).apply() }
 
+    /**
+     * Annonces vocales 5 min avant chaque événement de calendrier.
+     * Off par défaut. Nécessite READ_CALENDAR.
+     */
+    var proactiveCalendarAnnouncementsEnabled: Boolean
+        get() = plain.getBoolean(KEY_PROACTIVE_CAL, false)
+        set(value) { plain.edit().putBoolean(KEY_PROACTIVE_CAL, value).apply() }
+
     /** Returns true and increments the counter if a request is allowed today. */
     @Synchronized
     fun consumeDailyQuota(): Boolean {
@@ -209,6 +217,7 @@ class Settings(context: Context) {
         private const val KEY_IS_SLEEPING = "is_sleeping"
         private const val KEY_WEB_SEARCH = "web_search_enabled"
         private const val KEY_PROACTIVE_NOTIFS = "proactive_notifs_enabled"
+        private const val KEY_PROACTIVE_CAL = "proactive_calendar_enabled"
 
         /** Apps dont on annonce les notifications quand le mode proactif est activé. */
         val PROACTIVE_NOTIF_PACKAGES = setOf(

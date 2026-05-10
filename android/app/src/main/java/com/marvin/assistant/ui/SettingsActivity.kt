@@ -91,6 +91,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var voiceBioThreshold by remember { mutableStateOf(settings.voiceBiometricThreshold) }
     var webSearchEnabled by remember { mutableStateOf(settings.webSearchEnabled) }
     var proactiveNotifs by remember { mutableStateOf(settings.proactiveNotificationsEnabled) }
+    var proactiveCal by remember { mutableStateOf(settings.proactiveCalendarAnnouncementsEnabled) }
     var haUrl by remember { mutableStateOf(settings.homeAssistantUrl) }
     var haToken by remember { mutableStateOf(settings.homeAssistantToken) }
 
@@ -367,6 +368,15 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             onChange = { proactiveNotifs = it }
         )
 
+        ToggleRow(
+            label = "Annonces calendrier",
+            description = "Jarvis annonce vocalement chaque événement de ton " +
+                "calendrier 5 minutes avant qu'il commence. Nécessite la " +
+                "permission READ_CALENDAR.",
+            checked = proactiveCal,
+            onChange = { proactiveCal = it }
+        )
+
         // ------ SMART HOME (HOME ASSISTANT) ------
         Spacer(Modifier.height(20.dp))
         Text("Smart home (Home Assistant)",
@@ -560,6 +570,14 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 settings.voiceBiometricThreshold = voiceBioThreshold
                 settings.webSearchEnabled = webSearchEnabled
                 settings.proactiveNotificationsEnabled = proactiveNotifs
+                val prevCal = settings.proactiveCalendarAnnouncementsEnabled
+                settings.proactiveCalendarAnnouncementsEnabled = proactiveCal
+                // Enclenche / arrête le watcher si on change le toggle
+                if (proactiveCal && !prevCal) {
+                    com.marvin.assistant.proactive.CalendarWatcher(ctx).enable()
+                } else if (!proactiveCal && prevCal) {
+                    com.marvin.assistant.proactive.CalendarWatcher(ctx).disable()
+                }
                 settings.homeAssistantUrl = haUrl.trim()
                 settings.homeAssistantToken = haToken.trim()
                 onClose()

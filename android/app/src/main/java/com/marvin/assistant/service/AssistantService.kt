@@ -35,6 +35,7 @@ import com.marvin.assistant.reminders.RemindersManager
 import com.marvin.assistant.routines.RoutinesManager
 import com.marvin.assistant.shopping.ShoppingList
 import com.marvin.assistant.smarthome.HomeAssistantClient
+import com.marvin.assistant.proactive.CalendarWatcher
 import com.marvin.assistant.vision.VisionCaptureActivity
 import com.marvin.assistant.vision.VisionClient
 import com.marvin.assistant.ui.DiscussionActivity
@@ -93,6 +94,11 @@ class AssistantService : LifecycleService() {
         shopping = ShoppingList(this)
         visionClient = VisionClient(this, settings)
         homeAssistant = HomeAssistantClient(settings)
+        // Calendar watcher : si l'utilisateur a activé les annonces
+        // proactives de calendrier, on lance le cycle de scan.
+        if (settings.proactiveCalendarAnnouncementsEnabled) {
+            CalendarWatcher(this).enable()
+        }
         wakeWord = WakeWordEngine(
             context = this,
             voskModel = voskModel,

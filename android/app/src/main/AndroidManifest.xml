@@ -164,5 +164,15 @@
                 <action android:name="com.marvin.assistant.REMINDER_FIRE" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".proactive.CalendarScanReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.marvin.assistant.CALENDAR_SCAN" />
+                <action android:name="com.marvin.assistant.CALENDAR_ANNOUNCE" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
