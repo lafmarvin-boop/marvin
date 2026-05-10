@@ -35,6 +35,7 @@ class ActionExecutor(private val context: Context) {
         MarvinIntent.ListReminders,
         MarvinIntent.ClearReminders,
         is MarvinIntent.AddCorrection,
-        is MarvinIntent.AddReminder -> ""
+        is MarvinIntent.AddReminder,
+        is MarvinIntent.LocalAnswer -> ""
     }
 }

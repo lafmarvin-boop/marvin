@@ -316,6 +316,7 @@ class AssistantService : LifecycleService() {
                 val r = reminders.add(parsed.text, parsed.triggerAtMs)
                 speakWithPhase("OK, je te rappellerai ${r.describe()}.")
             }
+            is MarvinIntent.LocalAnswer -> speakWithPhase(parsed.text)
             is MarvinIntent.ListReminders -> {
                 val list = reminders.all()
                 if (list.isEmpty()) speakWithPhase("Tu n'as aucun rappel programmé.")
@@ -367,6 +368,10 @@ class AssistantService : LifecycleService() {
             if (parsedFu is MarvinIntent.AddReminder) {
                 val r = reminders.add(parsedFu.text, parsedFu.triggerAtMs)
                 speakWithPhase("OK, je te rappellerai ${r.describe()}.")
+                continue
+            }
+            if (parsedFu is MarvinIntent.LocalAnswer) {
+                speakWithPhase(parsedFu.text)
                 continue
             }
             if (parsedFu is MarvinIntent.ListReminders) {

@@ -13,6 +13,11 @@ class IntentParser {
         val text = raw.trim().lowercase()
         if (text.isBlank()) return MarvinIntent.Unknown(raw)
 
+        // Calcul local : court-circuite Claude pour les opérations simples.
+        // Réponse instantanée, zéro coût. Si pas reconnu comme calcul,
+        // on tombe sur les rules normales.
+        CalcParser.tryCompute(text)?.let { return MarvinIntent.LocalAnswer(it) }
+
         for (rule in rules) {
             val match = rule.regex.find(text) ?: continue
             return rule.build(match)

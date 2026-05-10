@@ -46,6 +46,9 @@ sealed class MarvinIntent {
     /** Programme un rappel à un instant absolu. */
     data class AddReminder(val text: String, val triggerAtMs: Long) : MarvinIntent()
 
+    /** Réponse calculée localement (calc, conversion, etc.) — pas d'appel LLM. */
+    data class LocalAnswer(val text: String) : MarvinIntent()
+
     /** Énumère les rappels actifs. */
     data object ListReminders : MarvinIntent()
 
