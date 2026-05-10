@@ -92,6 +92,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var webSearchEnabled by remember { mutableStateOf(settings.webSearchEnabled) }
     var proactiveNotifs by remember { mutableStateOf(settings.proactiveNotificationsEnabled) }
     var proactiveCal by remember { mutableStateOf(settings.proactiveCalendarAnnouncementsEnabled) }
+    var wakeWord by remember { mutableStateOf(settings.wakeWord) }
     var haUrl by remember { mutableStateOf(settings.homeAssistantUrl) }
     var haToken by remember { mutableStateOf(settings.homeAssistantToken) }
 
@@ -377,6 +378,32 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             onChange = { proactiveCal = it }
         )
 
+        // ------ WAKE WORD ------
+        Spacer(Modifier.height(20.dp))
+        Text("Mot d'activation",
+            style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Le mot que tu prononces pour activer l'assistant. Persona reste " +
+                "« Jarvis » dans les réponses, seul le déclencheur change. " +
+                "Redémarrer le service pour appliquer.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(Modifier.height(8.dp))
+        Settings.WAKE_WORD_PRESETS.keys.forEach { word ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(
+                    selected = wakeWord == word,
+                    onClick = { wakeWord = word }
+                )
+                Text(
+                    word.replaceFirstChar { it.titlecase(java.util.Locale.FRENCH) },
+                    fontWeight = if (wakeWord == word) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.padding(start = 6.dp)
+                )
+            }
+        }
+
         // ------ SMART HOME (HOME ASSISTANT) ------
         Spacer(Modifier.height(20.dp))
         Text("Smart home (Home Assistant)",
@@ -580,6 +607,12 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 }
                 settings.homeAssistantUrl = haUrl.trim()
                 settings.homeAssistantToken = haToken.trim()
+                if (settings.wakeWord != wakeWord) {
+                    settings.wakeWord = wakeWord
+                    // Redémarre le service pour reprendre le nouveau wake word
+                    com.marvin.assistant.service.AssistantService.stop(ctx)
+                    com.marvin.assistant.service.AssistantService.start(ctx)
+                }
                 onClose()
             },
             modifier = Modifier.fillMaxWidth()

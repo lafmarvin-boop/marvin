@@ -99,9 +99,14 @@ class AssistantService : LifecycleService() {
         if (settings.proactiveCalendarAnnouncementsEnabled) {
             CalendarWatcher(this).enable()
         }
+        // Wake word configurable : on lit la liste de variantes pour le
+        // wake word choisi par l'utilisateur (jarvis par défaut).
+        val wakeKeywords = Settings.WAKE_WORD_PRESETS[settings.wakeWord]
+            ?: Settings.WAKE_WORD_PRESETS["jarvis"]!!
         wakeWord = WakeWordEngine(
             context = this,
             voskModel = voskModel,
+            keywords = wakeKeywords,
             speakerVerifier = speakerVerifier,
             voiceBiometricEnabled = { settings.voiceBiometricEnabled && speakerVerifier.isEnrolled() },
             voiceBiometricThreshold = { settings.voiceBiometricThreshold }
@@ -146,10 +151,14 @@ class AssistantService : LifecycleService() {
         return null
     }
 
+    private fun currentWakeVariants(): List<String> =
+        Settings.WAKE_WORD_PRESETS[settings.wakeWord]
+            ?: Settings.WAKE_WORD_PRESETS["jarvis"]!!
+
     private fun onWakeWordDetected(wakeTranscript: String) {
         val sleeping = settings.isSleeping
         val saidBonjour = wakeTranscript.contains("bonjour", ignoreCase = true)
-        val saidJarvis = JARVIS_VARIANTS.any { wakeTranscript.contains(it, ignoreCase = true) }
+        val saidJarvis = currentWakeVariants().any { wakeTranscript.contains(it, ignoreCase = true) }
 
         // Mode dodo : on ne réagit qu'à "bonjour" pour réveiller.
         if (sleeping) {
@@ -247,7 +256,7 @@ class AssistantService : LifecycleService() {
 
     private fun stripWakeWord(transcript: String): String {
         var result = transcript
-        for (variant in JARVIS_VARIANTS + listOf("bonjour")) {
+        for (variant in currentWakeVariants() + listOf("bonjour")) {
             result = result.replace(variant, "", ignoreCase = true)
         }
         return result.trim().replace(Regex("\\s+"), " ")

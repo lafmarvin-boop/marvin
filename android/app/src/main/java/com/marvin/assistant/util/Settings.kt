@@ -180,6 +180,20 @@ class Settings(context: Context) {
         get() = plain.getBoolean(KEY_PROACTIVE_CAL, false)
         set(value) { plain.edit().putBoolean(KEY_PROACTIVE_CAL, value).apply() }
 
+    /**
+     * Wake word actuel. Choix parmi WAKE_WORD_PRESETS. Stocké en clair
+     * (pas un secret). Le service relit cette valeur à chaque démarrage
+     * pour configurer WakeWordEngine.
+     */
+    var wakeWord: String
+        get() = plain.getString(KEY_WAKE_WORD, "jarvis") ?: "jarvis"
+        set(value) {
+            val cleaned = value.trim().lowercase()
+            if (cleaned in WAKE_WORD_PRESETS.keys) {
+                plain.edit().putString(KEY_WAKE_WORD, cleaned).apply()
+            }
+        }
+
     /** Returns true and increments the counter if a request is allowed today. */
     @Synchronized
     fun consumeDailyQuota(): Boolean {
@@ -218,6 +232,33 @@ class Settings(context: Context) {
         private const val KEY_WEB_SEARCH = "web_search_enabled"
         private const val KEY_PROACTIVE_NOTIFS = "proactive_notifs_enabled"
         private const val KEY_PROACTIVE_CAL = "proactive_calendar_enabled"
+        private const val KEY_WAKE_WORD = "wake_word"
+
+        /**
+         * Wake words supportés. Pour chacun, on liste les variantes
+         * phonétiques que Vosk peut produire selon la prononciation FR.
+         * Pour ajouter un wake word, ajoute une entrée ici puis recompile —
+         * pas besoin de toucher au code de WakeWordEngine.
+         */
+        val WAKE_WORD_PRESETS = mapOf(
+            "jarvis" to listOf(
+                "jarvis", "djarvis", "djarviss", "djarvisse", "jarvisse",
+                "jarvi", "yarvis", "djarvi", "charvis", "tchavis", "charvi",
+                "jarvice", "yves", "yvre", "tarvis"
+            ),
+            "alfred" to listOf(
+                "alfred", "alfrede", "alfraid", "halfred", "alfrette"
+            ),
+            "computer" to listOf(
+                "computer", "computeur", "compoteur", "kompiter"
+            ),
+            "marvin" to listOf(
+                "marvin", "marvine", "marvain", "marvaine", "marwin"
+            ),
+            "majordome" to listOf(
+                "majordome", "majordom", "majordomme"
+            )
+        )
 
         /** Apps dont on annonce les notifications quand le mode proactif est activé. */
         val PROACTIVE_NOTIF_PACKAGES = setOf(
