@@ -89,6 +89,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var voiceBioEnabled by remember { mutableStateOf(settings.voiceBiometricEnabled) }
     var voiceBioThreshold by remember { mutableStateOf(settings.voiceBiometricThreshold) }
     var webSearchEnabled by remember { mutableStateOf(settings.webSearchEnabled) }
+    var proactiveNotifs by remember { mutableStateOf(settings.proactiveNotificationsEnabled) }
     val verifier = remember { SpeakerVerifierFactory.create(ctx) }
     var voiceBioReady by remember { mutableStateOf(verifier.isReady()) }
     var voiceBioEnrolled by remember { mutableStateOf(verifier.isEnrolled()) }
@@ -339,6 +340,15 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             onChange = { webSearchEnabled = it }
         )
 
+        ToggleRow(
+            label = "Notifications proactives",
+            description = "Jarvis lit automatiquement à voix haute les SMS, messages " +
+                "WhatsApp et appels manqués qui arrivent. Utile en mode voiture / " +
+                "mains occupées. Nécessite que l'accès aux notifications soit accordé.",
+            checked = proactiveNotifs,
+            onChange = { proactiveNotifs = it }
+        )
+
         // ------ ENREGISTRER ------
         Spacer(Modifier.height(28.dp))
         Divider()
@@ -361,6 +371,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 settings.voiceBiometricEnabled = voiceBioEnabled && voiceBioEnrolled
                 settings.voiceBiometricThreshold = voiceBioThreshold
                 settings.webSearchEnabled = webSearchEnabled
+                settings.proactiveNotificationsEnabled = proactiveNotifs
                 onClose()
             },
             modifier = Modifier.fillMaxWidth()
