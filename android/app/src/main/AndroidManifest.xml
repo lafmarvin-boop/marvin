@@ -129,6 +129,16 @@
             android:launchMode="singleTask" />
 
         <activity
+            android:name=".ui.DrivingModeActivity"
+            android:exported="false"
+            android:label="Mode voiture"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.Marvin" />
+
+        <activity
             android:name=".ui.DiscussionActivity"
             android:exported="false"
             android:label="@string/discussion_title"

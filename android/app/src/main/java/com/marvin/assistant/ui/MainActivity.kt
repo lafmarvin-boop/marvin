@@ -97,6 +97,9 @@ class MainActivity : ComponentActivity() {
                     },
                     onStartService = { AssistantService.start(this) },
                     onStopService = { AssistantService.stop(this) },
+                    onOpenDrivingMode = {
+                        startActivity(Intent(this, DrivingModeActivity::class.java))
+                    },
                     hasPermissions = { hasAllPermissions() }
                 )
             }
@@ -122,8 +125,10 @@ private fun HomeScreen(
     onRequestPermissions: () -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
     onOpenMarvinSettings: () -> Unit,
+    onOpenDrivingMode: () -> Unit,
     onStartService: () -> Unit,
     onStopService: () -> Unit,
+    onOpenDrivingMode: () -> Unit,
     hasPermissions: () -> Boolean
 ) {
     var permsOk by remember { mutableStateOf(hasPermissions()) }
@@ -221,6 +226,12 @@ private fun HomeScreen(
                 label = "RÉGLAGES",
                 accent = ACCENT,
                 onClick = onOpenMarvinSettings
+            )
+            Spacer(Modifier.height(10.dp))
+            HexButton(
+                label = "MODE VOITURE",
+                accent = SUCCESS,
+                onClick = onOpenDrivingMode
             )
 
             Spacer(Modifier.weight(1f))
