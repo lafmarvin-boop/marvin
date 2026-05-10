@@ -51,6 +51,26 @@ class SpeechToText(
             AudioFormat.ENCODING_PCM_16BIT,
             bufferSize
         )
+
+        // AEC + NS + AGC : améliore la captation pendant que Jarvis parle
+        // ou dans un environnement bruité. Fail silently si indispo.
+        try {
+            if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) {
+                android.media.audiofx.AcousticEchoCanceler.create(recorder.audioSessionId)
+                    ?.apply { enabled = true }
+            }
+            if (android.media.audiofx.NoiseSuppressor.isAvailable()) {
+                android.media.audiofx.NoiseSuppressor.create(recorder.audioSessionId)
+                    ?.apply { enabled = true }
+            }
+            if (android.media.audiofx.AutomaticGainControl.isAvailable()) {
+                android.media.audiofx.AutomaticGainControl.create(recorder.audioSessionId)
+                    ?.apply { enabled = true }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Audio effects setup failed", t)
+        }
+
         val frame = ShortArray(bufferSize / 2)
         recorder.startRecording()
 

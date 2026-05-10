@@ -79,6 +79,38 @@ class WakeWordEngine(
             bufferSize
         )
         audioRecord = recorder
+
+        // Acoustic Echo Canceler : annule la voix de Jarvis qui sort du
+        // haut-parleur dans le micro. Permet de parler PENDANT que Jarvis
+        // parle (vraie barge-in) sans que le wake word se déclenche sur
+        // sa propre voix. Pas dispo sur tous les téléphones — fail silently.
+        try {
+            if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) {
+                android.media.audiofx.AcousticEchoCanceler.create(recorder.audioSessionId)?.apply {
+                    enabled = true
+                    Log.i(TAG, "AcousticEchoCanceler ACTIF")
+                }
+            } else {
+                Log.i(TAG, "AcousticEchoCanceler indisponible sur ce device")
+            }
+            // Noise suppressor en bonus (capte mieux dans un environnement bruité)
+            if (android.media.audiofx.NoiseSuppressor.isAvailable()) {
+                android.media.audiofx.NoiseSuppressor.create(recorder.audioSessionId)?.apply {
+                    enabled = true
+                    Log.i(TAG, "NoiseSuppressor ACTIF")
+                }
+            }
+            // Auto Gain Control (normalise le volume entrant)
+            if (android.media.audiofx.AutomaticGainControl.isAvailable()) {
+                android.media.audiofx.AutomaticGainControl.create(recorder.audioSessionId)?.apply {
+                    enabled = true
+                    Log.i(TAG, "AutomaticGainControl ACTIF")
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Audio effects setup failed", t)
+        }
+
         recorder.startRecording()
 
         loopJob = CoroutineScope(Dispatchers.Default).launch {
