@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -90,6 +91,21 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var voiceBioThreshold by remember { mutableStateOf(settings.voiceBiometricThreshold) }
     var webSearchEnabled by remember { mutableStateOf(settings.webSearchEnabled) }
     var proactiveNotifs by remember { mutableStateOf(settings.proactiveNotificationsEnabled) }
+
+    // Corrections STT : on lit a` chaque recomposition pour refléter les
+    // ajouts faits via voix. Une carte par entrée + bouton supprimer.
+    val sttCorrections = remember { com.marvin.assistant.audio.SttCorrections(ctx) }
+    var corrections by remember { mutableStateOf(sttCorrections.all().toList()) }
+    var newCorrectionHeard by remember { mutableStateOf("") }
+    var newCorrectionMeant by remember { mutableStateOf("") }
+
+    // Routines
+    val routinesMgr = remember { com.marvin.assistant.routines.RoutinesManager(ctx) }
+    var routines by remember { mutableStateOf(routinesMgr.all()) }
+
+    // Rappels actifs
+    val remindersMgr = remember { com.marvin.assistant.reminders.RemindersManager(ctx) }
+    var reminders by remember { mutableStateOf(remindersMgr.all()) }
     val verifier = remember { SpeakerVerifierFactory.create(ctx) }
     var voiceBioReady by remember { mutableStateOf(verifier.isReady()) }
     var voiceBioEnrolled by remember { mutableStateOf(verifier.isEnrolled()) }
@@ -348,6 +364,148 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             checked = proactiveNotifs,
             onChange = { proactiveNotifs = it }
         )
+
+        // ------ APPRENTISSAGE / DICTIONNAIRE PERSO ------
+        Spacer(Modifier.height(28.dp))
+        Text("Mes corrections de prononciation",
+            style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Ajoute manuellement ou via la voix : « Jarvis quand je dis l'air " +
+                "comprends l'heure ».",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = newCorrectionHeard,
+                onValueChange = { newCorrectionHeard = it },
+                label = { Text("Forme entendue") },
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(6.dp))
+            OutlinedTextField(
+                value = newCorrectionMeant,
+                onValueChange = { newCorrectionMeant = it },
+                label = { Text("Correction") },
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(6.dp))
+            Button(onClick = {
+                if (newCorrectionHeard.isNotBlank() && newCorrectionMeant.isNotBlank()) {
+                    sttCorrections.add(newCorrectionHeard, newCorrectionMeant)
+                    newCorrectionHeard = ""
+                    newCorrectionMeant = ""
+                    corrections = sttCorrections.all().toList()
+                }
+            }) { Text("+") }
+        }
+        Spacer(Modifier.height(8.dp))
+        if (corrections.isEmpty()) {
+            Text("Aucune correction.", style = MaterialTheme.typography.bodySmall)
+        } else {
+            corrections.forEach { (heard, meant) ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                ) {
+                    Text(
+                        "« $heard » → « $meant »",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Button(
+                        onClick = {
+                            sttCorrections.remove(heard)
+                            corrections = sttCorrections.all().toList()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C))
+                    ) { Text("X") }
+                }
+            }
+        }
+
+        // ------ ROUTINES ------
+        Spacer(Modifier.height(20.dp))
+        Text("Mes routines",
+            style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Une routine = un enchaînement de commandes. Lance via " +
+                "« Jarvis routine matin ». Edition manuelle des étapes : à venir.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(Modifier.height(8.dp))
+        if (routines.isEmpty()) {
+            Text("Aucune routine.", style = MaterialTheme.typography.bodySmall)
+        } else {
+            routines.forEach { r ->
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            r.name,
+                            modifier = Modifier.weight(1f),
+                            fontWeight = FontWeight.Medium,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Button(
+                            onClick = {
+                                routinesMgr.remove(r.name)
+                                routines = routinesMgr.all()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C))
+                        ) { Text("X") }
+                    }
+                    r.steps.forEach { step ->
+                        Text(
+                            "  • $step",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF607D8B)
+                        )
+                    }
+                }
+            }
+        }
+        Button(
+            onClick = {
+                routinesMgr.resetToDefaults()
+                routines = routinesMgr.all()
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Restaurer les routines par défaut") }
+
+        // ------ RAPPELS ------
+        Spacer(Modifier.height(20.dp))
+        Text("Mes rappels actifs",
+            style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        if (reminders.isEmpty()) {
+            Text("Aucun rappel programmé.", style = MaterialTheme.typography.bodySmall)
+        } else {
+            reminders.forEach { r ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                ) {
+                    Text(
+                        r.describe(),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Button(
+                        onClick = {
+                            remindersMgr.remove(r.id)
+                            reminders = remindersMgr.all()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C))
+                    ) { Text("X") }
+                }
+            }
+        }
 
         // ------ ENREGISTRER ------
         Spacer(Modifier.height(28.dp))
