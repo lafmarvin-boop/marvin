@@ -104,6 +104,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var elevenKey by remember { mutableStateOf(settings.elevenLabsApiKey) }
     var elevenVoice by remember { mutableStateOf(settings.elevenLabsVoiceId) }
     var ttsBackend by remember { mutableStateOf(settings.ttsBackend) }
+    var certPinning by remember { mutableStateOf(settings.certPinningEnabled) }
 
     // Corrections STT : on lit a` chaque recomposition pour refléter les
     // ajouts faits via voix. Une carte par entrée + bouton supprimer.
@@ -376,6 +377,16 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 "mains occupées. Nécessite que l'accès aux notifications soit accordé.",
             checked = proactiveNotifs,
             onChange = { proactiveNotifs = it }
+        )
+
+        ToggleRow(
+            label = "Certificate pinning Anthropic",
+            description = "Rejette toute connexion à api.anthropic.com qui n'utilise " +
+                "pas le certificat attendu (anti-MITM). Nécessite que CERT_PINS soit " +
+                "rempli dans ClaudeBackend.kt — sinon l'option n'a aucun effet. " +
+                "Lance tools/extract-anthropic-pins.sh pour récupérer les pins.",
+            checked = certPinning,
+            onChange = { certPinning = it }
         )
 
         ToggleRow(
@@ -781,6 +792,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 settings.homeAssistantUrl = haUrl.trim()
                 settings.homeAssistantToken = haToken.trim()
                 settings.localOnlyMode = localOnly
+                settings.certPinningEnabled = certPinning
                 settings.elevenLabsApiKey = elevenKey.trim()
                 settings.elevenLabsVoiceId = elevenVoice.trim()
                 settings.ttsBackend = ttsBackend

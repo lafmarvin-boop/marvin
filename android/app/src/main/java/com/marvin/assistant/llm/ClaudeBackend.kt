@@ -71,11 +71,14 @@ class ClaudeBackend(
         //         -connect api.anthropic.com:443 < /dev/null
         //     puis prendre le 2e cert et faire le même calcul.
         //  3. Coller ci-dessous, mettre PINS_ENABLED = true.
-        if (PINS_ENABLED && CERT_PINS.isNotEmpty()) {
+        if (settings.certPinningEnabled && CERT_PINS.isNotEmpty()) {
             val pinner = CertificatePinner.Builder().apply {
                 CERT_PINS.forEach { pin -> add("api.anthropic.com", pin) }
             }.build()
             builder.certificatePinner(pinner)
+            Log.i(TAG, "Cert pinning ACTIF (${CERT_PINS.size} pins)")
+        } else if (settings.certPinningEnabled) {
+            Log.w(TAG, "Cert pinning demandé mais aucun pin configuré — désactivé")
         }
 
         return builder.build()
@@ -243,15 +246,24 @@ class ClaudeBackend(
         private const val MAX_OUTPUT_TOKENS = 400
         private const val MAX_TOOL_ITERATIONS = 4
 
-        /** Active le certificate pinning. Garde à false tant que les pins
-         *  ne sont pas vérifiés sur ton réseau (cf. extraction dans README). */
-        private const val PINS_ENABLED = false
-
-        /** SPKI sha256 hashes au format OkHttp ("sha256/<base64>").
-         *  Au moins 2 pins recommandés (leaf + backup intermediate ou backup leaf). */
+        /**
+         * SPKI sha256 hashes pour api.anthropic.com (format OkHttp).
+         *
+         * Le toggle d'activation est settings.certPinningEnabled (Réglages).
+         *
+         * Pour extraire / mettre à jour ces pins, lance le script :
+         *   tools/extract-anthropic-pins.sh
+         * (renvoie 2 pins : leaf cert + intermediate CA pour failover).
+         *
+         * Si vide → pinning désactivé même si settings.certPinningEnabled = true.
+         *
+         * Vérifie ces pins régulièrement (Anthropic peut faire rotation).
+         */
         private val CERT_PINS = listOf<String>(
-            // "sha256/REPLACE_ME_WITH_LEAF_SPKI_HASH",
-            // "sha256/REPLACE_ME_WITH_BACKUP_INTERMEDIATE_HASH",
+            // Décommente après avoir lancé tools/extract-anthropic-pins.sh
+            // et collé les valeurs ici. Exemple :
+            // "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            // "sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
         )
 
         private const val SYSTEM_PROMPT = """Tu es Jarvis, l'assistant vocal personnel de l'utilisateur. Tu es serviable, posé, légèrement formel — un majordome numérique compétent.
