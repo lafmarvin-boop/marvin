@@ -153,6 +153,20 @@ class IntentParser {
             MarvinIntent.Translate(it.groupValues[1].trim(), null)
         },
 
+        // ---- Vision / photo ----
+        // "prends une photo et dis-moi ce que c'est"
+        // "regarde ça" / "décris ce que tu vois"
+        // "prends une photo et combien y'a t'il de pommes"
+        Rule(Regex("""(?:prends? |fait |fais )(?:une |la )?(?:photo|image|capture)(?:\s+et\s+(.+))?""")) {
+            val q = it.groupValues[1].trim()
+            MarvinIntent.TakePhotoAndAnalyze(
+                if (q.isBlank()) "Qu'est-ce que tu vois sur cette image ? Décris-la." else q
+            )
+        },
+        Rule(Regex("""(?:décris|regarde|analyse|qu'est-ce que tu vois) ?(?:une |la |cette )?(?:photo|image|chose|ça|ceci)""")) {
+            MarvinIntent.TakePhotoAndAnalyze()
+        },
+
         // ---- Liste de courses ----
         // "ajoute du lait à la liste" / "ajoute 6 œufs à la liste de courses"
         // "note dans la liste : du pain"

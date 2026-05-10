@@ -34,6 +34,8 @@ import com.marvin.assistant.nlu.MarvinIntent
 import com.marvin.assistant.reminders.RemindersManager
 import com.marvin.assistant.routines.RoutinesManager
 import com.marvin.assistant.shopping.ShoppingList
+import com.marvin.assistant.vision.VisionCaptureActivity
+import com.marvin.assistant.vision.VisionClient
 import com.marvin.assistant.ui.DiscussionActivity
 import com.marvin.assistant.ui.DiscussionPhase
 import com.marvin.assistant.ui.DiscussionStateHolder
@@ -59,6 +61,7 @@ class AssistantService : LifecycleService() {
     private lateinit var reminders: RemindersManager
     private lateinit var routines: RoutinesManager
     private lateinit var shopping: ShoppingList
+    private lateinit var visionClient: VisionClient
     private val toneGen by lazy {
         try { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80) }
         catch (_: Throwable) { null }
@@ -86,6 +89,7 @@ class AssistantService : LifecycleService() {
         reminders.rescheduleAll() // re-arme les alarmes après mise à jour de l'app
         routines = RoutinesManager(this)
         shopping = ShoppingList(this)
+        visionClient = VisionClient(this, settings)
         wakeWord = WakeWordEngine(
             context = this,
             voskModel = voskModel,
@@ -205,6 +209,31 @@ class AssistantService : LifecycleService() {
                 }
             }
         }
+    }
+
+    /**
+     * Lance la prise de photo, attend que VisionCaptureActivity ait stocké
+     * l'URI dans SharedPreferences, puis envoie à Claude vision.
+     */
+    private suspend fun handleVisionCapture(question: String) {
+        speakWithPhase("D'accord, j'ouvre l'appareil photo. Prends le cliché.")
+        // Efface une éventuelle ancienne capture pour ne pas la confondre
+        getSharedPreferences(VisionCaptureActivity.PREFS, MODE_PRIVATE).edit().clear().apply()
+        VisionCaptureActivity.launchFromService(this)
+        // Polling : on attend max 60 s que l'utilisateur prenne la photo
+        val deadline = System.currentTimeMillis() + 60_000L
+        var uri = VisionCaptureActivity.lastCapture(this)
+        while (uri == null && System.currentTimeMillis() < deadline) {
+            kotlinx.coroutines.delay(500)
+            uri = VisionCaptureActivity.lastCapture(this)
+        }
+        if (uri == null) {
+            speakWithPhase("Pas de photo. J'annule.")
+            return
+        }
+        DiscussionStateHolder.setPhase(DiscussionPhase.Thinking)
+        val answer = visionClient.describe(uri, question)
+        speakWithPhase(answer)
     }
 
     private fun stripWakeWord(transcript: String): String {
@@ -394,6 +423,7 @@ class AssistantService : LifecycleService() {
                 shopping.clear()
                 speakWithPhase("Liste de courses vidée.")
             }
+            is MarvinIntent.TakePhotoAndAnalyze -> handleVisionCapture(parsed.question)
             is MarvinIntent.ListReminders -> {
                 val list = reminders.all()
                 if (list.isEmpty()) speakWithPhase("Tu n'as aucun rappel programmé.")
@@ -496,6 +526,10 @@ class AssistantService : LifecycleService() {
             if (parsedFu is MarvinIntent.ShoppingClear) {
                 shopping.clear()
                 speakWithPhase("Liste vidée.")
+                continue
+            }
+            if (parsedFu is MarvinIntent.TakePhotoAndAnalyze) {
+                handleVisionCapture(parsedFu.question)
                 continue
             }
             if (parsedFu is MarvinIntent.ListReminders) {
