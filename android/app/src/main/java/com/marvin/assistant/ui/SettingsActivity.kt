@@ -94,6 +94,9 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var proactiveCal by remember { mutableStateOf(settings.proactiveCalendarAnnouncementsEnabled) }
     var wakeWord by remember { mutableStateOf(settings.wakeWord) }
     var localOnly by remember { mutableStateOf(settings.localOnlyMode) }
+    val auditLog = remember { com.marvin.assistant.audit.AuditLog(ctx) }
+    var auditEntries by remember { mutableStateOf(auditLog.all().take(20)) }
+    var showAudit by remember { mutableStateOf(false) }
     var haUrl by remember { mutableStateOf(settings.homeAssistantUrl) }
     var haToken by remember { mutableStateOf(settings.homeAssistantToken) }
 
@@ -580,6 +583,51 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C))
                     ) { Text("X") }
+                }
+            }
+        }
+
+        // ------ AUDIT LOG ------
+        Spacer(Modifier.height(20.dp))
+        Text("Historique d'activité (audit)",
+            style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Trace de tes échanges avec Jarvis. Chiffré localement, max 500 " +
+                "entrées. Utile pour debug ou pour vérifier ce que Jarvis a fait.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = {
+                    showAudit = !showAudit
+                    if (showAudit) auditEntries = auditLog.all().take(20)
+                },
+                modifier = Modifier.weight(1f)
+            ) { Text(if (showAudit) "Cacher" else "Afficher (20 derniers)") }
+            Spacer(Modifier.width(6.dp))
+            Button(
+                onClick = {
+                    auditLog.clear()
+                    auditEntries = emptyList()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C)),
+                modifier = Modifier.weight(1f)
+            ) { Text("Effacer") }
+        }
+        if (showAudit) {
+            Spacer(Modifier.height(8.dp))
+            if (auditEntries.isEmpty()) {
+                Text("(vide)", style = MaterialTheme.typography.bodySmall)
+            } else {
+                auditEntries.forEach { e ->
+                    Text(
+                        e.describe(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF455A64),
+                        modifier = Modifier.padding(vertical = 1.dp)
+                    )
                 }
             }
         }

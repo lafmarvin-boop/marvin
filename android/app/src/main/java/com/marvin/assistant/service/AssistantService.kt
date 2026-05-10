@@ -15,6 +15,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.marvin.assistant.R
 import com.marvin.assistant.actions.ActionExecutor
+import com.marvin.assistant.audit.AuditLog
 import com.marvin.assistant.audio.SpeakerVerifier
 import com.marvin.assistant.audio.SpeakerVerifierFactory
 import com.marvin.assistant.audio.SpeechToText
@@ -60,6 +61,7 @@ class AssistantService : LifecycleService() {
     private lateinit var tools: Tools
     private lateinit var speakerVerifier: SpeakerVerifier
     private lateinit var sttCorrections: SttCorrections
+    private lateinit var auditLog: AuditLog
     private lateinit var reminders: RemindersManager
     private lateinit var routines: RoutinesManager
     private lateinit var shopping: ShoppingList
@@ -88,6 +90,7 @@ class AssistantService : LifecycleService() {
         voskModel = VoskModelHolder(this)
         speakerVerifier = SpeakerVerifierFactory.create(this)
         sttCorrections = SttCorrections(this)
+        auditLog = AuditLog(this)
         reminders = RemindersManager(this)
         reminders.rescheduleAll() // re-arme les alarmes après mise à jour de l'app
         routines = RoutinesManager(this)
@@ -361,6 +364,7 @@ class AssistantService : LifecycleService() {
             return
         }
         val transcript = sttCorrections.apply(rawTranscript)
+        auditLog.log(AuditLog.Type.USER_SAID, transcript)
         DiscussionStateHolder.setLastUserText(transcript)
         DiscussionStateHolder.setPhase(DiscussionPhase.Thinking)
 
@@ -731,6 +735,7 @@ class AssistantService : LifecycleService() {
     /** Speak + push phase Speaking pendant la lecture (utile pour le visualiseur). */
     private suspend fun speakWithPhase(text: String) {
         DiscussionStateHolder.setPhase(DiscussionPhase.Speaking(text))
+        if (::auditLog.isInitialized) auditLog.log(AuditLog.Type.JARVIS_SAID, text)
         tts.speak(text)
     }
 
