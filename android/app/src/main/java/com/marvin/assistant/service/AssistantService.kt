@@ -33,6 +33,7 @@ import com.marvin.assistant.nlu.IntentParser
 import com.marvin.assistant.nlu.MarvinIntent
 import com.marvin.assistant.reminders.RemindersManager
 import com.marvin.assistant.routines.RoutinesManager
+import com.marvin.assistant.shopping.ShoppingList
 import com.marvin.assistant.ui.DiscussionActivity
 import com.marvin.assistant.ui.DiscussionPhase
 import com.marvin.assistant.ui.DiscussionStateHolder
@@ -57,6 +58,7 @@ class AssistantService : LifecycleService() {
     private lateinit var sttCorrections: SttCorrections
     private lateinit var reminders: RemindersManager
     private lateinit var routines: RoutinesManager
+    private lateinit var shopping: ShoppingList
     private val toneGen by lazy {
         try { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80) }
         catch (_: Throwable) { null }
@@ -83,6 +85,7 @@ class AssistantService : LifecycleService() {
         reminders = RemindersManager(this)
         reminders.rescheduleAll() // re-arme les alarmes après mise à jour de l'app
         routines = RoutinesManager(this)
+        shopping = ShoppingList(this)
         wakeWord = WakeWordEngine(
             context = this,
             voskModel = voskModel,
@@ -373,6 +376,24 @@ class AssistantService : LifecycleService() {
                 }
                 askBackend(prompt, useHistory = false)
             }
+            is MarvinIntent.ShoppingAdd -> {
+                shopping.add(parsed.item)
+                speakWithPhase("OK, j'ai ajouté « ${parsed.item} » à ta liste. " +
+                    "Tu as maintenant ${shopping.size()} articles.")
+            }
+            is MarvinIntent.ShoppingRead -> {
+                val items = shopping.all()
+                speakWithPhase(if (items.isEmpty()) "Ta liste de courses est vide."
+                    else "Sur ta liste : " + items.joinToString(", ") + ".")
+            }
+            is MarvinIntent.ShoppingRemove -> {
+                shopping.remove(parsed.item)
+                speakWithPhase("OK, « ${parsed.item} » retiré de la liste.")
+            }
+            is MarvinIntent.ShoppingClear -> {
+                shopping.clear()
+                speakWithPhase("Liste de courses vidée.")
+            }
             is MarvinIntent.ListReminders -> {
                 val list = reminders.all()
                 if (list.isEmpty()) speakWithPhase("Tu n'as aucun rappel programmé.")
@@ -454,6 +475,27 @@ class AssistantService : LifecycleService() {
                     "Traduis « ${parsedFu.text} ». Réponds en une phrase."
                 }
                 askBackend(prompt, useHistory = false)
+                continue
+            }
+            if (parsedFu is MarvinIntent.ShoppingAdd) {
+                shopping.add(parsedFu.item)
+                speakWithPhase("OK, ajouté.")
+                continue
+            }
+            if (parsedFu is MarvinIntent.ShoppingRead) {
+                val items = shopping.all()
+                speakWithPhase(if (items.isEmpty()) "Liste vide."
+                    else "Sur ta liste : " + items.joinToString(", ") + ".")
+                continue
+            }
+            if (parsedFu is MarvinIntent.ShoppingRemove) {
+                shopping.remove(parsedFu.item)
+                speakWithPhase("OK, retiré.")
+                continue
+            }
+            if (parsedFu is MarvinIntent.ShoppingClear) {
+                shopping.clear()
+                speakWithPhase("Liste vidée.")
                 continue
             }
             if (parsedFu is MarvinIntent.ListReminders) {

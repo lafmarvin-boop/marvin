@@ -41,6 +41,10 @@ class ActionExecutor(private val context: Context) {
         is MarvinIntent.LocalAnswer,
         is MarvinIntent.ReadRecentSms,
         is MarvinIntent.RunRoutine,
-        is MarvinIntent.Translate -> ""
+        is MarvinIntent.Translate,
+        is MarvinIntent.ShoppingAdd,
+        MarvinIntent.ShoppingRead,
+        is MarvinIntent.ShoppingRemove,
+        MarvinIntent.ShoppingClear -> ""
     }
 }

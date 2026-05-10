@@ -153,6 +153,22 @@ class IntentParser {
             MarvinIntent.Translate(it.groupValues[1].trim(), null)
         },
 
+        // ---- Liste de courses ----
+        // "ajoute du lait à la liste" / "ajoute 6 œufs à la liste de courses"
+        // "note dans la liste : du pain"
+        Rule(Regex("""(?:ajoute|note|mets|rajoute)\s+(.+?)\s+(?:à|a|sur|dans)\s+(?:la|ma)?\s*liste(?: de courses)?$""")) {
+            MarvinIntent.ShoppingAdd(it.groupValues[1].trim())
+        },
+        Rule(Regex("""(?:lis|montre|donne|c'est quoi)(?:[- ]moi)?\s+(?:la|ma)\s+liste(?: de courses)?""")) {
+            MarvinIntent.ShoppingRead
+        },
+        Rule(Regex("""(?:enlève|retire|supprime|efface)\s+(.+?)\s+(?:de|sur)\s+(?:la|ma)\s+liste(?: de courses)?""")) {
+            MarvinIntent.ShoppingRemove(it.groupValues[1].trim())
+        },
+        Rule(Regex("""(?:vide|efface|supprime|annule)\s+(?:toute |entièrement )?(?:la|ma)\s+liste(?: de courses)?""")) {
+            MarvinIntent.ShoppingClear
+        },
+
         // ---- WhatsApp ----
         Rule(Regex("""(?:envoie|écris) (?:un )?(?:message |whatsapp )(?:whatsapp )?à ([\p{L}\s'-]+?) (?:pour (?:dire|lui dire) |disant |que )(.+)""")) {
             MarvinIntent.WhatsAppMessage(it.groupValues[1].trim(), it.groupValues[2].trim())

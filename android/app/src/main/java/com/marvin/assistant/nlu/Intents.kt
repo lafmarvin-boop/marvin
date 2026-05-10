@@ -64,6 +64,12 @@ sealed class MarvinIntent {
     /** Demande une traduction. Si targetLanguage absent, Claude détecte. */
     data class Translate(val text: String, val targetLanguage: String? = null) : MarvinIntent()
 
+    /** Liste de courses : ajouter / lire / supprimer / vider. */
+    data class ShoppingAdd(val item: String) : MarvinIntent()
+    data object ShoppingRead : MarvinIntent()
+    data class ShoppingRemove(val item: String) : MarvinIntent()
+    data object ShoppingClear : MarvinIntent()
+
     /** Énumère les rappels actifs. */
     data object ListReminders : MarvinIntent()
 
