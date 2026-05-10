@@ -31,6 +31,7 @@ import com.marvin.assistant.llm.LlmResult
 import com.marvin.assistant.llm.Tools
 import com.marvin.assistant.nlu.IntentParser
 import com.marvin.assistant.nlu.MarvinIntent
+import com.marvin.assistant.reminders.RemindersManager
 import com.marvin.assistant.ui.DiscussionActivity
 import com.marvin.assistant.ui.DiscussionPhase
 import com.marvin.assistant.ui.DiscussionStateHolder
@@ -53,6 +54,7 @@ class AssistantService : LifecycleService() {
     private lateinit var tools: Tools
     private lateinit var speakerVerifier: SpeakerVerifier
     private lateinit var sttCorrections: SttCorrections
+    private lateinit var reminders: RemindersManager
     private val toneGen by lazy {
         try { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80) }
         catch (_: Throwable) { null }
@@ -76,6 +78,8 @@ class AssistantService : LifecycleService() {
         voskModel = VoskModelHolder(this)
         speakerVerifier = SpeakerVerifierFactory.create(this)
         sttCorrections = SttCorrections(this)
+        reminders = RemindersManager(this)
+        reminders.rescheduleAll() // re-arme les alarmes après mise à jour de l'app
         wakeWord = WakeWordEngine(
             context = this,
             voskModel = voskModel,
@@ -308,6 +312,22 @@ class AssistantService : LifecycleService() {
                 sttCorrections.add(parsed.heard, parsed.meant)
                 speakWithPhase("OK, désormais quand j'entends « ${parsed.heard} » je comprendrai « ${parsed.meant} ».")
             }
+            is MarvinIntent.AddReminder -> {
+                val r = reminders.add(parsed.text, parsed.triggerAtMs)
+                speakWithPhase("OK, je te rappellerai ${r.describe()}.")
+            }
+            is MarvinIntent.ListReminders -> {
+                val list = reminders.all()
+                if (list.isEmpty()) speakWithPhase("Tu n'as aucun rappel programmé.")
+                else speakWithPhase(
+                    "Tu as ${list.size} rappel${if (list.size > 1) "s" else ""} : " +
+                        list.joinToString(", ") { it.describe() }
+                )
+            }
+            is MarvinIntent.ClearReminders -> {
+                reminders.clearAll()
+                speakWithPhase("J'ai effacé tous tes rappels.")
+            }
             is MarvinIntent.Unknown -> askBackend(transcript, useHistory = true)
             is MarvinIntent.WipeAllData -> return
             else -> {
@@ -342,6 +362,22 @@ class AssistantService : LifecycleService() {
             if (parsedFu is MarvinIntent.AddCorrection) {
                 sttCorrections.add(parsedFu.heard, parsedFu.meant)
                 speakWithPhase("OK, c'est noté : « ${parsedFu.heard} » sera compris comme « ${parsedFu.meant} ».")
+                continue
+            }
+            if (parsedFu is MarvinIntent.AddReminder) {
+                val r = reminders.add(parsedFu.text, parsedFu.triggerAtMs)
+                speakWithPhase("OK, je te rappellerai ${r.describe()}.")
+                continue
+            }
+            if (parsedFu is MarvinIntent.ListReminders) {
+                val list = reminders.all()
+                speakWithPhase(if (list.isEmpty()) "Aucun rappel."
+                    else "Tu as : " + list.joinToString(", ") { it.describe() })
+                continue
+            }
+            if (parsedFu is MarvinIntent.ClearReminders) {
+                reminders.clearAll()
+                speakWithPhase("Tous les rappels effacés.")
                 continue
             }
             if (parsedFu is MarvinIntent.WipeAllData) {

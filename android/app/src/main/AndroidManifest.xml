@@ -15,6 +15,9 @@
     <!-- Permet à AssistantService de redémarrer immédiatement si Samsung
          le tue en background (lance une activité depuis le service). -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Pour les rappels / réveils / timers via AlarmManager exact. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <!-- Action permissions -->
     <uses-permission android:name="android.permission.SEND_SMS" />
@@ -132,6 +135,15 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".reminders.ReminderReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.marvin.assistant.REMINDER_FIRE" />
             </intent-filter>
         </receiver>
     </application>

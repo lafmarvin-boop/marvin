@@ -43,6 +43,15 @@ sealed class MarvinIntent {
     /** Apprentissage : "quand je dis X comprends Y" → ajoute une correction. */
     data class AddCorrection(val heard: String, val meant: String) : MarvinIntent()
 
+    /** Programme un rappel à un instant absolu. */
+    data class AddReminder(val text: String, val triggerAtMs: Long) : MarvinIntent()
+
+    /** Énumère les rappels actifs. */
+    data object ListReminders : MarvinIntent()
+
+    /** Annule tous les rappels. */
+    data object ClearReminders : MarvinIntent()
+
     /** Aucun match local — à transmettre au backend LLM (Claude ou Gemma). */
     data class Unknown(val raw: String) : MarvinIntent()
 }

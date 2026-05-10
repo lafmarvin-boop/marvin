@@ -45,6 +45,41 @@ class IntentParser {
             MarvinIntent.AddCorrection(it.groupValues[1].trim(), it.groupValues[2].trim())
         },
 
+        // ---- Rappels / Timer / Réveil ----
+        // "rappelle-moi de sortir le four dans 10 minutes"
+        // "rappelle moi d'appeler maman à 18 heures"
+        // "rappelle moi dans une heure de boire de l'eau"
+        // "réveille moi à 7 heures" / "réveille-moi demain à 8 heures"
+        // "mets un timer de 10 minutes"
+        Rule(Regex("""(?:rappelle[- ]?moi|rappelle-moi|note) (?:de |d')(.+?) (dans .+|à .+|demain.+|pour .+)$""")) {
+            val text = it.groupValues[1].trim()
+            val whenStr = it.groupValues[2].trim()
+            val ts = TimeParser.parse(whenStr) ?: return@Rule MarvinIntent.Unknown(it.value)
+            MarvinIntent.AddReminder(text, ts)
+        },
+        Rule(Regex("""(?:rappelle[- ]?moi|rappelle-moi|note) (dans .+?|à .+?|demain.+?) (?:de |d'|que je |qu'on )(.+)$""")) {
+            val whenStr = it.groupValues[1].trim()
+            val text = it.groupValues[2].trim()
+            val ts = TimeParser.parse(whenStr) ?: return@Rule MarvinIntent.Unknown(it.value)
+            MarvinIntent.AddReminder(text, ts)
+        },
+        Rule(Regex("""(?:réveille[- ]?moi|réveille-moi)\s+(.+)$""")) {
+            val whenStr = it.groupValues[1].trim()
+            val ts = TimeParser.parse(whenStr) ?: return@Rule MarvinIntent.Unknown(it.value)
+            MarvinIntent.AddReminder("réveil", ts)
+        },
+        Rule(Regex("""(?:mets |programme |lance )?un timer (?:de |sur |à )?(.+)$""")) {
+            val whenStr = "dans " + it.groupValues[1].trim()
+            val ts = TimeParser.parse(whenStr) ?: return@Rule MarvinIntent.Unknown(it.value)
+            MarvinIntent.AddReminder("timer", ts)
+        },
+        Rule(Regex("""(?:liste|montre|dis|donne)(?:[- ]moi)?\s+(?:mes |les )?rappels""")) {
+            MarvinIntent.ListReminders
+        },
+        Rule(Regex("""(?:efface|supprime|annule)\s+(?:tous |mes )?(?:les )?rappels""")) {
+            MarvinIntent.ClearReminders
+        },
+
         // ---- Mode dodo ----
         Rule(Regex("""fais (?:dodo|une sieste|la sieste)""")) { MarvinIntent.GoToSleep },
         Rule(Regex("""va dormir""")) { MarvinIntent.GoToSleep },

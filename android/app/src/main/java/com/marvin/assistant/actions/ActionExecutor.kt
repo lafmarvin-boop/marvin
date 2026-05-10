@@ -32,6 +32,9 @@ class ActionExecutor(private val context: Context) {
         MarvinIntent.EndDiscussion,
         MarvinIntent.GoToSleep,
         MarvinIntent.WipeAllData,
-        is MarvinIntent.AddCorrection -> ""
+        MarvinIntent.ListReminders,
+        MarvinIntent.ClearReminders,
+        is MarvinIntent.AddCorrection,
+        is MarvinIntent.AddReminder -> ""
     }
 }
