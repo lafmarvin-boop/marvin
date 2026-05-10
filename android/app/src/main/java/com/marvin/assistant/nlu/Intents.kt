@@ -61,6 +61,9 @@ sealed class MarvinIntent {
     /** Exécute une routine pré-définie (ex. "routine matin" = méteo + agenda + news). */
     data class RunRoutine(val name: String) : MarvinIntent()
 
+    /** Demande une traduction. Si targetLanguage absent, Claude détecte. */
+    data class Translate(val text: String, val targetLanguage: String? = null) : MarvinIntent()
+
     /** Énumère les rappels actifs. */
     data object ListReminders : MarvinIntent()
 

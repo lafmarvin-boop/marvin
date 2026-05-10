@@ -139,6 +139,20 @@ class IntentParser {
             MarvinIntent.RunRoutine(it.groupValues[1].trim())
         },
 
+        // ---- Traduction ----
+        // "traduis 'il fait beau' en anglais"
+        // "comment dit-on bonjour en espagnol"
+        // "traduis-moi bonjour en italien"
+        Rule(Regex("""(?:traduis|traduit|traduire)(?:[- ]moi)?\s+["«]?(.+?)["»]?\s+en\s+([\p{L}]+)$""")) {
+            MarvinIntent.Translate(it.groupValues[1].trim(), it.groupValues[2].trim())
+        },
+        Rule(Regex("""comment (?:dit-on|dit on|on dit|ça se dit)\s+["«]?(.+?)["»]?\s+en\s+([\p{L}]+)""")) {
+            MarvinIntent.Translate(it.groupValues[1].trim(), it.groupValues[2].trim())
+        },
+        Rule(Regex("""(?:traduis|traduit)(?:[- ]moi)?\s+["«]?(.+?)["»]?$""")) {
+            MarvinIntent.Translate(it.groupValues[1].trim(), null)
+        },
+
         // ---- WhatsApp ----
         Rule(Regex("""(?:envoie|écris) (?:un )?(?:message |whatsapp )(?:whatsapp )?à ([\p{L}\s'-]+?) (?:pour (?:dire|lui dire) |disant |que )(.+)""")) {
             MarvinIntent.WhatsAppMessage(it.groupValues[1].trim(), it.groupValues[2].trim())

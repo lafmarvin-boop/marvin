@@ -363,6 +363,16 @@ class AssistantService : LifecycleService() {
                 tools.readMissedCallsDirect()
             )
             is MarvinIntent.RunRoutine -> runRoutine(parsed.name)
+            is MarvinIntent.Translate -> {
+                val prompt = if (parsed.targetLanguage != null) {
+                    "Traduis exactement « ${parsed.text} » en ${parsed.targetLanguage}. " +
+                        "Réponds uniquement avec la traduction, rien d'autre."
+                } else {
+                    "Traduis « ${parsed.text} » dans une langue appropriée et précise " +
+                        "laquelle. Réponds en une phrase."
+                }
+                askBackend(prompt, useHistory = false)
+            }
             is MarvinIntent.ListReminders -> {
                 val list = reminders.all()
                 if (list.isEmpty()) speakWithPhase("Tu n'as aucun rappel programmé.")
@@ -434,6 +444,16 @@ class AssistantService : LifecycleService() {
             }
             if (parsedFu is MarvinIntent.RunRoutine) {
                 runRoutine(parsedFu.name)
+                continue
+            }
+            if (parsedFu is MarvinIntent.Translate) {
+                val prompt = if (parsedFu.targetLanguage != null) {
+                    "Traduis exactement « ${parsedFu.text} » en ${parsedFu.targetLanguage}. " +
+                        "Réponds uniquement avec la traduction."
+                } else {
+                    "Traduis « ${parsedFu.text} ». Réponds en une phrase."
+                }
+                askBackend(prompt, useHistory = false)
                 continue
             }
             if (parsedFu is MarvinIntent.ListReminders) {
