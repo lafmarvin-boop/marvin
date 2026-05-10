@@ -185,6 +185,19 @@ class Settings(context: Context) {
      * (pas un secret). Le service relit cette valeur à chaque démarrage
      * pour configurer WakeWordEngine.
      */
+    /**
+     * Mode 100 % local strict. Quand activé :
+     *  - Le backend Cloud Claude est bloqué (force fallback Gemma local)
+     *  - La recherche web Anthropic est désactivée
+     *  - La vision Claude est bloquée
+     *  - Aucune donnée ne quitte l'appareil
+     *
+     * Utile à l'étranger (pas de data) ou pour la confidentialité maximale.
+     */
+    var localOnlyMode: Boolean
+        get() = plain.getBoolean(KEY_LOCAL_ONLY, false)
+        set(value) { plain.edit().putBoolean(KEY_LOCAL_ONLY, value).apply() }
+
     var wakeWord: String
         get() = plain.getString(KEY_WAKE_WORD, "jarvis") ?: "jarvis"
         set(value) {
@@ -233,6 +246,7 @@ class Settings(context: Context) {
         private const val KEY_PROACTIVE_NOTIFS = "proactive_notifs_enabled"
         private const val KEY_PROACTIVE_CAL = "proactive_calendar_enabled"
         private const val KEY_WAKE_WORD = "wake_word"
+        private const val KEY_LOCAL_ONLY = "local_only_mode"
 
         /**
          * Wake words supportés. Pour chacun, on liste les variantes

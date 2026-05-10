@@ -36,6 +36,9 @@ class VisionClient(
 
     /** Envoie [imageUri] à Claude avec [question]. Renvoie la réponse texte. */
     suspend fun describe(imageUri: Uri, question: String): String = withContext(Dispatchers.IO) {
+        if (settings.localOnlyMode) {
+            return@withContext "Mode local strict actif — la vision Claude est désactivée."
+        }
         val apiKey = settings.anthropicApiKey
         if (apiKey.isBlank()) return@withContext "Clé API Claude absente."
         if (!settings.consumeDailyQuota()) {

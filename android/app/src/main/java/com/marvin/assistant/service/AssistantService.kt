@@ -734,11 +734,16 @@ class AssistantService : LifecycleService() {
         tts.speak(text)
     }
 
-    private fun pickBackend(): LlmBackend = when (settings.backendChoice) {
-        LlmBackendChoice.CLOUD_CLAUDE -> claudeBackend
-            ?: ClaudeBackend(this, settings, tools).also { claudeBackend = it }
-        LlmBackendChoice.LOCAL_GEMMA -> gemmaBackend
-            ?: GemmaBackend(this).also { gemmaBackend = it }
+    private fun pickBackend(): LlmBackend {
+        // En mode local strict, on force Gemma quoi que dise le réglage.
+        val choice = if (settings.localOnlyMode) LlmBackendChoice.LOCAL_GEMMA
+            else settings.backendChoice
+        return when (choice) {
+            LlmBackendChoice.CLOUD_CLAUDE -> claudeBackend
+                ?: ClaudeBackend(this, settings, tools).also { claudeBackend = it }
+            LlmBackendChoice.LOCAL_GEMMA -> gemmaBackend
+                ?: GemmaBackend(this).also { gemmaBackend = it }
+        }
     }
 
     private fun notReadyMessage(backend: LlmBackend): String = when (backend) {

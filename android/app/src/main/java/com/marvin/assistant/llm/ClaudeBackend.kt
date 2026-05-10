@@ -43,7 +43,8 @@ class ClaudeBackend(
 
     override val displayName: String get() = "Claude ${settings.claudeModel.name.lowercase()}"
 
-    override fun isReady(): Boolean = settings.anthropicApiKey.isNotBlank()
+    override fun isReady(): Boolean =
+        !settings.localOnlyMode && settings.anthropicApiKey.isNotBlank()
 
     private val http = buildHttpClient()
 
@@ -102,7 +103,7 @@ class ClaudeBackend(
             // à exécuter côté client. Coût : ~1 ¢ par recherche.
             // max_uses=3 limite le nombre de recherches par requête pour
             // éviter une explosion de coûts si Claude part en boucle.
-            if (settings.webSearchEnabled) {
+            if (settings.webSearchEnabled && !settings.localOnlyMode) {
                 put(JSONObject().apply {
                     put("type", "web_search_20250305")
                     put("name", "web_search")

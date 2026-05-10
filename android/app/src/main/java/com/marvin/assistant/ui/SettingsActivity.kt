@@ -93,6 +93,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var proactiveNotifs by remember { mutableStateOf(settings.proactiveNotificationsEnabled) }
     var proactiveCal by remember { mutableStateOf(settings.proactiveCalendarAnnouncementsEnabled) }
     var wakeWord by remember { mutableStateOf(settings.wakeWord) }
+    var localOnly by remember { mutableStateOf(settings.localOnlyMode) }
     var haUrl by remember { mutableStateOf(settings.homeAssistantUrl) }
     var haToken by remember { mutableStateOf(settings.homeAssistantToken) }
 
@@ -370,6 +371,15 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
         )
 
         ToggleRow(
+            label = "Mode 100 % local strict",
+            description = "Desactive completement Claude et la recherche web. " +
+                "Force Gemma local. Utile a l'etranger sans data ou pour " +
+                "confidentialite maximale. Aucune donnee ne quitte l'appareil.",
+            checked = localOnly,
+            onChange = { localOnly = it }
+        )
+
+        ToggleRow(
             label = "Annonces calendrier",
             description = "Jarvis annonce vocalement chaque événement de ton " +
                 "calendrier 5 minutes avant qu'il commence. Nécessite la " +
@@ -607,6 +617,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 }
                 settings.homeAssistantUrl = haUrl.trim()
                 settings.homeAssistantToken = haToken.trim()
+                settings.localOnlyMode = localOnly
                 if (settings.wakeWord != wakeWord) {
                     settings.wakeWord = wakeWord
                     // Redémarre le service pour reprendre le nouveau wake word
