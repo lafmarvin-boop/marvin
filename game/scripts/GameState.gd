@@ -49,6 +49,21 @@ const HEROES_DATA := {
 		"attack_speed": 0.8,
 		"range": 1,
 		"type": "melee"
+	},
+	"hero_m": {
+		"name": "Hero M",
+		"color": Color(0.85, 0.20, 0.20),
+		"max_hp": 260,
+		"attack": 24,
+		"defense": 6,
+		"attack_speed": 1.1,
+		"range": 1,
+		"type": "melee",
+		"sprite_walk_path": "res://assets/sprites/hero_m/walk.png",
+		"sprite_frame_w": 40,
+		"sprite_frame_h": 80,
+		"sprite_walk_frames": 4,
+		"sprite_walk_fps": 8
 	}
 }
 
@@ -109,7 +124,7 @@ const ENEMIES_DATA := {
 
 func _ready() -> void:
 	if hero_collection.is_empty():
-		for id in ["knight", "archer", "mage", "tank"]:
+		for id in ["hero_m", "archer", "mage", "tank"]:
 			var inst := make_hero_instance(id)
 			hero_collection.append(inst)
 			battle_party.append(inst)
@@ -126,7 +141,7 @@ func get_hero_stats(inst: Dictionary) -> Dictionary:
 	var base: Dictionary = HEROES_DATA[inst["id"]]
 	var lvl: int = inst["level"]
 	var mult: float = 1.0 + float(lvl - 1) * 0.18
-	return {
+	var out := {
 		"id": inst["id"],
 		"name": base["name"],
 		"color": base["color"],
@@ -138,6 +153,11 @@ func get_hero_stats(inst: Dictionary) -> Dictionary:
 		"type": base["type"],
 		"level": lvl
 	}
+	for k in ["sprite_walk_path", "sprite_frame_w", "sprite_frame_h",
+			"sprite_walk_frames", "sprite_walk_fps"]:
+		if base.has(k):
+			out[k] = base[k]
+	return out
 
 func grant_xp(inst: Dictionary, amount: int) -> void:
 	inst["exp"] = int(inst["exp"]) + amount

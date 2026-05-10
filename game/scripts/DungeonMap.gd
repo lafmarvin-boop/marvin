@@ -3,7 +3,6 @@ extends Node2D
 # Carte du donjon : progression case par case (style Fissure).
 
 signal battle_requested(floor: int)
-signal sprite_demo_requested
 
 const NODE_SPACING := 130
 const VISIBLE_BEFORE := 1
@@ -62,15 +61,6 @@ func _ready() -> void:
 	reset.add_theme_font_size_override("font_size", 14)
 	reset.pressed.connect(_on_reset_pressed)
 	add_child(reset)
-
-	# Bouton "Aperçu sprite" : compare HD vs Mid
-	var demo := Button.new()
-	demo.text = "🔍 Aperçu sprite"
-	demo.position = Vector2(500, 1220)
-	demo.size = Vector2(200, 40)
-	demo.add_theme_font_size_override("font_size", 14)
-	demo.pressed.connect(func() -> void: emit_signal("sprite_demo_requested"))
-	add_child(demo)
 
 func _build_node(floor: int, current: int, y: int) -> void:
 	var is_boss: bool = (floor % 5 == 0)

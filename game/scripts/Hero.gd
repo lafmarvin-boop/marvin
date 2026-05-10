@@ -15,7 +15,7 @@ var row: int = 0
 var battle_ref: Node = null
 var hero_inst: Dictionary = {}
 
-var sprite: ColorRect
+var sprite: CanvasItem  # ColorRect placeholder OU AnimatedSprite2D
 var hp_bar: ColorRect
 var hp_bar_bg: ColorRect
 
@@ -27,28 +27,10 @@ func setup(_stats: Dictionary, _hero_inst: Dictionary, _battle: Node) -> void:
 	hp = max_hp
 
 func _ready() -> void:
-	# Corps
-	sprite = ColorRect.new()
-	sprite.color = stats["color"]
-	sprite.size = Vector2(64, 80)
-	sprite.position = Vector2(-32, -40)
-	add_child(sprite)
-
-	# Bordure
-	var border := ReferenceRect.new()
-	border.position = sprite.position
-	border.size = sprite.size
-	border.border_color = Color(0, 0, 0, 0.6)
-	border.editor_only = false
-	add_child(border)
-
-	# Initiale du nom
-	var initial := Label.new()
-	initial.text = String(stats["name"]).substr(0, 1)
-	initial.position = Vector2(-12, -28)
-	initial.add_theme_font_size_override("font_size", 32)
-	initial.add_theme_color_override("font_color", Color(0.05, 0.05, 0.1))
-	add_child(initial)
+	if stats.has("sprite_walk_path") and ResourceLoader.exists(stats["sprite_walk_path"]):
+		_setup_animated_sprite()
+	else:
+		_setup_placeholder_sprite()
 
 	# Niveau
 	var lvl := Label.new()
@@ -70,6 +52,54 @@ func _ready() -> void:
 	hp_bar.size = Vector2(64, 6)
 	hp_bar.position = Vector2(-32, -52)
 	add_child(hp_bar)
+
+func _setup_placeholder_sprite() -> void:
+	var rect := ColorRect.new()
+	rect.color = stats["color"]
+	rect.size = Vector2(64, 80)
+	rect.position = Vector2(-32, -40)
+	add_child(rect)
+	sprite = rect
+
+	var border := ReferenceRect.new()
+	border.position = rect.position
+	border.size = rect.size
+	border.border_color = Color(0, 0, 0, 0.6)
+	border.editor_only = false
+	add_child(border)
+
+	var initial := Label.new()
+	initial.text = String(stats["name"]).substr(0, 1)
+	initial.position = Vector2(-12, -28)
+	initial.add_theme_font_size_override("font_size", 32)
+	initial.add_theme_color_override("font_color", Color(0.05, 0.05, 0.1))
+	add_child(initial)
+
+func _setup_animated_sprite() -> void:
+	var tex: Texture2D = load(stats["sprite_walk_path"])
+	var fw: int = int(stats.get("sprite_frame_w", 40))
+	var fh: int = int(stats.get("sprite_frame_h", 80))
+	var n: int = int(stats.get("sprite_walk_frames", 4))
+	var fps: float = float(stats.get("sprite_walk_fps", 8))
+
+	var frames := SpriteFrames.new()
+	frames.add_animation("idle")
+	frames.set_animation_speed("idle", fps)
+	frames.set_animation_loop("idle", true)
+	for i in range(n):
+		var atlas := AtlasTexture.new()
+		atlas.atlas = tex
+		atlas.region = Rect2(i * fw, 0, fw, fh)
+		frames.add_frame("idle", atlas)
+
+	var anim := AnimatedSprite2D.new()
+	anim.sprite_frames = frames
+	anim.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	# Décale pour que les pieds reposent au centre-bas de la cellule (cellule 100 px de haut)
+	anim.position = Vector2(0, 0)
+	anim.play("idle")
+	add_child(anim)
+	sprite = anim
 
 func _process(delta: float) -> void:
 	if not battle_ref or not is_instance_valid(battle_ref):
