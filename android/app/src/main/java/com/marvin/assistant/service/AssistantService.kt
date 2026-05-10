@@ -317,6 +317,15 @@ class AssistantService : LifecycleService() {
                 speakWithPhase("OK, je te rappellerai ${r.describe()}.")
             }
             is MarvinIntent.LocalAnswer -> speakWithPhase(parsed.text)
+            is MarvinIntent.ReadRecentSms -> speakWithPhase(
+                tools.readSmsDirect(parsed.fromContact, parsed.limit)
+            )
+            is MarvinIntent.ReadUnreadNotifications -> speakWithPhase(
+                tools.readUnreadNotificationsDirect()
+            )
+            is MarvinIntent.ReadMissedCalls -> speakWithPhase(
+                tools.readMissedCallsDirect()
+            )
             is MarvinIntent.ListReminders -> {
                 val list = reminders.all()
                 if (list.isEmpty()) speakWithPhase("Tu n'as aucun rappel programmé.")
@@ -372,6 +381,18 @@ class AssistantService : LifecycleService() {
             }
             if (parsedFu is MarvinIntent.LocalAnswer) {
                 speakWithPhase(parsedFu.text)
+                continue
+            }
+            if (parsedFu is MarvinIntent.ReadRecentSms) {
+                speakWithPhase(tools.readSmsDirect(parsedFu.fromContact, parsedFu.limit))
+                continue
+            }
+            if (parsedFu is MarvinIntent.ReadUnreadNotifications) {
+                speakWithPhase(tools.readUnreadNotificationsDirect())
+                continue
+            }
+            if (parsedFu is MarvinIntent.ReadMissedCalls) {
+                speakWithPhase(tools.readMissedCallsDirect())
                 continue
             }
             if (parsedFu is MarvinIntent.ListReminders) {

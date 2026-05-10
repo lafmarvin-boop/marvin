@@ -110,6 +110,25 @@ class IntentParser {
         Rule(Regex("""(?:envoie|écris|écrit|envois) (?:un )?(?:sms|texto|message) (?:à |a )([\p{L}\s'-]+?) (?:pour (?:dire|lui dire) |disant |que )(.+)""")) {
             MarvinIntent.SendSms(it.groupValues[1].trim(), it.groupValues[2].trim())
         },
+        // "lis mes derniers messages" / "lit moi les sms de marie" / "lis les messages de papa"
+        Rule(Regex("""(?:lis|lit|lit-moi|lis moi|donne|montre)(?:[- ]moi)?\s+(?:les |mes )?(?:derniers? )?(?:sms|messages|texto|textos)\s+(?:de |du |reçus de )([\p{L}\s'-]+)""")) {
+            MarvinIntent.ReadRecentSms(fromContact = it.groupValues[1].trim())
+        },
+        Rule(Regex("""(?:lis|lit|lit-moi|lis moi|donne|montre)(?:[- ]moi)?\s+(?:les |mes )?(?:derniers? )?(?:sms|messages|texto|textos)""")) {
+            MarvinIntent.ReadRecentSms()
+        },
+        // "lis mes notifications" / "qu'est-ce que j'ai en notification"
+        Rule(Regex("""(?:lis|lit|lit-moi|lis moi|donne|montre)(?:[- ]moi)?\s+(?:les |mes )?notif(?:ication)?s?""")) {
+            MarvinIntent.ReadUnreadNotifications
+        },
+        Rule(Regex("""(?:est-ce que )?(?:j'ai|y'a|il y a)\s+(?:des |de )?notif(?:ication)?s?""")) {
+            MarvinIntent.ReadUnreadNotifications
+        },
+        // "lis mes appels manqués" / "qui m'a appelé"
+        Rule(Regex("""(?:lis|lit|donne)(?:[- ]moi)?\s+(?:les |mes )?appels?\s+(?:manqués?|en absence)""")) {
+            MarvinIntent.ReadMissedCalls
+        },
+        Rule(Regex("""qui (?:m'a|m a)\s+appelé""")) { MarvinIntent.ReadMissedCalls },
 
         // ---- WhatsApp ----
         Rule(Regex("""(?:envoie|écris) (?:un )?(?:message |whatsapp )(?:whatsapp )?à ([\p{L}\s'-]+?) (?:pour (?:dire|lui dire) |disant |que )(.+)""")) {

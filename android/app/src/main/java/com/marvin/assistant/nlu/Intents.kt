@@ -49,6 +49,15 @@ sealed class MarvinIntent {
     /** Réponse calculée localement (calc, conversion, etc.) — pas d'appel LLM. */
     data class LocalAnswer(val text: String) : MarvinIntent()
 
+    /** Lit à voix haute les SMS récents (de quelqu'un en particulier ou tous). */
+    data class ReadRecentSms(val fromContact: String? = null, val limit: Int = 3) : MarvinIntent()
+
+    /** Lit à voix haute les notifications non lues. */
+    data object ReadUnreadNotifications : MarvinIntent()
+
+    /** Lit à voix haute les appels manqués récents. */
+    data object ReadMissedCalls : MarvinIntent()
+
     /** Énumère les rappels actifs. */
     data object ListReminders : MarvinIntent()
 

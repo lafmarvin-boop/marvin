@@ -34,8 +34,11 @@ class ActionExecutor(private val context: Context) {
         MarvinIntent.WipeAllData,
         MarvinIntent.ListReminders,
         MarvinIntent.ClearReminders,
+        MarvinIntent.ReadUnreadNotifications,
+        MarvinIntent.ReadMissedCalls,
         is MarvinIntent.AddCorrection,
         is MarvinIntent.AddReminder,
-        is MarvinIntent.LocalAnswer -> ""
+        is MarvinIntent.LocalAnswer,
+        is MarvinIntent.ReadRecentSms -> ""
     }
 }

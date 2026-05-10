@@ -63,6 +63,43 @@ class Tools(
     /** Outils activés par l'utilisateur (filtrés par les toggles des réglages). */
     fun all(): List<Tool> = allDeclared().filter { settings.isToolEnabled(it.name) }
 
+    // ==== API directe (pour AssistantService — court-circuite Claude) ====
+
+    /** Lit les SMS récents et retourne une chaîne formatée pour TTS. */
+    fun readSmsDirect(fromContact: String? = null, limit: Int = 3): String {
+        val input = JSONObject().apply {
+            if (!fromContact.isNullOrBlank()) put("from_contact", fromContact)
+            put("limit", limit)
+        }
+        return readSms(input)
+    }
+
+    /** Lit les appels manqués récents et retourne une chaîne formatée. */
+    fun readMissedCallsDirect(limit: Int = 5): String {
+        val input = JSONObject().apply {
+            put("missed_only", true)
+            put("limit", limit)
+        }
+        return readCallLog(input)
+    }
+
+    /** Lit les notifications non lues. */
+    fun readUnreadNotificationsDirect(): String {
+        if (!NotificationCaptureService.isActive()) {
+            return "Accès aux notifications non activé. Va dans Paramètres → Apps → " +
+                "Accès aux notifications → Marvin pour l'activer."
+        }
+        val notifs = NotificationCaptureService.snapshot(10)
+        if (notifs.isEmpty()) return "Aucune notification active."
+        val tf = SimpleDateFormat("HH:mm", Locale.FRENCH)
+        return "Tu as ${notifs.size} notification${if (notifs.size > 1) "s" else ""} : " +
+            notifs.joinToString(". ") { n ->
+                val app = appLabel(n.packageName)
+                val text = n.text.take(120).replace("\n", " ")
+                "à ${tf.format(Date(n.postedAtMs))}, $app — ${n.title} : $text"
+            }
+    }
+
     private val getWeather = Tool(
         name = "get_weather",
         description = "Récupère la météo actuelle ou la prévision pour une ville donnée. " +
