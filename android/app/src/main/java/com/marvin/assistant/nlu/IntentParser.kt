@@ -153,6 +153,23 @@ class IntentParser {
             MarvinIntent.Translate(it.groupValues[1].trim(), null)
         },
 
+        // ---- Memoire long terme ----
+        // "souviens-toi que ma femme s'appelle Marie"
+        // "rappelle-toi que mon code wifi est ABC123"
+        // "memorise que mon anniversaire est le 12 mai"
+        // "note que je travaille chez X"
+        Rule(Regex("""(?:souviens[- ]?toi|rappelle[- ]?toi|memorise|memorize|note)\s+(?:que |qu')(.+)$""")) {
+            MarvinIntent.RememberFact(it.groupValues[1].trim())
+        },
+        // "oublie X" / "efface ce que tu sais sur X"
+        Rule(Regex("""(?:oublie|efface)\s+(?:ce que tu sais sur |que )?(.+)$""")) {
+            MarvinIntent.ForgetFact(it.groupValues[1].trim())
+        },
+        // "qu'est-ce que tu sais sur moi" / "que sais-tu de moi"
+        Rule(Regex("""(?:qu'est-ce que tu sais|que sais-tu)(?:\s+sur\s+moi)?""")) {
+            MarvinIntent.ListMemory
+        },
+
         // ---- Smart home (Home Assistant) ----
         // "allume la lampe du salon" / "éteins la lampe de la cuisine"
         // "allume la lampe du salon à 50 %"

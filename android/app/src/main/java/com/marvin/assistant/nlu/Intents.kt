@@ -67,6 +67,13 @@ sealed class MarvinIntent {
     /** Capture une photo et l'analyse via Claude vision. */
     data class TakePhotoAndAnalyze(val question: String = "Qu'est-ce que tu vois sur cette image ?") : MarvinIntent()
 
+    /** Mémoire long terme : ajouter un fait. */
+    data class RememberFact(val fact: String) : MarvinIntent()
+    /** Mémoire long terme : oublier un fait par mot-clé. */
+    data class ForgetFact(val query: String) : MarvinIntent()
+    /** Mémoire long terme : énumérer ce que Jarvis sait. */
+    data object ListMemory : MarvinIntent()
+
     /** Smart home via Home Assistant. */
     data class SmartLight(val name: String, val on: Boolean, val brightness: Int? = null) : MarvinIntent()
     data class SmartSwitch(val name: String, val on: Boolean) : MarvinIntent()

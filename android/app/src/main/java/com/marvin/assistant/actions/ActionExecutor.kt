@@ -49,6 +49,9 @@ class ActionExecutor(private val context: Context) {
         is MarvinIntent.TakePhotoAndAnalyze,
         is MarvinIntent.SmartLight,
         is MarvinIntent.SmartSwitch,
-        is MarvinIntent.SmartScene -> ""
+        is MarvinIntent.SmartScene,
+        is MarvinIntent.RememberFact,
+        is MarvinIntent.ForgetFact,
+        MarvinIntent.ListMemory -> ""
     }
 }

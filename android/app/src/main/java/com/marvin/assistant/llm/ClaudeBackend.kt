@@ -38,7 +38,8 @@ import java.util.concurrent.TimeUnit
 class ClaudeBackend(
     private val context: Context,
     private val settings: Settings,
-    private val tools: Tools
+    private val tools: Tools,
+    private val memory: com.marvin.assistant.memory.LongTermMemory? = null
 ) : LlmBackend {
 
     override val displayName: String get() = "Claude ${settings.claudeModel.name.lowercase()}"
@@ -183,10 +184,12 @@ class ClaudeBackend(
         messages: JSONArray,
         toolsJson: JSONArray
     ): JSONObject? {
+        val memoryContext = memory?.buildContextBlock().orEmpty()
+        val fullSystem = SYSTEM_PROMPT + memoryContext
         val systemBlocks = JSONArray().apply {
             put(JSONObject().apply {
                 put("type", "text")
-                put("text", SYSTEM_PROMPT)
+                put("text", fullSystem)
                 put("cache_control", JSONObject().put("type", "ephemeral"))
             })
         }

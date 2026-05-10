@@ -17,6 +17,7 @@ import com.marvin.assistant.R
 import com.marvin.assistant.actions.ActionExecutor
 import com.marvin.assistant.audit.AuditLog
 import com.marvin.assistant.audio.SpeakerVerifier
+import com.marvin.assistant.memory.LongTermMemory
 import com.marvin.assistant.audio.SpeakerVerifierFactory
 import com.marvin.assistant.audio.SpeechToText
 import com.marvin.assistant.audio.SttCorrections
@@ -62,6 +63,7 @@ class AssistantService : LifecycleService() {
     private lateinit var speakerVerifier: SpeakerVerifier
     private lateinit var sttCorrections: SttCorrections
     private lateinit var auditLog: AuditLog
+    private lateinit var memory: LongTermMemory
     private lateinit var reminders: RemindersManager
     private lateinit var routines: RoutinesManager
     private lateinit var shopping: ShoppingList
@@ -91,6 +93,7 @@ class AssistantService : LifecycleService() {
         speakerVerifier = SpeakerVerifierFactory.create(this)
         sttCorrections = SttCorrections(this)
         auditLog = AuditLog(this)
+        memory = LongTermMemory(this)
         reminders = RemindersManager(this)
         reminders.rescheduleAll() // re-arme les alarmes après mise à jour de l'app
         routines = RoutinesManager(this)
@@ -452,6 +455,19 @@ class AssistantService : LifecycleService() {
                 speakWithPhase(homeAssistant.setSwitch(parsed.name, parsed.on))
             is MarvinIntent.SmartScene ->
                 speakWithPhase(homeAssistant.activateScene(parsed.name))
+            is MarvinIntent.RememberFact -> {
+                memory.addFact(parsed.fact)
+                speakWithPhase("OK, je m'en souviendrai.")
+            }
+            is MarvinIntent.ForgetFact -> {
+                val ok = memory.forgetFact(parsed.query)
+                speakWithPhase(if (ok) "OK, j'ai oublié." else "Je n'avais rien sur ça.")
+            }
+            is MarvinIntent.ListMemory -> {
+                val f = memory.facts()
+                speakWithPhase(if (f.isEmpty()) "Je ne sais rien sur toi pour l'instant."
+                    else "Voici ce que je sais : " + f.joinToString(". ") + ".")
+            }
             is MarvinIntent.ListReminders -> {
                 val list = reminders.all()
                 if (list.isEmpty()) speakWithPhase("Tu n'as aucun rappel programmé.")
@@ -570,6 +586,22 @@ class AssistantService : LifecycleService() {
             }
             if (parsedFu is MarvinIntent.SmartScene) {
                 speakWithPhase(homeAssistant.activateScene(parsedFu.name))
+                continue
+            }
+            if (parsedFu is MarvinIntent.RememberFact) {
+                memory.addFact(parsedFu.fact)
+                speakWithPhase("OK, je m'en souviendrai.")
+                continue
+            }
+            if (parsedFu is MarvinIntent.ForgetFact) {
+                val ok = memory.forgetFact(parsedFu.query)
+                speakWithPhase(if (ok) "OK, oublié." else "Je n'avais rien là-dessus.")
+                continue
+            }
+            if (parsedFu is MarvinIntent.ListMemory) {
+                val f = memory.facts()
+                speakWithPhase(if (f.isEmpty()) "Je ne sais rien sur toi."
+                    else "Voici ce que je sais : " + f.joinToString(". "))
                 continue
             }
             if (parsedFu is MarvinIntent.ListReminders) {
@@ -745,7 +777,7 @@ class AssistantService : LifecycleService() {
             else settings.backendChoice
         return when (choice) {
             LlmBackendChoice.CLOUD_CLAUDE -> claudeBackend
-                ?: ClaudeBackend(this, settings, tools).also { claudeBackend = it }
+                ?: ClaudeBackend(this, settings, tools, memory).also { claudeBackend = it }
             LlmBackendChoice.LOCAL_GEMMA -> gemmaBackend
                 ?: GemmaBackend(this).also { gemmaBackend = it }
         }
