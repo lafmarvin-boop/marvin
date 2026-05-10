@@ -58,6 +58,9 @@ sealed class MarvinIntent {
     /** Lit à voix haute les appels manqués récents. */
     data object ReadMissedCalls : MarvinIntent()
 
+    /** Exécute une routine pré-définie (ex. "routine matin" = méteo + agenda + news). */
+    data class RunRoutine(val name: String) : MarvinIntent()
+
     /** Énumère les rappels actifs. */
     data object ListReminders : MarvinIntent()
 

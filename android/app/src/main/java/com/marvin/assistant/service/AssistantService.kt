@@ -32,6 +32,7 @@ import com.marvin.assistant.llm.Tools
 import com.marvin.assistant.nlu.IntentParser
 import com.marvin.assistant.nlu.MarvinIntent
 import com.marvin.assistant.reminders.RemindersManager
+import com.marvin.assistant.routines.RoutinesManager
 import com.marvin.assistant.ui.DiscussionActivity
 import com.marvin.assistant.ui.DiscussionPhase
 import com.marvin.assistant.ui.DiscussionStateHolder
@@ -55,6 +56,7 @@ class AssistantService : LifecycleService() {
     private lateinit var speakerVerifier: SpeakerVerifier
     private lateinit var sttCorrections: SttCorrections
     private lateinit var reminders: RemindersManager
+    private lateinit var routines: RoutinesManager
     private val toneGen by lazy {
         try { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80) }
         catch (_: Throwable) { null }
@@ -80,6 +82,7 @@ class AssistantService : LifecycleService() {
         sttCorrections = SttCorrections(this)
         reminders = RemindersManager(this)
         reminders.rescheduleAll() // re-arme les alarmes après mise à jour de l'app
+        routines = RoutinesManager(this)
         wakeWord = WakeWordEngine(
             context = this,
             voskModel = voskModel,
@@ -165,6 +168,39 @@ class AssistantService : LifecycleService() {
 
         pipelineJob = lifecycleScope.launch(coroutineErrorHandler) {
             handleTurn(prefilledTranscript = command)
+        }
+    }
+
+    /**
+     * Exécute une routine étape par étape. Chaque étape est traitée comme
+     * si l'utilisateur l'avait dite. La mémoire de discussion est partagée
+     * entre les étapes, donc Claude voit l'historique complet.
+     */
+    private suspend fun runRoutine(name: String) {
+        val routine = routines.findByName(name)
+        if (routine == null) {
+            speakWithPhase("Je n'ai pas trouvé la routine \"$name\".")
+            return
+        }
+        speakWithPhase("Routine ${routine.name}.")
+        for (step in routine.steps) {
+            DiscussionStateHolder.setLastUserText(step)
+            DiscussionStateHolder.setPhase(DiscussionPhase.Thinking)
+            val parsedStep = parser.parse(step)
+            when (parsedStep) {
+                is MarvinIntent.LocalAnswer -> speakWithPhase(parsedStep.text)
+                is MarvinIntent.ReadRecentSms ->
+                    speakWithPhase(tools.readSmsDirect(parsedStep.fromContact, parsedStep.limit))
+                is MarvinIntent.ReadUnreadNotifications ->
+                    speakWithPhase(tools.readUnreadNotificationsDirect())
+                is MarvinIntent.ReadMissedCalls ->
+                    speakWithPhase(tools.readMissedCallsDirect())
+                is MarvinIntent.Unknown -> askBackend(step, useHistory = true)
+                else -> {
+                    val feedback = executor.execute(parsedStep)
+                    if (feedback.isNotBlank()) speakWithPhase(feedback)
+                }
+            }
         }
     }
 
@@ -326,6 +362,7 @@ class AssistantService : LifecycleService() {
             is MarvinIntent.ReadMissedCalls -> speakWithPhase(
                 tools.readMissedCallsDirect()
             )
+            is MarvinIntent.RunRoutine -> runRoutine(parsed.name)
             is MarvinIntent.ListReminders -> {
                 val list = reminders.all()
                 if (list.isEmpty()) speakWithPhase("Tu n'as aucun rappel programmé.")
@@ -393,6 +430,10 @@ class AssistantService : LifecycleService() {
             }
             if (parsedFu is MarvinIntent.ReadMissedCalls) {
                 speakWithPhase(tools.readMissedCallsDirect())
+                continue
+            }
+            if (parsedFu is MarvinIntent.RunRoutine) {
+                runRoutine(parsedFu.name)
                 continue
             }
             if (parsedFu is MarvinIntent.ListReminders) {

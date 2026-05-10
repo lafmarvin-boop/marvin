@@ -130,6 +130,15 @@ class IntentParser {
         },
         Rule(Regex("""qui (?:m'a|m a)\s+appelé""")) { MarvinIntent.ReadMissedCalls },
 
+        // ---- Routines ----
+        // "lance ma routine matin" / "routine matin" / "fais la routine soir"
+        Rule(Regex("""(?:lance|démarre|exécute|fais|active)\s+(?:ma |la |une )?routine\s+(.+)""")) {
+            MarvinIntent.RunRoutine(it.groupValues[1].trim())
+        },
+        Rule(Regex("""^routine\s+(.+)""")) {
+            MarvinIntent.RunRoutine(it.groupValues[1].trim())
+        },
+
         // ---- WhatsApp ----
         Rule(Regex("""(?:envoie|écris) (?:un )?(?:message |whatsapp )(?:whatsapp )?à ([\p{L}\s'-]+?) (?:pour (?:dire|lui dire) |disant |que )(.+)""")) {
             MarvinIntent.WhatsAppMessage(it.groupValues[1].trim(), it.groupValues[2].trim())

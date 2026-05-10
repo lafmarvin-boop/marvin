@@ -39,6 +39,7 @@ class ActionExecutor(private val context: Context) {
         is MarvinIntent.AddCorrection,
         is MarvinIntent.AddReminder,
         is MarvinIntent.LocalAnswer,
-        is MarvinIntent.ReadRecentSms -> ""
+        is MarvinIntent.ReadRecentSms,
+        is MarvinIntent.RunRoutine -> ""
     }
 }
