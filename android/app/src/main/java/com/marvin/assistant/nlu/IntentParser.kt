@@ -153,6 +153,30 @@ class IntentParser {
             MarvinIntent.Translate(it.groupValues[1].trim(), null)
         },
 
+        // ---- Smart home (Home Assistant) ----
+        // "allume la lampe du salon" / "éteins la lampe de la cuisine"
+        // "allume la lampe du salon à 50 %"
+        // "allume la prise du bureau"
+        // "active la scène cinéma" / "lance la scène nuit"
+        Rule(Regex("""(?:allume|active|mets?[- ]toi)\s+(?:la |les |le |l')?(?:lampe|lumière|lumiere)s?\s+(?:du |de la |de l'|d'|des )(.+?)\s+(?:à|a)\s+(\d{1,3})\s*(?:%|pourcent|pour cent)""")) {
+            MarvinIntent.SmartLight(it.groupValues[1].trim(), on = true, brightness = it.groupValues[2].toIntOrNull())
+        },
+        Rule(Regex("""(?:allume|active)\s+(?:la |les |le |l')?(?:lampe|lumière|lumiere)s?\s+(?:du |de la |de l'|d'|des )(.+)""")) {
+            MarvinIntent.SmartLight(it.groupValues[1].trim(), on = true)
+        },
+        Rule(Regex("""(?:éteins|eteins|éteint|coupe)\s+(?:la |les |le |l')?(?:lampe|lumière|lumiere)s?\s+(?:du |de la |de l'|d'|des )(.+)""")) {
+            MarvinIntent.SmartLight(it.groupValues[1].trim(), on = false)
+        },
+        Rule(Regex("""(?:allume|active)\s+(?:la |le |l')?prise\s+(?:du |de la |de l'|d'|des )(.+)""")) {
+            MarvinIntent.SmartSwitch(it.groupValues[1].trim(), on = true)
+        },
+        Rule(Regex("""(?:éteins|eteins|coupe)\s+(?:la |le |l')?prise\s+(?:du |de la |de l'|d'|des )(.+)""")) {
+            MarvinIntent.SmartSwitch(it.groupValues[1].trim(), on = false)
+        },
+        Rule(Regex("""(?:active|lance|démarre|déclenche)\s+(?:la |le |l')?scène\s+(.+)""")) {
+            MarvinIntent.SmartScene(it.groupValues[1].trim())
+        },
+
         // ---- Vision / photo ----
         // "prends une photo et dis-moi ce que c'est"
         // "regarde ça" / "décris ce que tu vois"

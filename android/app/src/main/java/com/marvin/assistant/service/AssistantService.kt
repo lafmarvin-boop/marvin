@@ -34,6 +34,7 @@ import com.marvin.assistant.nlu.MarvinIntent
 import com.marvin.assistant.reminders.RemindersManager
 import com.marvin.assistant.routines.RoutinesManager
 import com.marvin.assistant.shopping.ShoppingList
+import com.marvin.assistant.smarthome.HomeAssistantClient
 import com.marvin.assistant.vision.VisionCaptureActivity
 import com.marvin.assistant.vision.VisionClient
 import com.marvin.assistant.ui.DiscussionActivity
@@ -62,6 +63,7 @@ class AssistantService : LifecycleService() {
     private lateinit var routines: RoutinesManager
     private lateinit var shopping: ShoppingList
     private lateinit var visionClient: VisionClient
+    private lateinit var homeAssistant: HomeAssistantClient
     private val toneGen by lazy {
         try { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80) }
         catch (_: Throwable) { null }
@@ -90,6 +92,7 @@ class AssistantService : LifecycleService() {
         routines = RoutinesManager(this)
         shopping = ShoppingList(this)
         visionClient = VisionClient(this, settings)
+        homeAssistant = HomeAssistantClient(settings)
         wakeWord = WakeWordEngine(
             context = this,
             voskModel = voskModel,
@@ -424,6 +427,12 @@ class AssistantService : LifecycleService() {
                 speakWithPhase("Liste de courses vidée.")
             }
             is MarvinIntent.TakePhotoAndAnalyze -> handleVisionCapture(parsed.question)
+            is MarvinIntent.SmartLight ->
+                speakWithPhase(homeAssistant.setLight(parsed.name, parsed.on, parsed.brightness))
+            is MarvinIntent.SmartSwitch ->
+                speakWithPhase(homeAssistant.setSwitch(parsed.name, parsed.on))
+            is MarvinIntent.SmartScene ->
+                speakWithPhase(homeAssistant.activateScene(parsed.name))
             is MarvinIntent.ListReminders -> {
                 val list = reminders.all()
                 if (list.isEmpty()) speakWithPhase("Tu n'as aucun rappel programmé.")
@@ -530,6 +539,18 @@ class AssistantService : LifecycleService() {
             }
             if (parsedFu is MarvinIntent.TakePhotoAndAnalyze) {
                 handleVisionCapture(parsedFu.question)
+                continue
+            }
+            if (parsedFu is MarvinIntent.SmartLight) {
+                speakWithPhase(homeAssistant.setLight(parsedFu.name, parsedFu.on, parsedFu.brightness))
+                continue
+            }
+            if (parsedFu is MarvinIntent.SmartSwitch) {
+                speakWithPhase(homeAssistant.setSwitch(parsedFu.name, parsedFu.on))
+                continue
+            }
+            if (parsedFu is MarvinIntent.SmartScene) {
+                speakWithPhase(homeAssistant.activateScene(parsedFu.name))
                 continue
             }
             if (parsedFu is MarvinIntent.ListReminders) {

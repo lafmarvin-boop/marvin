@@ -91,6 +91,8 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var voiceBioThreshold by remember { mutableStateOf(settings.voiceBiometricThreshold) }
     var webSearchEnabled by remember { mutableStateOf(settings.webSearchEnabled) }
     var proactiveNotifs by remember { mutableStateOf(settings.proactiveNotificationsEnabled) }
+    var haUrl by remember { mutableStateOf(settings.homeAssistantUrl) }
+    var haToken by remember { mutableStateOf(settings.homeAssistantToken) }
 
     // Corrections STT : on lit a` chaque recomposition pour refléter les
     // ajouts faits via voix. Une carte par entrée + bouton supprimer.
@@ -365,6 +367,34 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             onChange = { proactiveNotifs = it }
         )
 
+        // ------ SMART HOME (HOME ASSISTANT) ------
+        Spacer(Modifier.height(20.dp))
+        Text("Smart home (Home Assistant)",
+            style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Pilote tes lampes / prises / scènes depuis Jarvis. " +
+                "Crée un Long-Lived Access Token dans Home Assistant " +
+                "(Profil → Tokens), puis colle l'URL et le token ici.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = haUrl,
+            onValueChange = { haUrl = it },
+            label = { Text("URL Home Assistant (ex. http://homeassistant.local:8123)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(4.dp))
+        OutlinedTextField(
+            value = haToken,
+            onValueChange = { haToken = it },
+            label = { Text("Long-Lived Access Token") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
         // ------ APPRENTISSAGE / DICTIONNAIRE PERSO ------
         Spacer(Modifier.height(28.dp))
         Text("Mes corrections de prononciation",
@@ -530,6 +560,8 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 settings.voiceBiometricThreshold = voiceBioThreshold
                 settings.webSearchEnabled = webSearchEnabled
                 settings.proactiveNotificationsEnabled = proactiveNotifs
+                settings.homeAssistantUrl = haUrl.trim()
+                settings.homeAssistantToken = haToken.trim()
                 onClose()
             },
             modifier = Modifier.fillMaxWidth()

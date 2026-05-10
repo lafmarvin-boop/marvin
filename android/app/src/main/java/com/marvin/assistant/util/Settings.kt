@@ -57,6 +57,16 @@ class Settings(context: Context) {
         get() = secure.getString(KEY_ANTHROPIC_KEY, "") ?: ""
         set(value) { secure.edit().putString(KEY_ANTHROPIC_KEY, value).apply() }
 
+    /** URL Home Assistant (ex. http://homeassistant.local:8123). Vide = désactivé. */
+    var homeAssistantUrl: String
+        get() = plain.getString(KEY_HA_URL, "") ?: ""
+        set(value) { plain.edit().putString(KEY_HA_URL, value).apply() }
+
+    /** Long-Lived Access Token Home Assistant. Stocké chiffré. */
+    var homeAssistantToken: String
+        get() = secure.getString(KEY_HA_TOKEN, "") ?: ""
+        set(value) { secure.edit().putString(KEY_HA_TOKEN, value).apply() }
+
     /**
      * Quand true, Marvin demande oralement confirmation avant les actions
      * destructrices ou irréversibles (envoi SMS, appel, WhatsApp). Défaut: true.
@@ -187,6 +197,8 @@ class Settings(context: Context) {
         private const val KEY_CLAUDE_MODEL = "claude_model"
         private const val KEY_DAILY_LIMIT = "daily_limit"
         private const val KEY_ANTHROPIC_KEY = "anthropic_api_key"
+        private const val KEY_HA_URL = "ha_url"
+        private const val KEY_HA_TOKEN = "ha_token"
         private const val KEY_QUOTA_DAY = "quota_day"
         private const val KEY_QUOTA_USED = "quota_used"
         private const val KEY_CONFIRM_SENSITIVE = "confirm_sensitive"

@@ -46,6 +46,9 @@ class ActionExecutor(private val context: Context) {
         MarvinIntent.ShoppingRead,
         is MarvinIntent.ShoppingRemove,
         MarvinIntent.ShoppingClear,
-        is MarvinIntent.TakePhotoAndAnalyze -> ""
+        is MarvinIntent.TakePhotoAndAnalyze,
+        is MarvinIntent.SmartLight,
+        is MarvinIntent.SmartSwitch,
+        is MarvinIntent.SmartScene -> ""
     }
 }

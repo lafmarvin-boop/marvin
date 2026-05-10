@@ -67,6 +67,11 @@ sealed class MarvinIntent {
     /** Capture une photo et l'analyse via Claude vision. */
     data class TakePhotoAndAnalyze(val question: String = "Qu'est-ce que tu vois sur cette image ?") : MarvinIntent()
 
+    /** Smart home via Home Assistant. */
+    data class SmartLight(val name: String, val on: Boolean, val brightness: Int? = null) : MarvinIntent()
+    data class SmartSwitch(val name: String, val on: Boolean) : MarvinIntent()
+    data class SmartScene(val name: String) : MarvinIntent()
+
     /** Liste de courses : ajouter / lire / supprimer / vider. */
     data class ShoppingAdd(val item: String) : MarvinIntent()
     data object ShoppingRead : MarvinIntent()
