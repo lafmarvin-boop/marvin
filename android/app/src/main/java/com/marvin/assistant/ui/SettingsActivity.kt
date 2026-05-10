@@ -97,6 +97,8 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     val auditLog = remember { com.marvin.assistant.audit.AuditLog(ctx) }
     var auditEntries by remember { mutableStateOf(auditLog.all().take(20)) }
     var showAudit by remember { mutableStateOf(false) }
+    var backupPwd by remember { mutableStateOf("") }
+    var backupStatus by remember { mutableStateOf("") }
     var haUrl by remember { mutableStateOf(settings.homeAssistantUrl) }
     var haToken by remember { mutableStateOf(settings.homeAssistantToken) }
     var elevenKey by remember { mutableStateOf(settings.elevenLabsApiKey) }
@@ -627,6 +629,77 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                     ) { Text("X") }
                 }
             }
+        }
+
+        // ------ BACKUP / RESTORE ------
+        Spacer(Modifier.height(20.dp))
+        Text("Sauvegarde / Restauration",
+            style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Exporte tes settings, routines, corrections, faits, rappels, " +
+                "clés API dans un fichier chiffré par mot de passe. " +
+                "Pratique pour réinstaller l'app ou changer de téléphone.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = backupPwd,
+            onValueChange = { backupPwd = it },
+            label = { Text("Mot de passe (à mémoriser !)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(4.dp))
+        Row {
+            Button(
+                onClick = {
+                    if (backupPwd.length < 6) {
+                        backupStatus = "Mot de passe trop court (min 6)."
+                        return@Button
+                    }
+                    try {
+                        val mgr = com.marvin.assistant.backup.BackupManager(ctx)
+                        val file = mgr.defaultExportFile()
+                        file.writeBytes(mgr.export(backupPwd))
+                        backupStatus = "Exporté : ${file.absolutePath}"
+                    } catch (t: Throwable) {
+                        backupStatus = "Erreur export : ${t.message}"
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) { Text("Exporter") }
+            Spacer(Modifier.width(6.dp))
+            Button(
+                onClick = {
+                    if (backupPwd.length < 6) {
+                        backupStatus = "Mot de passe requis pour décoder."
+                        return@Button
+                    }
+                    try {
+                        // Cherche le dernier .mvb dans le dossier
+                        val dir = ctx.getExternalFilesDir(null) ?: ctx.filesDir
+                        val latest = dir.listFiles { f ->
+                            f.name.endsWith(".mvb")
+                        }?.maxByOrNull { it.lastModified() }
+                        if (latest == null) {
+                            backupStatus = "Aucun backup trouvé."
+                            return@Button
+                        }
+                        val mgr = com.marvin.assistant.backup.BackupManager(ctx)
+                        val ok = mgr.import(latest.readBytes(), backupPwd)
+                        backupStatus = if (ok) "Restauré : ${latest.name}"
+                            else "Échec : mot de passe incorrect ?"
+                    } catch (t: Throwable) {
+                        backupStatus = "Erreur import : ${t.message}"
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) { Text("Importer (dernier)") }
+        }
+        if (backupStatus.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(backupStatus, style = MaterialTheme.typography.bodySmall)
         }
 
         // ------ AUDIT LOG ------
