@@ -149,4 +149,8 @@ dependencies {
     if (sherpaPresent) {
         implementation(files(sherpaAar))
     }
+
+    // Tests unitaires JVM
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.20")
 }
