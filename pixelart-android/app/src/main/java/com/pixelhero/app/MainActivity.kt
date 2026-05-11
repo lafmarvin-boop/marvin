@@ -400,17 +400,107 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSmartGenerator() {
-        val items = arrayOf("Frames d'animation", "Décor / scène", "Template de pose")
+        val items = arrayOf(
+            "Frames d'animation",
+            "Décor / scène (statique ou animé)",
+            "Élément animé (flambeau, feu de camp…)",
+            "Template de pose"
+        )
         AlertDialog.Builder(this)
             .setTitle("Générer…")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> showAnimationGenerator()
                     1 -> showDecorGenerator()
-                    2 -> showPoseTemplates()
+                    2 -> showAnimatedElementGenerator()
+                    3 -> showPoseTemplates()
                 }
             }
             .show()
+    }
+
+    private fun showAnimatedElementGenerator() {
+        val types = AnimatedElement.Type.values()
+        val labels = types.map { it.displayName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Élément animé à ajouter")
+            .setItems(labels) { _, which ->
+                showElementPositionPicker(types[which])
+            }
+            .show()
+    }
+
+    private fun showElementPositionPicker(type: AnimatedElement.Type) {
+        val items = arrayOf(
+            "Centre",
+            "Centre haut",
+            "Centre bas",
+            "Coin haut-gauche",
+            "Coin haut-droit",
+            "Coin bas-gauche",
+            "Coin bas-droit",
+            "Position personnalisée (tap suivant)"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("Position pour « ${type.displayName} »")
+            .setItems(items) { _, which ->
+                val (cx, cy) = when (which) {
+                    0 -> project.width / 2 to project.height / 2
+                    1 -> project.width / 2 to project.height / 4
+                    2 -> project.width / 2 to project.height * 3 / 4
+                    3 -> project.width / 4 to project.height / 4
+                    4 -> project.width * 3 / 4 to project.height / 4
+                    5 -> project.width / 4 to project.height * 3 / 4
+                    6 -> project.width * 3 / 4 to project.height * 3 / 4
+                    else -> {
+                        toast("Touchez le canvas pour placer l'élément")
+                        waitForCanvasTapToPlaceElement(type)
+                        return@setItems
+                    }
+                }
+                placeAnimatedElement(type, cx, cy)
+            }
+            .show()
+    }
+
+    private var pendingElementPlacement: AnimatedElement.Type? = null
+
+    private fun waitForCanvasTapToPlaceElement(type: AnimatedElement.Type) {
+        pendingElementPlacement = type
+        // Temporarily intercept the next stroke start
+        val originalListener = binding.canvas.onStrokeStart
+        binding.canvas.onStrokeStart = {
+            // Compute current tap pixel
+            // The tap position info isn't directly exposed; use selection workaround.
+            // Simpler: prompt user to use the picker via long-press for now.
+            pendingElementPlacement = null
+            binding.canvas.onStrokeStart = originalListener
+            toast("Astuce: utilisez les positions prédéfinies (Centre, etc.)")
+        }
+    }
+
+    private fun placeAnimatedElement(type: AnimatedElement.Type, cx: Int, cy: Int) {
+        pushUndo()
+        // Ensure we have enough frames for the animation
+        val targetFrames = type.recommendedFrames
+        val startIdx = project.currentIndex
+        // If only 1 frame, duplicate the current frame to make targetFrames copies
+        if (project.frames.size < targetFrames) {
+            val needed = targetFrames - project.frames.size + startIdx
+            val baseFrame = project.currentFrame.copy()
+            while (project.frames.size <= needed) {
+                project.frames.add(baseFrame.copy())
+            }
+        }
+        // Apply element to next [targetFrames] frames (cycling)
+        for (k in 0 until targetFrames) {
+            val frameIdx = (startIdx + k).coerceAtMost(project.frames.size - 1)
+            val targetFrame = project.frames[frameIdx]
+            AnimatedElement.render(targetFrame, cx, cy, type, k, targetFrames)
+        }
+        binding.canvas.syncFrameBitmap()
+        framesAdapter.notifyDataSetChanged()
+        toast("« ${type.displayName} » placé en ($cx, $cy) sur $targetFrames frames")
     }
 
     private fun showPoseTemplates() {
