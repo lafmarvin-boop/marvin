@@ -868,6 +868,12 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun openTileMap() {
+        // Save project first (the tile activity loads from storage)
+        ProjectStorage.save(this, project)
+        TileMapActivity.start(this, project.id)
+    }
+
     private fun showLayersDialog() {
         val f = project.currentFrame
         val labels = f.layers.mapIndexed { i, l ->
@@ -1265,6 +1271,7 @@ class MainActivity : AppCompatActivity() {
             "Mode de lecture animation…",
             "Verrouiller couleurs…",
             "Filtres / effets…",
+            "Mode tuiles / carte…",
             "Tutoriel"
         )
         AlertDialog.Builder(this)
@@ -1283,7 +1290,8 @@ class MainActivity : AppCompatActivity() {
                     9 -> showPlayModeMenu()
                     10 -> showColorLockMenu()
                     11 -> showFiltersMenu()
-                    12 -> showTutorial(force = true)
+                    12 -> openTileMap()
+                    13 -> showTutorial(force = true)
                 }
             }
             .show()
