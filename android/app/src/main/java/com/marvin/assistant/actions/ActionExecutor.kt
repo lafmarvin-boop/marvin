@@ -13,6 +13,7 @@ class ActionExecutor(private val context: Context) {
     private val familyWall = FamilyWallAction(context)
     private val ecovacs = EcovacsAction(context)
     private val bank = BankAction(context)
+    private val strava = StravaAction(context)
 
     /** Returns the spoken feedback (may be empty). */
     suspend fun execute(intent: MarvinIntent): String = when (intent) {
@@ -25,6 +26,7 @@ class ActionExecutor(private val context: Context) {
         is MarvinIntent.BankRead -> bank.read(intent.bank, intent.request)
         MarvinIntent.FamilyWallShowLocations -> familyWall.showLocations()
         is MarvinIntent.Ecovacs -> ecovacs.handle(intent.command)
+        is MarvinIntent.StravaStart -> strava.start(intent.sport)
         is MarvinIntent.Unknown -> "Désolé, j'ai pas compris."
         // Ces intents sont gérés en amont par AssistantService et ne devraient
         // jamais atteindre ActionExecutor — branches vides pour exhaustivité.

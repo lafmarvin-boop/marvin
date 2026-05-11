@@ -47,6 +47,7 @@
         <package android:name="com.waze" />
         <package android:name="com.familywall" />
         <package android:name="com.eco.global.app" />
+        <package android:name="com.strava" />
         <package android:name="com.boursorama.android.clients" />
         <package android:name="fr.banquepopulaire.cyberplus" />
         <intent>

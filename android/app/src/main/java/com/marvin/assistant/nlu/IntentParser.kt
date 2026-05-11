@@ -175,6 +175,17 @@ class IntentParser {
         },
         Rule(Regex("""compte (?:mes |les )?pas""")) { MarvinIntent.StepsCount },
 
+        // ---- Strava ----
+        // "lance strava en mode course a pied"
+        // "ouvre strava trail" / "demarre strava velo"
+        // "strava muscu"
+        Rule(Regex("""(?:lance|ouvre|demarre|d[ée]marre|active)\s+strava(?:\s+(?:en\s+)?(?:mode\s+)?(.+))?""")) {
+            MarvinIntent.StravaStart(it.groupValues.getOrNull(1)?.trim()?.takeIf { s -> s.isNotEmpty() })
+        },
+        Rule(Regex("""^strava(?:\s+(.+))?$""")) {
+            MarvinIntent.StravaStart(it.groupValues.getOrNull(1)?.trim()?.takeIf { s -> s.isNotEmpty() })
+        },
+
         // ---- Self test ----
         Rule(Regex("""(?:test(?:e)?(?:[- ]toi)?(?:[- ]m[eê]me)?|diagnostic|systeme check|verifie tes composants)""")) {
             MarvinIntent.SelfTest

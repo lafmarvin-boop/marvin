@@ -73,6 +73,9 @@ sealed class MarvinIntent {
     /** Self-test diagnostic des composants Marvin. */
     data object SelfTest : MarvinIntent()
 
+    /** Lance Strava en mode enregistrement avec sport optionnel. */
+    data class StravaStart(val sport: String? = null) : MarvinIntent()
+
     /** Exécute une routine pré-définie (ex. "routine matin" = méteo + agenda + news). */
     data class RunRoutine(val name: String) : MarvinIntent()
 
