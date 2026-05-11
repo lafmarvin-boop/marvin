@@ -477,6 +477,10 @@ class AssistantService : LifecycleService() {
                 speakWithPhase(if (ok) "OK, j'ai oublié." else "Je n'avais rien sur ça.")
             }
             is MarvinIntent.Help -> speakWithPhase(buildHelpText())
+            is MarvinIntent.CreateCalendarEvent -> {
+                val writer = com.marvin.assistant.calendar.CalendarWriter(this)
+                speakWithPhase(writer.createEvent(parsed.title, parsed.startMs, parsed.durationMinutes))
+            }
             is MarvinIntent.ListMemory -> {
                 val f = memory.facts()
                 speakWithPhase(if (f.isEmpty()) "Je ne sais rien sur toi pour l'instant."
@@ -614,6 +618,11 @@ class AssistantService : LifecycleService() {
             }
             if (parsedFu is MarvinIntent.Help) {
                 speakWithPhase(buildHelpText())
+                continue
+            }
+            if (parsedFu is MarvinIntent.CreateCalendarEvent) {
+                val writer = com.marvin.assistant.calendar.CalendarWriter(this)
+                speakWithPhase(writer.createEvent(parsedFu.title, parsedFu.startMs, parsedFu.durationMinutes))
                 continue
             }
             if (parsedFu is MarvinIntent.ListMemory) {

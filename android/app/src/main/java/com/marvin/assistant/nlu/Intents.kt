@@ -70,6 +70,13 @@ sealed class MarvinIntent {
     /** Liste les commandes disponibles à voix haute. */
     data object Help : MarvinIntent()
 
+    /** Crée un événement dans le calendrier Android. */
+    data class CreateCalendarEvent(
+        val title: String,
+        val startMs: Long,
+        val durationMinutes: Int = 60
+    ) : MarvinIntent()
+
     /** Mémoire long terme : ajouter un fait. */
     data class RememberFact(val fact: String) : MarvinIntent()
     /** Mémoire long terme : oublier un fait par mot-clé. */

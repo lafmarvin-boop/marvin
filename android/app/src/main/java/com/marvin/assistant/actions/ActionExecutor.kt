@@ -53,6 +53,7 @@ class ActionExecutor(private val context: Context) {
         is MarvinIntent.RememberFact,
         is MarvinIntent.ForgetFact,
         MarvinIntent.ListMemory,
-        MarvinIntent.Help -> ""
+        MarvinIntent.Help,
+        is MarvinIntent.CreateCalendarEvent -> ""
     }
 }

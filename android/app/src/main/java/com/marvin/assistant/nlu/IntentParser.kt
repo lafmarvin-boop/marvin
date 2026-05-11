@@ -153,6 +153,18 @@ class IntentParser {
             MarvinIntent.Translate(it.groupValues[1].trim(), null)
         },
 
+        // ---- Calendrier : creation d'evenement ----
+        // "ajoute un rendez-vous chez le medecin demain a 14 heures"
+        // "ajoute dans mon agenda reunion equipe vendredi a 10h"
+        // "cree un evenement diner amis ce soir a 20 heures"
+        Rule(Regex("""(?:ajoute|cree|crée|programme|met)(?:[- ]un)?\s+(?:rendez[- ]vous|rdv|reunion|réunion|événement|evenement|rendezvous|dans (?:mon |l'? ?)agenda)\s+(.+?)\s+(dans .+|a .+|à .+|demain.+|aujourd'hui.+|ce soir.+|cet (?:apres|après)[- ]midi.+|le .+|.+\s+a\s+\d.+|.+\s+à\s+\d.+)$""")) {
+            val title = it.groupValues[1].trim()
+            val whenStr = it.groupValues[2].trim()
+            val ts = TimeParser.parse(whenStr)
+                ?: return@Rule MarvinIntent.Unknown(it.value)
+            MarvinIntent.CreateCalendarEvent(title, ts)
+        },
+
         // ---- Help ----
         // "qu'est-ce que tu sais faire" / "aide" / "que peux-tu faire"
         Rule(Regex("""(?:qu'est-ce que tu sais faire|que peux[- ]tu faire|aide moi|aide-moi|de l'aide|liste tes commandes)""")) {
