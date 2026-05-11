@@ -111,7 +111,52 @@ Dans Android Studio :
 Pour un APK release signé (Play Store) :
 - **Build → Generate Signed Bundle / APK** → suivre l'assistant.
 
-## Roadmap (idées d'extensions)
+## Fonctionnalités avancées (v2)
+
+### Création de personnages
+- **Mode symétrie** (bouton symétrie dans la barre du haut) :
+  Aucune / Horizontale / Verticale / Les deux. Dessinez la moitié, l'autre se peint
+  automatiquement. La ligne de symétrie est visible en bleu sur le canvas.
+- **Pixel parfait** (checkbox dans le panneau droit) : supprime les pixels en
+  coin pour des lignes diagonales propres, sans escalier en double épaisseur.
+- **Outil sélection** (icône damier) + appui long pour : Copier / Couper /
+  Coller / Miroir horizontal / Miroir vertical sur la zone sélectionnée.
+- **Bibliothèque de palettes** : PICO-8, Game Boy DMG, Game Boy Pocket, NES,
+  Sweetie 16, Endesga 32, Tons chair.
+- **Auto-shading** : touche un bouton, l'app ajoute automatiquement 4 nuances
+  (2 ombres, 2 highlights) de la couleur active à la palette — fini la galère
+  pour trouver des ombres cohérentes.
+- **Remplacement de couleur global** : changer toutes les occurrences d'une
+  couleur sur toutes les frames (ou seulement la frame courante).
+- **Couleur primaire/secondaire** + bouton **swap** (échanger les deux).
+
+### Animation
+- **Onion skin multi-frames** : frame précédente en **bleu**, suivante en
+  **rouge**, jusqu'à ±3 frames (slider dans le panneau droit). Voir tout le
+  mouvement d'un coup d'œil.
+- **Générateur d'animation** (icône baguette magique dans la barre du haut) :
+  partir de votre frame de base et **générer automatiquement les frames
+  suivantes** pour :
+  - **Marche** (4 ou 8 frames) — décalage automatique des jambes gauche/droite
+  - **Idle / respiration** — léger mouvement haut/bas
+  - **Attaque** — anticipation → impact → recovery
+  - **Saut** — squash crouch → stretch jump → land
+  - **Défense / tremblement** — petits décalages
+  - **Rotation gauche/droite** — squash horizontal vers le miroir
+  - **Flottement (bob)** — sinusoïde verticale fluide
+  Le résultat n'est jamais parfait : c'est un brouillon que vous raffinez.
+- **Étiquettes de frames** + **durée par frame** : appui long sur une frame
+  dans la liste pour éditer son `tag` ("walk", "attack"…) et sa durée (en ms).
+  Plusieurs animations dans un seul projet.
+- **Flip / Décaler une frame** (bouton flip dans la barre d'outils gauche) :
+  miroir H/V ou décaler la frame d'1 px dans n'importe quelle direction.
+
+### Confort
+- **Auto-save** toutes les 30 secondes + à chaque pause/fermeture de l'app.
+- **Sauvegarde au format JSON** (avec base64 des pixels) — stockage interne
+  privé, jamais perdu.
+
+## Roadmap (idées d'extensions futures)
 
 - Calques par frame
 - Symétrie horizontale / verticale en temps réel pour les sprites de personnages

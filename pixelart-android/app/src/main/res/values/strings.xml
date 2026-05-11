@@ -44,4 +44,28 @@
     <string name="gif_done">GIF prêt</string>
     <string name="saved">Projet sauvegardé</string>
     <string name="no_projects">Aucun projet sauvegardé</string>
+    <string name="tool_select">Sélection</string>
+    <string name="symmetry">Symétrie</string>
+    <string name="symmetry_none">Aucune</string>
+    <string name="symmetry_h">Horizontale</string>
+    <string name="symmetry_v">Verticale</string>
+    <string name="symmetry_both">Les deux</string>
+    <string name="pixel_perfect">Pixel parfait</string>
+    <string name="onion_range">Frames onion (±)</string>
+    <string name="swap_colors">Échanger les couleurs</string>
+    <string name="primary_color">Couleur 1</string>
+    <string name="secondary_color">Couleur 2</string>
+    <string name="flip_h">Miroir horizontal</string>
+    <string name="flip_v">Miroir vertical</string>
+    <string name="shift">Décaler</string>
+    <string name="generate_animation">Générer animation</string>
+    <string name="replace_color">Remplacer couleur</string>
+    <string name="auto_shade">Auto-shading</string>
+    <string name="palette_library">Bibliothèque palettes</string>
+    <string name="cut">Couper</string>
+    <string name="copy">Copier</string>
+    <string name="paste">Coller</string>
+    <string name="frame_tag">Étiquette</string>
+    <string name="frame_delay">Délai (ms, 0 = global)</string>
+    <string name="autosave_on">Auto-save activé</string>
 </resources>

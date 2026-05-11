@@ -14,7 +14,8 @@ import androidx.recyclerview.widget.RecyclerView
 class FramesAdapter(
     private val project: Project,
     private val onSelect: (Int) -> Unit,
-    private val onMove: (Int, Int) -> Unit
+    private val onMove: (Int, Int) -> Unit,
+    private val onLongPress: ((Int) -> Unit)? = null
 ) : RecyclerView.Adapter<FramesAdapter.VH>() {
 
     class VH(view: View) : RecyclerView.ViewHolder(view) {
@@ -32,7 +33,10 @@ class FramesAdapter(
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         val frame = project.frames[position]
-        holder.label.text = "#${position + 1}"
+        val tagText = if (frame.tag.isNotBlank()) "  • ${frame.tag}" else ""
+        val delayText = if (frame.delayMs > 0) "  (${frame.delayMs}ms)" else ""
+        holder.label.text = "#${position + 1}$tagText$delayText"
+
         val bmp = Bitmap.createBitmap(frame.width, frame.height, Bitmap.Config.ARGB_8888)
         bmp.setPixels(frame.pixels, 0, frame.width, 0, 0, frame.width, frame.height)
         val drawable = bmp.toDrawable(holder.thumb.resources)
@@ -47,6 +51,10 @@ class FramesAdapter(
         holder.label.setTextColor(if (selected) Color.WHITE else 0xFFB4B4C8.toInt())
 
         holder.itemView.setOnClickListener { onSelect(position) }
+        holder.itemView.setOnLongClickListener {
+            onLongPress?.invoke(position)
+            true
+        }
         holder.btnUp.setOnClickListener { if (position > 0) onMove(position, position - 1) }
         holder.btnDown.setOnClickListener { if (position < project.frames.size - 1) onMove(position, position + 1) }
     }

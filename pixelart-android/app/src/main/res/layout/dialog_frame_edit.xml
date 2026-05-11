@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView style="@style/Caption" android:text="@string/frame_tag"/>
+    <EditText android:id="@+id/frameTag"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="@color/text" android:hint="walk / idle / attack…"/>
+
+    <TextView style="@style/Caption" android:text="@string/frame_delay"
+        android:layout_marginTop="12dp"/>
+    <EditText android:id="@+id/frameDelay"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:inputType="number" android:text="0"
+        android:textColor="@color/text"/>
+</LinearLayout>

@@ -10,7 +10,14 @@ import kotlin.math.*
 
 /**
  * Custom view that displays the current frame with onion-skin + background reference,
- * grid overlay, and handles touch (draw + pinch zoom + pan).
+ * grid overlay, selection overlay, and handles touch (draw + pinch zoom + pan).
+ *
+ * Supports:
+ * - Drawing tools (pencil/eraser/fill/line/rect/select/move/picker)
+ * - Symmetry mirror (H/V/both)
+ * - Multi-frame onion skin (configurable range; previous frames in blue, next in red)
+ * - Pixel-perfect mode (removes L-shaped corner pixels in lines for clean outlines)
+ * - Rectangle selection with floating clipboard for move/copy/paste
  */
 class PixelCanvasView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
@@ -20,23 +27,28 @@ class PixelCanvasView @JvmOverloads constructor(
         set(value) { field = value; rebuildBitmaps(); resetView(); invalidate() }
 
     var tool: Tool = Tool.PENCIL
+        set(value) {
+            // When changing tool away from SELECT, commit any floating selection
+            if (field == Tool.SELECT && value != Tool.SELECT) commitFloatingSelection()
+            field = value; invalidate()
+        }
     var color: Int = 0xFFFF5577.toInt()
     var showGrid: Boolean = true
-    var showOnion: Boolean = true
-    var onionOpacity: Float = 0.3f
     var bgOpacity: Float = 0.5f
     var bgBitmap: Bitmap? = null
         set(value) { field = value; invalidate() }
+
+    val selection = Selection()
 
     // View transform
     private var scale = 1f
     private var translateX = 0f
     private var translateY = 0f
-    private var baseScale = 1f // base zoom to fit
+    private var baseScale = 1f
 
-    // Bitmap caches (sized to project)
+    // Bitmap caches
     private var frameBmp: Bitmap? = null
-    private var onionBmp: Bitmap? = null
+    private var onionBmps = mutableListOf<Triple<Bitmap, Int, Int>>() // bitmap, offset (negative=before), tintColor
 
     // Touch state
     private val activePointers = mutableMapOf<Int, PointF>()
@@ -49,15 +61,20 @@ class PixelCanvasView @JvmOverloads constructor(
     private var panStartY = 0f
     private var translateStartX = 0f
     private var translateStartY = 0f
-    private var pinchStartDist = 0f
-    private var pinchStartScale = 1f
-    private var pinchCenterX = 0f
-    private var pinchCenterY = 0f
     private var pinching = false
 
-    // Shape preview (for line/rect tools): in-progress overlay
+    // Pixel-perfect: track recent pixel positions to delete corners
+    private val recentPixels = ArrayDeque<IntArray>()
+
+    // Preview overlay (for line/rect tools)
     private var previewActive = false
-    private var previewPath = mutableListOf<IntArray>() // [x,y] cells
+    private var previewPath = mutableListOf<IntArray>()
+
+    // Selection drag state
+    private var selectionDragMode: SelectionDragMode = SelectionDragMode.NONE
+    private enum class SelectionDragMode { NONE, CREATE, MOVE_FLOATING }
+    private var floatingDragOffsetX = 0
+    private var floatingDragOffsetY = 0
 
     // Listeners
     var onProjectChanged: (() -> Unit)? = null
@@ -65,40 +82,27 @@ class PixelCanvasView @JvmOverloads constructor(
     var onStrokeStart: (() -> Unit)? = null
     var onStrokeEnd: (() -> Unit)? = null
 
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-        isFilterBitmap = false
-        isAntiAlias = false
-    }
-    private val gridPaint = Paint().apply {
-        color = 0x33FFFFFF
-        style = Paint.Style.STROKE
-        strokeWidth = 0f
-    }
-    private val gridMajorPaint = Paint().apply {
-        color = 0x66A5B4FF
-        style = Paint.Style.STROKE
-        strokeWidth = 0f
-    }
+    private val paint = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
+    private val gridPaint = Paint().apply { color = 0x33FFFFFF; style = Paint.Style.STROKE; strokeWidth = 0f }
+    private val gridMajorPaint = Paint().apply { color = 0x66A5B4FF; style = Paint.Style.STROKE; strokeWidth = 0f }
     private val checkerPaint1 = Paint().apply { color = 0xFF22222E.toInt() }
     private val checkerPaint2 = Paint().apply { color = 0xFF15151F.toInt() }
-    private val borderPaint = Paint().apply {
-        color = 0xFF6677AA.toInt()
-        style = Paint.Style.STROKE
-        strokeWidth = 2f
-    }
+    private val borderPaint = Paint().apply { color = 0xFF6677AA.toInt(); style = Paint.Style.STROKE; strokeWidth = 2f }
     private val previewPaint = Paint().apply { style = Paint.Style.FILL }
-
-    init {
-        isFocusable = true
-        isClickable = true
+    private val selDashPaint = Paint().apply {
+        color = 0xFFFFFFFF.toInt(); style = Paint.Style.STROKE; strokeWidth = 0f
+        pathEffect = DashPathEffect(floatArrayOf(2f, 2f), 0f)
     }
+    private val selSymPaint = Paint().apply {
+        color = 0x6655AAFF.toInt(); style = Paint.Style.STROKE; strokeWidth = 0f
+    }
+
+    init { isFocusable = true; isClickable = true }
 
     private val scaleGD = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(d: ScaleGestureDetector): Boolean {
             val factor = d.scaleFactor
-            // Zoom centered on focus
-            val fx = d.focusX
-            val fy = d.focusY
+            val fx = d.focusX; val fy = d.focusY
             val newScale = (scale * factor).coerceIn(0.25f, 32f)
             val ratio = newScale / scale
             translateX = fx - ratio * (fx - translateX)
@@ -117,9 +121,34 @@ class PixelCanvasView @JvmOverloads constructor(
     private fun rebuildBitmaps() {
         val p = project ?: return
         frameBmp = Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888)
-        onionBmp = Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888)
+        rebuildOnionBitmaps()
         syncFrameBitmap()
-        syncOnionBitmap()
+    }
+
+    fun rebuildOnionBitmaps() {
+        val p = project ?: return
+        onionBmps.forEach { it.first.recycle() }
+        onionBmps.clear()
+        if (p.onionRange <= 0) return
+        // Previous frames (blue tint)
+        for (off in 1..p.onionRange) {
+            val idx = p.currentIndex - off
+            if (idx < 0) break
+            val bmp = Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888)
+            bmp.setPixels(p.frames[idx].pixels, 0, p.width, 0, 0, p.width, p.height)
+            // Blue tint: 0x4400AAFF
+            val tint = 0x4400AAFF.toInt()
+            onionBmps.add(Triple(bmp, -off, tint))
+        }
+        // Next frames (red tint)
+        for (off in 1..p.onionRange) {
+            val idx = p.currentIndex + off
+            if (idx >= p.frames.size) break
+            val bmp = Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888)
+            bmp.setPixels(p.frames[idx].pixels, 0, p.width, 0, 0, p.width, p.height)
+            val tint = 0x44FF4477.toInt()
+            onionBmps.add(Triple(bmp, off, tint))
+        }
     }
 
     fun syncFrameBitmap() {
@@ -130,13 +159,7 @@ class PixelCanvasView @JvmOverloads constructor(
     }
 
     fun syncOnionBitmap() {
-        val p = project ?: return
-        val bmp = onionBmp ?: return
-        if (p.currentIndex > 0) {
-            bmp.setPixels(p.frames[p.currentIndex - 1].pixels, 0, p.width, 0, 0, p.width, p.height)
-        } else {
-            bmp.eraseColor(0)
-        }
+        rebuildOnionBitmaps()
         invalidate()
     }
 
@@ -156,23 +179,19 @@ class PixelCanvasView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val p = project ?: return
-        val w = p.width
-        val h = p.height
+        val w = p.width; val h = p.height
 
         canvas.save()
         canvas.translate(translateX, translateY)
         canvas.scale(scale, scale)
 
-        // Transparent checker background
-        val cell = 1f
-        for (y in 0 until h) {
-            for (x in 0 until w) {
-                val pnt = if (((x + y) and 1) == 0) checkerPaint1 else checkerPaint2
-                canvas.drawRect(x.toFloat(), y.toFloat(), x + cell, y + cell, pnt)
-            }
+        // Checker background
+        for (y in 0 until h) for (x in 0 until w) {
+            canvas.drawRect(x.toFloat(), y.toFloat(), x + 1f, y + 1f,
+                if (((x + y) and 1) == 0) checkerPaint1 else checkerPaint2)
         }
 
-        // Background reference image (fit + opacity)
+        // BG reference
         bgBitmap?.let { bg ->
             val ratio = min(w.toFloat() / bg.width, h.toFloat() / bg.height)
             val dw = bg.width * ratio
@@ -184,37 +203,68 @@ class PixelCanvasView @JvmOverloads constructor(
             paint.alpha = 255
         }
 
-        // Onion skin (previous frame)
-        if (showOnion && p.currentIndex > 0) {
-            paint.alpha = (onionOpacity * 255).toInt().coerceIn(0, 255)
-            onionBmp?.let { canvas.drawBitmap(it, 0f, 0f, paint) }
+        // Onion skin layers (further frames more transparent)
+        for ((bmp, off, _) in onionBmps) {
+            val absOff = abs(off)
+            val alpha = (90 / absOff).coerceAtLeast(30)
+            paint.alpha = alpha
+            // Color filter for tint
+            val tint = if (off < 0) 0xFF00AAFF.toInt() else 0xFFFF4477.toInt()
+            paint.colorFilter = PorterDuffColorFilter(tint, PorterDuff.Mode.SRC_ATOP)
+            canvas.drawBitmap(bmp, 0f, 0f, paint)
+            paint.colorFilter = null
             paint.alpha = 255
         }
 
         // Current frame
         frameBmp?.let { canvas.drawBitmap(it, 0f, 0f, paint) }
 
-        // Preview overlay (in-progress shape)
+        // Floating selection overlay
+        selection.floating?.let {
+            val bmp = Bitmap.createBitmap(selection.floatW, selection.floatH, Bitmap.Config.ARGB_8888)
+            bmp.setPixels(it, 0, selection.floatW, 0, 0, selection.floatW, selection.floatH)
+            canvas.drawBitmap(bmp, selection.floatX.toFloat(), selection.floatY.toFloat(), paint)
+            bmp.recycle()
+        }
+
+        // Preview shape
         if (previewActive) {
             previewPaint.color = color
-            for (cellXY in previewPath) {
-                canvas.drawRect(cellXY[0].toFloat(), cellXY[1].toFloat(),
-                    cellXY[0] + 1f, cellXY[1] + 1f, previewPaint)
+            for (cell in previewPath) {
+                canvas.drawRect(cell[0].toFloat(), cell[1].toFloat(),
+                    cell[0] + 1f, cell[1] + 1f, previewPaint)
+            }
+        }
+
+        // Symmetry axis indicator
+        if (p.symmetry != SymmetryAxis.NONE) {
+            if (p.symmetry == SymmetryAxis.HORIZONTAL || p.symmetry == SymmetryAxis.BOTH) {
+                val cx = w / 2f
+                canvas.drawLine(cx, 0f, cx, h.toFloat(), selSymPaint)
+            }
+            if (p.symmetry == SymmetryAxis.VERTICAL || p.symmetry == SymmetryAxis.BOTH) {
+                val cy = h / 2f
+                canvas.drawLine(0f, cy, w.toFloat(), cy, selSymPaint)
             }
         }
 
         // Grid
         if (showGrid && scale >= 6f) {
             for (x in 0..w) {
-                val px = x.toFloat()
-                val pnt = if (x % 8 == 0) gridMajorPaint else gridPaint
-                canvas.drawLine(px, 0f, px, h.toFloat(), pnt)
+                canvas.drawLine(x.toFloat(), 0f, x.toFloat(), h.toFloat(),
+                    if (x % 8 == 0) gridMajorPaint else gridPaint)
             }
             for (y in 0..h) {
-                val py = y.toFloat()
-                val pnt = if (y % 8 == 0) gridMajorPaint else gridPaint
-                canvas.drawLine(0f, py, w.toFloat(), py, pnt)
+                canvas.drawLine(0f, y.toFloat(), w.toFloat(), y.toFloat(),
+                    if (y % 8 == 0) gridMajorPaint else gridPaint)
             }
+        }
+
+        // Selection rectangle (dashed)
+        if (selection.active) {
+            val r = RectF(selection.xMin.toFloat(), selection.yMin.toFloat(),
+                selection.xMax + 1f, selection.yMax + 1f)
+            canvas.drawRect(r, selDashPaint)
         }
 
         // Border
@@ -241,14 +291,10 @@ class PixelCanvasView @JvmOverloads constructor(
                         beginStroke(coords[0], coords[1])
                     }
                 } else if (activePointers.size == 2) {
-                    // Cancel drawing, start pan/pinch
                     cancelStroke()
                     val pts = activePointers.values.toList()
-                    pinchStartDist = dist(pts[0], pts[1])
-                    pinchStartScale = scale
-                    pinchCenterX = (pts[0].x + pts[1].x) / 2f
-                    pinchCenterY = (pts[0].y + pts[1].y) / 2f
-                    panStartX = pinchCenterX; panStartY = pinchCenterY
+                    panStartX = (pts[0].x + pts[1].x) / 2f
+                    panStartY = (pts[0].y + pts[1].y) / 2f
                     translateStartX = translateX; translateStartY = translateY
                     pinching = true
                 }
@@ -260,10 +306,10 @@ class PixelCanvasView @JvmOverloads constructor(
                 }
                 if (pinching && activePointers.size == 2) {
                     val pts = activePointers.values.toList()
-                    val center = PointF((pts[0].x + pts[1].x) / 2f, (pts[0].y + pts[1].y) / 2f)
-                    // Pan from center movement
-                    translateX = translateStartX + (center.x - panStartX)
-                    translateY = translateStartY + (center.y - panStartY)
+                    val cx = (pts[0].x + pts[1].x) / 2f
+                    val cy = (pts[0].y + pts[1].y) / 2f
+                    translateX = translateStartX + (cx - panStartX)
+                    translateY = translateStartY + (cy - panStartY)
                     invalidate()
                 } else if (activePointers.size == 1) {
                     if (tool == Tool.MOVE) {
@@ -277,18 +323,13 @@ class PixelCanvasView @JvmOverloads constructor(
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
-                val id = event.getPointerId(idx)
-                activePointers.remove(id)
+                activePointers.remove(event.getPointerId(idx))
                 if (activePointers.size < 2) pinching = false
-                if (activePointers.isEmpty()) {
-                    if (isDrawing) endStroke()
-                }
+                if (activePointers.isEmpty() && isDrawing) endStroke()
             }
         }
         return true
     }
-
-    private fun dist(a: PointF, b: PointF): Float = hypot(a.x - b.x, a.y - b.y)
 
     private fun clientToPixel(x: Float, y: Float): IntArray {
         val px = floor((x - translateX) / scale).toInt()
@@ -302,13 +343,31 @@ class PixelCanvasView @JvmOverloads constructor(
         isDrawing = true
         startPx = px; startPy = py
         lastPx = px; lastPy = py
+        recentPixels.clear()
         onStrokeStart?.invoke()
         when (tool) {
-            Tool.PENCIL -> { p.currentFrame.set(px, py, color); syncFrameBitmap() }
-            Tool.ERASER -> { p.currentFrame.set(px, py, 0); syncFrameBitmap() }
+            Tool.PENCIL -> { paintPixelSymmetric(px, py, color); syncFrameBitmap() }
+            Tool.ERASER -> { paintPixelSymmetric(px, py, 0); syncFrameBitmap() }
             Tool.FILL -> { floodFill(px, py, color); syncFrameBitmap(); onProjectChanged?.invoke() }
             Tool.PICKER -> { val c = p.currentFrame.get(px, py); if (Color.alpha(c) > 0) onColorPicked?.invoke(c) }
             Tool.LINE, Tool.RECT, Tool.RECT_FILL -> { previewActive = true; updatePreview(); invalidate() }
+            Tool.SELECT -> {
+                val floating = selection.floating
+                if (floating != null && px in selection.floatX until (selection.floatX + selection.floatW) &&
+                    py in selection.floatY until (selection.floatY + selection.floatH)) {
+                    selectionDragMode = SelectionDragMode.MOVE_FLOATING
+                    floatingDragOffsetX = px - selection.floatX
+                    floatingDragOffsetY = py - selection.floatY
+                } else {
+                    commitFloatingSelection()
+                    selection.clear()
+                    selection.active = true
+                    selection.x0 = px; selection.y0 = py
+                    selection.x1 = px; selection.y1 = py
+                    selectionDragMode = SelectionDragMode.CREATE
+                    invalidate()
+                }
+            }
             else -> {}
         }
     }
@@ -318,11 +377,14 @@ class PixelCanvasView @JvmOverloads constructor(
         val p = project ?: return
         when (tool) {
             Tool.PENCIL -> {
-                drawBresenham(lastPx, lastPy, px, py, color)
+                bresenhamCells(lastPx, lastPy, px, py) { x, y ->
+                    paintPixelSymmetric(x, y, color)
+                    if (p.pixelPerfect) pixelPerfectCheck()
+                }
                 syncFrameBitmap()
             }
             Tool.ERASER -> {
-                drawBresenham(lastPx, lastPy, px, py, 0)
+                bresenhamCells(lastPx, lastPy, px, py) { x, y -> paintPixelSymmetric(x, y, 0) }
                 syncFrameBitmap()
             }
             Tool.PICKER -> {
@@ -330,20 +392,37 @@ class PixelCanvasView @JvmOverloads constructor(
                 if (Color.alpha(c) > 0) onColorPicked?.invoke(c)
             }
             Tool.LINE, Tool.RECT, Tool.RECT_FILL -> { updatePreview(); invalidate() }
+            Tool.SELECT -> {
+                when (selectionDragMode) {
+                    SelectionDragMode.CREATE -> {
+                        selection.x1 = px; selection.y1 = py
+                        invalidate()
+                    }
+                    SelectionDragMode.MOVE_FLOATING -> {
+                        selection.floatX = px - floatingDragOffsetX
+                        selection.floatY = py - floatingDragOffsetY
+                        invalidate()
+                    }
+                    else -> {}
+                }
+            }
             else -> {}
         }
         lastPx = px; lastPy = py
     }
 
     private fun endStroke() {
-        val p = project ?: return
         when (tool) {
-            Tool.LINE -> {
-                drawBresenham(startPx, startPy, lastPx, lastPy, color)
-                syncFrameBitmap()
-            }
+            Tool.LINE -> { drawBresenham(startPx, startPy, lastPx, lastPy, color); syncFrameBitmap() }
             Tool.RECT -> { drawRect(startPx, startPy, lastPx, lastPy, color, false); syncFrameBitmap() }
             Tool.RECT_FILL -> { drawRect(startPx, startPy, lastPx, lastPy, color, true); syncFrameBitmap() }
+            Tool.SELECT -> {
+                if (selectionDragMode == SelectionDragMode.CREATE && selection.active) {
+                    // Lift selected pixels into floating
+                    liftSelectionToFloating()
+                }
+                selectionDragMode = SelectionDragMode.NONE
+            }
             else -> {}
         }
         previewActive = false
@@ -361,21 +440,147 @@ class PixelCanvasView @JvmOverloads constructor(
         invalidate()
     }
 
+    // ---- Symmetry ----
+    private fun paintPixelSymmetric(x: Int, y: Int, c: Int) {
+        val p = project ?: return
+        p.currentFrame.set(x, y, c)
+        when (p.symmetry) {
+            SymmetryAxis.NONE -> {}
+            SymmetryAxis.HORIZONTAL -> p.currentFrame.set(p.width - 1 - x, y, c)
+            SymmetryAxis.VERTICAL -> p.currentFrame.set(x, p.height - 1 - y, c)
+            SymmetryAxis.BOTH -> {
+                p.currentFrame.set(p.width - 1 - x, y, c)
+                p.currentFrame.set(x, p.height - 1 - y, c)
+                p.currentFrame.set(p.width - 1 - x, p.height - 1 - y, c)
+            }
+        }
+        recentPixels.addLast(intArrayOf(x, y))
+        while (recentPixels.size > 3) recentPixels.removeFirst()
+    }
+
+    /**
+     * Pixel-perfect: when the last 3 drawn pixels form an L-shape, remove the corner.
+     * Example: (0,0), (1,0), (1,1) → remove (1,0). This avoids "double-thick" diagonal lines.
+     */
+    private fun pixelPerfectCheck() {
+        if (recentPixels.size < 3) return
+        val a = recentPixels[recentPixels.size - 3]
+        val b = recentPixels[recentPixels.size - 2]
+        val c = recentPixels[recentPixels.size - 1]
+        // a and c must be diagonal neighbors of b
+        val abDx = b[0] - a[0]; val abDy = b[1] - a[1]
+        val bcDx = c[0] - b[0]; val bcDy = c[1] - b[1]
+        val isStraight1 = (abDx != 0 && abDy == 0) || (abDx == 0 && abDy != 0)
+        val isStraight2 = (bcDx != 0 && bcDy == 0) || (bcDx == 0 && bcDy != 0)
+        val turns = (abDx != bcDx || abDy != bcDy)
+        if (isStraight1 && isStraight2 && turns) {
+            // Remove the corner pixel b (set to 0)
+            project?.currentFrame?.set(b[0], b[1], 0)
+            val p = project
+            if (p != null) {
+                when (p.symmetry) {
+                    SymmetryAxis.HORIZONTAL -> p.currentFrame.set(p.width - 1 - b[0], b[1], 0)
+                    SymmetryAxis.VERTICAL -> p.currentFrame.set(b[0], p.height - 1 - b[1], 0)
+                    SymmetryAxis.BOTH -> {
+                        p.currentFrame.set(p.width - 1 - b[0], b[1], 0)
+                        p.currentFrame.set(b[0], p.height - 1 - b[1], 0)
+                        p.currentFrame.set(p.width - 1 - b[0], p.height - 1 - b[1], 0)
+                    }
+                    else -> {}
+                }
+            }
+            // Keep a and c only
+            recentPixels.removeAt(recentPixels.size - 2)
+        }
+    }
+
+    // ---- Selection ----
+    private fun liftSelectionToFloating() {
+        val p = project ?: return
+        if (!selection.active) return
+        val w = selection.width
+        val h = selection.height
+        if (w <= 0 || h <= 0) return
+        val floating = IntArray(w * h)
+        for (y in 0 until h) for (x in 0 until w) {
+            val sx = selection.xMin + x
+            val sy = selection.yMin + y
+            floating[y * w + x] = p.currentFrame.get(sx, sy)
+            p.currentFrame.set(sx, sy, 0) // clear source
+        }
+        selection.floating = floating
+        selection.floatW = w
+        selection.floatH = h
+        selection.floatX = selection.xMin
+        selection.floatY = selection.yMin
+        syncFrameBitmap()
+    }
+
+    fun commitFloatingSelection() {
+        val p = project ?: return
+        val floating = selection.floating ?: return
+        for (y in 0 until selection.floatH) for (x in 0 until selection.floatW) {
+            val c = floating[y * selection.floatW + x]
+            if (Color.alpha(c) >= 128) {
+                p.currentFrame.set(selection.floatX + x, selection.floatY + y, c)
+            }
+        }
+        selection.clear()
+        syncFrameBitmap()
+        invalidate()
+    }
+
+    fun cutSelectionToClipboard(): IntArray? {
+        if (selection.floating != null) {
+            // Floating: convert to clipboard, clear floating without committing
+            val out = selection.floating?.copyOf()
+            selection.clear()
+            invalidate()
+            return out
+        }
+        return null
+    }
+
+    fun copySelectionToClipboard(): Pair<Int, IntArray>? {
+        val floating = selection.floating ?: return null
+        return selection.floatW to floating.copyOf()
+    }
+
+    fun pasteClipboard(w: Int, pixels: IntArray, x: Int, y: Int) {
+        commitFloatingSelection()
+        selection.clear()
+        selection.active = true
+        selection.floatW = w
+        selection.floatH = pixels.size / w
+        selection.floatX = x
+        selection.floatY = y
+        selection.floating = pixels.copyOf()
+        invalidate()
+    }
+
+    // ---- Shape drawing ----
     private fun updatePreview() {
         previewPath.clear()
         when (tool) {
-            Tool.LINE -> bresenhamCells(startPx, startPy, lastPx, lastPy) { x, y -> previewPath.add(intArrayOf(x, y)) }
+            Tool.LINE -> bresenhamCells(startPx, startPy, lastPx, lastPy) { x, y ->
+                previewPath.add(intArrayOf(x, y))
+                addSymmetricPreview(x, y)
+            }
             Tool.RECT, Tool.RECT_FILL -> {
                 val xMin = min(startPx, lastPx); val xMax = max(startPx, lastPx)
                 val yMin = min(startPy, lastPy); val yMax = max(startPy, lastPy)
                 if (tool == Tool.RECT_FILL) {
-                    for (y in yMin..yMax) for (x in xMin..xMax) previewPath.add(intArrayOf(x, y))
+                    for (y in yMin..yMax) for (x in xMin..xMax) {
+                        previewPath.add(intArrayOf(x, y)); addSymmetricPreview(x, y)
+                    }
                 } else {
                     for (x in xMin..xMax) {
                         previewPath.add(intArrayOf(x, yMin)); previewPath.add(intArrayOf(x, yMax))
+                        addSymmetricPreview(x, yMin); addSymmetricPreview(x, yMax)
                     }
                     for (y in yMin..yMax) {
                         previewPath.add(intArrayOf(xMin, y)); previewPath.add(intArrayOf(xMax, y))
+                        addSymmetricPreview(xMin, y); addSymmetricPreview(xMax, y)
                     }
                 }
             }
@@ -383,8 +588,22 @@ class PixelCanvasView @JvmOverloads constructor(
         }
     }
 
+    private fun addSymmetricPreview(x: Int, y: Int) {
+        val p = project ?: return
+        when (p.symmetry) {
+            SymmetryAxis.HORIZONTAL -> previewPath.add(intArrayOf(p.width - 1 - x, y))
+            SymmetryAxis.VERTICAL -> previewPath.add(intArrayOf(x, p.height - 1 - y))
+            SymmetryAxis.BOTH -> {
+                previewPath.add(intArrayOf(p.width - 1 - x, y))
+                previewPath.add(intArrayOf(x, p.height - 1 - y))
+                previewPath.add(intArrayOf(p.width - 1 - x, p.height - 1 - y))
+            }
+            else -> {}
+        }
+    }
+
     private fun drawBresenham(x0: Int, y0: Int, x1: Int, y1: Int, c: Int) {
-        bresenhamCells(x0, y0, x1, y1) { x, y -> project?.currentFrame?.set(x, y, c) }
+        bresenhamCells(x0, y0, x1, y1) { x, y -> paintPixelSymmetric(x, y, c) }
     }
 
     private inline fun bresenhamCells(x0: Int, y0: Int, x1: Int, y1: Int, action: (Int, Int) -> Unit) {
@@ -405,12 +624,11 @@ class PixelCanvasView @JvmOverloads constructor(
     private fun drawRect(x0: Int, y0: Int, x1: Int, y1: Int, c: Int, fill: Boolean) {
         val xMin = min(x0, x1); val xMax = max(x0, x1)
         val yMin = min(y0, y1); val yMax = max(y0, y1)
-        val f = project?.currentFrame ?: return
         if (fill) {
-            for (y in yMin..yMax) for (x in xMin..xMax) f.set(x, y, c)
+            for (y in yMin..yMax) for (x in xMin..xMax) paintPixelSymmetric(x, y, c)
         } else {
-            for (x in xMin..xMax) { f.set(x, yMin, c); f.set(x, yMax, c) }
-            for (y in yMin..yMax) { f.set(xMin, y, c); f.set(xMax, y, c) }
+            for (x in xMin..xMax) { paintPixelSymmetric(x, yMin, c); paintPixelSymmetric(x, yMax, c) }
+            for (y in yMin..yMax) { paintPixelSymmetric(xMin, y, c); paintPixelSymmetric(xMax, y, c) }
         }
     }
 
@@ -437,6 +655,7 @@ class PixelCanvasView @JvmOverloads constructor(
 
     fun clearFrame() {
         project?.currentFrame?.clear()
+        selection.clear()
         syncFrameBitmap()
         onProjectChanged?.invoke()
     }
