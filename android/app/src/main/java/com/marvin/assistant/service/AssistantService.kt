@@ -80,6 +80,8 @@ class AssistantService : LifecycleService() {
     /** True between « jarvis discutons » et « merci » / fin de discussion. */
     @Volatile private var inDiscussion = false
     private val discussionHistory = mutableListOf<ChatMessage>()
+    /** Compteur de tours pour declencher l'auto-summary tous les N. */
+    @Volatile private var turnsSinceSummary = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -258,6 +260,22 @@ class AssistantService : LifecycleService() {
         DiscussionStateHolder.setPhase(DiscussionPhase.Thinking)
         val answer = visionClient.describe(uri, question)
         speakWithPhase(answer)
+    }
+
+    private suspend fun summarizeAndPrune(backend: LlmBackend) {
+        // Demande a Claude un resume tres court de la conversation
+        val summaryPrompt = "Resume en une seule phrase les points cles de cette " +
+            "conversation pour t'en souvenir plus tard. Sois factuel et concis."
+        val summaryMsgs = discussionHistory.toList() +
+            ChatMessage(ChatMessage.Role.USER, summaryPrompt)
+        val result = backend.ask(summaryMsgs)
+        if (result is LlmResult.Ok && result.text.isNotBlank()) {
+            memory.addSummary(result.text.trim())
+            Log.i(TAG, "Auto-summary stocke : ${result.text.take(80)}...")
+        }
+        // Tronque l'historique : on garde juste les 4 derniers tours
+        while (discussionHistory.size > 8) discussionHistory.removeAt(0)
+        turnsSinceSummary = 0
     }
 
     private fun buildHelpText(): String = """
@@ -808,6 +826,13 @@ class AssistantService : LifecycleService() {
             is LlmResult.Ok -> {
                 if (useHistory) {
                     discussionHistory.add(ChatMessage(ChatMessage.Role.ASSISTANT, result.text))
+                    turnsSinceSummary++
+                    // Auto-summary tous les 5 tours : on garde un memo
+                    // condense dans la memoire long terme, et on tronque
+                    // l'historique pour pas exploser le quota.
+                    if (turnsSinceSummary >= 5 && discussionHistory.size >= 10) {
+                        summarizeAndPrune(backend)
+                    }
                 }
                 speakWithPhase(result.text)
             }
