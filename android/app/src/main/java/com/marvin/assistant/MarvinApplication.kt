@@ -10,6 +10,7 @@ class MarvinApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.marvin.assistant.crash.CrashReporter(this).install()
         createNotificationChannels()
     }
 
