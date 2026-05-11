@@ -40,6 +40,10 @@ class PixelCanvasView @JvmOverloads constructor(
 
     val selection = Selection()
 
+    // Tap-to-place callback: when non-null, the next canvas tap calls this
+    // with pixel coordinates instead of starting a stroke.
+    var nextTapHandler: ((x: Int, y: Int) -> Unit)? = null
+
     // Sketch layer: a separate per-frame pixel buffer rendered above the frame
     // with reduced opacity, drawn ONLY when sketchMode is true.
     var sketchMode: Boolean = false
@@ -362,6 +366,13 @@ class PixelCanvasView @JvmOverloads constructor(
                 activePointers[id] = PointF(event.getX(idx), event.getY(idx))
                 if (activePointers.size == 1) {
                     val coords = clientToPixel(event.x, event.y)
+                    // Intercept for one-shot tap handler if registered
+                    val handler = nextTapHandler
+                    if (handler != null) {
+                        nextTapHandler = null
+                        handler(coords[0], coords[1])
+                        return true
+                    }
                     if (tool == Tool.MOVE) {
                         panStartX = event.x; panStartY = event.y
                         translateStartX = translateX; translateStartY = translateY

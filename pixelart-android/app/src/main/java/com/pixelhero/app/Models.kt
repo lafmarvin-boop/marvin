@@ -12,6 +12,13 @@ enum class BgFitMode(val label: String) {
     STRETCH("Étirer")     // distorts to fit exactly
 }
 
+enum class PlayMode(val label: String) {
+    LOOP("Boucle"),        // 1, 2, 3, 1, 2, 3...
+    PING_PONG("Ping-pong"),// 1, 2, 3, 2, 1, 2, 3...
+    REVERSE("Inverse"),    // 3, 2, 1, 3, 2, 1...
+    ONCE("Une fois")       // 1, 2, 3 stop
+}
+
 /** A single animation frame. Pixels stored as ARGB ints, row-major. */
 class Frame(val width: Int, val height: Int) {
     val pixels: IntArray = IntArray(width * height)
@@ -94,7 +101,10 @@ class Project(
     var pixelPerfect: Boolean = false,
     var bgFit: BgFitMode = BgFitMode.COVER,
     var brushSize: Int = 1,
-    var ditherPattern: Int = 0  // 0=none, 1=checker, 2=v.lines, 3=h.lines, 4=sparse
+    var ditherPattern: Int = 0,  // 0=none, 1=checker, 2=v.lines, 3=h.lines, 4=sparse, 5=primary+secondary mix, 6=custom
+    var customDither: Array<BooleanArray> = Array(4) { BooleanArray(4) },  // 4x4 pattern for ditherPattern=6
+    var playMode: PlayMode = PlayMode.LOOP,
+    val lockedColors: MutableSet<Int> = mutableSetOf()
 ) {
     val currentFrame: Frame get() = frames[currentIndex]
 

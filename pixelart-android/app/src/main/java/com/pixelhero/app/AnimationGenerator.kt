@@ -25,6 +25,12 @@ object AnimationGenerator {
         WALK_UP("Marche ↑ dos (4)", 4),
         IDLE("Idle / respiration (4)", 4),
         ATTACK("Attaque / coup (4)", 4),
+        SPELL_CAST("Sort de magie (4)", 4),
+        HIT("Dégât pris / impact (4)", 4),
+        DEATH("Mort / chute KO (4)", 4),
+        FALL("Chute libre (4)", 4),
+        CLIMB("Escalade (4)", 4),
+        DODGE("Esquive (4)", 4),
         JUMP("Saut (4)", 4),
         DEFENSE("Défense / tremblement (4)", 4),
         TURN("Rotation gauche/droite (4)", 4),
@@ -43,6 +49,12 @@ object AnimationGenerator {
             Preset.WALK_UP -> walkUp(base, bbox)
             Preset.IDLE -> idle(base, bbox)
             Preset.ATTACK -> attack(base, bbox)
+            Preset.SPELL_CAST -> spellCast(base, bbox)
+            Preset.HIT -> hit(base, bbox)
+            Preset.DEATH -> death(base, bbox)
+            Preset.FALL -> fall(base, bbox)
+            Preset.CLIMB -> climb(base, bbox)
+            Preset.DODGE -> dodge(base, bbox)
             Preset.JUMP -> jump(base, bbox)
             Preset.DEFENSE -> defense(base, bbox)
             Preset.TURN -> turn(base, bbox)
@@ -305,11 +317,101 @@ object AnimationGenerator {
     }
 
     private fun bob(base: Frame, b: BBox): List<Frame> {
-        // Smooth sine-wave float
         return List(4) { i ->
             val phase = (i + 1) * (2.0 * Math.PI) / 4.0
             val dy = (sin(phase) * 1.5).roundToInt()
             shifted(base, 0, dy).also { it.tag = "bob" }
         }
+    }
+
+    /** Spell cast: bras vers le ciel + montée + flash final. */
+    private fun spellCast(base: Frame, b: BBox): List<Frame> {
+        return listOf(
+            // Concentration - body crouches slightly
+            squash(base, b.headBottom, b.legsBottom, 1).also { it.tag = "spell_cast" },
+            // Charge - body up + stretch
+            shifted(base, 0, -2).also { it.tag = "spell_cast" },
+            // Release - max stretch
+            shifted(base, 0, -3).also { it.tag = "spell_cast" },
+            // Recovery - body back to normal with shake
+            shifted(base, 1, 0).also { it.tag = "spell_cast" }
+        )
+    }
+
+    /** Hit reaction: pushed back + flash. */
+    private fun hit(base: Frame, b: BBox): List<Frame> {
+        return listOf(
+            // Impact: pushed back violently
+            shifted(base, -3, -1).also { it.tag = "hit" },
+            // Recovery: slowly returning
+            shifted(base, -2, 0).also { it.tag = "hit" },
+            shifted(base, -1, 0).also { it.tag = "hit" },
+            base.copy().also { it.tag = "hit" }
+        )
+    }
+
+    /** Death: rotation 90deg + fall. */
+    private fun death(base: Frame, b: BBox): List<Frame> {
+        return listOf(
+            // Stagger
+            shifted(base, 0, 1).also { it.tag = "death" },
+            // Tilt (squash vertically a lot)
+            squash(base, b.y0, b.legsBottom, base.height / 3).also { it.tag = "death" },
+            // Lying down (90 degree rotation via squash + shift)
+            rotateToLying(base, b).also { it.tag = "death" },
+            // KO (final position, slightly shaken)
+            rotateToLying(base, b).also { it.tag = "death" }
+        )
+    }
+
+    private fun rotateToLying(src: Frame, b: BBox): Frame {
+        // Approximate 90-degree rotation: collapse vertical bbox into horizontal
+        val out = Frame(src.width, src.height)
+        out.tag = src.tag
+        val centerX = b.cx
+        val groundY = b.legsBottom
+        // For each source pixel (x, y), put it at (centerX + (groundY - y) - height/2, groundY)
+        // ... actually let's just squash to height 1/3 and shift
+        val squashed = squash(src, b.y0, b.legsBottom, b.height - b.height / 3)
+        return shifted(squashed, 0, (b.height - b.height / 3) / 2)
+    }
+
+    /** Free fall: arms out, body twisting. */
+    private fun fall(base: Frame, b: BBox): List<Frame> {
+        return listOf(
+            // Body up + slight sway
+            shifted(base, -1, -2).also { it.tag = "fall" },
+            shifted(base, 1, -1).also { it.tag = "fall" },
+            shifted(base, -1, 0).also { it.tag = "fall" },
+            shifted(base, 1, 1).also { it.tag = "fall" }
+        )
+    }
+
+    /** Climb: alternating limb up. */
+    private fun climb(base: Frame, b: BBox): List<Frame> {
+        return listOf(
+            // Right arm up (right side of body shifted up)
+            shiftHalfRegion(base, b.y0, b.bodyBottom, leftHalf = false, cx = b.cx, dx = 0, dy = -1).also { it.tag = "climb" },
+            // Both legs slightly raised
+            shifted(base, 0, -1).also { it.tag = "climb" },
+            // Left arm up
+            shiftHalfRegion(base, b.y0, b.bodyBottom, leftHalf = true, cx = b.cx, dx = 0, dy = -1).also { it.tag = "climb" },
+            // Reset
+            base.copy().also { it.tag = "climb" }
+        )
+    }
+
+    /** Dodge: quick sidestep + return. */
+    private fun dodge(base: Frame, b: BBox): List<Frame> {
+        return listOf(
+            // Squash (anticipation)
+            squash(base, b.headBottom, b.legsBottom, 1).also { it.tag = "dodge" },
+            // Sidestep right
+            shifted(base, 3, -1).also { it.tag = "dodge" },
+            // Mid recovery
+            shifted(base, 2, 0).also { it.tag = "dodge" },
+            // Back to position
+            shifted(base, 0, 0).also { it.tag = "dodge" }
+        )
     }
 }

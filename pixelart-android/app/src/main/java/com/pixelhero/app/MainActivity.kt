@@ -84,6 +84,7 @@ class MainActivity : AppCompatActivity() {
 
         if (getPreferences(MODE_PRIVATE).getBoolean("firstRun", true)) {
             getPreferences(MODE_PRIVATE).edit().putBoolean("firstRun", false).apply()
+            showTutorial(force = false)
             showNewProjectDialog()
         } else {
             applyProject()
@@ -91,6 +92,8 @@ class MainActivity : AppCompatActivity() {
         scheduleAutosave()
         startMiniPreview()
     }
+
+    private var miniPingPongForward = true
 
     private fun startMiniPreview() {
         stopMiniPreview()
@@ -101,13 +104,16 @@ class MainActivity : AppCompatActivity() {
                     return
                 }
                 if (project.frames.isNotEmpty()) {
-                    miniPreviewIdx = (miniPreviewIdx + 1) % project.frames.size
+                    miniPreviewIdx = miniPreviewIdx.coerceIn(0, project.frames.size - 1)
                     val f = project.frames[miniPreviewIdx]
                     val bmp = Bitmap.createBitmap(f.width, f.height, Bitmap.Config.ARGB_8888)
                     bmp.setPixels(f.pixels, 0, f.width, 0, 0, f.width, f.height)
                     val drawable = android.graphics.drawable.BitmapDrawable(resources, bmp)
                     drawable.isFilterBitmap = false
                     binding.miniPreview.setImageDrawable(drawable)
+                    // Advance using project play mode
+                    miniPreviewIdx = miniNextIndex(miniPreviewIdx, project.frames.size, project.playMode)
+                    if (miniPreviewIdx < 0) miniPreviewIdx = 0
                 }
                 val delay = (1000L / project.fps.coerceAtLeast(1)).coerceAtLeast(50L)
                 miniPreviewHandler.postDelayed(this, delay)
@@ -115,6 +121,22 @@ class MainActivity : AppCompatActivity() {
         }
         miniPreviewTask = task
         miniPreviewHandler.post(task)
+    }
+
+    private fun miniNextIndex(current: Int, size: Int, mode: PlayMode): Int {
+        return when (mode) {
+            PlayMode.LOOP, PlayMode.ONCE -> (current + 1) % size
+            PlayMode.REVERSE -> if (current - 1 < 0) size - 1 else current - 1
+            PlayMode.PING_PONG -> {
+                if (miniPingPongForward) {
+                    if (current + 1 >= size) { miniPingPongForward = false; (current - 1).coerceAtLeast(0) }
+                    else current + 1
+                } else {
+                    if (current - 1 < 0) { miniPingPongForward = true; (current + 1).coerceAtMost(size - 1) }
+                    else current - 1
+                }
+            }
+        }
     }
 
     private fun stopMiniPreview() {
@@ -463,19 +485,10 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private var pendingElementPlacement: AnimatedElement.Type? = null
-
     private fun waitForCanvasTapToPlaceElement(type: AnimatedElement.Type) {
-        pendingElementPlacement = type
-        // Temporarily intercept the next stroke start
-        val originalListener = binding.canvas.onStrokeStart
-        binding.canvas.onStrokeStart = {
-            // Compute current tap pixel
-            // The tap position info isn't directly exposed; use selection workaround.
-            // Simpler: prompt user to use the picker via long-press for now.
-            pendingElementPlacement = null
-            binding.canvas.onStrokeStart = originalListener
-            toast("Astuce: utilisez les positions prédéfinies (Centre, etc.)")
+        toast("Touchez le canvas pour placer « ${type.displayName} »")
+        binding.canvas.nextTapHandler = { x, y ->
+            placeAnimatedElement(type, x, y)
         }
     }
 
@@ -982,9 +995,13 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.save),
             getString(R.string.load),
             getString(R.string.export_png),
+            "Exporter chaque frame en PNG séparé",
             getString(R.string.export_sheet),
             getString(R.string.export_gif),
-            getString(R.string.resize)
+            "Importer un sprite sheet…",
+            getString(R.string.resize),
+            "Mode de lecture animation…",
+            "Tutoriel"
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.menu)
@@ -994,10 +1011,145 @@ class MainActivity : AppCompatActivity() {
                     1 -> saveProject()
                     2 -> showLoadDialog()
                     3 -> exportPng()
-                    4 -> exportSpriteSheet()
-                    5 -> exportGif()
-                    6 -> showResizeDialog()
+                    4 -> exportAllFrames()
+                    5 -> exportSpriteSheet()
+                    6 -> exportGif()
+                    7 -> importSpriteSheet()
+                    8 -> showResizeDialog()
+                    9 -> showPlayModeMenu()
+                    10 -> showTutorial(force = true)
                 }
+            }
+            .show()
+    }
+
+    private fun showPlayModeMenu() {
+        val modes = PlayMode.values()
+        val labels = modes.map { it.label }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Mode de lecture")
+            .setSingleChoiceItems(labels, project.playMode.ordinal) { dlg, which ->
+                project.playMode = modes[which]
+                dlg.dismiss()
+                toast("Mode: ${modes[which].label}")
+            }
+            .show()
+    }
+
+    private fun exportAllFrames() {
+        val scale = 8
+        project.frames.forEachIndexed { i, f ->
+            val bmp = frameToBitmap(f, scale)
+            val bytes = ByteArrayOutputStream().apply { bmp.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
+            savePublicImage(bytes, "${project.name}_frame${i + 1}.png", "image/png")
+            bmp.recycle()
+        }
+        toast("${project.frames.size} frames exportées")
+    }
+
+    private val pickSpriteSheet = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) processSpriteSheet(uri)
+    }
+
+    private fun importSpriteSheet() {
+        // Ask user for cols/rows
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 24)
+        }
+        val tv = TextView(this).apply {
+            text = "Combien de colonnes × lignes contient le sprite sheet ?\nL'image sera divisée en cellules égales."
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 13f
+        }
+        val rowCols = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val etCols = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER; setText("4"); hint = "Colonnes"
+            setTextColor(0xFFE8E8F0.toInt())
+        }
+        val etRows = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER; setText("1"); hint = "Lignes"
+            setTextColor(0xFFE8E8F0.toInt())
+        }
+        val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        etCols.layoutParams = lp; etRows.layoutParams = lp
+        rowCols.addView(etCols); rowCols.addView(etRows)
+        container.addView(tv); container.addView(rowCols)
+
+        AlertDialog.Builder(this)
+            .setTitle("Importer un sprite sheet")
+            .setView(container)
+            .setPositiveButton("Choisir image") { _, _ ->
+                pendingSheetCols = etCols.text.toString().toIntOrNull()?.coerceIn(1, 32) ?: 4
+                pendingSheetRows = etRows.text.toString().toIntOrNull()?.coerceIn(1, 32) ?: 1
+                pickSpriteSheet.launch(arrayOf("image/*"))
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private var pendingSheetCols = 4
+    private var pendingSheetRows = 1
+
+    private fun processSpriteSheet(uri: Uri) {
+        runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                val bmp = BitmapFactory.decodeStream(input) ?: return@use
+                val cols = pendingSheetCols
+                val rows = pendingSheetRows
+                val cellW = bmp.width / cols
+                val cellH = bmp.height / rows
+                if (cellW < 1 || cellH < 1) { toast("Cellules trop petites"); return@use }
+                pushUndo()
+                // Create N frames, one per cell
+                val newFrames = mutableListOf<Frame>()
+                for (r in 0 until rows) for (c in 0 until cols) {
+                    val cellBmp = Bitmap.createBitmap(bmp, c * cellW, r * cellH, cellW, cellH)
+                    // Downscale to project resolution
+                    val pixels = ImageToPixelArt.downscale(cellBmp, project.width, project.height, BgFitMode.FIT)
+                    newFrames.add(Frame(project.width, project.height, pixels))
+                    cellBmp.recycle()
+                }
+                // Replace current frames
+                project.frames.clear()
+                project.frames.addAll(newFrames)
+                project.currentIndex = 0
+                framesAdapter.notifyDataSetChanged()
+                refreshAfterFrameChange()
+                toast("${newFrames.size} frames importées")
+            }
+        }.onFailure { toast("Erreur: ${it.message}") }
+    }
+
+    private fun showTutorial(force: Boolean = false) {
+        val seenKey = "tutorialSeen"
+        val prefs = getPreferences(MODE_PRIVATE)
+        if (!force && prefs.getBoolean(seenKey, false)) return
+        val pages = listOf(
+            "Bienvenue dans PixelHero ! 👋\n\nMenu (☰) → Nouveau projet pour démarrer avec une taille, ou utilisez une taille préréglée (16, 32, 64…).",
+            "✏️ Outils (barre gauche)\n\nCrayon, gomme, pot de peinture, pipette, ligne, rectangle, sélection, déplacer. Touchez longuement pour glisser.\n\n💡 2 doigts = zoom + pan.",
+            "🎨 Couleur (panneau droit)\n\nTouchez une couleur de la palette. Le bouton 🎨 ouvre un sélecteur RGB. Auto-shading ajoute des nuances.",
+            "🖼️ Image de fond\n\nChargez une photo et l'app vous propose : pixeliser → frame courante avec dithering, extraire palette, etc.",
+            "🎬 Frames (panneau droit)\n\nAjouter / dupliquer / supprimer. Glissez longuement pour réordonner. Aperçu auto en boucle.",
+            "🪄 Baguette magique\n\nGénérateur intelligent : animations (marche, attaque…), décors (forêt, donjon…), éléments animés (flambeaux, feu de camp…), templates de pose.",
+            "💾 Sauvegarde\n\nAuto-save toutes les 30s. Menu → Sauvegarder pour nommer. Menu → Charger pour récupérer un projet.",
+            "📤 Export\n\nPNG (frame seule, ×8), sprite sheet, GIF animé, chaque frame en PNG séparé. Vers Pictures/PixelHero/."
+        )
+        showTutorialPage(pages, 0, seenKey)
+    }
+
+    private fun showTutorialPage(pages: List<String>, idx: Int, seenKey: String) {
+        if (idx >= pages.size) {
+            getPreferences(MODE_PRIVATE).edit().putBoolean(seenKey, true).apply()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Tutoriel (${idx + 1}/${pages.size})")
+            .setMessage(pages[idx])
+            .setPositiveButton(if (idx == pages.size - 1) "Compris" else "Suivant") { _, _ ->
+                showTutorialPage(pages, idx + 1, seenKey)
+            }
+            .setNeutralButton("Passer") { _, _ ->
+                getPreferences(MODE_PRIVATE).edit().putBoolean(seenKey, true).apply()
             }
             .show()
     }
@@ -1298,11 +1450,17 @@ class MainActivity : AppCompatActivity() {
         if (isPlaying) stopPlay() else startPlay()
     }
 
+    private var pingPongForward = true
+
     private fun startPlay() {
         if (project.frames.size < 2) { toast("Ajoutez au moins 2 frames"); return }
         isPlaying = true
         savedFrameIdx = project.currentIndex
-        playIdx = 0
+        playIdx = when (project.playMode) {
+            PlayMode.REVERSE -> project.frames.size - 1
+            else -> 0
+        }
+        pingPongForward = true
         binding.btnPlay.setImageResource(R.drawable.ic_stop)
         val r = object : Runnable {
             override fun run() {
@@ -1310,12 +1468,30 @@ class MainActivity : AppCompatActivity() {
                 project.currentIndex = playIdx
                 binding.canvas.syncFrameBitmap()
                 val delay = project.delayForFrame(playIdx).toLong().coerceAtLeast(20L)
-                playIdx = (playIdx + 1) % project.frames.size
+                playIdx = nextPlayIndex(playIdx, project.frames.size, project.playMode)
+                if (playIdx < 0) { stopPlay(); return }
                 animHandler.postDelayed(this, delay)
             }
         }
         animTimer = r
         animHandler.post(r)
+    }
+
+    private fun nextPlayIndex(current: Int, size: Int, mode: PlayMode): Int {
+        return when (mode) {
+            PlayMode.LOOP -> (current + 1) % size
+            PlayMode.REVERSE -> if (current - 1 < 0) size - 1 else current - 1
+            PlayMode.ONCE -> if (current + 1 >= size) -1 else current + 1
+            PlayMode.PING_PONG -> {
+                if (pingPongForward) {
+                    if (current + 1 >= size) { pingPongForward = false; (current - 1).coerceAtLeast(0) }
+                    else current + 1
+                } else {
+                    if (current - 1 < 0) { pingPongForward = true; (current + 1).coerceAtMost(size - 1) }
+                    else current - 1
+                }
+            }
+        }
     }
 
     private fun stopPlay() {
