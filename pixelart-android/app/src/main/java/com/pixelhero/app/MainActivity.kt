@@ -305,7 +305,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnPlay.setOnClickListener { togglePlay() }
         binding.btnMenu.setOnClickListener { showMenu() }
         binding.btnSymmetry.setOnClickListener { showSymmetryMenu() }
-        binding.btnMagic.setOnClickListener { showAnimationGenerator() }
+        binding.btnMagic.setOnClickListener { showSmartGenerator() }
     }
 
     private fun doUndo() {
@@ -354,6 +354,59 @@ class MainActivity : AppCompatActivity() {
                 binding.canvas.invalidate()
                 dlg.dismiss()
             }
+            .show()
+    }
+
+    private fun showSmartGenerator() {
+        val items = arrayOf("Frames d'animation", "Décor / scène")
+        AlertDialog.Builder(this)
+            .setTitle("Générer…")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> showAnimationGenerator()
+                    1 -> showDecorGenerator()
+                }
+            }
+            .show()
+    }
+
+    private fun showDecorGenerator() {
+        val decors = DecorGenerator.Decor.values()
+        val labels = decors.map { it.displayName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Générer un décor")
+            .setItems(labels) { _, which -> generateDecor(decors[which], replaceFrame = true) }
+            .setNeutralButton("Comme image de fond") { _, _ ->
+                // Show same list but generate as bg image
+                val sub = AlertDialog.Builder(this)
+                    .setTitle("Décor en image de fond")
+                    .setItems(labels) { _, w -> generateDecor(decors[w], replaceFrame = false) }
+                    .show()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun generateDecor(decor: DecorGenerator.Decor, replaceFrame: Boolean) {
+        if (replaceFrame) {
+            pushUndo()
+            val pixels = DecorGenerator.generate(project.width, project.height, decor)
+            pixels.copyInto(project.currentFrame.pixels)
+            binding.canvas.syncFrameBitmap()
+            framesAdapter.notifyItemChanged(project.currentIndex)
+        } else {
+            // Generate at canvas resolution, set as bg reference
+            val pixels = DecorGenerator.generate(project.width, project.height, decor)
+            val bmp = Bitmap.createBitmap(project.width, project.height, Bitmap.Config.ARGB_8888)
+            bmp.setPixels(pixels, 0, project.width, 0, 0, project.width, project.height)
+            binding.canvas.bgBitmap = bmp
+        }
+        // Offer re-roll
+        AlertDialog.Builder(this)
+            .setTitle("Décor « ${decor.displayName} »")
+            .setMessage(if (replaceFrame) "Frame remplacée. Voulez-vous une autre variante ?" else "Image de fond définie. Voulez-vous une autre variante ?")
+            .setPositiveButton("Régénérer") { _, _ -> generateDecor(decor, replaceFrame) }
+            .setNegativeButton("Garder", null)
             .show()
     }
 
