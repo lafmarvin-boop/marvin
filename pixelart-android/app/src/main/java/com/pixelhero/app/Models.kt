@@ -179,7 +179,10 @@ class Project(
     var ditherPattern: Int = 0,  // 0=none, 1=checker, 2=v.lines, 3=h.lines, 4=sparse, 5=primary+secondary mix, 6=custom
     var customDither: Array<BooleanArray> = Array(4) { BooleanArray(4) },  // 4x4 pattern for ditherPattern=6
     var playMode: PlayMode = PlayMode.LOOP,
-    val lockedColors: MutableSet<Int> = mutableSetOf()
+    val lockedColors: MutableSet<Int> = mutableSetOf(),
+    var pressureSensitive: Boolean = true,
+    var onionColorPrev: Int = 0xFF00AAFF.toInt(),
+    var onionColorNext: Int = 0xFFFF4477.toInt()
 ) {
     val currentFrame: Frame get() = frames[currentIndex]
 

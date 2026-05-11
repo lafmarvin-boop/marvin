@@ -445,7 +445,9 @@ class MainActivity : AppCompatActivity() {
             "Frames d'animation",
             "Décor / scène (statique ou animé)",
             "Élément animé (flambeau, feu de camp…)",
-            "Template de pose"
+            "Template de pose",
+            "Interpolation (tween) entre 2 frames",
+            "Personnage aléatoire (procédural)"
         )
         AlertDialog.Builder(this)
             .setTitle("Générer…")
@@ -455,7 +457,78 @@ class MainActivity : AppCompatActivity() {
                     1 -> showDecorGenerator()
                     2 -> showAnimatedElementGenerator()
                     3 -> showPoseTemplates()
+                    4 -> showTweenDialog()
+                    5 -> showProceduralCharacterDialog()
                 }
+            }
+            .show()
+    }
+
+    private fun showTweenDialog() {
+        if (project.frames.size < 2) {
+            toast("Il faut au moins 2 frames"); return
+        }
+        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24) }
+        container.addView(TextView(this).apply {
+            text = "Interpolation entre :\n• Frame de départ : actuelle (#${project.currentIndex + 1})\n• Frame d'arrivée : à choisir\n\nLes N frames générées seront insérées entre les deux."
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 13f
+        })
+        val etTarget = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            hint = "Index de la frame d'arrivée (1..${project.frames.size})"
+            setText("${project.currentIndex + 2}")
+            setTextColor(0xFFE8E8F0.toInt())
+        }
+        val etCount = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            hint = "Nombre de frames intermédiaires (1-20)"
+            setText("3")
+            setTextColor(0xFFE8E8F0.toInt())
+        }
+        container.addView(etTarget); container.addView(etCount)
+        AlertDialog.Builder(this)
+            .setTitle("Interpolation (Tween)")
+            .setView(container)
+            .setPositiveButton("Générer") { _, _ ->
+                val target = (etTarget.text.toString().toIntOrNull() ?: 2) - 1
+                val count = etCount.text.toString().toIntOrNull()?.coerceIn(1, 20) ?: 3
+                if (target !in 0 until project.frames.size || target == project.currentIndex) {
+                    toast("Index invalide"); return@setPositiveButton
+                }
+                pushUndo()
+                val a = project.currentFrame
+                val b = project.frames[target]
+                val tweens = Tweening.generate(a, b, count)
+                // Insert between current and target
+                val insertAt = minOf(project.currentIndex, target) + 1
+                tweens.forEachIndexed { idx, frame ->
+                    project.frames.add(insertAt + idx, frame)
+                }
+                framesAdapter.notifyDataSetChanged()
+                refreshAfterFrameChange()
+                toast("$count frames intermédiaires créées")
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showProceduralCharacterDialog() {
+        val poses = PoseTemplates.Pose.values()
+        val labels = poses.map { it.displayName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Base du personnage")
+            .setItems(labels) { _, which ->
+                pushUndo()
+                val pixels = ProceduralCharacter.generate(poses[which], project.width, project.height)
+                pixels.copyInto(project.currentFrame.pixels)
+                binding.canvas.syncFrameBitmap()
+                framesAdapter.notifyItemChanged(project.currentIndex)
+                AlertDialog.Builder(this)
+                    .setTitle("Personnage généré")
+                    .setMessage("Voulez-vous une autre variation ?")
+                    .setPositiveButton("Régénérer") { _, _ -> showProceduralCharacterDialog() }
+                    .setNegativeButton("Garder", null)
+                    .show()
             }
             .show()
     }
@@ -906,6 +979,28 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun sharePng() {
+        val bmp = frameToBitmap(project.currentFrame, 8)
+        val bytes = ByteArrayOutputStream().apply { bmp.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
+        savePublicImage(bytes, "${project.name}_frame${project.currentIndex + 1}.png", "image/png", share = true)
+        bmp.recycle()
+    }
+
+    private fun shareGif() {
+        toast(getString(R.string.generating_gif))
+        lifecycleScope.launch {
+            val bytes = withContext(Dispatchers.Default) {
+                val encoder = GifEncoder(project.width, project.height)
+                project.frames.forEachIndexed { i, f ->
+                    val comp = if (f.layers.size > 1) f.composited() else f.pixels
+                    encoder.addFrame(comp, project.delayForFrame(i))
+                }
+                encoder.encodeToBytes()
+            }
+            savePublicImage(bytes, "${project.name}.gif", "image/gif", share = true)
+        }
+    }
+
     private fun openTileMap() {
         // Save project first (the tile activity loads from storage)
         ProjectStorage.save(this, project)
@@ -1316,6 +1411,8 @@ class MainActivity : AppCompatActivity() {
             "Verrouiller couleurs…",
             "Filtres / effets…",
             "Mode tuiles / carte…",
+            "Partager PNG actuel",
+            "Partager GIF animé",
             "Tutoriel"
         )
         AlertDialog.Builder(this)
@@ -1335,7 +1432,9 @@ class MainActivity : AppCompatActivity() {
                     10 -> showColorLockMenu()
                     11 -> showFiltersMenu()
                     12 -> openTileMap()
-                    13 -> showTutorial(force = true)
+                    13 -> sharePng()
+                    14 -> shareGif()
+                    15 -> showTutorial(force = true)
                 }
             }
             .show()
@@ -1588,19 +1687,67 @@ class MainActivity : AppCompatActivity() {
     private fun showLoadDialog() {
         val list = ProjectStorage.list(this)
         if (list.isEmpty()) { toast(getString(R.string.no_projects)); return }
-        val labels = list.map { "${it.optString("name")}  •  ${it.optInt("width")}×${it.optInt("height")}" }.toTypedArray()
-        AlertDialog.Builder(this)
+        // Build a custom listview with thumbnails + name + meta
+        val listView = ListView(this).apply { divider = null }
+        val items = list.map { obj ->
+            ProjectListItem(
+                id = obj.optString("id"),
+                name = obj.optString("name", "Sans titre"),
+                width = obj.optInt("width"),
+                height = obj.optInt("height"),
+                frameCount = obj.optJSONArray("frames")?.length() ?: 0,
+                updatedAt = obj.optLong("updatedAt", 0)
+            )
+        }
+        listView.adapter = ProjectListAdapter(this, items)
+
+        val dlg = AlertDialog.Builder(this)
             .setTitle(R.string.saved_projects)
-            .setItems(labels) { _, which ->
-                ProjectStorage.load(this, list[which].optString("id"))?.let {
-                    project = it
-                    applyProject()
-                    toast("Chargé")
-                }
-            }
+            .setView(listView)
             .setNeutralButton("Supprimer…") { _, _ -> showDeleteDialog(list) }
             .setNegativeButton(R.string.cancel, null)
-            .show()
+            .create()
+        listView.setOnItemClickListener { _, _, which, _ ->
+            ProjectStorage.load(this, items[which].id)?.let {
+                project = it
+                applyProject()
+                toast("Chargé")
+            }
+            dlg.dismiss()
+        }
+        dlg.show()
+    }
+
+    data class ProjectListItem(
+        val id: String, val name: String, val width: Int, val height: Int,
+        val frameCount: Int, val updatedAt: Long
+    )
+
+    inner class ProjectListAdapter(
+        ctx: android.content.Context, val items: List<ProjectListItem>
+    ) : android.widget.BaseAdapter() {
+        override fun getCount(): Int = items.size
+        override fun getItem(position: Int): Any = items[position]
+        override fun getItemId(position: Int): Long = position.toLong()
+        override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup?): View {
+            val v = convertView ?: layoutInflater.inflate(R.layout.item_project, parent, false)
+            val item = items[position]
+            v.findViewById<TextView>(R.id.projectName).text = item.name
+            val date = java.text.SimpleDateFormat("dd/MM/yy HH:mm", java.util.Locale.FRENCH)
+                .format(java.util.Date(item.updatedAt))
+            v.findViewById<TextView>(R.id.projectMeta).text =
+                "${item.width}×${item.height} • ${item.frameCount} image(s) • $date"
+            val iv = v.findViewById<ImageView>(R.id.projectThumb)
+            val thumb = ProjectStorage.thumbnailFile(this@MainActivity, item.id)
+            if (thumb != null) {
+                val bmp = BitmapFactory.decodeFile(thumb.absolutePath)
+                val drawable = if (bmp != null) {
+                    android.graphics.drawable.BitmapDrawable(resources, bmp).apply { isFilterBitmap = false }
+                } else null
+                iv.setImageDrawable(drawable)
+            } else iv.setImageDrawable(null)
+            return v
+        }
     }
 
     private fun showDeleteDialog(list: List<org.json.JSONObject>) {
@@ -1737,20 +1884,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun savePublicImage(bytes: ByteArray, filename: String, mime: String) {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val resolver = contentResolver
+    private fun savePublicImage(bytes: ByteArray, filename: String, mime: String, share: Boolean = false): Uri? {
+        return try {
+            val uri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val values = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
                     put(MediaStore.MediaColumns.MIME_TYPE, mime)
                     put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/PixelHero")
                 }
-                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                uri?.let {
-                    resolver.openOutputStream(it)?.use { o -> o.write(bytes) }
-                    toast("Enregistré dans Pictures/PixelHero/$filename")
-                } ?: toast("Échec d'enregistrement")
+                val u = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                u?.let { contentResolver.openOutputStream(it)?.use { o -> o.write(bytes) } }
+                u
             } else {
                 @Suppress("DEPRECATION")
                 val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "PixelHero")
@@ -1758,10 +1902,29 @@ class MainActivity : AppCompatActivity() {
                 val f = File(dir, filename)
                 FileOutputStream(f).use { it.write(bytes) }
                 sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(f)))
-                toast("Enregistré dans ${f.absolutePath}")
+                Uri.fromFile(f)
             }
+            if (uri == null) { toast("Échec d'enregistrement"); return null }
+            if (share) shareUri(uri, mime, filename)
+            else toast("Enregistré dans Pictures/PixelHero/$filename")
+            uri
         } catch (e: Exception) {
             toast("Erreur: ${e.message}")
+            null
+        }
+    }
+
+    private fun shareUri(uri: Uri, mime: String, filename: String) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = mime
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, filename)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        try {
+            startActivity(Intent.createChooser(intent, "Partager $filename"))
+        } catch (e: Exception) {
+            toast("Aucune application pour partager")
         }
     }
 

@@ -24,8 +24,39 @@ object ProjectStorage {
             ?: emptyList()
     }
 
+    /** Save a 64-px PNG thumbnail of the first frame next to the project JSON. */
+    fun saveThumbnail(context: Context, project: Project) {
+        runCatching {
+            val frame = project.frames.firstOrNull() ?: return
+            val srcPixels = if (frame.layers.size > 1) frame.composited() else frame.pixels
+            val sw = frame.width; val sh = frame.height
+            val target = 64
+            val scale = maxOf(1, minOf(target / sw, target / sh).coerceAtLeast(1))
+            val outW = sw * scale
+            val outH = sh * scale
+            val bmp = android.graphics.Bitmap.createBitmap(outW, outH, android.graphics.Bitmap.Config.ARGB_8888)
+            // Nearest-neighbor scaling
+            for (y in 0 until outH) for (x in 0 until outW) {
+                val sx = x / scale
+                val sy = y / scale
+                bmp.setPixel(x, y, srcPixels[sy * sw + sx])
+            }
+            val bytes = java.io.ByteArrayOutputStream().apply {
+                bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, this)
+            }.toByteArray()
+            bmp.recycle()
+            File(dir(context), "${project.id}.thumb.png").writeBytes(bytes)
+        }
+    }
+
+    fun thumbnailFile(context: Context, projectId: String): File? {
+        val f = File(dir(context), "$projectId.thumb.png")
+        return if (f.exists()) f else null
+    }
+
     fun save(context: Context, project: Project) {
         project.updatedAt = System.currentTimeMillis()
+        saveThumbnail(context, project)
         val json = JSONObject().apply {
             put("id", project.id)
             put("name", project.name)
@@ -77,6 +108,7 @@ object ProjectStorage {
 
     fun delete(context: Context, id: String) {
         File(dir(context), "$id.json").delete()
+        File(dir(context), "$id.thumb.png").delete()
     }
 
     fun fromJson(json: JSONObject): Project {

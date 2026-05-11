@@ -48,6 +48,9 @@ class PixelCanvasView @JvmOverloads constructor(
     private var hoverPx = -1
     private var hoverPy = -1
 
+    /** Last reported pressure from the pointer (S-Pen / stylus). 0..1, default 1. */
+    private var currentPressure: Float = 1f
+
     // Sketch layer: a separate per-frame pixel buffer rendered above the frame
     // with reduced opacity, drawn ONLY when sketchMode is true.
     var sketchMode: Boolean = false
@@ -297,8 +300,7 @@ class PixelCanvasView @JvmOverloads constructor(
             val absOff = abs(off)
             val alpha = (90 / absOff).coerceAtLeast(30)
             paint.alpha = alpha
-            // Color filter for tint
-            val tint = if (off < 0) 0xFF00AAFF.toInt() else 0xFFFF4477.toInt()
+            val tint = if (off < 0) p.onionColorPrev else p.onionColorNext
             paint.colorFilter = PorterDuffColorFilter(tint, PorterDuff.Mode.SRC_ATOP)
             canvas.drawBitmap(bmp, 0f, 0f, paint)
             paint.colorFilter = null
@@ -398,6 +400,7 @@ class PixelCanvasView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val id = event.getPointerId(idx)
                 activePointers[id] = PointF(event.getX(idx), event.getY(idx))
+                currentPressure = event.getPressure(idx).coerceIn(0.1f, 1f).takeIf { it > 0f } ?: 1f
                 if (activePointers.size == 1) {
                     val coords = clientToPixel(event.x, event.y)
                     // Intercept for one-shot tap handler if registered
@@ -427,6 +430,9 @@ class PixelCanvasView @JvmOverloads constructor(
                     val id = event.getPointerId(i)
                     activePointers[id] = PointF(event.getX(i), event.getY(i))
                 }
+                // Use the historical max pressure across this batch
+                val pressure = (0 until event.pointerCount).maxOf { event.getPressure(it) }
+                if (pressure > 0f) currentPressure = pressure.coerceIn(0.1f, 1f)
                 if (pinching && activePointers.size == 2) {
                     val pts = activePointers.values.toList()
                     val cx = (pts[0].x + pts[1].x) / 2f
@@ -577,7 +583,11 @@ class PixelCanvasView @JvmOverloads constructor(
      */
     private fun paintPixelSymmetric(x: Int, y: Int, c: Int) {
         val p = project ?: return
-        val size = p.brushSize.coerceAtLeast(1)
+        // Stylus / S-Pen pressure modulation: scales brush size by current pressure
+        val effective = if (p.pressureSensitive) {
+            (p.brushSize * currentPressure).toInt().coerceAtLeast(1)
+        } else p.brushSize
+        val size = effective.coerceAtLeast(1)
         val half = size / 2
         for (dy in 0 until size) for (dx in 0 until size) {
             val px = x - half + dx
