@@ -148,6 +148,51 @@ private fun PhaseLabel(phase: DiscussionPhase) {
 private fun ReactorVisualizer(phase: DiscussionPhase, modifier: Modifier = Modifier) {
     val infinite = rememberInfiniteTransition(label = "reactor")
 
+    // Ondes radiantes : 3 ripples decaleees qui partent du centre vers
+    // l'exterieur. Beaucoup plus rapides en mode Speaking.
+    val rippleDur = when (phase) {
+        is DiscussionPhase.Speaking -> 900
+        DiscussionPhase.Listening -> 1400
+        DiscussionPhase.Thinking -> 2000
+        DiscussionPhase.Idle -> 2800
+    }
+    val ripple1 by infinite.animateFloat(
+        0f, 1f,
+        infiniteRepeatable(tween(rippleDur, easing = LinearEasing), RepeatMode.Restart),
+        label = "ripple1"
+    )
+    val ripple2 by infinite.animateFloat(
+        0f, 1f,
+        infiniteRepeatable(
+            tween(rippleDur, easing = LinearEasing, delayMillis = rippleDur / 3),
+            RepeatMode.Restart
+        ),
+        label = "ripple2"
+    )
+    val ripple3 by infinite.animateFloat(
+        0f, 1f,
+        infiniteRepeatable(
+            tween(rippleDur, easing = LinearEasing, delayMillis = 2 * rippleDur / 3),
+            RepeatMode.Restart
+        ),
+        label = "ripple3"
+    )
+    val ripples = floatArrayOf(ripple1, ripple2, ripple3)
+
+    // Glitch / scanline qui balaie verticalement quand speaking
+    val scanline by infinite.animateFloat(
+        -1f, 1.2f,
+        infiniteRepeatable(tween(2200, easing = LinearEasing), RepeatMode.Restart),
+        label = "scanline"
+    )
+
+    // Vibration : amplitude qui shake les particules quand speaking
+    val shake by infinite.animateFloat(
+        -1f, 1f,
+        infiniteRepeatable(tween(140, easing = LinearEasing), RepeatMode.Reverse),
+        label = "shake"
+    )
+
     val rotOuter by infinite.animateFloat(
         0f, 360f,
         infiniteRepeatable(tween(28_000, easing = LinearEasing), RepeatMode.Restart),
@@ -190,8 +235,10 @@ private fun ReactorVisualizer(phase: DiscussionPhase, modifier: Modifier = Modif
         animationSpec = tween(600), label = "color"
     )
 
+    val isSpeaking = phase is DiscussionPhase.Speaking
     Canvas(modifier = modifier.scale(pulse)) {
-        drawReactor(color, rotOuter, rotMiddle, rotInner)
+        drawReactor(color, rotOuter, rotMiddle, rotInner, ripples,
+            isSpeaking = isSpeaking, scanline = scanline, shake = shake)
     }
 }
 
@@ -199,23 +246,54 @@ private fun DrawScope.drawReactor(
     color: Color,
     rotOuter: Float,
     rotMiddle: Float,
-    rotInner: Float
+    rotInner: Float,
+    ripples: FloatArray,
+    isSpeaking: Boolean,
+    scanline: Float,
+    shake: Float
 ) {
     val cx = size.width / 2f
     val cy = size.height / 2f
     val r = size.minDimension / 2f
     val center = Offset(cx, cy)
 
-    // Halo radial
+    // Ondes radiales : 3 ripples qui partent du centre vers l'exterieur.
+    // Plus fortes en speaking. Donnent un effet d'energie qui irradie.
+    for (p in ripples) {
+        val rippleR = r * (0.4f + p * 0.8f) // 40% → 120%
+        val alpha = ((1f - p) * if (isSpeaking) 0.5f else 0.25f).coerceAtLeast(0f)
+        drawCircle(
+            color = color.copy(alpha = alpha),
+            radius = rippleR,
+            center = center,
+            style = Stroke(width = if (isSpeaking) 3f else 1.5f)
+        )
+    }
+
+    // Halo radial — plus intense en speaking
+    val haloIntensity = if (isSpeaking) 0.55f else 0.35f
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(color.copy(alpha = 0.35f), Color.Transparent),
+            colors = listOf(color.copy(alpha = haloIntensity), Color.Transparent),
             center = center,
             radius = r
         ),
         radius = r,
         center = center
     )
+
+    // Scanline horizontale qui balaie (effet TV / hud)
+    if (isSpeaking) {
+        val y = cy + scanline * r
+        if (y in (cy - r)..(cy + r)) {
+            drawLine(
+                color = color.copy(alpha = 0.4f),
+                start = Offset(cx - r, y),
+                end = Offset(cx + r, y),
+                strokeWidth = 2f
+            )
+        }
+    }
 
     // Anneau extérieur en pointillés (rotation lente)
     rotate(rotOuter, pivot = center) {
@@ -291,6 +369,21 @@ private fun DrawScope.drawReactor(
                 style = Stroke(width = 2.5f)
             )
         }
+    }
+
+    // Particules de surface : 12 points qui pulsent autour de l'anneau
+    // moyen, vibration legere en speaking (effet d'energie)
+    val particleR = r * 0.78f
+    for (i in 0 until 12) {
+        val angle = Math.toRadians((i * 30f + rotInner).toDouble())
+        val jitter = if (isSpeaking) shake * 4f else 0f
+        val px = cx + (particleR + jitter) * cos(angle).toFloat()
+        val py = cy + (particleR + jitter) * sin(angle).toFloat()
+        drawCircle(
+            color = color.copy(alpha = if (isSpeaking) 0.95f else 0.5f),
+            radius = if (isSpeaking) 4.5f else 2.5f,
+            center = Offset(px, py)
+        )
     }
 
     // Triangle central
