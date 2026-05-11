@@ -157,6 +157,7 @@ class MainActivity : AppCompatActivity() {
         val r = object : Runnable {
             override fun run() {
                 ProjectStorage.save(this@MainActivity, project)
+                runOnUiThread { isDirty = false; updateTitleDirty() }
                 autosaveHandler.postDelayed(this, 30_000L)
             }
         }
@@ -195,6 +196,16 @@ class MainActivity : AppCompatActivity() {
         undoStack.addLast(UndoSnapshot(project.currentIndex, project.currentFrame.pixels.copyOf()))
         while (undoStack.size > maxUndo) undoStack.removeFirst()
         redoStack.clear()
+        isDirty = true
+        updateTitleDirty()
+    }
+
+    private var isDirty = false
+
+    private fun updateTitleDirty() {
+        // We don't have a dedicated title TextView - use the topbar text
+        val v = (binding.topBar.getChildAt(1) as? TextView)
+        v?.text = if (isDirty) "PixelHero •" else "PixelHero"
     }
 
     // ---- Tools ----
@@ -275,6 +286,36 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun cropToSelection() {
+        val sel = binding.canvas.selection
+        if (!sel.active) { toast("Aucune sélection"); return }
+        val newW = sel.width
+        val newH = sel.height
+        if (newW < 1 || newH < 1) return
+        pushUndo()
+        // Resize each frame to (newW, newH), keeping only the selected area
+        project.frames.forEach { f ->
+            val newLayers = f.layers.map { layer ->
+                val n = Layer(newW, newH, layer.name)
+                n.visible = layer.visible; n.opacity = layer.opacity
+                for (y in 0 until newH) for (x in 0 until newW) {
+                    val sx = sel.xMin + x
+                    val sy = sel.yMin + y
+                    if (sx in 0 until layer.width && sy in 0 until layer.height) {
+                        n.pixels[y * newW + x] = layer.pixels[sy * layer.width + sx]
+                    }
+                }
+                n
+            }
+            f.layers.clear()
+            f.layers.addAll(newLayers)
+        }
+        project.width = newW; project.height = newH
+        sel.clear()
+        applyProject()
+        toast("Recadré à ${newW}×${newH}")
+    }
+
     private fun showSelectionActions() {
         if (!binding.canvas.selection.active) return
         val hasFloating = binding.canvas.selection.floating != null
@@ -284,6 +325,7 @@ class MainActivity : AppCompatActivity() {
         if (clipboardPixels != null) items.add(getString(R.string.paste))
         items.add(getString(R.string.flip_h))
         items.add(getString(R.string.flip_v))
+        items.add("Recadrer le canvas à cette sélection")
         items.add("Valider / Désélectionner")
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.tool_select))
@@ -318,6 +360,9 @@ class MainActivity : AppCompatActivity() {
                     }
                     getString(R.string.flip_v) -> {
                         flipSelection(horizontal = false)
+                    }
+                    "Recadrer le canvas à cette sélection" -> {
+                        cropToSelection()
                     }
                     else -> {
                         pushUndo()
@@ -982,6 +1027,39 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun showOnionColorPicker() {
+        val items = arrayOf("Frame précédente (défaut bleu)", "Frame suivante (défaut rouge)")
+        AlertDialog.Builder(this)
+            .setTitle("Couleurs onion skin")
+            .setItems(items) { _, which ->
+                pickOnionColor(which == 0)
+            }
+            .show()
+    }
+
+    private fun pickOnionColor(isPrev: Boolean) {
+        val current = if (isPrev) project.onionColorPrev else project.onionColorNext
+        val view = layoutInflater.inflate(R.layout.dialog_color_picker, null)
+        val preview = view.findViewById<View>(R.id.preview)
+        val seekR = view.findViewById<SeekBar>(R.id.seekR)
+        val seekG = view.findViewById<SeekBar>(R.id.seekG)
+        val seekB = view.findViewById<SeekBar>(R.id.seekB)
+        seekR.progress = Color.red(current); seekG.progress = Color.green(current); seekB.progress = Color.blue(current)
+        preview.setBackgroundColor(current)
+        val update = { preview.setBackgroundColor(Color.rgb(seekR.progress, seekG.progress, seekB.progress) or 0xFF000000.toInt()) }
+        listOf(seekR, seekG, seekB).forEach { it.setOnSeekBarChangeListener(simpleSeekListener { _ -> update() }) }
+        AlertDialog.Builder(this)
+            .setTitle(if (isPrev) "Couleur frame précédente" else "Couleur frame suivante")
+            .setView(view)
+            .setPositiveButton("OK") { _, _ ->
+                val col = Color.rgb(seekR.progress, seekG.progress, seekB.progress) or 0xFF000000.toInt()
+                if (isPrev) project.onionColorPrev = col else project.onionColorNext = col
+                binding.canvas.invalidate()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     private fun showTextDialog() {
         val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24) }
         container.addView(TextView(this).apply {
@@ -1447,6 +1525,7 @@ class MainActivity : AppCompatActivity() {
             "Ajouter du texte (5×7)…",
             "Partager PNG actuel",
             "Partager GIF animé",
+            "Personnaliser couleurs onion skin…",
             "Tutoriel"
         )
         AlertDialog.Builder(this)
@@ -1469,7 +1548,8 @@ class MainActivity : AppCompatActivity() {
                     13 -> showTextDialog()
                     14 -> sharePng()
                     15 -> shareGif()
-                    16 -> showTutorial(force = true)
+                    16 -> showOnionColorPicker()
+                    17 -> showTutorial(force = true)
                 }
             }
             .show()
@@ -1713,6 +1793,7 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton(R.string.save) { _, _ ->
                 project.name = input.text.toString().ifBlank { "Sans titre" }
                 ProjectStorage.save(this, project)
+                isDirty = false; updateTitleDirty()
                 toast(getString(R.string.saved))
             }
             .setNegativeButton(R.string.cancel, null)
