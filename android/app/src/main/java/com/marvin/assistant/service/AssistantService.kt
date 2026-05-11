@@ -17,6 +17,7 @@ import com.marvin.assistant.R
 import com.marvin.assistant.actions.ActionExecutor
 import com.marvin.assistant.audit.AuditLog
 import com.marvin.assistant.audio.SpeakerVerifier
+import com.marvin.assistant.context.SmartContext
 import com.marvin.assistant.memory.LongTermMemory
 import com.marvin.assistant.audio.SpeakerVerifierFactory
 import com.marvin.assistant.audio.SpeechToText
@@ -66,6 +67,7 @@ class AssistantService : LifecycleService() {
     private lateinit var sttCorrections: SttCorrections
     private lateinit var auditLog: AuditLog
     private lateinit var memory: LongTermMemory
+    private lateinit var smartContext: SmartContext
     private lateinit var reminders: RemindersManager
     private lateinit var routines: RoutinesManager
     private lateinit var shopping: ShoppingList
@@ -99,6 +101,7 @@ class AssistantService : LifecycleService() {
         sttCorrections = SttCorrections(this)
         auditLog = AuditLog(this)
         memory = LongTermMemory(this)
+        smartContext = SmartContext(this)
         reminders = RemindersManager(this)
         reminders.rescheduleAll() // re-arme les alarmes après mise à jour de l'app
         routines = RoutinesManager(this)
@@ -1032,7 +1035,7 @@ class AssistantService : LifecycleService() {
             else settings.backendChoice
         return when (choice) {
             LlmBackendChoice.CLOUD_CLAUDE -> claudeBackend
-                ?: ClaudeBackend(this, settings, tools, memory).also { claudeBackend = it }
+                ?: ClaudeBackend(this, settings, tools, memory, smartContext).also { claudeBackend = it }
             LlmBackendChoice.LOCAL_GEMMA -> gemmaBackend
                 ?: GemmaBackend(this).also { gemmaBackend = it }
         }

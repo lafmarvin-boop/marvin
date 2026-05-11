@@ -39,7 +39,8 @@ class ClaudeBackend(
     private val context: Context,
     private val settings: Settings,
     private val tools: Tools,
-    private val memory: com.marvin.assistant.memory.LongTermMemory? = null
+    private val memory: com.marvin.assistant.memory.LongTermMemory? = null,
+    private val smartContext: com.marvin.assistant.context.SmartContext? = null
 ) : LlmBackend {
 
     override val displayName: String get() = "Claude ${settings.claudeModel.name.lowercase()}"
@@ -285,8 +286,11 @@ class ClaudeBackend(
         toolsJson: JSONArray
     ): JSONObject? {
         val memoryContext = memory?.buildContextBlock().orEmpty()
+        val ctxNote = smartContext?.snapshot()?.toSystemNote().orEmpty().let {
+            if (it.isNotBlank()) "\n\nContexte actuel : $it" else ""
+        }
         val basePrompt = settings.customSystemPrompt.takeIf { it.isNotBlank() } ?: SYSTEM_PROMPT
-        val fullSystem = basePrompt + memoryContext
+        val fullSystem = basePrompt + memoryContext + ctxNote
         val systemBlocks = JSONArray().apply {
             put(JSONObject().apply {
                 put("type", "text")
