@@ -106,6 +106,15 @@ class Settings(context: Context) {
             }
         }
 
+    /**
+     * System prompt Claude personnalisable. Vide = prompt par defaut
+     * defini dans ClaudeBackend. Permet de changer la personnalite de
+     * Jarvis sans toucher au code.
+     */
+    var customSystemPrompt: String
+        get() = plain.getString(KEY_SYSTEM_PROMPT, "") ?: ""
+        set(value) { plain.edit().putString(KEY_SYSTEM_PROMPT, value).apply() }
+
     /** Token AudD pour la reconnaissance musicale. Vide = feature désactivée. */
     var auddApiKey: String
         get() = secure.getString(KEY_AUDD_KEY, "") ?: ""
@@ -313,6 +322,7 @@ class Settings(context: Context) {
         private const val KEY_HTTP_PORT = "http_server_port"
         private const val KEY_HTTP_TOKEN = "http_server_token"
         private const val KEY_ACCENT = "accent_color"
+        private const val KEY_SYSTEM_PROMPT = "custom_system_prompt"
 
         /** Couleurs preset pour le réacteur (val = Color argb hex). */
         val ACCENT_PRESETS = mapOf(

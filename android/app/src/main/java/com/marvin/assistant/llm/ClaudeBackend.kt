@@ -188,7 +188,8 @@ class ClaudeBackend(
         toolsJson: JSONArray
     ): JSONObject? {
         val memoryContext = memory?.buildContextBlock().orEmpty()
-        val fullSystem = SYSTEM_PROMPT + memoryContext
+        val basePrompt = settings.customSystemPrompt.takeIf { it.isNotBlank() } ?: SYSTEM_PROMPT
+        val fullSystem = basePrompt + memoryContext
         val systemBlocks = JSONArray().apply {
             put(JSONObject().apply {
                 put("type", "text")

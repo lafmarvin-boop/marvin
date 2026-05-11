@@ -107,6 +107,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var elevenVoice by remember { mutableStateOf(settings.elevenLabsVoiceId) }
     var auddKey by remember { mutableStateOf(settings.auddApiKey) }
     var accent by remember { mutableStateOf(settings.accentColor) }
+    var customPrompt by remember { mutableStateOf(settings.customSystemPrompt) }
     var ttsBackend by remember { mutableStateOf(settings.ttsBackend) }
     var certPinning by remember { mutableStateOf(settings.certPinningEnabled) }
 
@@ -458,6 +459,27 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             onValueChange = { auddKey = it },
             label = { Text("AudD API Token (reconnaissance musicale)") },
             singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // ------ SYSTEM PROMPT CUSTOM ------
+        Spacer(Modifier.height(20.dp))
+        Text("Personnalité de Jarvis (system prompt)",
+            style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Laisse vide pour le prompt par défaut (majordome posé, français). " +
+                "Sinon, écris la personnalité que tu veux. Ex: « Tu es Jarvis, " +
+                "drôle et sarcastique, parle en français avec un ton décontracté. »",
+            style = MaterialTheme.typography.bodySmall
+        )
+        OutlinedTextField(
+            value = customPrompt,
+            onValueChange = { customPrompt = it },
+            label = { Text("Prompt custom (vide = défaut)") },
+            singleLine = false,
+            minLines = 3,
+            maxLines = 8,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -917,6 +939,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 settings.elevenLabsVoiceId = elevenVoice.trim()
                 settings.auddApiKey = auddKey.trim()
                 settings.accentColor = accent
+                settings.customSystemPrompt = customPrompt
                 settings.ttsBackend = ttsBackend
                 if (settings.wakeWord != wakeWord) {
                     settings.wakeWord = wakeWord
