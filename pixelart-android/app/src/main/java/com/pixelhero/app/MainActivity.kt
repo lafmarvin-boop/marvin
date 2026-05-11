@@ -20,7 +20,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.pixelhero.app.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -29,6 +31,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.max
+import kotlin.math.min
 
 class MainActivity : AppCompatActivity() {
 
@@ -550,9 +553,44 @@ class MainActivity : AppCompatActivity() {
             project.pixelPerfect = checked
         }
 
+        // Brush size mapping: SeekBar 0-9 -> sizes [1, 2, 3, 4, 5, 6, 8, 10, 12, 16]
+        val brushSizes = intArrayOf(1, 2, 3, 4, 5, 6, 8, 10, 12, 16)
+        binding.brushSize.setOnSeekBarChangeListener(simpleSeekListener { v ->
+            project.brushSize = brushSizes[v.coerceIn(0, brushSizes.size - 1)]
+            binding.brushSizeLabel.text = "${project.brushSize}px"
+        })
+
+        binding.btnDither.setOnClickListener { showDitherMenu() }
+
+        // Zoom buttons
+        binding.btnZoomOut.setOnClickListener { binding.canvas.zoomBy(1f / 1.5f) }
+        binding.btnZoomIn.setOnClickListener { binding.canvas.zoomBy(1.5f) }
+        binding.btnZoomFit.setOnClickListener { binding.canvas.zoomReset() }
+        binding.btnZoom100.setOnClickListener { binding.canvas.setZoom(1f) }
+        binding.btnZoom400.setOnClickListener { binding.canvas.setZoom(4f) }
+
         binding.fpsInput.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) project.fps = binding.fpsInput.text.toString().toIntOrNull()?.coerceIn(1, 60) ?: 8
         }
+    }
+
+    private fun showDitherMenu() {
+        val items = arrayOf(
+            "Aucun (uniforme)",
+            "Damier (50% / 50%)",
+            "Lignes verticales",
+            "Lignes horizontales",
+            "Sparse (1 / 4 pixels)",
+            "Mix couleur primaire + secondaire (damier)"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("Tramage")
+            .setSingleChoiceItems(items, project.ditherPattern) { dlg, which ->
+                project.ditherPattern = which
+                binding.btnDither.text = items[which].substringBefore(" ")
+                dlg.dismiss()
+            }
+            .show()
     }
 
     private fun cycleBgFitMode() {
@@ -638,6 +676,7 @@ class MainActivity : AppCompatActivity() {
         )
         binding.framesList.layoutManager = LinearLayoutManager(this)
         binding.framesList.adapter = framesAdapter
+        attachFrameDragHelper()
 
         binding.btnFrameAdd.setOnClickListener {
             project.frames.add(Frame(project.width, project.height))
@@ -681,6 +720,33 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    private fun attachFrameDragHelper() {
+        val callback = object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+        ) {
+            override fun onMove(
+                rv: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                val from = viewHolder.bindingAdapterPosition
+                val to = target.bindingAdapterPosition
+                if (from < 0 || to < 0) return false
+                val item = project.frames.removeAt(from)
+                project.frames.add(to, item)
+                if (project.currentIndex == from) project.currentIndex = to
+                else if (project.currentIndex in min(from, to)..max(from, to)) {
+                    project.currentIndex += if (from < to) -1 else 1
+                }
+                framesAdapter.notifyItemMoved(from, to)
+                return true
+            }
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+            override fun isLongPressDragEnabled(): Boolean = true
+        }
+        ItemTouchHelper(callback).attachToRecyclerView(binding.framesList)
     }
 
     private fun refreshAfterFrameChange() {

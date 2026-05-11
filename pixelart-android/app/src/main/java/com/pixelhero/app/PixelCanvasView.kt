@@ -176,6 +176,20 @@ class PixelCanvasView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setZoom(target: Float) {
+        val cx = width / 2f
+        val cy = height / 2f
+        val newScale = target.coerceIn(0.25f, 32f)
+        val ratio = newScale / scale
+        translateX = cx - ratio * (cx - translateX)
+        translateY = cy - ratio * (cy - translateY)
+        scale = newScale
+        invalidate()
+    }
+
+    fun zoomBy(factor: Float) = setZoom(scale * factor)
+    fun zoomReset() = resetView()
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val p = project ?: return
@@ -460,7 +474,28 @@ class PixelCanvasView @JvmOverloads constructor(
     }
 
     // ---- Symmetry ----
+    /**
+     * Paint a pixel at (x,y) applying current brush size, symmetry, and dither pattern.
+     * For ERASER the dither pattern is ignored (always erase fully).
+     */
     private fun paintPixelSymmetric(x: Int, y: Int, c: Int) {
+        val p = project ?: return
+        val size = p.brushSize.coerceAtLeast(1)
+        val half = size / 2
+        for (dy in 0 until size) for (dx in 0 until size) {
+            val px = x - half + dx
+            val py = y - half + dy
+            // Apply dither pattern (only when painting non-zero color)
+            if (c != 0 && p.ditherPattern > 0 && !ditherShouldPaint(px, py, p.ditherPattern)) continue
+            val effective = if (c != 0 && p.ditherPattern > 0 && p.ditherPattern == 5)
+                p.secondaryColor else c
+            paintSinglePixelWithSymmetry(px, py, effective)
+        }
+        recentPixels.addLast(intArrayOf(x, y))
+        while (recentPixels.size > 3) recentPixels.removeFirst()
+    }
+
+    private fun paintSinglePixelWithSymmetry(x: Int, y: Int, c: Int) {
         val p = project ?: return
         p.currentFrame.set(x, y, c)
         when (p.symmetry) {
@@ -473,8 +508,21 @@ class PixelCanvasView @JvmOverloads constructor(
                 p.currentFrame.set(p.width - 1 - x, p.height - 1 - y, c)
             }
         }
-        recentPixels.addLast(intArrayOf(x, y))
-        while (recentPixels.size > 3) recentPixels.removeFirst()
+    }
+
+    /**
+     * Returns true if the pixel at (x,y) should be painted given the dither pattern:
+     *   1 = checkerboard (paint when (x+y) is even)
+     *   2 = vertical lines (paint when x is even)
+     *   3 = horizontal lines (paint when y is even)
+     *   4 = sparse (paint when x and y both divisible by 2 -> 1/4 density)
+     */
+    private fun ditherShouldPaint(x: Int, y: Int, pattern: Int): Boolean = when (pattern) {
+        1 -> (x + y) and 1 == 0
+        2 -> x and 1 == 0
+        3 -> y and 1 == 0
+        4 -> (x and 1 == 0) && (y and 1 == 0)
+        else -> true
     }
 
     /**

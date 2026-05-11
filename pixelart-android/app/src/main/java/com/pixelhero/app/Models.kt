@@ -92,7 +92,9 @@ class Project(
     var secondaryColor: Int = 0xFF000000.toInt(),
     var onionRange: Int = 1,          // number of frames before/after to show
     var pixelPerfect: Boolean = false,
-    var bgFit: BgFitMode = BgFitMode.COVER
+    var bgFit: BgFitMode = BgFitMode.COVER,
+    var brushSize: Int = 1,
+    var ditherPattern: Int = 0  // 0=none, 1=checker, 2=v.lines, 3=h.lines, 4=sparse
 ) {
     val currentFrame: Frame get() = frames[currentIndex]
 
