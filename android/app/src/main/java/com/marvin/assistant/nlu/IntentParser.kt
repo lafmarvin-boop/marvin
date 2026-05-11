@@ -175,6 +175,11 @@ class IntentParser {
         },
         Rule(Regex("""compte (?:mes |les )?pas""")) { MarvinIntent.StepsCount },
 
+        // ---- Self test ----
+        Rule(Regex("""(?:test(?:e)?(?:[- ]toi)?(?:[- ]m[eê]me)?|diagnostic|systeme check|verifie tes composants)""")) {
+            MarvinIntent.SelfTest
+        },
+
         // ---- Routines ----
         // "lance ma routine matin" / "routine matin" / "fais la routine soir"
         Rule(Regex("""(?:lance|démarre|exécute|fais|active)\s+(?:ma |la |une )?routine\s+(.+)""")) {

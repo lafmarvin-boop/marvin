@@ -61,6 +61,7 @@ class ActionExecutor(private val context: Context) {
         MarvinIntent.ReadEmails,
         MarvinIntent.RecognizeMusic,
         is MarvinIntent.StartInterpreter,
-        MarvinIntent.StepsCount -> ""
+        MarvinIntent.StepsCount,
+        MarvinIntent.SelfTest -> ""
     }
 }

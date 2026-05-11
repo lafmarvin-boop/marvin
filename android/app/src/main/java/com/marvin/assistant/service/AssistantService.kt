@@ -340,6 +340,38 @@ class AssistantService : LifecycleService() {
         turnsSinceSummary = 0
     }
 
+    private fun runSelfTest(): String {
+        val results = mutableListOf<String>()
+        // Vosk
+        results.add(if (::voskModel.isInitialized) "Vosk OK" else "Vosk KO")
+        // TTS
+        results.add(if (::tts.isInitialized && tts.isReady()) "TTS OK" else "TTS KO")
+        // Voice biometric
+        results.add(when {
+            !speakerVerifier.isReady() -> "Biométrie absente"
+            !speakerVerifier.isEnrolled() -> "Biométrie non enrôlée"
+            settings.voiceBiometricEnabled -> "Biométrie active"
+            else -> "Biométrie inactive"
+        })
+        // Claude
+        results.add(when {
+            settings.localOnlyMode -> "Claude désactivé (mode local)"
+            settings.anthropicApiKey.isBlank() -> "Claude sans clé"
+            else -> "Claude OK"
+        })
+        // Quota
+        results.add("Quota ${settings.quotaUsedToday()}/${settings.dailyLimit}")
+        // Web search
+        results.add(if (settings.webSearchEnabled) "Recherche web ON" else "Recherche web OFF")
+        // Home Assistant
+        results.add(if (homeAssistant.isConfigured()) "Home Assistant OK" else "Home Assistant absent")
+        // Notifications
+        results.add(if (NotificationCaptureService.isActive()) "Notifs OK" else "Notifs non actives")
+        // HTTP server
+        results.add(if (settings.httpServerEnabled) "HTTP server ON" else "HTTP server OFF")
+        return "Diagnostic : " + results.joinToString(", ") + "."
+    }
+
     private fun buildHelpText(): String = """
         Voici ce que je peux faire. Pour la météo, l'heure, les SMS, les
         appels manqués, les notifications, demande-moi directement. Pour
@@ -524,6 +556,7 @@ class AssistantService : LifecycleService() {
             is MarvinIntent.StartInterpreter -> startInterpreter(parsed.foreignLanguage)
             is MarvinIntent.StepsCount ->
                 speakWithPhase(com.marvin.assistant.health.StepCounter(this).stepsToday())
+            is MarvinIntent.SelfTest -> speakWithPhase(runSelfTest())
             is MarvinIntent.RunRoutine -> runRoutine(parsed.name)
             is MarvinIntent.Translate -> {
                 val prompt = if (parsed.targetLanguage != null) {
@@ -680,6 +713,10 @@ class AssistantService : LifecycleService() {
             }
             if (parsedFu is MarvinIntent.StepsCount) {
                 speakWithPhase(com.marvin.assistant.health.StepCounter(this).stepsToday())
+                continue
+            }
+            if (parsedFu is MarvinIntent.SelfTest) {
+                speakWithPhase(runSelfTest())
                 continue
             }
             if (parsedFu is MarvinIntent.RunRoutine) {

@@ -70,6 +70,9 @@ sealed class MarvinIntent {
     /** Compte les pas du jour (capteur step counter). */
     data object StepsCount : MarvinIntent()
 
+    /** Self-test diagnostic des composants Marvin. */
+    data object SelfTest : MarvinIntent()
+
     /** Exécute une routine pré-définie (ex. "routine matin" = méteo + agenda + news). */
     data class RunRoutine(val name: String) : MarvinIntent()
 
