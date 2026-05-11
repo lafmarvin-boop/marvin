@@ -151,6 +151,14 @@ class IntentParser {
             MarvinIntent.ReadEmails
         },
 
+        // ---- Music recognition ----
+        Rule(Regex("""(?:c'est|quelle|quel est) (?:quoi |la |le )?(?:cette )?(?:musique|chanson|morceau|titre|son)""")) {
+            MarvinIntent.RecognizeMusic
+        },
+        Rule(Regex("""(?:identifie|reconnais|trouve)\s+(?:cette |la )?(?:musique|chanson|morceau|titre)""")) {
+            MarvinIntent.RecognizeMusic
+        },
+
         // ---- Routines ----
         // "lance ma routine matin" / "routine matin" / "fais la routine soir"
         Rule(Regex("""(?:lance|démarre|exécute|fais|active)\s+(?:ma |la |une )?routine\s+(.+)""")) {

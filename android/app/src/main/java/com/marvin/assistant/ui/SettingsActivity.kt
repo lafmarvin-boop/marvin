@@ -103,6 +103,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var haToken by remember { mutableStateOf(settings.homeAssistantToken) }
     var elevenKey by remember { mutableStateOf(settings.elevenLabsApiKey) }
     var elevenVoice by remember { mutableStateOf(settings.elevenLabsVoiceId) }
+    var auddKey by remember { mutableStateOf(settings.auddApiKey) }
     var ttsBackend by remember { mutableStateOf(settings.ttsBackend) }
     var certPinning by remember { mutableStateOf(settings.certPinningEnabled) }
 
@@ -445,6 +446,14 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             value = elevenVoice,
             onValueChange = { elevenVoice = it },
             label = { Text("Voice ID ElevenLabs (vide = Adam)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = auddKey,
+            onValueChange = { auddKey = it },
+            label = { Text("AudD API Token (reconnaissance musicale)") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -828,6 +837,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 settings.certPinningEnabled = certPinning
                 settings.elevenLabsApiKey = elevenKey.trim()
                 settings.elevenLabsVoiceId = elevenVoice.trim()
+                settings.auddApiKey = auddKey.trim()
                 settings.ttsBackend = ttsBackend
                 if (settings.wakeWord != wakeWord) {
                     settings.wakeWord = wakeWord

@@ -455,6 +455,14 @@ class AssistantService : LifecycleService() {
                 tools.readMissedCallsDirect()
             )
             is MarvinIntent.ReadEmails -> speakWithPhase(tools.readEmailsDirect())
+            is MarvinIntent.RecognizeMusic -> {
+                speakWithPhase("J'écoute…")
+                wakeWord.pause()
+                val answer = try {
+                    com.marvin.assistant.music.MusicRecognizer(this, settings).recognize()
+                } finally { wakeWord.resume() }
+                speakWithPhase(answer)
+            }
             is MarvinIntent.RunRoutine -> runRoutine(parsed.name)
             is MarvinIntent.Translate -> {
                 val prompt = if (parsed.targetLanguage != null) {
@@ -594,6 +602,15 @@ class AssistantService : LifecycleService() {
             }
             if (parsedFu is MarvinIntent.ReadEmails) {
                 speakWithPhase(tools.readEmailsDirect())
+                continue
+            }
+            if (parsedFu is MarvinIntent.RecognizeMusic) {
+                speakWithPhase("J'écoute…")
+                wakeWord.pause()
+                val answer = try {
+                    com.marvin.assistant.music.MusicRecognizer(this, settings).recognize()
+                } finally { wakeWord.resume() }
+                speakWithPhase(answer)
                 continue
             }
             if (parsedFu is MarvinIntent.RunRoutine) {
