@@ -61,6 +61,7 @@
             <ImageButton android:id="@+id/toolRect"      style="@style/ToolButton" android:src="@drawable/ic_rect"/>
             <ImageButton android:id="@+id/toolRectFill"  style="@style/ToolButton" android:src="@drawable/ic_rect_fill"/>
             <ImageButton android:id="@+id/toolSelect"    style="@style/ToolButton" android:src="@drawable/ic_select"/>
+            <ImageButton android:id="@+id/toolWand"      style="@style/ToolButton" android:src="@drawable/ic_wand"/>
             <ImageButton android:id="@+id/toolMove"      style="@style/ToolButton" android:src="@drawable/ic_move"/>
 
             <View android:layout_width="match_parent" android:layout_height="1dp"

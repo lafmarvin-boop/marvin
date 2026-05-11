@@ -200,6 +200,7 @@ class MainActivity : AppCompatActivity() {
             binding.toolRect to Tool.RECT,
             binding.toolRectFill to Tool.RECT_FILL,
             binding.toolSelect to Tool.SELECT,
+            binding.toolWand to Tool.WAND,
             binding.toolMove to Tool.MOVE
         )
         binding.toolPencil.isSelected = true
@@ -208,10 +209,10 @@ class MainActivity : AppCompatActivity() {
                 tools.keys.forEach { it.isSelected = false }
                 btn.isSelected = true
                 binding.canvas.tool = tool
-                if (tool == Tool.SELECT) showSelectionActions()
+                if (tool == Tool.SELECT || tool == Tool.WAND) showSelectionActions()
             }
             btn.setOnLongClickListener { l ->
-                if (tool == Tool.SELECT) showSelectionActions()
+                if (tool == Tool.SELECT || tool == Tool.WAND) showSelectionActions()
                 true
             }
         }
@@ -867,6 +868,40 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun showFiltersMenu() {
+        val filters = Filters.Filter.values()
+        val labels = filters.map { it.displayName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Filtre à appliquer")
+            .setItems(labels) { _, which ->
+                askFilterScope(filters[which])
+            }
+            .show()
+    }
+
+    private fun askFilterScope(filter: Filters.Filter) {
+        AlertDialog.Builder(this)
+            .setTitle("Appliquer « ${filter.displayName} » sur :")
+            .setItems(arrayOf("Frame courante", "Toutes les frames")) { _, scope ->
+                pushUndo()
+                val outlineColor = project.primaryColor
+                if (scope == 0) {
+                    val out = Filters.apply(project.currentFrame.pixels, project.width, project.height, filter, outlineColor)
+                    out.copyInto(project.currentFrame.pixels)
+                } else {
+                    project.frames.forEach { f ->
+                        val out = Filters.apply(f.pixels, f.width, f.height, filter, outlineColor)
+                        out.copyInto(f.pixels)
+                    }
+                }
+                binding.canvas.syncFrameBitmap()
+                framesAdapter.notifyDataSetChanged()
+                toast("Filtre appliqué")
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     private fun showColorLockMenu() {
         val palette = project.palette + project.recentColors
         val labels = palette.map {
@@ -1116,6 +1151,7 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.resize),
             "Mode de lecture animation…",
             "Verrouiller couleurs…",
+            "Filtres / effets…",
             "Tutoriel"
         )
         AlertDialog.Builder(this)
@@ -1133,7 +1169,8 @@ class MainActivity : AppCompatActivity() {
                     8 -> showResizeDialog()
                     9 -> showPlayModeMenu()
                     10 -> showColorLockMenu()
-                    11 -> showTutorial(force = true)
+                    11 -> showFiltersMenu()
+                    12 -> showTutorial(force = true)
                 }
             }
             .show()

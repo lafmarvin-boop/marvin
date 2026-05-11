@@ -1,7 +1,7 @@
 package com.pixelhero.app
 
 enum class Tool {
-    PENCIL, ERASER, FILL, PICKER, LINE, RECT, RECT_FILL, MOVE, SELECT
+    PENCIL, ERASER, FILL, PICKER, LINE, RECT, RECT_FILL, MOVE, SELECT, WAND
 }
 
 enum class SymmetryAxis { NONE, HORIZONTAL, VERTICAL, BOTH }

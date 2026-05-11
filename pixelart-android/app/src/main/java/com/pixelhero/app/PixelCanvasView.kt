@@ -474,6 +474,12 @@ class PixelCanvasView @JvmOverloads constructor(
                     invalidate()
                 }
             }
+            Tool.WAND -> {
+                // Magic wand: select all 4-connected pixels of the same color
+                commitFloatingSelection()
+                wandSelectFloodFill(px, py)
+                invalidate()
+            }
             else -> {}
         }
     }
@@ -830,5 +836,54 @@ class PixelCanvasView @JvmOverloads constructor(
         selection.clear()
         syncFrameBitmap()
         onProjectChanged?.invoke()
+    }
+
+    /** Magic wand selection: flood-select all 4-connected pixels matching the target color. */
+    private fun wandSelectFloodFill(x: Int, y: Int) {
+        val p = project ?: return
+        val f = p.currentFrame
+        if (x !in 0 until f.width || y !in 0 until f.height) return
+        val target = f.get(x, y)
+        // Visited mask
+        val mask = BooleanArray(f.width * f.height)
+        val stack = ArrayDeque<IntArray>()
+        stack.addLast(intArrayOf(x, y))
+        var minX = x; var maxX = x; var minY = y; var maxY = y
+        while (stack.isNotEmpty()) {
+            val cell = stack.removeLast()
+            val cx = cell[0]; val cy = cell[1]
+            if (cx !in 0 until f.width || cy !in 0 until f.height) continue
+            val idx = cy * f.width + cx
+            if (mask[idx]) continue
+            if (f.get(cx, cy) != target) continue
+            mask[idx] = true
+            if (cx < minX) minX = cx; if (cx > maxX) maxX = cx
+            if (cy < minY) minY = cy; if (cy > maxY) maxY = cy
+            stack.addLast(intArrayOf(cx + 1, cy))
+            stack.addLast(intArrayOf(cx - 1, cy))
+            stack.addLast(intArrayOf(cx, cy + 1))
+            stack.addLast(intArrayOf(cx, cy - 1))
+        }
+        // Build floating selection from the masked region
+        val w = maxX - minX + 1
+        val h = maxY - minY + 1
+        val floating = IntArray(w * h)
+        for (yy in minY..maxY) for (xx in minX..maxX) {
+            val li = (yy - minY) * w + (xx - minX)
+            if (mask[yy * f.width + xx]) {
+                floating[li] = f.get(xx, yy)
+                f.set(xx, yy, 0)
+            }
+        }
+        selection.clear()
+        selection.active = true
+        selection.x0 = minX; selection.y0 = minY
+        selection.x1 = maxX; selection.y1 = maxY
+        selection.floating = floating
+        selection.floatW = w
+        selection.floatH = h
+        selection.floatX = minX
+        selection.floatY = minY
+        syncFrameBitmap()
     }
 }
