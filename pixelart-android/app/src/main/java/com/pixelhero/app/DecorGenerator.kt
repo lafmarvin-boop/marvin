@@ -29,6 +29,26 @@ object DecorGenerator {
         override fun toString() = displayName
     }
 
+    /**
+     * Generate [frameCount] animated frames of [decor] (clouds drift, snow falls, water
+     * waves shift, stars twinkle, etc.). For static decors (brick wall, wood floor,
+     * dungeon, mountains) all frames are identical to a single generation.
+     */
+    fun generateFrames(width: Int, height: Int, decor: Decor, frameCount: Int = 4, seed: Long = System.currentTimeMillis()): List<IntArray> {
+        if (frameCount <= 1) return listOf(generate(width, height, decor, seed))
+        return when (decor) {
+            Decor.SKY -> animSky(width, height, frameCount, seed)
+            Decor.WATER -> animWater(width, height, frameCount, seed)
+            Decor.SNOW -> animSnow(width, height, frameCount, seed)
+            Decor.STARS -> animStars(width, height, frameCount, seed)
+            Decor.FOREST -> animForest(width, height, frameCount, seed)
+            Decor.CAVE -> animCave(width, height, frameCount, seed)
+            Decor.GRASS -> animGrass(width, height, frameCount, seed)
+            Decor.DESERT -> animDesert(width, height, frameCount, seed)
+            else -> List(frameCount) { generate(width, height, decor, seed) }
+        }
+    }
+
     fun generate(width: Int, height: Int, decor: Decor, seed: Long = System.currentTimeMillis()): IntArray {
         val p = IntArray(width * height)
         val r = Random(seed)
@@ -510,6 +530,299 @@ object DecorGenerator {
                 x += ts
             }
             y += ts
+        }
+    }
+
+    // ============================================================
+    // ANIMATED DECOR FUNCTIONS (each returns a List<IntArray> of N frames)
+    // ============================================================
+
+    /** SKY: clouds drift horizontally. */
+    private fun animSky(w: Int, h: Int, frameCount: Int, seed: Long): List<IntArray> {
+        val r = Random(seed)
+        val base = IntArray(w * h)
+        // Static gradient + optional sun
+        for (y in 0 until h) {
+            val c = lerpColor(0xFF4A9BE5.toInt(), 0xFFCDE7FA.toInt(), y.toFloat() / max(1, h - 1))
+            for (x in 0 until w) base[y * w + x] = c
+        }
+        if (r.nextInt(3) != 0) {
+            val sr = (3 + w / 24).coerceAtLeast(2)
+            val sx = (w * 3 / 4) + r.nextInt(max(1, w / 6))
+            val sy = (h / 5) + r.nextInt(max(1, h / 8))
+            fillCircle(base, sx, sy, sr, 0xFFFFEB80.toInt(), w, h)
+            fillCircle(base, sx, sy, (sr * 2 / 3).coerceAtLeast(1), 0xFFFFFAE0.toInt(), w, h)
+        }
+        // Clouds (with stable seeds so they look the same shape across frames)
+        data class CloudP(val baseX: Int, val baseY: Int, val sz: Int, val seed: Long)
+        val nClouds = (2 + h / 32 + r.nextInt(3)).coerceAtLeast(1)
+        val clouds = (0 until nClouds).map {
+            CloudP(r.nextInt(w), r.nextInt(max(1, h * 3 / 5)),
+                   (2 + r.nextInt(2 + w / 24)).coerceAtLeast(2), r.nextLong())
+        }
+        return (0 until frameCount).map { f ->
+            val frame = base.copyOf()
+            val drift = (w * f) / frameCount
+            clouds.forEach { cp ->
+                val span = w + cp.sz * 4
+                val px = ((cp.baseX + drift) % span) - cp.sz * 2
+                drawCloud(frame, px, cp.baseY, cp.sz, w, h, Random(cp.seed))
+            }
+            frame
+        }
+    }
+
+    /** WATER: wave highlights shift horizontally. */
+    private fun animWater(w: Int, h: Int, frameCount: Int, seed: Long): List<IntArray> {
+        val r = Random(seed)
+        val base = IntArray(w * h)
+        for (y in 0 until h) {
+            val c = lerpColor(0xFF2A7BD8.toInt(), 0xFF0B2F5C.toInt(), y.toFloat() / max(1, h - 1))
+            for (x in 0 until w) base[y * w + x] = c
+        }
+        data class Wave(val y: Int, val x: Int, val len: Int)
+        val nWaves = (h / 3).coerceAtLeast(2)
+        val waves = (0 until nWaves).map {
+            Wave(r.nextInt(h), r.nextInt(w), 2 + r.nextInt(max(2, w / 8)))
+        }
+        return (0 until frameCount).map { f ->
+            val frame = base.copyOf()
+            val shift = (w * f) / frameCount
+            waves.forEach { wv ->
+                for (dx in 0 until wv.len) {
+                    setPx(frame, (wv.x + shift + dx) % w, wv.y, 0xFFD2E8FF.toInt(), w, h)
+                }
+            }
+            // Sparkles that twinkle (different per frame)
+            val sparkleR = Random(seed + f * 7919L)
+            repeat(w * h / 80 + 2) {
+                setPx(frame, sparkleR.nextInt(w), sparkleR.nextInt(h), 0xFFFFFFFF.toInt(), w, h)
+            }
+            frame
+        }
+    }
+
+    /** SNOW: snowflakes fall, looping at top. */
+    private fun animSnow(w: Int, h: Int, frameCount: Int, seed: Long): List<IntArray> {
+        val r = Random(seed)
+        // Static base (sky + snowy ground + pine trees)
+        val base = IntArray(w * h)
+        val groundY = (h * 3 / 5).coerceAtLeast(1)
+        for (y in 0 until groundY) {
+            val c = lerpColor(0xFF7E9FBF.toInt(), 0xFFCFE0EE.toInt(), y.toFloat() / max(1, groundY - 1))
+            for (x in 0 until w) base[y * w + x] = c
+        }
+        for (y in groundY until h) {
+            val c = lerpColor(0xFFF5F8FA.toInt(), 0xFFD5DEE8.toInt(), (y - groundY).toFloat() / max(1, h - groundY))
+            for (x in 0 until w) base[y * w + x] = c
+        }
+        val nTrees = (2 + r.nextInt(max(2, w / 10))).coerceAtMost(8)
+        repeat(nTrees) {
+            val tx = r.nextInt(w)
+            val ty = groundY + r.nextInt(max(1, h / 10))
+            val th = (h / 5 + r.nextInt(h / 4 + 1)).coerceAtLeast(4)
+            drawPineTree(base, tx, ty, th, 0xFF1B5E20.toInt(), w, h)
+            setPx(base, tx, ty - th, 0xFFFFFFFF.toInt(), w, h)
+        }
+        // Snowflakes with x, base y, speed (in pixels per total animation cycle)
+        data class Flake(val x: Int, val baseY: Int, val speed: Int, val jitter: Int)
+        val nFlakes = (w * groundY / 16).coerceAtLeast(10)
+        val flakes = (0 until nFlakes).map {
+            Flake(r.nextInt(w), r.nextInt(groundY), 2 + r.nextInt(max(2, groundY / 4)), r.nextInt(3) - 1)
+        }
+        return (0 until frameCount).map { f ->
+            val frame = base.copyOf()
+            val phase = f.toFloat() / frameCount
+            flakes.forEach { fl ->
+                val drop = (fl.speed * phase * frameCount).toInt()
+                val py = (fl.baseY + drop) % groundY
+                val px = (fl.x + fl.jitter * f) % w
+                setPx(frame, (px + w) % w, py, 0xFFFFFFFF.toInt(), w, h)
+            }
+            frame
+        }
+    }
+
+    /** STARS: stars twinkle, shooting star moves across frames. */
+    private fun animStars(w: Int, h: Int, frameCount: Int, seed: Long): List<IntArray> {
+        val r = Random(seed)
+        val base = IntArray(w * h)
+        for (y in 0 until h) {
+            val c = lerpColor(0xFF050524.toInt(), 0xFF1B1F4D.toInt(), y.toFloat() / max(1, h - 1))
+            for (x in 0 until w) base[y * w + x] = c
+        }
+        // Static moon
+        val drawMoon = r.nextBoolean()
+        if (drawMoon) {
+            val mr = (3 + r.nextInt(max(2, w / 12))).coerceAtLeast(2)
+            val mx = r.nextInt(max(1, w - mr * 2)) + mr
+            val my = r.nextInt(max(1, h * 2 / 5)) + mr
+            fillCircle(base, mx, my, mr, 0xFFFFFAE5.toInt(), w, h)
+            fillCircle(base, mx + mr / 3, my - mr / 4, (mr / 2).coerceAtLeast(1), 0xFFD9CFB8.toInt(), w, h)
+        }
+        // Stars with optional twinkle phase (each star has a frame at which it brightens)
+        data class Star(val x: Int, val y: Int, val baseColor: Int, val twinklePhase: Int)
+        val colors = intArrayOf(0xFFFFFFFF.toInt(), 0xFFFFE5B4.toInt(), 0xFFB4D8FF.toInt(), 0xFFFFB4D8.toInt())
+        val nStars = (w * h / 15).coerceAtLeast(20)
+        val stars = (0 until nStars).map {
+            Star(r.nextInt(w), r.nextInt(h), colors[r.nextInt(colors.size)], r.nextInt(frameCount))
+        }
+        // Shooting star (optional): moves across frames
+        val shooting = if (r.nextInt(2) == 0 && w >= 16) {
+            val sx0 = r.nextInt(w - w / 4); val sy0 = r.nextInt(h / 2)
+            val dx = w / 8 + r.nextInt(max(1, w / 8))
+            val dy = h / 16 + r.nextInt(max(1, h / 16))
+            Triple(sx0, sy0, intArrayOf(dx, dy))
+        } else null
+        return (0 until frameCount).map { f ->
+            val frame = base.copyOf()
+            stars.forEach { s ->
+                // Dim by default, bright on its twinkle frame
+                if ((f - s.twinklePhase + frameCount) % frameCount == 0) {
+                    setPx(frame, s.x, s.y, s.baseColor, w, h)
+                    if (w > 24 && (s.x + s.y) % 5 == 0) {
+                        setPx(frame, s.x + 1, s.y, s.baseColor, w, h)
+                        setPx(frame, s.x - 1, s.y, s.baseColor, w, h)
+                        setPx(frame, s.x, s.y + 1, s.baseColor, w, h)
+                        setPx(frame, s.x, s.y - 1, s.baseColor, w, h)
+                    }
+                } else {
+                    val dim = lerpColor(s.baseColor, base[s.y.coerceIn(0, h - 1) * w + s.x.coerceIn(0, w - 1)], 0.5f)
+                    setPx(frame, s.x, s.y, dim, w, h)
+                }
+            }
+            // Shooting star
+            shooting?.let {
+                val (x0, y0, d) = it
+                val len = (w / 6).coerceAtLeast(3)
+                val baseX = x0 + d[0] * f / frameCount
+                val baseY = y0 + d[1] * f / frameCount
+                for (k in 0 until len) {
+                    setPx(frame, baseX + k, baseY + k / 2,
+                        lerpColor(0xFFFFFFFF.toInt(), 0xFF1B1F4D.toInt(), k.toFloat() / len), w, h)
+                }
+            }
+            frame
+        }
+    }
+
+    /** FOREST: fireflies blink/move. */
+    private fun animForest(w: Int, h: Int, frameCount: Int, seed: Long): List<IntArray> {
+        val r = Random(seed)
+        val base = generate(w, h, Decor.FOREST, seed)
+        data class Firefly(val x: Int, val y: Int, val orbitR: Int, val phaseOff: Int)
+        val nFlies = (3 + r.nextInt(max(2, w / 16))).coerceAtMost(20)
+        val flies = (0 until nFlies).map {
+            Firefly(r.nextInt(w), r.nextInt(max(1, h * 5 / 8)),
+                    1 + r.nextInt(max(1, w / 24)), r.nextInt(frameCount))
+        }
+        return (0 until frameCount).map { f ->
+            val frame = base.copyOf()
+            flies.forEach { fly ->
+                val phase = ((f + fly.phaseOff) % frameCount).toDouble() / frameCount * 2 * Math.PI
+                val ox = fly.x + (kotlin.math.cos(phase) * fly.orbitR).toInt()
+                val oy = fly.y + (kotlin.math.sin(phase) * fly.orbitR).toInt()
+                val bright = (f + fly.phaseOff) % 2 == 0
+                setPx(frame, ox, oy, if (bright) 0xFFFFFF66.toInt() else 0xFFAA9933.toInt(), w, h)
+            }
+            frame
+        }
+    }
+
+    /** CAVE: crystals pulse (brightness varies). */
+    private fun animCave(w: Int, h: Int, frameCount: Int, seed: Long): List<IntArray> {
+        val r = Random(seed)
+        val base = IntArray(w * h)
+        // Generate the static cave WITHOUT crystals
+        val bg = 0xFF1A1A2A.toInt()
+        val rock = 0xFF3A3A4A.toInt()
+        val rockL = 0xFF4F4F5F.toInt()
+        fillRect(base, 0, 0, w - 1, h - 1, bg, w, h)
+        val nTop = (w / 6 + r.nextInt(w / 4 + 1)).coerceAtLeast(2)
+        repeat(nTop) {
+            val sx = r.nextInt(w)
+            val sh = (1 + r.nextInt(max(2, h / 4))).coerceAtLeast(1)
+            for (dy in 0 until sh) {
+                val tw = max(0, (sh - dy) / 3)
+                for (dx in -tw..tw) {
+                    setPx(base, sx + dx, dy, if (dy < sh / 3) rockL else rock, w, h)
+                }
+            }
+        }
+        val nBot = (nTop / 2).coerceAtLeast(1)
+        repeat(nBot) {
+            val sx = r.nextInt(w)
+            val sh = (1 + r.nextInt(max(2, h / 6))).coerceAtLeast(1)
+            for (dy in 0 until sh) {
+                val tw = max(0, dy / 3)
+                for (dx in -tw..tw) {
+                    setPx(base, sx + dx, h - 1 - dy, if (dy > sh * 2 / 3) rockL else rock, w, h)
+                }
+            }
+        }
+        // Crystals positions
+        data class Crystal(val x: Int, val y: Int, val color: Int, val phaseOff: Int)
+        val cColors = intArrayOf(0xFF00E5FF.toInt(), 0xFFFF66CC.toInt(), 0xFFFFEB3B.toInt(), 0xFF66FF99.toInt(), 0xFFB44CFF.toInt())
+        val nC = (3 + r.nextInt(5)).coerceAtMost(w * h / 8)
+        val crystals = (0 until nC).map {
+            Crystal(r.nextInt(w), (h / 2) + r.nextInt(max(1, h / 2)),
+                    cColors[r.nextInt(cColors.size)], r.nextInt(frameCount))
+        }
+        return (0 until frameCount).map { f ->
+            val frame = base.copyOf()
+            crystals.forEach { c ->
+                val pulse = (f + c.phaseOff) % frameCount
+                val factor = pulse.toFloat() / frameCount
+                val col = lerpColor(c.color, 0xFFFFFFFF.toInt(), 0.3f * kotlin.math.sin(factor * 2 * Math.PI).toFloat().let { (it + 1f) / 2f })
+                setPx(frame, c.x, c.y, col, w, h)
+                setPx(frame, c.x, c.y - 1, lerpColor(col, 0xFFFFFFFF.toInt(), 0.5f), w, h)
+                setPx(frame, c.x + 1, c.y, lerpColor(col, 0xFF000000.toInt(), 0.2f), w, h)
+            }
+            frame
+        }
+    }
+
+    /** GRASS: flowers blink colors slightly. */
+    private fun animGrass(w: Int, h: Int, frameCount: Int, seed: Long): List<IntArray> {
+        val r = Random(seed)
+        val base = generate(w, h, Decor.GRASS, seed)
+        // Sample a few flower pixel positions to make them sparkle
+        data class FlowerPos(val x: Int, val y: Int, val baseColor: Int)
+        val flowers = mutableListOf<FlowerPos>()
+        // Scan for bright pixels (flowers stand out from grass green)
+        for (y in 0 until h) for (x in 0 until w) {
+            val c = base[y * w + x]
+            val rr = (c shr 16) and 0xFF; val gg = (c shr 8) and 0xFF; val bb = c and 0xFF
+            if ((rr > 150 || bb > 150) && gg < 200) flowers.add(FlowerPos(x, y, c))
+        }
+        val pickedFlowers = flowers.shuffled(r).take(flowers.size / 4)
+        return (0 until frameCount).map { f ->
+            val frame = base.copyOf()
+            pickedFlowers.forEach { fp ->
+                if ((fp.x + fp.y + f) % 3 == 0) {
+                    setPx(frame, fp.x, fp.y, lerpColor(fp.baseColor, 0xFFFFFFFF.toInt(), 0.3f), w, h)
+                }
+            }
+            frame
+        }
+    }
+
+    /** DESERT: heat shimmer on horizon (very subtle). */
+    private fun animDesert(w: Int, h: Int, frameCount: Int, seed: Long): List<IntArray> {
+        val base = generate(w, h, Decor.DESERT, seed)
+        val horizon = h * 2 / 5
+        return (0 until frameCount).map { f ->
+            val frame = base.copyOf()
+            // Shimmer band: shift pixels at horizon line horizontally by 1px alternating
+            val band = 2
+            for (y in (horizon - band).coerceAtLeast(0)..(horizon + band).coerceAtMost(h - 1)) {
+                val dx = if (f % 2 == 0) 1 else -1
+                for (x in (if (dx > 0) w - 1 else 0) downTo 0 step 1) {
+                    val sx = (x - dx + w) % w
+                    if (sx in 0 until w) frame[y * w + x] = base[y * w + sx]
+                }
+            }
+            frame
         }
     }
 }

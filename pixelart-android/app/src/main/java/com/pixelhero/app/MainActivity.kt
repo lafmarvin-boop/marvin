@@ -371,19 +371,79 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDecorGenerator() {
+        val items = arrayOf(
+            "Décor statique → frame courante",
+            "Décor statique → image de fond",
+            "Décor ANIMÉ → 4 nouvelles frames",
+            "Décor ANIMÉ → 8 nouvelles frames"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("Générer un décor")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> pickAndGenerateStaticDecor(replaceFrame = true)
+                    1 -> pickAndGenerateStaticDecor(replaceFrame = false)
+                    2 -> pickAndGenerateAnimatedDecor(frameCount = 4)
+                    3 -> pickAndGenerateAnimatedDecor(frameCount = 8)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun pickAndGenerateStaticDecor(replaceFrame: Boolean) {
         val decors = DecorGenerator.Decor.values()
         val labels = decors.map { it.displayName }.toTypedArray()
         AlertDialog.Builder(this)
-            .setTitle("Générer un décor")
-            .setItems(labels) { _, which -> generateDecor(decors[which], replaceFrame = true) }
-            .setNeutralButton("Comme image de fond") { _, _ ->
-                // Show same list but generate as bg image
-                val sub = AlertDialog.Builder(this)
-                    .setTitle("Décor en image de fond")
-                    .setItems(labels) { _, w -> generateDecor(decors[w], replaceFrame = false) }
-                    .show()
+            .setTitle(if (replaceFrame) "Décor → frame courante" else "Décor → image de fond")
+            .setItems(labels) { _, which -> generateDecor(decors[which], replaceFrame) }
+            .show()
+    }
+
+    private fun pickAndGenerateAnimatedDecor(frameCount: Int) {
+        val decors = DecorGenerator.Decor.values()
+        val labels = decors.map {
+            val animated = it in listOf(
+                DecorGenerator.Decor.SKY, DecorGenerator.Decor.WATER, DecorGenerator.Decor.SNOW,
+                DecorGenerator.Decor.STARS, DecorGenerator.Decor.FOREST, DecorGenerator.Decor.CAVE,
+                DecorGenerator.Decor.GRASS, DecorGenerator.Decor.DESERT
+            )
+            it.displayName + if (animated) " 🎬" else " (statique)"
+        }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Décor animé $frameCount frames")
+            .setItems(labels) { _, which -> generateAnimatedDecor(decors[which], frameCount) }
+            .show()
+    }
+
+    private fun generateAnimatedDecor(decor: DecorGenerator.Decor, frameCount: Int) {
+        pushUndo()
+        val seed = System.currentTimeMillis()
+        val frames = DecorGenerator.generateFrames(project.width, project.height, decor, frameCount, seed)
+        val tag = "decor_${decor.name.lowercase()}"
+        // Insert generated frames AFTER current frame
+        var insertAt = project.currentIndex + 1
+        frames.forEachIndexed { _, pixels ->
+            val nf = Frame(project.width, project.height, pixels)
+            nf.tag = tag
+            project.frames.add(insertAt++, nf)
+        }
+        framesAdapter.notifyDataSetChanged()
+        toast("${frames.size} frames « ${decor.displayName} » générées")
+        // Offer re-roll
+        AlertDialog.Builder(this)
+            .setTitle("Décor animé « ${decor.displayName} »")
+            .setMessage("${frames.size} frames ajoutées. Régénérer avec une nouvelle variation ?")
+            .setPositiveButton("Régénérer") { _, _ ->
+                // Remove the just-added frames and regenerate
+                val removeStart = project.currentIndex + 1
+                for (i in 0 until frames.size) {
+                    if (removeStart < project.frames.size) project.frames.removeAt(removeStart)
+                }
+                framesAdapter.notifyDataSetChanged()
+                generateAnimatedDecor(decor, frameCount)
             }
-            .setNegativeButton(R.string.cancel, null)
+            .setNegativeButton("Garder", null)
             .show()
     }
 
@@ -854,9 +914,64 @@ class MainActivity : AppCompatActivity() {
     private fun loadBgImage(uri: Uri) {
         runCatching {
             contentResolver.openInputStream(uri)?.use { input ->
-                binding.canvas.bgBitmap = BitmapFactory.decodeStream(input)
+                val bmp = BitmapFactory.decodeStream(input)
+                binding.canvas.bgBitmap = bmp
+                if (bmp != null) showImageImportOptions(bmp)
             }
         }
+    }
+
+    private fun showImageImportOptions(bmp: Bitmap) {
+        val items = arrayOf(
+            "Garder comme image de fond uniquement",
+            "Pixeliser → frame courante (avec tramage)",
+            "Pixeliser → frame courante (sans tramage)",
+            "Extraire palette uniquement (16 couleurs)",
+            "Pixeliser → frame + remplacer palette"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("Image importée")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> {} // keep as bg only
+                    1 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = false)
+                    2 -> pixelizeIntoFrame(bmp, dither = false, applyPalette = false)
+                    3 -> extractPaletteFromBg(bmp)
+                    4 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = true)
+                }
+            }
+            .show()
+    }
+
+    private fun pixelizeIntoFrame(bmp: Bitmap, dither: Boolean, applyPalette: Boolean) {
+        pushUndo()
+        val pixels = ImageToPixelArt.pixelize(
+            bitmap = bmp,
+            w = project.width, h = project.height,
+            paletteSize = 16,
+            fit = project.bgFit,
+            dither = dither
+        )
+        pixels.copyInto(project.currentFrame.pixels)
+        binding.canvas.syncFrameBitmap()
+        framesAdapter.notifyItemChanged(project.currentIndex)
+        if (applyPalette) {
+            val pal = ImageToPixelArt.extractPalette(pixels, 16)
+            project.palette.clear()
+            project.palette.addAll(pal.toList())
+            paletteAdapter.notifyDataSetChanged()
+        }
+        toast("Pixel art généré (${pixels.size} pixels)")
+    }
+
+    private fun extractPaletteFromBg(bmp: Bitmap) {
+        val downscaled = ImageToPixelArt.downscale(bmp, project.width, project.height, project.bgFit)
+        val pal = ImageToPixelArt.extractPalette(downscaled, 16)
+        if (pal.isEmpty()) { toast("Aucune couleur extraite"); return }
+        project.palette.clear()
+        project.palette.addAll(pal.toList())
+        paletteAdapter.notifyDataSetChanged()
+        toast("${pal.size} couleurs extraites")
     }
 
     // ---- Export ----
