@@ -120,6 +120,9 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     // Rappels actifs
     val remindersMgr = remember { com.marvin.assistant.reminders.RemindersManager(ctx) }
     var reminders by remember { mutableStateOf(remindersMgr.all()) }
+    var newRoutineName by remember { mutableStateOf("") }
+    var newRoutineSteps by remember { mutableStateOf("") }
+    var editingRoutineName by remember { mutableStateOf<String?>(null) }
     val verifier = remember { SpeakerVerifierFactory.create(ctx) }
     var voiceBioReady by remember { mutableStateOf(verifier.isReady()) }
     var voiceBioEnrolled by remember { mutableStateOf(verifier.isEnrolled()) }
@@ -612,6 +615,36 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             },
             modifier = Modifier.fillMaxWidth()
         ) { Text("Restaurer les routines par défaut") }
+
+        // Édition / ajout de routine
+        Spacer(Modifier.height(8.dp))
+        Text("Ajouter / modifier une routine", style = MaterialTheme.typography.bodyMedium)
+        OutlinedTextField(
+            value = newRoutineName,
+            onValueChange = { newRoutineName = it },
+            label = { Text("Nom de la routine (ex. matin)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = newRoutineSteps,
+            onValueChange = { newRoutineSteps = it },
+            label = { Text("Étapes séparées par | (ex. donne moi l'heure|météo|news)") },
+            singleLine = false,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Button(
+            onClick = {
+                val steps = newRoutineSteps.split("|").map { it.trim() }.filter { it.isNotEmpty() }
+                if (newRoutineName.isNotBlank() && steps.isNotEmpty()) {
+                    routinesMgr.put(newRoutineName.trim(), steps)
+                    routines = routinesMgr.all()
+                    newRoutineName = ""
+                    newRoutineSteps = ""
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Enregistrer cette routine") }
 
         // ------ RAPPELS ------
         Spacer(Modifier.height(20.dp))
