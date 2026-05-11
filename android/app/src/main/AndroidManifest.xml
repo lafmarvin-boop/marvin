@@ -120,6 +120,17 @@
         </service>
 
         <service
+            android:name=".qs.JarvisTileService"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="Jarvis"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
             android:name=".service.NotificationCaptureService"
             android:exported="true"
             android:label="Marvin – notifications"
