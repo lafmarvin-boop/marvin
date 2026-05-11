@@ -98,7 +98,7 @@ private fun OnboardingScreen(
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val settings = remember { MarvinSettings(ctx) }
     var apiKey by remember { mutableStateOf(settings.anthropicApiKey) }
-    val accent = Color(0xFF00E5FF)
+    val accent = accentColor()
     Box(
         modifier = Modifier
             .fillMaxSize()

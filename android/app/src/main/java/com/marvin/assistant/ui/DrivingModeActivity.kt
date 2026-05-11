@@ -84,6 +84,7 @@ private fun DrivingModeScreen(onExit: () -> Unit) {
     val isThinking = phase == DiscussionPhase.Thinking
     val isSpeaking = phase is DiscussionPhase.Speaking
 
+    val accent = accentColor()
     val bgColor = when {
         isThinking -> Color(0xFF1A237E)  // bleu profond
         isSpeaking -> Color(0xFF1B5E20)  // vert profond
@@ -111,7 +112,7 @@ private fun DrivingModeScreen(onExit: () -> Unit) {
                     "MODE VOITURE",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF00E5FF)
+                    color = accent
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
@@ -130,7 +131,7 @@ private fun DrivingModeScreen(onExit: () -> Unit) {
                 else -> "Inactif"
             }
             val phaseColor = when {
-                isListening -> Color(0xFF00E5FF)
+                isListening -> accent
                 isThinking -> Color(0xFFFFB300)
                 isSpeaking -> Color(0xFF4CAF50)
                 else -> Color(0xFF607D8B)

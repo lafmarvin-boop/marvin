@@ -178,11 +178,12 @@ private fun ReactorVisualizer(phase: DiscussionPhase, modifier: Modifier = Modif
         ), label = "pulse"
     )
 
+    val accent = accentColor()
     val targetColor = when (phase) {
-        DiscussionPhase.Listening -> Color(0xFF80D8FF)
-        is DiscussionPhase.Speaking -> Color(0xFF29B6F6)
+        DiscussionPhase.Listening -> accent.copy(alpha = 0.85f)
+        is DiscussionPhase.Speaking -> accent
         DiscussionPhase.Thinking -> Color(0xFF7C4DFF)
-        DiscussionPhase.Idle -> Color(0xFF4FC3F7)
+        DiscussionPhase.Idle -> accent
     }
     val color by animateColorAsState(
         targetValue = targetColor,
