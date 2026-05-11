@@ -83,6 +83,28 @@ class Tools(
         return readCallLog(input)
     }
 
+    /** Lit les emails non lus via les notifications Gmail / Outlook. */
+    fun readEmailsDirect(): String {
+        if (!NotificationCaptureService.isActive()) {
+            return "Accès aux notifications non activé pour les emails."
+        }
+        val mailPackages = setOf(
+            "com.google.android.gm",                 // Gmail
+            "com.microsoft.office.outlook",          // Outlook
+            "ch.protonmail.android",                 // ProtonMail
+            "com.fastmail.app",                      // Fastmail
+            "com.samsung.android.email.provider",    // Samsung Email
+            "com.yahoo.mobile.client.android.mail"   // Yahoo
+        )
+        val notifs = NotificationCaptureService.snapshot(20)
+            .filter { it.packageName in mailPackages }
+        if (notifs.isEmpty()) return "Tu n'as aucun nouvel email."
+        return "Tu as ${notifs.size} email${if (notifs.size > 1) "s" else ""} non lu${if (notifs.size > 1) "s" else ""} : " +
+            notifs.take(5).joinToString(". ") { n ->
+                "${n.title} — ${n.text.take(120)}"
+            }
+    }
+
     /** Lit les notifications non lues. */
     fun readUnreadNotificationsDirect(): String {
         if (!NotificationCaptureService.isActive()) {

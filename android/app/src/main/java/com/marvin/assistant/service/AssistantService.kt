@@ -450,6 +450,7 @@ class AssistantService : LifecycleService() {
             is MarvinIntent.ReadMissedCalls -> speakWithPhase(
                 tools.readMissedCallsDirect()
             )
+            is MarvinIntent.ReadEmails -> speakWithPhase(tools.readEmailsDirect())
             is MarvinIntent.RunRoutine -> runRoutine(parsed.name)
             is MarvinIntent.Translate -> {
                 val prompt = if (parsed.targetLanguage != null) {
@@ -585,6 +586,10 @@ class AssistantService : LifecycleService() {
             }
             if (parsedFu is MarvinIntent.ReadMissedCalls) {
                 speakWithPhase(tools.readMissedCallsDirect())
+                continue
+            }
+            if (parsedFu is MarvinIntent.ReadEmails) {
+                speakWithPhase(tools.readEmailsDirect())
                 continue
             }
             if (parsedFu is MarvinIntent.RunRoutine) {

@@ -57,6 +57,7 @@ class ActionExecutor(private val context: Context) {
         is MarvinIntent.CreateCalendarEvent,
         is MarvinIntent.AddNote,
         MarvinIntent.ReadNotes,
-        MarvinIntent.ClearNotes -> ""
+        MarvinIntent.ClearNotes,
+        MarvinIntent.ReadEmails -> ""
     }
 }

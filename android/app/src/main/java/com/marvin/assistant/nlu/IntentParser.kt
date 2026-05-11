@@ -129,6 +129,13 @@ class IntentParser {
             MarvinIntent.ReadMissedCalls
         },
         Rule(Regex("""qui (?:m'a|m a)\s+appelé""")) { MarvinIntent.ReadMissedCalls },
+        // Emails
+        Rule(Regex("""(?:lis|donne|montre)(?:[- ]moi)?\s+(?:les |mes )?(?:emails|mails|courriels|messages non lus)""")) {
+            MarvinIntent.ReadEmails
+        },
+        Rule(Regex("""(?:est-ce que )?j'ai (?:des |de )?(?:emails|mails|nouveaux mails)""")) {
+            MarvinIntent.ReadEmails
+        },
 
         // ---- Routines ----
         // "lance ma routine matin" / "routine matin" / "fais la routine soir"
