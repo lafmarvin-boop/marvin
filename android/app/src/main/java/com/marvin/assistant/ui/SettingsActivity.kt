@@ -755,6 +755,44 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             Text(backupStatus, style = MaterialTheme.typography.bodySmall)
         }
 
+        // ------ DIAGNOSTIC DUMP ------
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = {
+                try {
+                    val dir = ctx.getExternalFilesDir(null) ?: ctx.filesDir
+                    val file = java.io.File(dir, "marvin-diag-${System.currentTimeMillis()}.txt")
+                    val s = settings
+                    val sb = StringBuilder()
+                    sb.append("=== Marvin diagnostic ===\n")
+                    sb.append("Date: ${java.util.Date()}\n")
+                    sb.append("Backend: ${s.backendChoice}\n")
+                    sb.append("Claude model: ${s.claudeModel}\n")
+                    sb.append("Local only: ${s.localOnlyMode}\n")
+                    sb.append("Web search: ${s.webSearchEnabled}\n")
+                    sb.append("Wake word: ${s.wakeWord}\n")
+                    sb.append("TTS backend: ${s.ttsBackend}\n")
+                    sb.append("Voice bio: ${s.voiceBiometricEnabled} threshold=${s.voiceBiometricThreshold}\n")
+                    sb.append("Sleeping: ${s.isSleeping}\n")
+                    sb.append("Quota used today: ${s.quotaUsedToday()}/${s.dailyLimit}\n")
+                    sb.append("Has Claude key: ${s.anthropicApiKey.isNotBlank()}\n")
+                    sb.append("Has ElevenLabs key: ${s.elevenLabsApiKey.isNotBlank()}\n")
+                    sb.append("Has AudD key: ${s.auddApiKey.isNotBlank()}\n")
+                    sb.append("Home Assistant configured: ${s.homeAssistantUrl.isNotBlank()}\n")
+                    sb.append("HTTP server enabled: ${s.httpServerEnabled} port=${s.httpServerPort}\n")
+                    sb.append("Cert pinning: ${s.certPinningEnabled}\n")
+                    sb.append("Onboarding done: ${s.onboardingDone}\n")
+                    sb.append("\n=== Audit log (50 derniers) ===\n")
+                    auditLog.all().take(50).forEach { sb.append(it.describe()).append('\n') }
+                    file.writeText(sb.toString())
+                    backupStatus = "Diagnostic exporté : ${file.absolutePath}"
+                } catch (t: Throwable) {
+                    backupStatus = "Erreur diagnostic : ${t.message}"
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Exporter le diagnostic (debug)") }
+
         // ------ AUDIT LOG ------
         Spacer(Modifier.height(20.dp))
         Text("Historique d'activité (audit)",
