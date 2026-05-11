@@ -88,6 +88,11 @@ class Settings(context: Context) {
         get() = plain.getBoolean(KEY_CERT_PINNING, false)
         set(value) { plain.edit().putBoolean(KEY_CERT_PINNING, value).apply() }
 
+    /** True après que l'utilisateur a terminé l'onboarding wizard. */
+    var onboardingDone: Boolean
+        get() = plain.getBoolean(KEY_ONBOARDING_DONE, false)
+        set(value) { plain.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply() }
+
     /** Backend TTS choisi. Auto = ElevenLabs si clé dispo + réseau, sinon Piper. */
     var ttsBackend: TtsBackend
         get() = TtsBackend.entries.firstOrNull {
@@ -266,6 +271,7 @@ class Settings(context: Context) {
         private const val KEY_ELEVEN_VOICE = "eleven_voice_id"
         private const val KEY_TTS_BACKEND = "tts_backend"
         private const val KEY_CERT_PINNING = "cert_pinning_enabled"
+        private const val KEY_ONBOARDING_DONE = "onboarding_done"
         private const val KEY_QUOTA_DAY = "quota_day"
         private const val KEY_QUOTA_USED = "quota_used"
         private const val KEY_CONFIRM_SENSITIVE = "confirm_sensitive"

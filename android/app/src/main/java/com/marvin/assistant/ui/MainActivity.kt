@@ -81,6 +81,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Redirige vers l'onboarding au premier lancement
+        val settings = MarvinSettings(this)
+        if (!settings.onboardingDone) {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+            finish()
+            return
+        }
         setContent {
             MaterialTheme {
                 HomeScreen(
