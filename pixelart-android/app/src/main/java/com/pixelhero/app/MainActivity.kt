@@ -1744,8 +1744,19 @@ class MainActivity : AppCompatActivity() {
     private fun resizeProject(w: Int, h: Int) {
         val newFrames = project.frames.map { old ->
             val nf = Frame(w, h).apply { tag = old.tag; delayMs = old.delayMs }
+            // Preserve all layers
+            nf.layers.clear()
             val cw = minOf(old.width, w); val ch = minOf(old.height, h)
-            for (y in 0 until ch) for (x in 0 until cw) nf.set(x, y, old.get(x, y))
+            old.layers.forEach { oldLayer ->
+                val newLayer = Layer(w, h, oldLayer.name).apply {
+                    visible = oldLayer.visible; opacity = oldLayer.opacity
+                }
+                for (y in 0 until ch) for (x in 0 until cw) {
+                    newLayer.pixels[y * w + x] = oldLayer.pixels[y * old.width + x]
+                }
+                nf.layers.add(newLayer)
+            }
+            nf.activeLayer = old.activeLayer.coerceAtMost(nf.layers.size - 1)
             nf
         }.toMutableList()
         project.width = w; project.height = h
