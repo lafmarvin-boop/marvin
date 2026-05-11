@@ -67,6 +67,9 @@ sealed class MarvinIntent {
     /** Capture une photo et l'analyse via Claude vision. */
     data class TakePhotoAndAnalyze(val question: String = "Qu'est-ce que tu vois sur cette image ?") : MarvinIntent()
 
+    /** Liste les commandes disponibles à voix haute. */
+    data object Help : MarvinIntent()
+
     /** Mémoire long terme : ajouter un fait. */
     data class RememberFact(val fact: String) : MarvinIntent()
     /** Mémoire long terme : oublier un fait par mot-clé. */

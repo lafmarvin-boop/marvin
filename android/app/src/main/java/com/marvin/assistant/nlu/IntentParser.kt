@@ -153,6 +153,12 @@ class IntentParser {
             MarvinIntent.Translate(it.groupValues[1].trim(), null)
         },
 
+        // ---- Help ----
+        // "qu'est-ce que tu sais faire" / "aide" / "que peux-tu faire"
+        Rule(Regex("""(?:qu'est-ce que tu sais faire|que peux[- ]tu faire|aide moi|aide-moi|de l'aide|liste tes commandes)""")) {
+            MarvinIntent.Help
+        },
+
         // ---- Memoire long terme ----
         // "souviens-toi que ma femme s'appelle Marie"
         // "rappelle-toi que mon code wifi est ABC123"

@@ -52,6 +52,7 @@ class ActionExecutor(private val context: Context) {
         is MarvinIntent.SmartScene,
         is MarvinIntent.RememberFact,
         is MarvinIntent.ForgetFact,
-        MarvinIntent.ListMemory -> ""
+        MarvinIntent.ListMemory,
+        MarvinIntent.Help -> ""
     }
 }

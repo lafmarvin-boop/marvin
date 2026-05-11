@@ -260,6 +260,19 @@ class AssistantService : LifecycleService() {
         speakWithPhase(answer)
     }
 
+    private fun buildHelpText(): String = """
+        Voici ce que je peux faire. Pour la météo, l'heure, les SMS, les
+        appels manqués, les notifications, demande-moi directement. Pour
+        les rappels, dis « rappelle-moi de X dans Y minutes ». Pour la
+        liste de courses, « ajoute X à la liste ». Pour les calculs,
+        donne-moi l'opération. Pour la traduction, « traduis X en Y ».
+        Pour mes routines, « routine matin, soir ou news ». Pour prendre
+        une photo, « prends une photo ». Pour t'apprendre quelque chose,
+        « souviens-toi que X ». Pour me corriger, « quand je dis X
+        comprends Y ». Et pour tout le reste, pose-moi simplement ta
+        question, je chercherai sur internet si besoin.
+    """.trimIndent().replace("\n", " ").replace(Regex("\\s+"), " ")
+
     private fun stripWakeWord(transcript: String): String {
         var result = transcript
         for (variant in currentWakeVariants() + listOf("bonjour")) {
@@ -463,6 +476,7 @@ class AssistantService : LifecycleService() {
                 val ok = memory.forgetFact(parsed.query)
                 speakWithPhase(if (ok) "OK, j'ai oublié." else "Je n'avais rien sur ça.")
             }
+            is MarvinIntent.Help -> speakWithPhase(buildHelpText())
             is MarvinIntent.ListMemory -> {
                 val f = memory.facts()
                 speakWithPhase(if (f.isEmpty()) "Je ne sais rien sur toi pour l'instant."
@@ -596,6 +610,10 @@ class AssistantService : LifecycleService() {
             if (parsedFu is MarvinIntent.ForgetFact) {
                 val ok = memory.forgetFact(parsedFu.query)
                 speakWithPhase(if (ok) "OK, oublié." else "Je n'avais rien là-dessus.")
+                continue
+            }
+            if (parsedFu is MarvinIntent.Help) {
+                speakWithPhase(buildHelpText())
                 continue
             }
             if (parsedFu is MarvinIntent.ListMemory) {
