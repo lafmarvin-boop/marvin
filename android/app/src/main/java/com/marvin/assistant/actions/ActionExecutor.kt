@@ -60,6 +60,7 @@ class ActionExecutor(private val context: Context) {
         MarvinIntent.ClearNotes,
         MarvinIntent.ReadEmails,
         MarvinIntent.RecognizeMusic,
-        is MarvinIntent.StartInterpreter -> ""
+        is MarvinIntent.StartInterpreter,
+        MarvinIntent.StepsCount -> ""
     }
 }

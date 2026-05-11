@@ -18,6 +18,7 @@
     <!-- Pour les rappels / réveils / timers via AlarmManager exact. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <!-- Action permissions -->
     <uses-permission android:name="android.permission.SEND_SMS" />

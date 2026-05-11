@@ -522,6 +522,8 @@ class AssistantService : LifecycleService() {
                 speakWithPhase(answer)
             }
             is MarvinIntent.StartInterpreter -> startInterpreter(parsed.foreignLanguage)
+            is MarvinIntent.StepsCount ->
+                speakWithPhase(com.marvin.assistant.health.StepCounter(this).stepsToday())
             is MarvinIntent.RunRoutine -> runRoutine(parsed.name)
             is MarvinIntent.Translate -> {
                 val prompt = if (parsed.targetLanguage != null) {
@@ -674,6 +676,10 @@ class AssistantService : LifecycleService() {
             }
             if (parsedFu is MarvinIntent.StartInterpreter) {
                 startInterpreter(parsedFu.foreignLanguage)
+                continue
+            }
+            if (parsedFu is MarvinIntent.StepsCount) {
+                speakWithPhase(com.marvin.assistant.health.StepCounter(this).stepsToday())
                 continue
             }
             if (parsedFu is MarvinIntent.RunRoutine) {

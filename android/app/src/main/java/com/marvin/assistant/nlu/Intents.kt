@@ -67,6 +67,9 @@ sealed class MarvinIntent {
     /** Mode interprète : boucle traduction FR ↔ langue cible. */
     data class StartInterpreter(val foreignLanguage: String) : MarvinIntent()
 
+    /** Compte les pas du jour (capteur step counter). */
+    data object StepsCount : MarvinIntent()
+
     /** Exécute une routine pré-définie (ex. "routine matin" = méteo + agenda + news). */
     data class RunRoutine(val name: String) : MarvinIntent()
 

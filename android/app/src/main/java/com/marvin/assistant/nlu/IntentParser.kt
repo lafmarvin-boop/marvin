@@ -169,6 +169,12 @@ class IntentParser {
             MarvinIntent.StartInterpreter(it.groupValues[1].trim())
         },
 
+        // ---- Step counter ----
+        Rule(Regex("""(?:combien de )?pas (?:aujourd'hui|j'ai fait|fais|fait)""")) {
+            MarvinIntent.StepsCount
+        },
+        Rule(Regex("""compte (?:mes |les )?pas""")) { MarvinIntent.StepsCount },
+
         // ---- Routines ----
         // "lance ma routine matin" / "routine matin" / "fais la routine soir"
         Rule(Regex("""(?:lance|démarre|exécute|fais|active)\s+(?:ma |la |une )?routine\s+(.+)""")) {
