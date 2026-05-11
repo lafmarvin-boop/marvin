@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -142,7 +143,7 @@ private fun OnboardingScreen(
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238))
                     ) { Text("Précédent") }
-                    Spacer(Modifier.height(0.dp).fillMaxWidth(0.05f))
+                    Spacer(Modifier.width(8.dp))
                 }
                 Button(
                     onClick = {

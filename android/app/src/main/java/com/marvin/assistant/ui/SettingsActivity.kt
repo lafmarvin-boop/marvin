@@ -128,7 +128,6 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var reminders by remember { mutableStateOf(remindersMgr.all()) }
     var newRoutineName by remember { mutableStateOf("") }
     var newRoutineSteps by remember { mutableStateOf("") }
-    var editingRoutineName by remember { mutableStateOf<String?>(null) }
     val verifier = remember { SpeakerVerifierFactory.create(ctx) }
     var voiceBioReady by remember { mutableStateOf(verifier.isReady()) }
     var voiceBioEnrolled by remember { mutableStateOf(verifier.isEnrolled()) }
