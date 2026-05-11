@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg">
+
+    <!-- TOP BAR -->
+    <LinearLayout
+        android:id="@+id/topBar"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:background="@color/bg_dark"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="4dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageButton
+            android:id="@+id/btnMenu"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_menu"
+            android:background="@drawable/tool_button_bg"
+            android:contentDescription="@string/menu"
+            android:tint="@color/text" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/app_name"
+            android:textColor="@color/accent_light"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:letterSpacing="0.05" />
+
+        <ImageButton
+            android:id="@+id/btnUndo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_undo"
+            android:background="@drawable/tool_button_bg"
+            android:contentDescription="@string/undo"
+            android:tint="@color/text" />
+
+        <ImageButton
+            android:id="@+id/btnRedo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_redo"
+            android:background="@drawable/tool_button_bg"
+            android:contentDescription="@string/redo"
+            android:tint="@color/text" />
+
+        <ImageButton
+            android:id="@+id/btnPlay"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_play"
+            android:background="@drawable/tool_button_bg"
+            android:contentDescription="@string/play"
+            android:tint="@color/text" />
+    </LinearLayout>
+
+    <!-- LEFT TOOLBAR -->
+    <ScrollView
+        android:id="@+id/leftBar"
+        android:layout_width="52dp"
+        android:layout_height="0dp"
+        android:background="@color/bg_dark"
+        android:scrollbars="none"
+        app:layout_constraintTop_toBottomOf="@id/topBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="4dp">
+
+            <ImageButton
+                android:id="@+id/toolPencil"
+                style="@style/ToolButton"
+                android:src="@drawable/ic_pencil"
+                android:contentDescription="@string/tool_pencil" />
+            <ImageButton
+                android:id="@+id/toolEraser"
+                style="@style/ToolButton"
+                android:src="@drawable/ic_eraser"
+                android:contentDescription="@string/tool_eraser" />
+            <ImageButton
+                android:id="@+id/toolFill"
+                style="@style/ToolButton"
+                android:src="@drawable/ic_fill"
+                android:contentDescription="@string/tool_fill" />
+            <ImageButton
+                android:id="@+id/toolPicker"
+                style="@style/ToolButton"
+                android:src="@drawable/ic_picker"
+                android:contentDescription="@string/tool_picker" />
+            <ImageButton
+                android:id="@+id/toolLine"
+                style="@style/ToolButton"
+                android:src="@drawable/ic_line"
+                android:contentDescription="@string/tool_line" />
+            <ImageButton
+                android:id="@+id/toolRect"
+                style="@style/ToolButton"
+                android:src="@drawable/ic_rect"
+                android:contentDescription="@string/tool_rect" />
+            <ImageButton
+                android:id="@+id/toolRectFill"
+                style="@style/ToolButton"
+                android:src="@drawable/ic_rect_fill"
+                android:contentDescription="@string/tool_rect_fill" />
+            <ImageButton
+                android:id="@+id/toolMove"
+                style="@style/ToolButton"
+                android:src="@drawable/ic_move"
+                android:contentDescription="@string/tool_move" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/bg_panel"
+                android:layout_marginVertical="6dp" />
+
+            <ImageButton
+                android:id="@+id/btnClear"
+                style="@style/ToolButton"
+                android:src="@drawable/ic_clear"
+                android:contentDescription="@string/clear_frame" />
+            <ImageButton
+                android:id="@+id/btnGrid"
+                style="@style/ToolButton"
+                android:src="@drawable/ic_grid"
+                android:contentDescription="@string/grid" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- CANVAS -->
+    <com.pixelhero.app.PixelCanvasView
+        android:id="@+id/canvas"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/bg"
+        app:layout_constraintTop_toBottomOf="@id/topBar"
+        app:layout_constraintStart_toEndOf="@id/leftBar"
+        app:layout_constraintEnd_toStartOf="@id/rightPanel"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <!-- RIGHT PANEL -->
+    <ScrollView
+        android:id="@+id/rightPanel"
+        android:layout_width="240dp"
+        android:layout_height="0dp"
+        android:background="@color/bg_dark"
+        android:padding="8dp"
+        app:layout_constraintTop_toBottomOf="@id/topBar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Color section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/panel_bg"
+                android:padding="10dp"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    style="@style/SectionTitle"
+                    android:text="Couleur" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp">
+
+                    <View
+                        android:id="@+id/currentColorSwatch"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="#FF5577" />
+
+                    <TextView
+                        android:id="@+id/currentColorHex"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="#FF5577"
+                        android:textColor="@color/text"
+                        android:fontFamily="monospace"
+                        android:paddingHorizontal="8dp" />
+
+                    <Button
+                        android:id="@+id/btnPickColor"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="…"
+                        android:textColor="@color/text"
+                        android:backgroundTint="@color/bg_panel"
+                        android:minWidth="0dp"
+                        android:paddingHorizontal="12dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp" />
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/paletteList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:overScrollMode="never" />
+
+                <TextView
+                    style="@style/SectionSubtitle"
+                    android:text="Récentes"
+                    android:layout_marginTop="6dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recentList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:overScrollMode="never" />
+            </LinearLayout>
+
+            <!-- Background reference -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/panel_bg"
+                android:padding="10dp"
+                android:layout_marginBottom="8dp">
+
+                <TextView style="@style/SectionTitle" android:text="@string/bg_reference" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnBgLoad"
+                        style="@style/SmallButton"
+                        android:text="@string/bg_load"
+                        android:layout_weight="1" />
+                    <Button
+                        android:id="@+id/btnBgClear"
+                        style="@style/SmallButton"
+                        android:text="@string/bg_clear"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/Caption"
+                    android:text="@string/opacity"
+                    android:layout_marginTop="6dp" />
+                <SeekBar
+                    android:id="@+id/bgOpacity"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="100"
+                    android:progress="50" />
+
+                <TextView
+                    style="@style/Caption"
+                    android:text="@string/onion_skin" />
+                <SeekBar
+                    android:id="@+id/onionOpacity"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="100"
+                    android:progress="30" />
+            </LinearLayout>
+
+            <!-- Frames -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/panel_bg"
+                android:padding="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        style="@style/SectionTitle"
+                        android:text="@string/frames"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/fps"
+                        android:textColor="@color/text_dim"
+                        android:textSize="11sp"
+                        android:layout_marginEnd="4dp" />
+
+                    <EditText
+                        android:id="@+id/fpsInput"
+                        android:layout_width="48dp"
+                        android:layout_height="32dp"
+                        android:inputType="number"
+                        android:text="8"
+                        android:textColor="@color/text"
+                        android:background="@color/bg"
+                        android:gravity="center"
+                        android:padding="4dp" />
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/framesList"
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp"
+                    android:background="@color/bg"
+                    android:padding="4dp"
+                    android:layout_marginTop="6dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="6dp">
+
+                    <Button
+                        android:id="@+id/btnFrameAdd"
+                        style="@style/SmallButton"
+                        android:text="@string/add_frame"
+                        android:layout_weight="1" />
+                    <Button
+                        android:id="@+id/btnFrameDup"
+                        style="@style/SmallButton"
+                        android:text="@string/duplicate"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1" />
+                    <Button
+                        android:id="@+id/btnFrameDel"
+                        style="@style/SmallButton"
+                        android:text="@string/delete"
+                        android:layout_marginStart="4dp"
+                        android:backgroundTint="@color/danger"
+                        android:layout_weight="1" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
