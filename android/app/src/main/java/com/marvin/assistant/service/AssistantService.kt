@@ -20,6 +20,7 @@ import com.marvin.assistant.audio.SpeakerVerifier
 import com.marvin.assistant.memory.LongTermMemory
 import com.marvin.assistant.audio.SpeakerVerifierFactory
 import com.marvin.assistant.audio.SpeechToText
+import com.marvin.assistant.audio.WhisperStt
 import com.marvin.assistant.audio.SttCorrections
 import com.marvin.assistant.audio.TtsEngine
 import com.marvin.assistant.audio.TtsEngineFactory
@@ -55,6 +56,7 @@ class AssistantService : LifecycleService() {
     private lateinit var voskModel: VoskModelHolder
     private lateinit var wakeWord: WakeWordEngine
     private lateinit var stt: SpeechToText
+    private var whisperStt: WhisperStt? = null
     private lateinit var tts: TtsEngine
     private lateinit var parser: IntentParser
     private lateinit var executor: ActionExecutor
@@ -139,6 +141,7 @@ class AssistantService : LifecycleService() {
             voiceBiometricThreshold = { settings.voiceBiometricThreshold }
         )
         stt = SpeechToText(this, voskModel)
+        whisperStt = if (settings.useWhisperStt) WhisperStt(this) else null
         tts = TtsEngineFactory.create(this)
         parser = IntentParser().also {
             val plugins = com.marvin.assistant.plugins.PluginManager(this)
@@ -184,6 +187,25 @@ class AssistantService : LifecycleService() {
     }
 
     private fun currentWakeVariants(): List<String> = settings.wakeVariantsList()
+
+    /**
+     * Helper STT : delegue a Whisper si configure + dispo, sinon Vosk.
+     * Centralise pour que toutes les ecoutes profitent du switch.
+     */
+    private suspend fun listenStt(
+        silenceTimeoutMs: Long = 1800L,
+        maxDurationMs: Long = 8_000L
+    ): String? {
+        val w = whisperStt
+        if (settings.useWhisperStt && w != null && w.isReady()) {
+            return w.listenOnce(
+                maxDurationMs = maxDurationMs,
+                silenceTimeoutMs = silenceTimeoutMs,
+                language = settings.whisperLanguage
+            )
+        }
+        return stt.listenOnce(silenceTimeoutMs = silenceTimeoutMs, maxDurationMs = maxDurationMs)
+    }
 
     private fun onWakeWordDetected(wakeTranscript: String) {
         val sleeping = settings.isSleeping

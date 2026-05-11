@@ -115,6 +115,14 @@ class Settings(context: Context) {
         get() = plain.getString(KEY_SYSTEM_PROMPT, "") ?: ""
         set(value) { plain.edit().putString(KEY_SYSTEM_PROMPT, value).apply() }
 
+    /** Utiliser Whisper plutôt que Vosk pour la STT. Nécessite le modèle pushé. */
+    var useWhisperStt: Boolean
+        get() = plain.getBoolean(KEY_USE_WHISPER, false)
+        set(value) { plain.edit().putBoolean(KEY_USE_WHISPER, value).apply() }
+    var whisperLanguage: String
+        get() = plain.getString(KEY_WHISPER_LANG, "fr") ?: "fr"
+        set(value) { plain.edit().putString(KEY_WHISPER_LANG, value.lowercase().trim()).apply() }
+
     /** Token AudD pour la reconnaissance musicale. Vide = feature désactivée. */
     var auddApiKey: String
         get() = secure.getString(KEY_AUDD_KEY, "") ?: ""
@@ -343,6 +351,8 @@ class Settings(context: Context) {
         private const val KEY_HTTP_TOKEN = "http_server_token"
         private const val KEY_ACCENT = "accent_color"
         private const val KEY_SYSTEM_PROMPT = "custom_system_prompt"
+        private const val KEY_USE_WHISPER = "use_whisper_stt"
+        private const val KEY_WHISPER_LANG = "whisper_language"
 
         /** Couleurs preset pour le réacteur (val = Color argb hex). */
         val ACCENT_PRESETS = mapOf(
