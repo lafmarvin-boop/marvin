@@ -44,6 +44,10 @@ class PixelCanvasView @JvmOverloads constructor(
     // with pixel coordinates instead of starting a stroke.
     var nextTapHandler: ((x: Int, y: Int) -> Unit)? = null
 
+    // Brush hover preview: pixel position of last move, drawn as outlined cursor
+    private var hoverPx = -1
+    private var hoverPy = -1
+
     // Sketch layer: a separate per-frame pixel buffer rendered above the frame
     // with reduced opacity, drawn ONLY when sketchMode is true.
     var sketchMode: Boolean = false
@@ -349,6 +353,18 @@ class PixelCanvasView @JvmOverloads constructor(
             canvas.drawRect(r, selDashPaint)
         }
 
+        // Brush hover outline (around last touched pixel, sized to brush)
+        if (isDrawing && hoverPx >= 0 && hoverPy >= 0 && (tool == Tool.PENCIL || tool == Tool.ERASER)) {
+            val size = p.brushSize.coerceAtLeast(1)
+            val half = size / 2
+            val rx = (hoverPx - half).toFloat()
+            val ry = (hoverPy - half).toFloat()
+            val borderPnt = Paint().apply {
+                color = 0xFFFFFFFF.toInt(); style = Paint.Style.STROKE; strokeWidth = 0.15f
+            }
+            canvas.drawRect(rx, ry, rx + size, ry + size, borderPnt)
+        }
+
         // Border
         canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), borderPaint)
 
@@ -408,6 +424,7 @@ class PixelCanvasView @JvmOverloads constructor(
                     } else if (isDrawing) {
                         val coords = clientToPixel(event.x, event.y)
                         continueStroke(coords[0], coords[1])
+                        hoverPx = coords[0]; hoverPy = coords[1]
                     }
                 }
             }
@@ -553,6 +570,11 @@ class PixelCanvasView @JvmOverloads constructor(
 
     private fun paintSinglePixelWithSymmetry(x: Int, y: Int, c: Int) {
         val p = project ?: return
+        // Color lock: if target pixel matches a locked color (and we're not erasing it), skip
+        if (c != 0 && !sketchMode && x in 0 until p.width && y in 0 until p.height) {
+            val target = p.currentFrame.get(x, y)
+            if (target in p.lockedColors) return
+        }
         // Choose target buffer based on sketch mode
         if (sketchMode) {
             val buf = ensureSketchBuffer()
@@ -598,6 +620,13 @@ class PixelCanvasView @JvmOverloads constructor(
         2 -> x and 1 == 0
         3 -> y and 1 == 0
         4 -> (x and 1 == 0) && (y and 1 == 0)
+        6 -> {
+            // Custom 4x4 pattern
+            val p = project ?: return true
+            val px = ((x % 4) + 4) % 4
+            val py = ((y % 4) + 4) % 4
+            p.customDither[py][px]
+        }
         else -> true
     }
 

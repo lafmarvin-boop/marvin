@@ -758,18 +758,132 @@ class MainActivity : AppCompatActivity() {
     private fun showDitherMenu() {
         val items = arrayOf(
             "Aucun (uniforme)",
-            "Damier (50% / 50%)",
+            "Damier (50%/50%)",
             "Lignes verticales",
             "Lignes horizontales",
-            "Sparse (1 / 4 pixels)",
-            "Mix couleur primaire + secondaire (damier)"
+            "Sparse (1/4 pixels)",
+            "Mix primaire+secondaire (damier)",
+            "Pattern personnalisé 4×4…"
         )
         AlertDialog.Builder(this)
             .setTitle("Tramage")
             .setSingleChoiceItems(items, project.ditherPattern) { dlg, which ->
-                project.ditherPattern = which
-                binding.btnDither.text = items[which].substringBefore(" ")
-                dlg.dismiss()
+                if (which == 6) {
+                    dlg.dismiss()
+                    showCustomDitherEditor()
+                } else {
+                    project.ditherPattern = which
+                    binding.btnDither.text = items[which].substringBefore(" ")
+                    dlg.dismiss()
+                }
+            }
+            .show()
+    }
+
+    private fun showCustomDitherEditor() {
+        // Build a 4x4 grid of toggleable cells
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 24)
+        }
+        val tv = TextView(this).apply {
+            text = "Touchez les cases : la trame se répète sur le canvas (4×4)."
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 13f
+        }
+        container.addView(tv)
+        val cellSize = (40 * resources.displayMetrics.density).toInt()
+        val rowsContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 16, 0, 16)
+        }
+        for (r in 0..3) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            for (c in 0..3) {
+                val v = android.widget.ToggleButton(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(cellSize, cellSize).apply {
+                        setMargins(2, 2, 2, 2)
+                    }
+                    textOn = "■"; textOff = "□"
+                    isChecked = project.customDither[r][c]
+                    text = if (isChecked) "■" else "□"
+                    textSize = 18f
+                    setOnCheckedChangeListener { _, checked ->
+                        project.customDither[r][c] = checked
+                        text = if (checked) "■" else "□"
+                    }
+                }
+                row.addView(v)
+            }
+            rowsContainer.addView(row)
+        }
+        container.addView(rowsContainer)
+        AlertDialog.Builder(this)
+            .setTitle("Pattern personnalisé 4×4")
+            .setView(container)
+            .setPositiveButton("Utiliser") { _, _ ->
+                project.ditherPattern = 6
+                binding.btnDither.text = "Custom"
+            }
+            .setNeutralButton("Préréglages") { _, _ -> applyDitherPreset() }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun applyDitherPreset() {
+        val presets = arrayOf(
+            "Bayer 4×4" to arrayOf(
+                booleanArrayOf(true,  false, true,  false),
+                booleanArrayOf(false, true,  false, true),
+                booleanArrayOf(true,  false, true,  false),
+                booleanArrayOf(false, true,  false, true)
+            ),
+            "Vertical fade" to arrayOf(
+                booleanArrayOf(true, true, true, true),
+                booleanArrayOf(true, false, true, false),
+                booleanArrayOf(true, false, false, false),
+                booleanArrayOf(false, false, false, false)
+            ),
+            "Crosshatch" to arrayOf(
+                booleanArrayOf(true, false, false, false),
+                booleanArrayOf(false, true, false, false),
+                booleanArrayOf(false, false, true, false),
+                booleanArrayOf(false, false, false, true)
+            ),
+            "Bricks" to arrayOf(
+                booleanArrayOf(true, true, true, false),
+                booleanArrayOf(false, false, false, false),
+                booleanArrayOf(true, false, true, true),
+                booleanArrayOf(false, false, false, false)
+            )
+        )
+        val labels = presets.map { it.first }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Préréglages tramage")
+            .setItems(labels) { _, which ->
+                project.customDither = presets[which].second
+                project.ditherPattern = 6
+                binding.btnDither.text = labels[which]
+            }
+            .show()
+    }
+
+    private fun showColorLockMenu() {
+        val palette = project.palette + project.recentColors
+        val labels = palette.map {
+            val locked = it in project.lockedColors
+            (if (locked) "🔒 " else "  ") + String.format("#%06X", it and 0xFFFFFF)
+        }.toTypedArray()
+        val checked = palette.map { it in project.lockedColors }.toBooleanArray()
+        AlertDialog.Builder(this)
+            .setTitle("Verrouiller couleurs (impossible à repeindre)")
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
+                val color = palette[which]
+                if (isChecked) project.lockedColors.add(color) else project.lockedColors.remove(color)
+            }
+            .setPositiveButton("OK", null)
+            .setNeutralButton("Tout déverrouiller") { _, _ ->
+                project.lockedColors.clear()
+                toast("Toutes les couleurs déverrouillées")
             }
             .show()
     }
@@ -1001,6 +1115,7 @@ class MainActivity : AppCompatActivity() {
             "Importer un sprite sheet…",
             getString(R.string.resize),
             "Mode de lecture animation…",
+            "Verrouiller couleurs…",
             "Tutoriel"
         )
         AlertDialog.Builder(this)
@@ -1017,7 +1132,8 @@ class MainActivity : AppCompatActivity() {
                     7 -> importSpriteSheet()
                     8 -> showResizeDialog()
                     9 -> showPlayModeMenu()
-                    10 -> showTutorial(force = true)
+                    10 -> showColorLockMenu()
+                    11 -> showTutorial(force = true)
                 }
             }
             .show()
