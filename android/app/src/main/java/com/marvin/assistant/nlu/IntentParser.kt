@@ -9,9 +9,23 @@ package com.marvin.assistant.nlu
  */
 class IntentParser {
 
+    /**
+     * Le PluginManager (si fourni) est consulte AVANT les rules built-in
+     * pour permettre a l'utilisateur d'overrider/etendre.
+     */
+    var pluginManager: com.marvin.assistant.plugins.PluginManager? = null
+
     fun parse(raw: String): MarvinIntent {
         val text = raw.trim().lowercase()
         if (text.isBlank()) return MarvinIntent.Unknown(raw)
+
+        // Plugins custom : si match, on dispatche en LocalAnswer apres execution
+        pluginManager?.let { mgr ->
+            mgr.match(text)?.let { plugin ->
+                val say = mgr.execute(plugin)
+                return MarvinIntent.LocalAnswer(say)
+            }
+        }
 
         // Calcul local : court-circuite Claude pour les opérations simples.
         // Réponse instantanée, zéro coût. Si pas reconnu comme calcul,

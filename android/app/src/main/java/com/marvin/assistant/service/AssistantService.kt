@@ -121,7 +121,11 @@ class AssistantService : LifecycleService() {
         )
         stt = SpeechToText(this, voskModel)
         tts = TtsEngineFactory.create(this)
-        parser = IntentParser()
+        parser = IntentParser().also {
+            val plugins = com.marvin.assistant.plugins.PluginManager(this)
+            plugins.ensureExample() // crée plugins.json exemple au premier lancement
+            it.pluginManager = plugins
+        }
         executor = ActionExecutor(this)
     }
 
