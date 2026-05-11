@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Fond robotique : nuit profonde avec grille HUD subtile -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Fond sombre (bleu nuit profond) -->
+    <!-- Fond noir profond -->
     <path
-        android:fillColor="#0A1628"
+        android:fillColor="#050B14"
         android:pathData="M0,0 L108,0 L108,108 L0,108 Z" />
 
-    <!-- Glow radial subtil au centre -->
+    <!-- Cercle de glow bleu-cyan au centre -->
     <path
-        android:fillColor="#1A2942"
-        android:pathData="M 54,12 a 42,42 0 1,1 0,84 a 42,42 0 1,1 0,-84 Z" />
+        android:fillColor="#0F2A4A"
+        android:pathData="M 54,18 a 36,36 0 1,1 0,72 a 36,36 0 1,1 0,-72 Z" />
+
+    <!-- Cercle inner plus clair -->
+    <path
+        android:fillColor="#173D66"
+        android:pathData="M 54,30 a 24,24 0 1,1 0,48 a 24,24 0 1,1 0,-48 Z" />
+
+    <!-- 4 marqueurs de grille (croix) -->
+    <path
+        android:fillColor="#1F3A5C"
+        android:pathData="M52,20 L56,20 L56,28 L52,28 Z
+                          M52,80 L56,80 L56,88 L52,88 Z
+                          M20,52 L28,52 L28,56 L20,56 Z
+                          M80,52 L88,52 L88,56 L80,56 Z" />
 </vector>

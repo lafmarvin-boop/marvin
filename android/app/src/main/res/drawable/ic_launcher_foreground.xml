@@ -1,102 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Logo robotique : tete cyborg stylisee avec reacteur d'energie central.
+  Inspire par un casque type EVA / Iron Man HUD.
+  Toutes les formes sont vectorielles et scalent sans pixelisation.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Halo extérieur (glow doux) -->
+    <!-- Halo glow exterieur (cercle flou bleu) -->
     <path
-        android:fillColor="#334FC3F7"
-        android:pathData="M 54,20 a 34,34 0 1,1 0,68 a 34,34 0 1,1 0,-68 Z" />
+        android:fillColor="#3300E5FF"
+        android:pathData="M 54,16 a 38,38 0 1,1 0,76 a 38,38 0 1,1 0,-76 Z" />
 
-    <!-- Anneau extérieur -->
+    <!-- Anneau exterieur hexagonal (style HUD) -->
     <path
-        android:strokeWidth="2"
-        android:strokeColor="#4FC3F7"
         android:fillColor="#00000000"
-        android:pathData="M 54,24 a 30,30 0 1,1 0,60 a 30,30 0 1,1 0,-60 Z" />
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="1.8"
+        android:pathData="M54,20 L82,36 L82,68 L54,84 L26,68 L26,36 Z" />
 
-    <!-- Anneau du milieu (avec fond sombre intérieur) -->
+    <!-- 6 segments de l'anneau du milieu (style cadran robotique) -->
     <path
+        android:fillColor="#00000000"
+        android:strokeColor="#4FC3F7"
+        android:strokeWidth="2.2"
+        android:pathData="M 54,28 a 24,24 0 0,1 20.78,12
+                          M 54,28 a 24,24 0 0,0 -20.78,12
+                          M 78,54 a 24,24 0 0,1 -3.22,12
+                          M 30,54 a 24,24 0 0,0 3.22,12
+                          M 54,78 L 54,76
+                          M 30,40 L 32,42
+                          M 78,40 L 76,42" />
+
+    <!-- Tete robotique : "visiere" trapezoidale stylisee -->
+    <path
+        android:fillColor="#0A1F38"
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="1.2"
+        android:pathData="M 38,42 L 70,42 L 76,48 L 76,54 L 70,60 L 38,60 L 32,54 L 32,48 Z" />
+
+    <!-- 2 "yeux" (lampes) -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M 42,49 L 50,49 L 50,53 L 42,53 Z
+                          M 58,49 L 66,49 L 66,53 L 58,53 Z" />
+
+    <!-- Lignes de circuit sous la visiere -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#4FC3F7"
+        android:strokeWidth="0.8"
+        android:pathData="M 40,64 L 44,68 L 50,68 L 54,72 L 58,68 L 64,68 L 68,64" />
+
+    <!-- Reacteur central : 3 anneaux concentriques + coeur -->
+    <path
+        android:fillColor="#0A1F38"
+        android:strokeColor="#00E5FF"
         android:strokeWidth="1.5"
+        android:pathData="M 54,68 a 9,9 0 1,1 0,18 a 9,9 0 1,1 0,-18 Z" />
+    <path
+        android:fillColor="#173D66"
         android:strokeColor="#80D8FF"
-        android:fillColor="#0D1F33"
-        android:pathData="M 54,32 a 22,22 0 1,1 0,44 a 22,22 0 1,1 0,-44 Z" />
-
-    <!-- Six rayons connectant l'anneau du milieu à l'anneau intérieur -->
-    <group android:pivotX="54" android:pivotY="54">
-        <path
-            android:strokeWidth="1.5"
-            android:strokeColor="#80D8FF"
-            android:fillColor="#00000000"
-            android:pathData="M 54,32 L 54,40" />
-    </group>
-    <group
-        android:pivotX="54"
-        android:pivotY="54"
-        android:rotation="60">
-        <path
-            android:strokeWidth="1.5"
-            android:strokeColor="#80D8FF"
-            android:fillColor="#00000000"
-            android:pathData="M 54,32 L 54,40" />
-    </group>
-    <group
-        android:pivotX="54"
-        android:pivotY="54"
-        android:rotation="120">
-        <path
-            android:strokeWidth="1.5"
-            android:strokeColor="#80D8FF"
-            android:fillColor="#00000000"
-            android:pathData="M 54,32 L 54,40" />
-    </group>
-    <group
-        android:pivotX="54"
-        android:pivotY="54"
-        android:rotation="180">
-        <path
-            android:strokeWidth="1.5"
-            android:strokeColor="#80D8FF"
-            android:fillColor="#00000000"
-            android:pathData="M 54,32 L 54,40" />
-    </group>
-    <group
-        android:pivotX="54"
-        android:pivotY="54"
-        android:rotation="240">
-        <path
-            android:strokeWidth="1.5"
-            android:strokeColor="#80D8FF"
-            android:fillColor="#00000000"
-            android:pathData="M 54,32 L 54,40" />
-    </group>
-    <group
-        android:pivotX="54"
-        android:pivotY="54"
-        android:rotation="300">
-        <path
-            android:strokeWidth="1.5"
-            android:strokeColor="#80D8FF"
-            android:fillColor="#00000000"
-            android:pathData="M 54,32 L 54,40" />
-    </group>
-
-    <!-- Anneau intérieur -->
-    <path
-        android:strokeWidth="1.5"
-        android:strokeColor="#E1F5FE"
-        android:fillColor="#1A3358"
-        android:pathData="M 54,40 a 14,14 0 1,1 0,28 a 14,14 0 1,1 0,-28 Z" />
-
-    <!-- Cœur triangulaire (énergie) -->
+        android:strokeWidth="0.8"
+        android:pathData="M 54,72 a 5,5 0 1,1 0,10 a 5,5 0 1,1 0,-10 Z" />
+    <!-- Coeur brillant -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M 54,46 L 62,60 L 46,60 Z" />
+        android:pathData="M 54,75 L 56.5,79 L 51.5,79 Z" />
 
-    <!-- Point lumineux central -->
+    <!-- Marqueurs HUD aux 4 coins -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M 54,52 a 2,2 0 1,1 0,4 a 2,2 0 1,1 0,-4 Z" />
+        android:fillColor="#00E5FF"
+        android:pathData="M 22,22 L 28,22 L 28,24 L 24,24 L 24,28 L 22,28 Z
+                          M 86,22 L 80,22 L 80,24 L 84,24 L 84,28 L 86,28 Z
+                          M 22,86 L 28,86 L 28,84 L 24,84 L 24,80 L 22,80 Z
+                          M 86,86 L 80,86 L 80,84 L 84,84 L 84,80 L 86,80 Z" />
 </vector>
