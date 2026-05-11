@@ -98,6 +98,24 @@ class Settings(context: Context) {
         get() = secure.getString(KEY_AUDD_KEY, "") ?: ""
         set(value) { secure.edit().putString(KEY_AUDD_KEY, value).apply() }
 
+    /** Serveur HTTP local pour intégration Tasker / scripts. OFF par défaut. */
+    var httpServerEnabled: Boolean
+        get() = plain.getBoolean(KEY_HTTP_ENABLED, false)
+        set(value) { plain.edit().putBoolean(KEY_HTTP_ENABLED, value).apply() }
+    var httpServerPort: Int
+        get() = plain.getInt(KEY_HTTP_PORT, 7777)
+        set(value) { plain.edit().putInt(KEY_HTTP_PORT, value.coerceIn(1024, 65535)).apply() }
+    /** Token aléatoire requis dans X-Marvin-Token. Auto-généré au 1er accès. */
+    var httpServerToken: String
+        get() {
+            val existing = secure.getString(KEY_HTTP_TOKEN, null)
+            if (!existing.isNullOrBlank()) return existing
+            val newToken = (1..32).map { ('a'..'z').random() }.joinToString("")
+            secure.edit().putString(KEY_HTTP_TOKEN, newToken).apply()
+            return newToken
+        }
+        set(value) { secure.edit().putString(KEY_HTTP_TOKEN, value).apply() }
+
     /** Backend TTS choisi. Auto = ElevenLabs si clé dispo + réseau, sinon Piper. */
     var ttsBackend: TtsBackend
         get() = TtsBackend.entries.firstOrNull {
@@ -278,6 +296,9 @@ class Settings(context: Context) {
         private const val KEY_CERT_PINNING = "cert_pinning_enabled"
         private const val KEY_ONBOARDING_DONE = "onboarding_done"
         private const val KEY_AUDD_KEY = "audd_api_key"
+        private const val KEY_HTTP_ENABLED = "http_server_enabled"
+        private const val KEY_HTTP_PORT = "http_server_port"
+        private const val KEY_HTTP_TOKEN = "http_server_token"
         private const val KEY_QUOTA_DAY = "quota_day"
         private const val KEY_QUOTA_USED = "quota_used"
         private const val KEY_CONFIRM_SENSITIVE = "confirm_sensitive"

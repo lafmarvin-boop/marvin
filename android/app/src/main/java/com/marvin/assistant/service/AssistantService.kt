@@ -68,6 +68,7 @@ class AssistantService : LifecycleService() {
     private lateinit var routines: RoutinesManager
     private lateinit var shopping: ShoppingList
     private lateinit var visionClient: VisionClient
+    @Volatile private var httpServer: com.marvin.assistant.webhook.LocalHttpServer? = null
     private lateinit var homeAssistant: HomeAssistantClient
     private val toneGen by lazy {
         try { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80) }
@@ -106,6 +107,25 @@ class AssistantService : LifecycleService() {
         // proactives de calendrier, on lance le cycle de scan.
         if (settings.proactiveCalendarAnnouncementsEnabled) {
             CalendarWatcher(this).enable()
+        }
+        // Serveur HTTP local pour integration externe (Tasker, scripts)
+        if (settings.httpServerEnabled) {
+            httpServer = com.marvin.assistant.webhook.LocalHttpServer(
+                port = settings.httpServerPort,
+                token = settings.httpServerToken,
+                onCommand = { transcript ->
+                    lifecycleScope.launch(coroutineErrorHandler) {
+                        handleTurn(prefilledTranscript = transcript)
+                    }
+                },
+                onSay = { text ->
+                    lifecycleScope.launch(coroutineErrorHandler) { speakWithPhase(text) }
+                },
+                statusJson = {
+                    val state = com.marvin.assistant.ui.DiscussionStateHolder
+                    """{"sleeping":${settings.isSleeping},"lastUserText":"${state.lastUserText.value?.replace("\"", "\\\"")}","phase":"${state.phase.value::class.simpleName}"}"""
+                }
+            ).also { it.start() }
         }
         // Wake word configurable : on lit la liste de variantes pour le
         // wake word choisi par l'utilisateur (jarvis par défaut).
@@ -149,6 +169,7 @@ class AssistantService : LifecycleService() {
 
     override fun onDestroy() {
         pipelineJob?.cancel()
+        httpServer?.stop(); httpServer = null
         wakeWord.release()
         tts.release()
         voskModel.release()
