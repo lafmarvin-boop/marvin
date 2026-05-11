@@ -24,6 +24,8 @@ class FramesAdapter(
         val label: TextView = view.findViewById(R.id.frameLabel)
         val btnUp: View = view.findViewById(R.id.btnUp)
         val btnDown: View = view.findViewById(R.id.btnDown)
+        /** Cached thumbnail bitmap, reused across binds when size matches. */
+        var thumbBmp: Bitmap? = null
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
@@ -37,8 +39,9 @@ class FramesAdapter(
         val delayText = if (frame.delayMs > 0) "  (${frame.delayMs}ms)" else ""
         holder.label.text = "#${position + 1}$tagText$delayText"
 
-        val bmp = Bitmap.createBitmap(frame.width, frame.height, Bitmap.Config.ARGB_8888)
         val src = if (frame.layers.size > 1) frame.composited() else frame.pixels
+        val bmp: Bitmap = holder.thumbBmp.takeIf { it != null && it.width == frame.width && it.height == frame.height && !it.isRecycled }
+            ?: Bitmap.createBitmap(frame.width, frame.height, Bitmap.Config.ARGB_8888).also { holder.thumbBmp = it }
         bmp.setPixels(src, 0, frame.width, 0, 0, frame.width, frame.height)
         val drawable = bmp.toDrawable(holder.thumb.resources)
         drawable.setAntiAlias(false)

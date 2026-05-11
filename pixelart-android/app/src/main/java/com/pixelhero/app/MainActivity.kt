@@ -43,7 +43,13 @@ class MainActivity : AppCompatActivity() {
 
     private val undoStack = ArrayDeque<UndoSnapshot>()
     private val redoStack = ArrayDeque<UndoSnapshot>()
-    private val maxUndo = 80
+    /** Undo cap scales with canvas size to keep memory bounded.
+     * Targets ~30 MB total: ~size pixels/snapshot × 4 bytes × N. */
+    private val maxUndo: Int get() {
+        val pixelsPerSnapshot = project.width * project.height
+        val targetBytes = 30 * 1024 * 1024
+        return ((targetBytes / (pixelsPerSnapshot * 4)).coerceIn(8, 80))
+    }
 
     // Animation playback
     private var animTimer: Runnable? = null
@@ -94,6 +100,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private var miniPingPongForward = true
+    private var miniPreviewBmp: Bitmap? = null
 
     private fun startMiniPreview() {
         stopMiniPreview()
@@ -106,12 +113,13 @@ class MainActivity : AppCompatActivity() {
                 if (project.frames.isNotEmpty()) {
                     miniPreviewIdx = miniPreviewIdx.coerceIn(0, project.frames.size - 1)
                     val f = project.frames[miniPreviewIdx]
-                    val bmp = Bitmap.createBitmap(f.width, f.height, Bitmap.Config.ARGB_8888)
-                    bmp.setPixels(f.pixels, 0, f.width, 0, 0, f.width, f.height)
+                    val src = if (f.layers.size > 1) f.composited() else f.pixels
+                    val bmp = miniPreviewBmp.takeIf { it != null && it.width == f.width && it.height == f.height && !it.isRecycled }
+                        ?: Bitmap.createBitmap(f.width, f.height, Bitmap.Config.ARGB_8888).also { miniPreviewBmp = it }
+                    bmp.setPixels(src, 0, f.width, 0, 0, f.width, f.height)
                     val drawable = android.graphics.drawable.BitmapDrawable(resources, bmp)
                     drawable.isFilterBitmap = false
                     binding.miniPreview.setImageDrawable(drawable)
-                    // Advance using project play mode
                     miniPreviewIdx = miniNextIndex(miniPreviewIdx, project.frames.size, project.playMode)
                     if (miniPreviewIdx < 0) miniPreviewIdx = 0
                 }

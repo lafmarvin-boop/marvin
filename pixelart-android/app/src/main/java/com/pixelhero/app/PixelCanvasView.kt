@@ -165,7 +165,10 @@ class PixelCanvasView @JvmOverloads constructor(
 
     fun rebuildOnionBitmaps() {
         val p = project ?: return
-        onionBmps.forEach { it.first.recycle() }
+        // Recycle existing bitmaps to free memory
+        onionBmps.forEach {
+            try { if (!it.first.isRecycled) it.first.recycle() } catch (_: Exception) {}
+        }
         onionBmps.clear()
         if (p.onionRange <= 0) return
         // Previous frames (blue tint)
@@ -241,10 +244,21 @@ class PixelCanvasView @JvmOverloads constructor(
         canvas.translate(translateX, translateY)
         canvas.scale(scale, scale)
 
-        // Checker background
-        for (y in 0 until h) for (x in 0 until w) {
-            canvas.drawRect(x.toFloat(), y.toFloat(), x + 1f, y + 1f,
-                if (((x + y) and 1) == 0) checkerPaint1 else checkerPaint2)
+        // Checker background - draw as a single bitmap with a pattern shader instead of
+        // per-pixel rects (which is O(w*h) and slow for 1024x1024).
+        canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), checkerPaint1)
+        // Overlay the offset pattern with 2x2 tiles (still fewer ops than per-pixel)
+        val tileSize = 4f
+        var ty = 0f
+        var rowOff = 0
+        while (ty < h) {
+            var tx = (rowOff and 1) * tileSize
+            while (tx < w) {
+                canvas.drawRect(tx, ty, (tx + tileSize).coerceAtMost(w.toFloat()), (ty + tileSize).coerceAtMost(h.toFloat()), checkerPaint2)
+                tx += tileSize * 2
+            }
+            ty += tileSize
+            rowOff++
         }
 
         // BG reference (3 modes: fit / cover / stretch)

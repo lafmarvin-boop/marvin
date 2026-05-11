@@ -22,6 +22,8 @@ enum class PlayMode(val label: String) {
 /** A single drawing layer within a frame. */
 class Layer(val width: Int, val height: Int, var name: String = "Couche", var visible: Boolean = true, var opacity: Float = 1f) {
     val pixels: IntArray = IntArray(width * height)
+    /** Dirty flag for downstream caches (composite, thumbnail). */
+    @Transient var dirty: Boolean = true
     constructor(width: Int, height: Int, name: String, source: IntArray) : this(width, height, name) {
         require(source.size == width * height) { "Layer size mismatch" }
         source.copyInto(pixels)
