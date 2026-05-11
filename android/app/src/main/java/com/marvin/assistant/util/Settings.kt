@@ -93,6 +93,19 @@ class Settings(context: Context) {
         get() = plain.getBoolean(KEY_ONBOARDING_DONE, false)
         set(value) { plain.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply() }
 
+    /**
+     * Theme : couleur d'accent du reacteur Jarvis.
+     * Valeurs supportees : "cyan" (defaut), "red", "gold", "green", "purple".
+     */
+    var accentColor: String
+        get() = plain.getString(KEY_ACCENT, "cyan") ?: "cyan"
+        set(value) {
+            val cleaned = value.lowercase().trim()
+            if (cleaned in ACCENT_PRESETS.keys) {
+                plain.edit().putString(KEY_ACCENT, cleaned).apply()
+            }
+        }
+
     /** Token AudD pour la reconnaissance musicale. Vide = feature désactivée. */
     var auddApiKey: String
         get() = secure.getString(KEY_AUDD_KEY, "") ?: ""
@@ -299,6 +312,16 @@ class Settings(context: Context) {
         private const val KEY_HTTP_ENABLED = "http_server_enabled"
         private const val KEY_HTTP_PORT = "http_server_port"
         private const val KEY_HTTP_TOKEN = "http_server_token"
+        private const val KEY_ACCENT = "accent_color"
+
+        /** Couleurs preset pour le réacteur (val = Color argb hex). */
+        val ACCENT_PRESETS = mapOf(
+            "cyan" to 0xFF00E5FF.toInt(),
+            "red" to 0xFFFF1744.toInt(),
+            "gold" to 0xFFFFD600.toInt(),
+            "green" to 0xFF00E676.toInt(),
+            "purple" to 0xFFD500F9.toInt()
+        )
         private const val KEY_QUOTA_DAY = "quota_day"
         private const val KEY_QUOTA_USED = "quota_used"
         private const val KEY_CONFIRM_SENSITIVE = "confirm_sensitive"

@@ -106,6 +106,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var elevenKey by remember { mutableStateOf(settings.elevenLabsApiKey) }
     var elevenVoice by remember { mutableStateOf(settings.elevenLabsVoiceId) }
     var auddKey by remember { mutableStateOf(settings.auddApiKey) }
+    var accent by remember { mutableStateOf(settings.accentColor) }
     var ttsBackend by remember { mutableStateOf(settings.ttsBackend) }
     var certPinning by remember { mutableStateOf(settings.certPinningEnabled) }
 
@@ -459,6 +460,22 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+
+        // ------ COULEUR ACCENT ------
+        Spacer(Modifier.height(20.dp))
+        Text("Couleur d'accent (réacteur)", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        Settings.ACCENT_PRESETS.keys.forEach { name ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = accent == name, onClick = { accent = name })
+                Text(
+                    name.replaceFirstChar { it.titlecase(java.util.Locale.FRENCH) },
+                    modifier = Modifier.padding(start = 6.dp),
+                    color = Color(Settings.ACCENT_PRESETS[name]!!),
+                    fontWeight = if (accent == name) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
 
         // ------ WAKE WORD ------
         Spacer(Modifier.height(20.dp))
@@ -899,6 +916,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 settings.elevenLabsApiKey = elevenKey.trim()
                 settings.elevenLabsVoiceId = elevenVoice.trim()
                 settings.auddApiKey = auddKey.trim()
+                settings.accentColor = accent
                 settings.ttsBackend = ttsBackend
                 if (settings.wakeWord != wakeWord) {
                     settings.wakeWord = wakeWord
