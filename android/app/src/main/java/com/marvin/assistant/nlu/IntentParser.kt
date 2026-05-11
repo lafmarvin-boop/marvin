@@ -159,6 +159,16 @@ class IntentParser {
             MarvinIntent.RecognizeMusic
         },
 
+        // ---- Mode interprete ----
+        // "mode interprete anglais" / "interprete en espagnol"
+        // "active le mode interprete italien"
+        Rule(Regex("""(?:active(?:r)? |lance |démarre )?(?:le |la )?mode\s+(?:interpre?[ts])(?:[- ]| )?(?:en\s+)?([\p{L}]+)""")) {
+            MarvinIntent.StartInterpreter(it.groupValues[1].trim())
+        },
+        Rule(Regex("""(?:interpre?[ts])\s+(?:en\s+)?([\p{L}]+)""")) {
+            MarvinIntent.StartInterpreter(it.groupValues[1].trim())
+        },
+
         // ---- Routines ----
         // "lance ma routine matin" / "routine matin" / "fais la routine soir"
         Rule(Regex("""(?:lance|démarre|exécute|fais|active)\s+(?:ma |la |une )?routine\s+(.+)""")) {

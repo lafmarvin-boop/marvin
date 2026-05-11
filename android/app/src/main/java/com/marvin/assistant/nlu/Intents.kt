@@ -64,6 +64,9 @@ sealed class MarvinIntent {
     /** Reconnaissance musicale via AudD. */
     data object RecognizeMusic : MarvinIntent()
 
+    /** Mode interprète : boucle traduction FR ↔ langue cible. */
+    data class StartInterpreter(val foreignLanguage: String) : MarvinIntent()
+
     /** Exécute une routine pré-définie (ex. "routine matin" = méteo + agenda + news). */
     data class RunRoutine(val name: String) : MarvinIntent()
 

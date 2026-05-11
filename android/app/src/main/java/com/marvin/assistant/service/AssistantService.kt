@@ -266,6 +266,43 @@ class AssistantService : LifecycleService() {
         speakWithPhase(answer)
     }
 
+    /**
+     * Mode interprète : boucle qui écoute, traduit en alternance FR ↔ langue
+     * étrangère, jusqu'à « fin de l'interprétation » ou silence prolongé.
+     *
+     * Simplification : on ne sait pas distinguer la langue à l'audio
+     * (Vosk = FR only). On alterne donc en supposant un tour FR puis
+     * un tour FR (transcription) traduit dans la langue, ou
+     * l'utilisateur dit la phrase en français à traduire pour l'autre.
+     * L'autre personne pourra parler français aussi (ou afficher la
+     * traduction en texte). Le mode interprète vrai "anglais-vers-fr"
+     * nécessite un modèle STT multilingue (Whisper) — TODO.
+     */
+    private suspend fun startInterpreter(foreignLanguage: String) {
+        val backend = pickBackend()
+        if (!backend.isReady()) {
+            speakWithPhase(notReadyMessage(backend)); return
+        }
+        speakWithPhase("Mode interprète $foreignLanguage activé. Dis « fin » pour arrêter.")
+        while (true) {
+            DiscussionStateHolder.setPhase(DiscussionPhase.Listening)
+            wakeWord.pause()
+            val raw = try {
+                stt.listenOnce(silenceTimeoutMs = 3_000L, maxDurationMs = 15_000L)
+            } finally { wakeWord.resume() }
+            if (raw.isNullOrBlank()) { speakWithPhase("Mode interprète terminé."); return }
+            if (raw.lowercase().contains("fin") && raw.length < 20) {
+                speakWithPhase("Mode interprète terminé."); return
+            }
+            val prompt = "Traduis exactement « $raw » en $foreignLanguage. Réponds uniquement avec la traduction, sans guillemets ni ponctuation supplémentaire."
+            val result = backend.ask(listOf(ChatMessage(ChatMessage.Role.USER, prompt)))
+            if (result is LlmResult.Ok) speakWithPhase(result.text)
+            else {
+                speakWithPhase("Erreur de traduction."); return
+            }
+        }
+    }
+
     private suspend fun summarizeAndPrune(backend: LlmBackend) {
         // Demande a Claude un resume tres court de la conversation
         val summaryPrompt = "Resume en une seule phrase les points cles de cette " +
@@ -463,6 +500,7 @@ class AssistantService : LifecycleService() {
                 } finally { wakeWord.resume() }
                 speakWithPhase(answer)
             }
+            is MarvinIntent.StartInterpreter -> startInterpreter(parsed.foreignLanguage)
             is MarvinIntent.RunRoutine -> runRoutine(parsed.name)
             is MarvinIntent.Translate -> {
                 val prompt = if (parsed.targetLanguage != null) {
@@ -611,6 +649,10 @@ class AssistantService : LifecycleService() {
                     com.marvin.assistant.music.MusicRecognizer(this, settings).recognize()
                 } finally { wakeWord.resume() }
                 speakWithPhase(answer)
+                continue
+            }
+            if (parsedFu is MarvinIntent.StartInterpreter) {
+                startInterpreter(parsedFu.foreignLanguage)
                 continue
             }
             if (parsedFu is MarvinIntent.RunRoutine) {

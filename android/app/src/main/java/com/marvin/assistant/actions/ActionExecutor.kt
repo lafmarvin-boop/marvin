@@ -59,6 +59,7 @@ class ActionExecutor(private val context: Context) {
         MarvinIntent.ReadNotes,
         MarvinIntent.ClearNotes,
         MarvinIntent.ReadEmails,
-        MarvinIntent.RecognizeMusic -> ""
+        MarvinIntent.RecognizeMusic,
+        is MarvinIntent.StartInterpreter -> ""
     }
 }
