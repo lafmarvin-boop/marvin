@@ -280,10 +280,30 @@ class Settings(context: Context) {
         get() = plain.getString(KEY_WAKE_WORD, "jarvis") ?: "jarvis"
         set(value) {
             val cleaned = value.trim().lowercase()
-            if (cleaned in WAKE_WORD_PRESETS.keys) {
+            // Accepte un preset OU "custom" (variantes lues dans customWakeWordVariants)
+            if (cleaned in WAKE_WORD_PRESETS.keys || cleaned == "custom") {
                 plain.edit().putString(KEY_WAKE_WORD, cleaned).apply()
             }
         }
+
+    /**
+     * Variantes pour le wake word custom. Liste de mots separes par
+     * virgules (ex. "alfred, alfread, alfraid"). Le premier est le mot
+     * principal, les autres sont des variantes de prononciation.
+     */
+    var customWakeWordVariants: String
+        get() = plain.getString(KEY_CUSTOM_WAKE, "") ?: ""
+        set(value) { plain.edit().putString(KEY_CUSTOM_WAKE, value.lowercase().trim()).apply() }
+
+    /** Renvoie la liste effective des variantes pour le wake word courant. */
+    fun wakeVariantsList(): List<String> {
+        if (wakeWord == "custom") {
+            return customWakeWordVariants.split(",")
+                .map { it.trim() }.filter { it.isNotEmpty() }
+                .ifEmpty { WAKE_WORD_PRESETS["jarvis"]!! }
+        }
+        return WAKE_WORD_PRESETS[wakeWord] ?: WAKE_WORD_PRESETS["jarvis"]!!
+    }
 
     /** Returns true and increments the counter if a request is allowed today. */
     @Synchronized
@@ -344,6 +364,7 @@ class Settings(context: Context) {
         private const val KEY_PROACTIVE_NOTIFS = "proactive_notifs_enabled"
         private const val KEY_PROACTIVE_CAL = "proactive_calendar_enabled"
         private const val KEY_WAKE_WORD = "wake_word"
+        private const val KEY_CUSTOM_WAKE = "custom_wake_variants"
         private const val KEY_LOCAL_ONLY = "local_only_mode"
 
         /**

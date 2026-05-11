@@ -95,6 +95,7 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     var proactiveNotifs by remember { mutableStateOf(settings.proactiveNotificationsEnabled) }
     var proactiveCal by remember { mutableStateOf(settings.proactiveCalendarAnnouncementsEnabled) }
     var wakeWord by remember { mutableStateOf(settings.wakeWord) }
+    var customWakeVariants by remember { mutableStateOf(settings.customWakeWordVariants) }
     var localOnly by remember { mutableStateOf(settings.localOnlyMode) }
     val auditLog = remember { com.marvin.assistant.audit.AuditLog(ctx) }
     var auditEntries by remember { mutableStateOf(auditLog.all().take(20)) }
@@ -524,6 +525,29 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 )
             }
         }
+        // Custom
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(selected = wakeWord == "custom", onClick = { wakeWord = "custom" })
+            Text("Custom (mot à toi)",
+                fontWeight = if (wakeWord == "custom") FontWeight.Bold else FontWeight.Normal,
+                modifier = Modifier.padding(start = 6.dp))
+        }
+        if (wakeWord == "custom") {
+            OutlinedTextField(
+                value = customWakeVariants,
+                onValueChange = { customWakeVariants = it },
+                label = { Text("Variantes séparées par virgules (ex: bingo, bin go, bingot)") },
+                singleLine = false,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                "Astuce : prononce le mot 3-4 fois après activation, " +
+                    "regarde le log 'Vosk final:' pour voir ce que Vosk transcrit, " +
+                    "et ajoute ces variantes ici.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF607D8B)
+            )
+        }
 
         // ------ SMART HOME (HOME ASSISTANT) ------
         Spacer(Modifier.height(20.dp))
@@ -941,9 +965,11 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 settings.accentColor = accent
                 settings.customSystemPrompt = customPrompt
                 settings.ttsBackend = ttsBackend
-                if (settings.wakeWord != wakeWord) {
-                    settings.wakeWord = wakeWord
-                    // Redémarre le service pour reprendre le nouveau wake word
+                val wakeChanged = settings.wakeWord != wakeWord ||
+                    settings.customWakeWordVariants != customWakeVariants
+                settings.wakeWord = wakeWord
+                settings.customWakeWordVariants = customWakeVariants
+                if (wakeChanged) {
                     com.marvin.assistant.service.AssistantService.stop(ctx)
                     com.marvin.assistant.service.AssistantService.start(ctx)
                 }

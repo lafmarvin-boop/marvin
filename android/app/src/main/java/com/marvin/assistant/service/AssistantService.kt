@@ -129,8 +129,7 @@ class AssistantService : LifecycleService() {
         }
         // Wake word configurable : on lit la liste de variantes pour le
         // wake word choisi par l'utilisateur (jarvis par défaut).
-        val wakeKeywords = Settings.WAKE_WORD_PRESETS[settings.wakeWord]
-            ?: Settings.WAKE_WORD_PRESETS["jarvis"]!!
+        val wakeKeywords = settings.wakeVariantsList()
         wakeWord = WakeWordEngine(
             context = this,
             voskModel = voskModel,
@@ -184,9 +183,7 @@ class AssistantService : LifecycleService() {
         return null
     }
 
-    private fun currentWakeVariants(): List<String> =
-        Settings.WAKE_WORD_PRESETS[settings.wakeWord]
-            ?: Settings.WAKE_WORD_PRESETS["jarvis"]!!
+    private fun currentWakeVariants(): List<String> = settings.wakeVariantsList()
 
     private fun onWakeWordDetected(wakeTranscript: String) {
         val sleeping = settings.isSleeping
