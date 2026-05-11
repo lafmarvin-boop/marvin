@@ -19,19 +19,77 @@ enum class PlayMode(val label: String) {
     ONCE("Une fois")       // 1, 2, 3 stop
 }
 
-/** A single animation frame. Pixels stored as ARGB ints, row-major. */
-class Frame(val width: Int, val height: Int) {
+/** A single drawing layer within a frame. */
+class Layer(val width: Int, val height: Int, var name: String = "Couche", var visible: Boolean = true, var opacity: Float = 1f) {
     val pixels: IntArray = IntArray(width * height)
+    constructor(width: Int, height: Int, name: String, source: IntArray) : this(width, height, name) {
+        require(source.size == width * height) { "Layer size mismatch" }
+        source.copyInto(pixels)
+    }
+    fun copy(): Layer {
+        val l = Layer(width, height, name, pixels.copyOf())
+        l.visible = visible; l.opacity = opacity
+        return l
+    }
+}
+
+/** A single animation frame, composed of one or more stacked Layers. */
+class Frame(val width: Int, val height: Int) {
+    val layers: MutableList<Layer> = mutableListOf(Layer(width, height, "Couche 1"))
+    var activeLayer: Int = 0
+        set(value) { field = value.coerceIn(0, layers.size - 1) }
     var tag: String = ""
     var delayMs: Int = 0  // 0 means use project FPS
 
     constructor(width: Int, height: Int, source: IntArray) : this(width, height) {
         require(source.size == width * height) { "Pixel array size mismatch" }
-        source.copyInto(pixels)
+        source.copyInto(layers[0].pixels)
+    }
+
+    /** Active layer's pixel buffer (for backward-compat: most code paints here). */
+    val pixels: IntArray get() = layers[activeLayer.coerceIn(0, layers.size - 1)].pixels
+
+    /** Composited view of all visible layers, bottom-to-top, with alpha blending. */
+    fun composited(): IntArray {
+        if (layers.size == 1) return pixels
+        val out = IntArray(width * height)
+        for (layer in layers) {
+            if (!layer.visible) continue
+            val layerOpacity = (layer.opacity * 255).toInt().coerceIn(0, 255)
+            for (i in out.indices) {
+                val src = layer.pixels[i]
+                val srcA = ((src ushr 24) and 0xFF) * layerOpacity / 255
+                if (srcA == 0) continue
+                val dst = out[i]
+                val dstA = (dst ushr 24) and 0xFF
+                if (dstA == 0 || srcA == 255) {
+                    out[i] = (srcA shl 24) or (src and 0xFFFFFF)
+                } else {
+                    // Alpha blend src over dst
+                    val sa = srcA / 255f
+                    val da = dstA / 255f * (1f - sa)
+                    val outA = (sa + da).coerceIn(0f, 1f)
+                    val sr = ((src shr 16) and 0xFF) * sa
+                    val sg = ((src shr 8) and 0xFF) * sa
+                    val sb = (src and 0xFF) * sa
+                    val dr = ((dst shr 16) and 0xFF) * da
+                    val dg = ((dst shr 8) and 0xFF) * da
+                    val db = (dst and 0xFF) * da
+                    val r = ((sr + dr) / outA).toInt().coerceIn(0, 255)
+                    val g = ((sg + dg) / outA).toInt().coerceIn(0, 255)
+                    val b = ((sb + db) / outA).toInt().coerceIn(0, 255)
+                    out[i] = ((outA * 255).toInt() shl 24) or (r shl 16) or (g shl 8) or b
+                }
+            }
+        }
+        return out
     }
 
     fun copy(): Frame {
-        val f = Frame(width, height, pixels)
+        val f = Frame(width, height)
+        f.layers.clear()
+        layers.forEach { f.layers.add(it.copy()) }
+        f.activeLayer = activeLayer
         f.tag = tag
         f.delayMs = delayMs
         return f
@@ -45,6 +103,21 @@ class Frame(val width: Int, val height: Int) {
     }
 
     fun clear() = pixels.fill(0)
+
+    fun addLayer(name: String = "Couche ${layers.size + 1}"): Layer {
+        val l = Layer(width, height, name)
+        layers.add(l)
+        activeLayer = layers.size - 1
+        return l
+    }
+
+    fun removeLayer(idx: Int): Boolean {
+        if (layers.size <= 1) return false
+        if (idx !in layers.indices) return false
+        layers.removeAt(idx)
+        activeLayer = activeLayer.coerceAtMost(layers.size - 1)
+        return true
+    }
 
     fun flipHorizontal(): Frame {
         val out = Frame(width, height)

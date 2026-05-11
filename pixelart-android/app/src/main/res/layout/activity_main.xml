@@ -282,6 +282,10 @@
                         android:text="Stop" android:layout_marginStart="8dp"/>
                 </LinearLayout>
 
+                <Button android:id="@+id/btnLayers" style="@style/SmallButton"
+                    android:text="Calques…"
+                    android:layout_width="match_parent" android:layout_marginTop="6dp"/>
+
                 <androidx.recyclerview.widget.RecyclerView android:id="@+id/framesList"
                     android:layout_width="match_parent" android:layout_height="200dp"
                     android:background="@color/bg" android:padding="4dp"

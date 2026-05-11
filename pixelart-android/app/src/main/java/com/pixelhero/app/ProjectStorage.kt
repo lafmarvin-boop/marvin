@@ -44,12 +44,24 @@ object ProjectStorage {
             put("recentColors", JSONArray().apply { project.recentColors.forEach { put(it.toLong() and 0xFFFFFFFFL) } })
             val framesArr = JSONArray()
             project.frames.forEach { f ->
-                val buf = ByteBuffer.allocate(f.pixels.size * 4).order(ByteOrder.LITTLE_ENDIAN)
-                f.pixels.forEach { buf.putInt(it) }
                 val obj = JSONObject()
-                obj.put("data", Base64.encodeToString(buf.array(), Base64.NO_WRAP))
+                // Store all layers
+                val layersArr = JSONArray()
+                f.layers.forEach { layer ->
+                    val buf = ByteBuffer.allocate(layer.pixels.size * 4).order(ByteOrder.LITTLE_ENDIAN)
+                    layer.pixels.forEach { buf.putInt(it) }
+                    val lo = JSONObject()
+                    lo.put("name", layer.name)
+                    lo.put("visible", layer.visible)
+                    lo.put("opacity", layer.opacity.toDouble())
+                    lo.put("data", Base64.encodeToString(buf.array(), Base64.NO_WRAP))
+                    layersArr.put(lo)
+                }
+                obj.put("layers", layersArr)
+                obj.put("activeLayer", f.activeLayer)
                 obj.put("tag", f.tag)
                 obj.put("delayMs", f.delayMs)
+                // Legacy: also store flat composite for backward compat with old loaders
                 framesArr.put(obj)
             }
             put("frames", framesArr)
@@ -74,17 +86,48 @@ object ProjectStorage {
         val frames = mutableListOf<Frame>()
         for (i in 0 until framesArr.length()) {
             val entry = framesArr.get(i)
-            val (b64, tag, delay) = when (entry) {
-                is JSONObject -> Triple(entry.getString("data"), entry.optString("tag", ""), entry.optInt("delayMs", 0))
-                is String -> Triple(entry, "", 0)
+            val frame = when (entry) {
+                is JSONObject -> {
+                    val tag = entry.optString("tag", "")
+                    val delay = entry.optInt("delayMs", 0)
+                    val layersArr = entry.optJSONArray("layers")
+                    if (layersArr != null && layersArr.length() > 0) {
+                        // New format with layers
+                        val f = Frame(w, h)
+                        f.layers.clear()
+                        for (li in 0 until layersArr.length()) {
+                            val lo = layersArr.getJSONObject(li)
+                            val bytes = Base64.decode(lo.getString("data"), Base64.DEFAULT)
+                            val ints = IntArray(w * h)
+                            val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+                            for (k in 0 until ints.size) ints[k] = buf.int
+                            val layer = Layer(w, h, lo.optString("name", "Couche ${li + 1}"), ints)
+                            layer.visible = lo.optBoolean("visible", true)
+                            layer.opacity = lo.optDouble("opacity", 1.0).toFloat()
+                            f.layers.add(layer)
+                        }
+                        f.activeLayer = entry.optInt("activeLayer", 0).coerceIn(0, f.layers.size - 1)
+                        f.tag = tag; f.delayMs = delay
+                        f
+                    } else {
+                        // Legacy format: single flat pixels array
+                        val bytes = Base64.decode(entry.getString("data"), Base64.DEFAULT)
+                        val ints = IntArray(w * h)
+                        val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+                        for (k in 0 until ints.size) ints[k] = buf.int
+                        Frame(w, h, ints).apply { this.tag = tag; this.delayMs = delay }
+                    }
+                }
+                is String -> {
+                    val bytes = Base64.decode(entry, Base64.DEFAULT)
+                    val ints = IntArray(w * h)
+                    val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+                    for (k in 0 until ints.size) ints[k] = buf.int
+                    Frame(w, h, ints)
+                }
                 else -> continue
             }
-            val bytes = Base64.decode(b64, Base64.DEFAULT)
-            val ints = IntArray(w * h)
-            val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
-            for (k in 0 until ints.size) ints[k] = buf.int
-            val f = Frame(w, h, ints).apply { this.tag = tag; this.delayMs = delay }
-            frames.add(f)
+            frames.add(frame)
         }
         val palette = mutableListOf<Int>()
         json.optJSONArray("palette")?.let { for (i in 0 until it.length()) palette.add(it.getLong(i).toInt()) }

@@ -868,6 +868,117 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun showLayersDialog() {
+        val f = project.currentFrame
+        val labels = f.layers.mapIndexed { i, l ->
+            val active = if (i == f.activeLayer) "● " else "  "
+            val vis = if (l.visible) "👁 " else "  "
+            "$active$vis${l.name}  (op ${(l.opacity * 100).toInt()}%)"
+        }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Calques (frame #${project.currentIndex + 1})")
+            .setSingleChoiceItems(labels, f.activeLayer) { _, which ->
+                f.activeLayer = which
+            }
+            .setPositiveButton("Fermer", null)
+            .setNeutralButton("+ Ajouter") { _, _ ->
+                pushUndo()
+                f.addLayer()
+                binding.canvas.syncFrameBitmap()
+                framesAdapter.notifyItemChanged(project.currentIndex)
+                toast("Couche ajoutée")
+                showLayersDialog()
+            }
+            .setNegativeButton("Actions…") { _, _ -> showLayerActions() }
+            .show()
+    }
+
+    private fun showLayerActions() {
+        val f = project.currentFrame
+        val l = f.layers[f.activeLayer]
+        val items = arrayOf(
+            if (l.visible) "Masquer" else "Afficher",
+            "Renommer…",
+            "Opacité…",
+            "Supprimer",
+            "Monter (au-dessus)",
+            "Descendre (en dessous)",
+            "Fusionner avec la couche du dessous"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("« ${l.name} »")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> { l.visible = !l.visible; binding.canvas.syncFrameBitmap() }
+                    1 -> renameLayer(l)
+                    2 -> showLayerOpacity(l)
+                    3 -> {
+                        pushUndo()
+                        if (!f.removeLayer(f.activeLayer)) toast("Au moins 1 calque requis")
+                        else binding.canvas.syncFrameBitmap()
+                    }
+                    4 -> moveLayer(+1)
+                    5 -> moveLayer(-1)
+                    6 -> mergeDown()
+                }
+                framesAdapter.notifyItemChanged(project.currentIndex)
+            }
+            .show()
+    }
+
+    private fun renameLayer(l: Layer) {
+        val input = EditText(this).apply { setText(l.name); setTextColor(0xFFE8E8F0.toInt()) }
+        AlertDialog.Builder(this)
+            .setTitle("Nom du calque")
+            .setView(input)
+            .setPositiveButton("OK") { _, _ -> l.name = input.text.toString().ifBlank { "Couche" } }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showLayerOpacity(l: Layer) {
+        val seek = SeekBar(this).apply { max = 100; progress = (l.opacity * 100).toInt() }
+        AlertDialog.Builder(this)
+            .setTitle("Opacité")
+            .setView(seek)
+            .setPositiveButton("OK") { _, _ ->
+                l.opacity = seek.progress / 100f
+                binding.canvas.syncFrameBitmap()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun moveLayer(direction: Int) {
+        val f = project.currentFrame
+        val from = f.activeLayer
+        val to = (from + direction).coerceIn(0, f.layers.size - 1)
+        if (from == to) return
+        pushUndo()
+        val item = f.layers.removeAt(from)
+        f.layers.add(to, item)
+        f.activeLayer = to
+        binding.canvas.syncFrameBitmap()
+    }
+
+    private fun mergeDown() {
+        val f = project.currentFrame
+        val active = f.activeLayer
+        if (active == 0) { toast("Pas de calque en dessous"); return }
+        pushUndo()
+        val top = f.layers[active]
+        val below = f.layers[active - 1]
+        // Composite top onto below
+        for (i in top.pixels.indices) {
+            val src = top.pixels[i]
+            if ((src ushr 24) and 0xFF >= 128) below.pixels[i] = src
+        }
+        f.layers.removeAt(active)
+        f.activeLayer = active - 1
+        binding.canvas.syncFrameBitmap()
+        toast("Calques fusionnés")
+    }
+
     private fun showFiltersMenu() {
         val filters = Filters.Filter.values()
         val labels = filters.map { it.displayName }.toTypedArray()
@@ -1007,6 +1118,8 @@ class MainActivity : AppCompatActivity() {
         binding.framesList.layoutManager = LinearLayoutManager(this)
         binding.framesList.adapter = framesAdapter
         attachFrameDragHelper()
+
+        binding.btnLayers.setOnClickListener { showLayersDialog() }
 
         binding.btnFrameAdd.setOnClickListener {
             project.frames.add(Frame(project.width, project.height))
@@ -1515,12 +1628,13 @@ class MainActivity : AppCompatActivity() {
 
     // ---- Export ----
     private fun frameToBitmap(frame: Frame, scale: Int = 1): Bitmap {
+        val composite = if (frame.layers.size > 1) frame.composited() else frame.pixels
         val bmp = Bitmap.createBitmap(frame.width * scale, frame.height * scale, Bitmap.Config.ARGB_8888)
         if (scale == 1) {
-            bmp.setPixels(frame.pixels, 0, frame.width, 0, 0, frame.width, frame.height)
+            bmp.setPixels(composite, 0, frame.width, 0, 0, frame.width, frame.height)
         } else {
             val small = Bitmap.createBitmap(frame.width, frame.height, Bitmap.Config.ARGB_8888)
-            small.setPixels(frame.pixels, 0, frame.width, 0, 0, frame.width, frame.height)
+            small.setPixels(composite, 0, frame.width, 0, 0, frame.width, frame.height)
             val c = android.graphics.Canvas(bmp)
             val p = android.graphics.Paint().apply { isFilterBitmap = false; isAntiAlias = false }
             c.drawBitmap(small, null, android.graphics.Rect(0, 0, bmp.width, bmp.height), p)
@@ -1561,7 +1675,8 @@ class MainActivity : AppCompatActivity() {
             val bytes = withContext(Dispatchers.Default) {
                 val encoder = GifEncoder(project.width, project.height)
                 project.frames.forEachIndexed { i, f ->
-                    encoder.addFrame(f.pixels, project.delayForFrame(i))
+                    val comp = if (f.layers.size > 1) f.composited() else f.pixels
+                    encoder.addFrame(comp, project.delayForFrame(i))
                 }
                 encoder.encodeToBytes()
             }

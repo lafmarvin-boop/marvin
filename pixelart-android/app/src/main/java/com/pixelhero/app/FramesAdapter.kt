@@ -38,7 +38,8 @@ class FramesAdapter(
         holder.label.text = "#${position + 1}$tagText$delayText"
 
         val bmp = Bitmap.createBitmap(frame.width, frame.height, Bitmap.Config.ARGB_8888)
-        bmp.setPixels(frame.pixels, 0, frame.width, 0, 0, frame.width, frame.height)
+        val src = if (frame.layers.size > 1) frame.composited() else frame.pixels
+        bmp.setPixels(src, 0, frame.width, 0, 0, frame.width, frame.height)
         val drawable = bmp.toDrawable(holder.thumb.resources)
         drawable.setAntiAlias(false)
         drawable.isFilterBitmap = false

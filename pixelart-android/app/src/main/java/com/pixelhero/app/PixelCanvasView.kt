@@ -173,8 +173,7 @@ class PixelCanvasView @JvmOverloads constructor(
             val idx = p.currentIndex - off
             if (idx < 0) break
             val bmp = Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888)
-            bmp.setPixels(p.frames[idx].pixels, 0, p.width, 0, 0, p.width, p.height)
-            // Blue tint: 0x4400AAFF
+            bmp.setPixels(frameComposite(p.frames[idx]), 0, p.width, 0, 0, p.width, p.height)
             val tint = 0x4400AAFF.toInt()
             onionBmps.add(Triple(bmp, -off, tint))
         }
@@ -183,7 +182,7 @@ class PixelCanvasView @JvmOverloads constructor(
             val idx = p.currentIndex + off
             if (idx >= p.frames.size) break
             val bmp = Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888)
-            bmp.setPixels(p.frames[idx].pixels, 0, p.width, 0, 0, p.width, p.height)
+            bmp.setPixels(frameComposite(p.frames[idx]), 0, p.width, 0, 0, p.width, p.height)
             val tint = 0x44FF4477.toInt()
             onionBmps.add(Triple(bmp, off, tint))
         }
@@ -192,7 +191,9 @@ class PixelCanvasView @JvmOverloads constructor(
     fun syncFrameBitmap() {
         val p = project ?: return
         val bmp = frameBmp ?: return
-        bmp.setPixels(p.currentFrame.pixels, 0, p.width, 0, 0, p.width, p.height)
+        // Use composited view if multi-layer; otherwise direct pixels for speed
+        val data = if (p.currentFrame.layers.size > 1) p.currentFrame.composited() else p.currentFrame.pixels
+        bmp.setPixels(data, 0, p.width, 0, 0, p.width, p.height)
         invalidate()
     }
 
@@ -200,6 +201,9 @@ class PixelCanvasView @JvmOverloads constructor(
         rebuildOnionBitmaps()
         invalidate()
     }
+
+    private fun frameComposite(f: Frame): IntArray =
+        if (f.layers.size > 1) f.composited() else f.pixels
 
     fun resetView() {
         val p = project ?: return
