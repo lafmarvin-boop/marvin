@@ -477,6 +477,20 @@ class AssistantService : LifecycleService() {
                 speakWithPhase(if (ok) "OK, j'ai oublié." else "Je n'avais rien sur ça.")
             }
             is MarvinIntent.Help -> speakWithPhase(buildHelpText())
+            is MarvinIntent.AddNote -> {
+                com.marvin.assistant.notes.NotesManager(this).add(parsed.text)
+                speakWithPhase("Note enregistrée.")
+            }
+            is MarvinIntent.ReadNotes -> {
+                val notes = com.marvin.assistant.notes.NotesManager(this).all().take(10)
+                speakWithPhase(if (notes.isEmpty()) "Tu n'as aucune note."
+                    else "Tes ${notes.size} dernières notes : " +
+                        notes.joinToString(". ") { it.text })
+            }
+            is MarvinIntent.ClearNotes -> {
+                com.marvin.assistant.notes.NotesManager(this).clear()
+                speakWithPhase("Notes effacées.")
+            }
             is MarvinIntent.CreateCalendarEvent -> {
                 val writer = com.marvin.assistant.calendar.CalendarWriter(this)
                 speakWithPhase(writer.createEvent(parsed.title, parsed.startMs, parsed.durationMinutes))
@@ -618,6 +632,22 @@ class AssistantService : LifecycleService() {
             }
             if (parsedFu is MarvinIntent.Help) {
                 speakWithPhase(buildHelpText())
+                continue
+            }
+            if (parsedFu is MarvinIntent.AddNote) {
+                com.marvin.assistant.notes.NotesManager(this).add(parsedFu.text)
+                speakWithPhase("Note enregistrée.")
+                continue
+            }
+            if (parsedFu is MarvinIntent.ReadNotes) {
+                val notes = com.marvin.assistant.notes.NotesManager(this).all().take(10)
+                speakWithPhase(if (notes.isEmpty()) "Aucune note."
+                    else "Tes notes : " + notes.joinToString(". ") { it.text })
+                continue
+            }
+            if (parsedFu is MarvinIntent.ClearNotes) {
+                com.marvin.assistant.notes.NotesManager(this).clear()
+                speakWithPhase("Notes effacées.")
                 continue
             }
             if (parsedFu is MarvinIntent.CreateCalendarEvent) {

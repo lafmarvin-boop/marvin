@@ -165,6 +165,22 @@ class IntentParser {
             MarvinIntent.CreateCalendarEvent(title, ts)
         },
 
+        // ---- Notes vocales ----
+        // "prends une note : il faut rappeler Sophie"
+        // "note que je dois acheter du pain"
+        Rule(Regex("""(?:prends|prend|prendre) une note\s*[:,-]?\s*(.+)""")) {
+            MarvinIntent.AddNote(it.groupValues[1].trim())
+        },
+        Rule(Regex("""^note(?:\s+que)?\s+(.+)""")) {
+            MarvinIntent.AddNote(it.groupValues[1].trim())
+        },
+        Rule(Regex("""(?:lis|montre|donne)(?:[- ]moi)?\s+(?:les |mes )?notes$""")) {
+            MarvinIntent.ReadNotes
+        },
+        Rule(Regex("""(?:efface|supprime|vide)\s+(?:toutes |mes )?(?:les )?notes""")) {
+            MarvinIntent.ClearNotes
+        },
+
         // ---- Help ----
         // "qu'est-ce que tu sais faire" / "aide" / "que peux-tu faire"
         Rule(Regex("""(?:qu'est-ce que tu sais faire|que peux[- ]tu faire|aide moi|aide-moi|de l'aide|liste tes commandes)""")) {
