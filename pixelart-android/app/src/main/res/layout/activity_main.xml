@@ -216,6 +216,18 @@
                     android:layout_marginTop="4dp"/>
                 <Button android:id="@+id/btnDither" style="@style/SmallButton"
                     android:text="Aucun" android:layout_width="match_parent"/>
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginTop="6dp">
+                    <CheckBox android:id="@+id/cbSketchMode"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Mode croquis" android:textColor="@color/text"
+                        android:buttonTint="@color/accent" android:layout_weight="1"/>
+                    <Button android:id="@+id/btnSketchBake" style="@style/SmallButton"
+                        android:text="Valider" android:layout_marginEnd="2dp"/>
+                    <Button android:id="@+id/btnSketchClear" style="@style/SmallButton"
+                        android:text="✕" android:minWidth="0dp"/>
+                </LinearLayout>
             </LinearLayout>
 
             <!-- Zoom controls -->
@@ -256,8 +268,21 @@
                         android:gravity="center" android:padding="4dp"/>
                 </LinearLayout>
 
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginTop="6dp"
+                    android:gravity="center_vertical">
+                    <TextView style="@style/Caption" android:text="Aperçu :"/>
+                    <ImageView android:id="@+id/miniPreview"
+                        android:layout_width="64dp" android:layout_height="64dp"
+                        android:layout_marginStart="8dp"
+                        android:background="@color/bg"
+                        android:scaleType="fitCenter"/>
+                    <Button android:id="@+id/btnPreviewToggle" style="@style/SmallButton"
+                        android:text="Stop" android:layout_marginStart="8dp"/>
+                </LinearLayout>
+
                 <androidx.recyclerview.widget.RecyclerView android:id="@+id/framesList"
-                    android:layout_width="match_parent" android:layout_height="220dp"
+                    android:layout_width="match_parent" android:layout_height="200dp"
                     android:background="@color/bg" android:padding="4dp"
                     android:layout_marginTop="6dp"/>
 

@@ -56,6 +56,12 @@ class MainActivity : AppCompatActivity() {
     private val autosaveHandler = Handler(Looper.getMainLooper())
     private var autosaveRunnable: Runnable? = null
 
+    // Mini preview loop
+    private val miniPreviewHandler = Handler(Looper.getMainLooper())
+    private var miniPreviewTask: Runnable? = null
+    private var miniPreviewIdx = 0
+    private var miniPreviewEnabled = true
+
     // Clipboard for selection paste (across tool resets)
     private var clipboardW = 0
     private var clipboardPixels: IntArray? = null
@@ -83,6 +89,37 @@ class MainActivity : AppCompatActivity() {
             applyProject()
         }
         scheduleAutosave()
+        startMiniPreview()
+    }
+
+    private fun startMiniPreview() {
+        stopMiniPreview()
+        val task = object : Runnable {
+            override fun run() {
+                if (!miniPreviewEnabled || isPlaying) {
+                    miniPreviewHandler.postDelayed(this, 500L)
+                    return
+                }
+                if (project.frames.isNotEmpty()) {
+                    miniPreviewIdx = (miniPreviewIdx + 1) % project.frames.size
+                    val f = project.frames[miniPreviewIdx]
+                    val bmp = Bitmap.createBitmap(f.width, f.height, Bitmap.Config.ARGB_8888)
+                    bmp.setPixels(f.pixels, 0, f.width, 0, 0, f.width, f.height)
+                    val drawable = android.graphics.drawable.BitmapDrawable(resources, bmp)
+                    drawable.isFilterBitmap = false
+                    binding.miniPreview.setImageDrawable(drawable)
+                }
+                val delay = (1000L / project.fps.coerceAtLeast(1)).coerceAtLeast(50L)
+                miniPreviewHandler.postDelayed(this, delay)
+            }
+        }
+        miniPreviewTask = task
+        miniPreviewHandler.post(task)
+    }
+
+    private fun stopMiniPreview() {
+        miniPreviewTask?.let { miniPreviewHandler.removeCallbacks(it) }
+        miniPreviewTask = null
     }
 
     private fun scheduleAutosave() {
@@ -102,11 +139,13 @@ class MainActivity : AppCompatActivity() {
         if (isPlaying) stopPlay()
         ProjectStorage.save(this, project)
         autosaveRunnable?.let { autosaveHandler.removeCallbacks(it) }
+        stopMiniPreview()
     }
 
     override fun onResume() {
         super.onResume()
         scheduleAutosave()
+        startMiniPreview()
     }
 
     // ---- Canvas wiring ----
@@ -361,14 +400,33 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSmartGenerator() {
-        val items = arrayOf("Frames d'animation", "Décor / scène")
+        val items = arrayOf("Frames d'animation", "Décor / scène", "Template de pose")
         AlertDialog.Builder(this)
             .setTitle("Générer…")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> showAnimationGenerator()
                     1 -> showDecorGenerator()
+                    2 -> showPoseTemplates()
                 }
+            }
+            .show()
+    }
+
+    private fun showPoseTemplates() {
+        val poses = PoseTemplates.Pose.values()
+        val labels = poses.map { it.displayName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Template de pose (silhouette guide)")
+            .setItems(labels) { _, which ->
+                pushUndo()
+                val pixels = PoseTemplates.render(poses[which], project.width, project.height)
+                // Merge with existing frame (don't erase content, just add outline)
+                val f = project.currentFrame
+                for (i in pixels.indices) if (pixels[i] != 0) f.pixels[i] = pixels[i]
+                binding.canvas.syncFrameBitmap()
+                framesAdapter.notifyItemChanged(project.currentIndex)
+                toast("Template ${poses[which].displayName} ajouté")
             }
             .show()
     }
@@ -568,6 +626,26 @@ class MainActivity : AppCompatActivity() {
         binding.btnZoomFit.setOnClickListener { binding.canvas.zoomReset() }
         binding.btnZoom100.setOnClickListener { binding.canvas.setZoom(1f) }
         binding.btnZoom400.setOnClickListener { binding.canvas.setZoom(4f) }
+
+        // Mini preview toggle
+        binding.btnPreviewToggle.setOnClickListener {
+            miniPreviewEnabled = !miniPreviewEnabled
+            binding.btnPreviewToggle.text = if (miniPreviewEnabled) "Stop" else "Play"
+        }
+
+        // Sketch mode
+        binding.cbSketchMode.setOnCheckedChangeListener { _, checked ->
+            binding.canvas.sketchMode = checked
+        }
+        binding.btnSketchBake.setOnClickListener {
+            pushUndo()
+            binding.canvas.bakeSketchIntoFrame()
+            framesAdapter.notifyItemChanged(project.currentIndex)
+            toast("Croquis intégré à la frame")
+        }
+        binding.btnSketchClear.setOnClickListener {
+            binding.canvas.clearSketch()
+        }
 
         binding.fpsInput.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) project.fps = binding.fpsInput.text.toString().toIntOrNull()?.coerceIn(1, 60) ?: 8

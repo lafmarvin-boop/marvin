@@ -40,6 +40,36 @@ class PixelCanvasView @JvmOverloads constructor(
 
     val selection = Selection()
 
+    // Sketch layer: a separate per-frame pixel buffer rendered above the frame
+    // with reduced opacity, drawn ONLY when sketchMode is true.
+    var sketchMode: Boolean = false
+        set(value) { field = value; invalidate() }
+    var sketchOpacity: Float = 0.5f
+    private val sketchLayers = HashMap<String, IntArray>()
+    private var sketchBmp: Bitmap? = null
+
+    private fun ensureSketchBuffer(): IntArray {
+        val p = project ?: return IntArray(0)
+        val key = p.currentFrame.let { "${p.id}_${it.hashCode()}" }
+        return sketchLayers.getOrPut(key) { IntArray(p.width * p.height) }
+    }
+
+    fun clearSketch() {
+        ensureSketchBuffer().fill(0)
+        invalidate()
+    }
+
+    fun bakeSketchIntoFrame() {
+        val p = project ?: return
+        val buf = ensureSketchBuffer()
+        val f = p.currentFrame
+        for (i in buf.indices) {
+            if (buf[i] != 0 && (buf[i] ushr 24) and 0xFF >= 128) f.pixels[i] = buf[i]
+        }
+        buf.fill(0)
+        syncFrameBitmap()
+    }
+
     // View transform
     private var scale = 1f
     private var translateX = 0f
@@ -251,6 +281,21 @@ class PixelCanvasView @JvmOverloads constructor(
 
         // Current frame
         frameBmp?.let { canvas.drawBitmap(it, 0f, 0f, paint) }
+
+        // Sketch layer (rendered above frame at reduced opacity)
+        if (sketchLayers.isNotEmpty()) {
+            val buf = sketchLayers["${p.id}_${p.currentFrame.hashCode()}"]
+            if (buf != null) {
+                val bmp = sketchBmp ?: Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888).also { sketchBmp = it }
+                if (bmp.width != p.width || bmp.height != p.height) {
+                    sketchBmp = Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888)
+                }
+                sketchBmp!!.setPixels(buf, 0, p.width, 0, 0, p.width, p.height)
+                paint.alpha = (sketchOpacity * 255).toInt().coerceIn(0, 255)
+                canvas.drawBitmap(sketchBmp!!, 0f, 0f, paint)
+                paint.alpha = 255
+            }
+        }
 
         // Floating selection overlay
         selection.floating?.let {
@@ -497,6 +542,22 @@ class PixelCanvasView @JvmOverloads constructor(
 
     private fun paintSinglePixelWithSymmetry(x: Int, y: Int, c: Int) {
         val p = project ?: return
+        // Choose target buffer based on sketch mode
+        if (sketchMode) {
+            val buf = ensureSketchBuffer()
+            setBufPixel(buf, p.width, p.height, x, y, c)
+            when (p.symmetry) {
+                SymmetryAxis.NONE -> {}
+                SymmetryAxis.HORIZONTAL -> setBufPixel(buf, p.width, p.height, p.width - 1 - x, y, c)
+                SymmetryAxis.VERTICAL -> setBufPixel(buf, p.width, p.height, x, p.height - 1 - y, c)
+                SymmetryAxis.BOTH -> {
+                    setBufPixel(buf, p.width, p.height, p.width - 1 - x, y, c)
+                    setBufPixel(buf, p.width, p.height, x, p.height - 1 - y, c)
+                    setBufPixel(buf, p.width, p.height, p.width - 1 - x, p.height - 1 - y, c)
+                }
+            }
+            return
+        }
         p.currentFrame.set(x, y, c)
         when (p.symmetry) {
             SymmetryAxis.NONE -> {}
@@ -508,6 +569,10 @@ class PixelCanvasView @JvmOverloads constructor(
                 p.currentFrame.set(p.width - 1 - x, p.height - 1 - y, c)
             }
         }
+    }
+
+    private fun setBufPixel(buf: IntArray, w: Int, h: Int, x: Int, y: Int, c: Int) {
+        if (x in 0 until w && y in 0 until h) buf[y * w + x] = c
     }
 
     /**
