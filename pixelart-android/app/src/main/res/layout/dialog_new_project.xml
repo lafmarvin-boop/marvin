@@ -68,7 +68,7 @@
             </LinearLayout>
         </LinearLayout>
         <TextView style="@style/Caption"
-            android:text="Personnalisé (max 1024×1024). Au-dessus de 256 px, l'app peut être plus lente."
+            android:text="Personnalisé (max 1024×1024). Au-dessus de 256 px, l'application peut être plus lente sur les anciens téléphones — sur tablette ou Galaxy Ultra ça passe très bien jusqu'à 512×512."
             android:layout_marginTop="4dp"/>
     </LinearLayout>
 </ScrollView>

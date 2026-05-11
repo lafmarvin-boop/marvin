@@ -14,9 +14,9 @@
     <string name="undo">Annuler</string>
     <string name="redo">Refaire</string>
     <string name="play">Lecture</string>
-    <string name="stop">Stop</string>
-    <string name="frames">Frames</string>
-    <string name="add_frame">+ Frame</string>
+    <string name="stop">Arrêter</string>
+    <string name="frames">Images / Frames</string>
+    <string name="add_frame">+ Image</string>
     <string name="duplicate">Dupliquer</string>
     <string name="delete">Supprimer</string>
     <string name="tool_pencil">Crayon</string>

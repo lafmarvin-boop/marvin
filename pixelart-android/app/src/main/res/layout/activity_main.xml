@@ -10,7 +10,7 @@
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="0dp"
-        android:layout_height="48dp"
+        android:layout_height="@dimen/top_bar_height"
         android:background="@color/bg_dark"
         android:orientation="horizontal"
         android:gravity="center_vertical"
@@ -24,7 +24,7 @@
 
         <TextView android:layout_width="0dp" android:layout_height="wrap_content"
             android:layout_weight="1" android:text="@string/app_name"
-            android:textColor="@color/accent_light" android:textSize="16sp"
+            android:textColor="@color/accent_light" android:textSize="@dimen/title_text_size"
             android:textStyle="bold" android:gravity="center" android:letterSpacing="0.05" />
 
         <ImageButton android:id="@+id/btnSymmetry" style="@style/TopBarButton"
@@ -42,7 +42,7 @@
     <!-- LEFT TOOLBAR -->
     <ScrollView
         android:id="@+id/leftBar"
-        android:layout_width="52dp"
+        android:layout_width="@dimen/left_bar_width"
         android:layout_height="0dp"
         android:background="@color/bg_dark"
         android:scrollbars="none"
@@ -87,7 +87,7 @@
     <!-- RIGHT PANEL -->
     <ScrollView
         android:id="@+id/rightPanel"
-        android:layout_width="240dp"
+        android:layout_width="@dimen/right_panel_width"
         android:layout_height="0dp"
         android:background="@color/bg_dark"
         android:padding="8dp"
@@ -274,7 +274,7 @@
                     android:gravity="center_vertical">
                     <TextView style="@style/Caption" android:text="Aperçu :"/>
                     <ImageView android:id="@+id/miniPreview"
-                        android:layout_width="64dp" android:layout_height="64dp"
+                        android:layout_width="@dimen/mini_preview_size" android:layout_height="@dimen/mini_preview_size"
                         android:layout_marginStart="8dp"
                         android:background="@color/bg"
                         android:scaleType="fitCenter"/>
@@ -287,7 +287,7 @@
                     android:layout_width="match_parent" android:layout_marginTop="6dp"/>
 
                 <androidx.recyclerview.widget.RecyclerView android:id="@+id/framesList"
-                    android:layout_width="match_parent" android:layout_height="200dp"
+                    android:layout_width="match_parent" android:layout_height="@dimen/frames_list_height"
                     android:background="@color/bg" android:padding="4dp"
                     android:layout_marginTop="6dp"/>
 

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Large phones (Galaxy Ultra, Note, foldable...) -->
+    <dimen name="top_bar_height">56dp</dimen>
+    <dimen name="top_bar_button_size">48dp</dimen>
+    <dimen name="left_bar_width">64dp</dimen>
+    <dimen name="tool_button_size">56dp</dimen>
+    <dimen name="tool_icon_size">28dp</dimen>
+    <dimen name="right_panel_width">300dp</dimen>
+    <dimen name="frames_list_height">260dp</dimen>
+    <dimen name="mini_preview_size">80dp</dimen>
+    <dimen name="swatch_size">34dp</dimen>
+    <dimen name="frame_thumb_size">56dp</dimen>
+    <dimen name="section_padding">14dp</dimen>
+    <dimen name="title_text_size">18sp</dimen>
+    <dimen name="section_title_text_size">13sp</dimen>
+    <dimen name="caption_text_size">12sp</dimen>
+    <dimen name="small_button_height">42dp</dimen>
+</resources>

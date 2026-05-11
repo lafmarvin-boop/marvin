@@ -199,28 +199,29 @@ class MainActivity : AppCompatActivity() {
 
     // ---- Tools ----
     private fun wireTools() {
-        val tools = mapOf(
-            binding.toolPencil to Tool.PENCIL,
-            binding.toolEraser to Tool.ERASER,
-            binding.toolFill to Tool.FILL,
-            binding.toolPicker to Tool.PICKER,
-            binding.toolLine to Tool.LINE,
-            binding.toolRect to Tool.RECT,
-            binding.toolRectFill to Tool.RECT_FILL,
-            binding.toolSelect to Tool.SELECT,
-            binding.toolWand to Tool.WAND,
-            binding.toolMove to Tool.MOVE
+        // Map button -> (tool, helpKey)
+        val tools = listOf(
+            Triple(binding.toolPencil,    Tool.PENCIL,    "pencil"),
+            Triple(binding.toolEraser,    Tool.ERASER,    "eraser"),
+            Triple(binding.toolFill,      Tool.FILL,      "fill"),
+            Triple(binding.toolPicker,    Tool.PICKER,    "picker"),
+            Triple(binding.toolLine,      Tool.LINE,      "line"),
+            Triple(binding.toolRect,      Tool.RECT,      "rect"),
+            Triple(binding.toolRectFill,  Tool.RECT_FILL, "rectfill"),
+            Triple(binding.toolSelect,    Tool.SELECT,    "select"),
+            Triple(binding.toolWand,      Tool.WAND,      "wand"),
+            Triple(binding.toolMove,      Tool.MOVE,      "move")
         )
         binding.toolPencil.isSelected = true
-        tools.forEach { (btn, tool) ->
+        tools.forEach { (btn, tool, helpKey) ->
             btn.setOnClickListener {
-                tools.keys.forEach { it.isSelected = false }
+                tools.forEach { (b, _, _) -> b.isSelected = false }
                 btn.isSelected = true
                 binding.canvas.tool = tool
                 if (tool == Tool.SELECT || tool == Tool.WAND) showSelectionActions()
             }
-            btn.setOnLongClickListener { l ->
-                if (tool == Tool.SELECT || tool == Tool.WAND) showSelectionActions()
+            btn.setOnLongClickListener {
+                showHelpFor(helpKey)
                 true
             }
         }
@@ -234,14 +235,17 @@ class MainActivity : AppCompatActivity() {
                 .setNegativeButton(R.string.cancel, null)
                 .show()
         }
+        binding.btnClear.attachHelp("clear")
         binding.btnGrid.setOnClickListener {
             binding.canvas.showGrid = !binding.canvas.showGrid
             binding.btnGrid.isSelected = binding.canvas.showGrid
             binding.canvas.invalidate()
         }
         binding.btnGrid.isSelected = true
+        binding.btnGrid.attachHelp("grid")
 
         binding.btnFlip.setOnClickListener { showFlipMenu() }
+        binding.btnFlip.attachHelp("flip")
     }
 
     private fun showFlipMenu() {
@@ -379,6 +383,12 @@ class MainActivity : AppCompatActivity() {
         binding.btnMenu.setOnClickListener { showMenu() }
         binding.btnSymmetry.setOnClickListener { showSymmetryMenu() }
         binding.btnMagic.setOnClickListener { showSmartGenerator() }
+        binding.btnUndo.attachHelp("undo")
+        binding.btnRedo.attachHelp("redo")
+        binding.btnPlay.attachHelp("play")
+        binding.btnMenu.attachHelp("menu")
+        binding.btnSymmetry.attachHelp("symmetry")
+        binding.btnMagic.attachHelp("magic")
     }
 
     private fun doUndo() {
@@ -679,6 +689,26 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnPickColor.setOnClickListener { showColorPicker() }
         binding.currentColorSwatch.setOnClickListener { showColorPicker() }
+        binding.btnPickColor.attachHelp("pickColor")
+        binding.btnSwap.attachHelp("swap")
+        binding.btnAutoShade.attachHelp("autoShade")
+        binding.btnPaletteLib.attachHelp("paletteLib")
+        binding.btnReplaceColor.attachHelp("replaceColor")
+        binding.btnBgLoad.attachHelp("bgLoad")
+        binding.btnBgClear.attachHelp("bgClear")
+        binding.btnBgFit.attachHelp("bgFit")
+        binding.btnDither.attachHelp("dither")
+        binding.cbPixelPerfect.attachHelp("pixelPerfect")
+        binding.brushSize.attachHelp("brushSize")
+        binding.brushSizeLabel.attachHelp("brushSize")
+        binding.cbSketchMode.attachHelp("sketch")
+        binding.btnSketchBake.attachHelp("sketch")
+        binding.btnSketchClear.attachHelp("sketch")
+        binding.btnZoomOut.attachHelp("zoomOut")
+        binding.btnZoomIn.attachHelp("zoomIn")
+        binding.btnZoomFit.attachHelp("zoomFit")
+        binding.btnZoom100.attachHelp("zoom100")
+        binding.btnZoom400.attachHelp("zoom400")
         binding.btnSwap.setOnClickListener {
             project.swapColors()
             binding.canvas.color = project.primaryColor
@@ -1134,6 +1164,12 @@ class MainActivity : AppCompatActivity() {
         attachFrameDragHelper()
 
         binding.btnLayers.setOnClickListener { showLayersDialog() }
+        binding.btnLayers.attachHelp("layers")
+        binding.btnFrameAdd.attachHelp("frameAdd")
+        binding.btnFrameDup.attachHelp("frameDup")
+        binding.btnFrameDel.attachHelp("frameDel")
+        binding.fpsInput.attachHelp("fps")
+        binding.btnPreviewToggle.attachHelp("previewToggle")
 
         binding.btnFrameAdd.setOnClickListener {
             project.frames.add(Frame(project.width, project.height))
@@ -1790,5 +1826,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun toast(msg: String) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    }
+
+    /** Attach a long-press listener that shows the help entry [helpKey] for this view. */
+    private fun View.attachHelp(helpKey: String) {
+        setOnLongClickListener {
+            showHelpFor(helpKey)
+            true
+        }
+    }
+
+    private fun showHelpFor(key: String) {
+        val entry = ToolHelp.get(key) ?: return
+        AlertDialog.Builder(this)
+            .setTitle(entry.title)
+            .setMessage(ToolHelp.format(entry))
+            .setPositiveButton("Compris", null)
+            .show()
     }
 }
