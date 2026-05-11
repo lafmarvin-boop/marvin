@@ -20,6 +20,24 @@ sealed class LlmResult {
 interface LlmBackend {
     suspend fun ask(history: List<ChatMessage>): LlmResult
 
+    /**
+     * Variante streaming : émet des deltas de texte au fur et à mesure.
+     * Le callback [onDelta] reçoit chaque nouveau morceau de texte au
+     * fur et à mesure qu'il arrive. À la fin, renvoie le LlmResult complet.
+     *
+     * Implémentation par défaut : appelle ask() puis émet le résultat
+     * entier en un seul delta. Les backends qui supportent vraiment le
+     * streaming (Claude SSE) overrident.
+     */
+    suspend fun askStreaming(
+        history: List<ChatMessage>,
+        onDelta: suspend (String) -> Unit
+    ): LlmResult {
+        val r = ask(history)
+        if (r is LlmResult.Ok) onDelta(r.text)
+        return r
+    }
+
     /** Prêt à répondre ? Pour Gemma local, false tant que le modèle n'est pas téléchargé. */
     fun isReady(): Boolean
 

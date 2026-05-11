@@ -973,19 +973,24 @@ class AssistantService : LifecycleService() {
             listOf(ChatMessage(ChatMessage.Role.USER, userText))
         }
 
-        when (val result = backend.ask(history)) {
+        // Streaming SSE : TTS chaque phrase au fur et a mesure qu'elle
+        // arrive de Claude. Reduit la latence percue de ~1-2 s sur les
+        // longues reponses.
+        val streamingResult = backend.askStreaming(history) { sentence ->
+            DiscussionStateHolder.setPhase(DiscussionPhase.Speaking(sentence))
+            if (::auditLog.isInitialized) auditLog.log(AuditLog.Type.JARVIS_SAID, sentence)
+            tts.speak(sentence)
+        }
+        when (val result = streamingResult) {
             is LlmResult.Ok -> {
                 if (useHistory) {
                     discussionHistory.add(ChatMessage(ChatMessage.Role.ASSISTANT, result.text))
                     turnsSinceSummary++
-                    // Auto-summary tous les 5 tours : on garde un memo
-                    // condense dans la memoire long terme, et on tronque
-                    // l'historique pour pas exploser le quota.
                     if (turnsSinceSummary >= 5 && discussionHistory.size >= 10) {
                         summarizeAndPrune(backend)
                     }
                 }
-                speakWithPhase(result.text)
+                // Le TTS a deja ete fait via onDelta — pas de second speakWithPhase
             }
             is LlmResult.QuotaExceeded ->
                 speakWithPhase("T'as atteint la limite de ${result.limit} questions par jour.")

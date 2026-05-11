@@ -182,6 +182,103 @@ class ClaudeBackend(
         LlmResult.Error("Trop d'allers-retours d'outils.")
     }
 
+    /**
+     * Streaming SSE. Si la requête utilise des tools, on bascule sur le
+     * mode non-streaming (askStreaming default impl) — gérer le streaming
+     * avec tool use est nettement plus complexe.
+     */
+    override suspend fun askStreaming(
+        history: List<ChatMessage>,
+        onDelta: suspend (String) -> Unit
+    ): LlmResult = withContext(Dispatchers.IO) {
+        if (!hasNetwork()) return@withContext LlmResult.NoNetwork("Pas de réseau.")
+        val apiKey = settings.anthropicApiKey
+        if (apiKey.isBlank()) return@withContext LlmResult.Error("Clé API Claude absente.")
+        if (!settings.consumeDailyQuota()) {
+            return@withContext LlmResult.QuotaExceeded(settings.dailyLimit)
+        }
+
+        // Build payload identique a postMessages mais avec stream: true
+        val memoryContext = memory?.buildContextBlock().orEmpty()
+        val basePrompt = settings.customSystemPrompt.takeIf { it.isNotBlank() } ?: SYSTEM_PROMPT
+        val systemBlocks = JSONArray().apply {
+            put(JSONObject().apply {
+                put("type", "text")
+                put("text", basePrompt + memoryContext)
+                put("cache_control", JSONObject().put("type", "ephemeral"))
+            })
+        }
+        val messagesArray = JSONArray()
+        history.forEach { m ->
+            messagesArray.put(JSONObject().apply {
+                put("role", if (m.role == ChatMessage.Role.USER) "user" else "assistant")
+                put("content", m.content)
+            })
+        }
+        val payload = JSONObject().apply {
+            put("model", settings.claudeModel.id)
+            put("max_tokens", MAX_OUTPUT_TOKENS)
+            put("system", systemBlocks)
+            put("messages", messagesArray)
+            put("stream", true)
+            // Pas de tools en mode streaming pour cette implementation
+        }
+        val request = Request.Builder()
+            .url("https://api.anthropic.com/v1/messages")
+            .header("x-api-key", apiKey)
+            .header("anthropic-version", "2023-06-01")
+            .header("content-type", "application/json")
+            .post(payload.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        try {
+            http.newCall(request).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    Log.e(TAG, "Claude streaming ${resp.code}")
+                    return@use LlmResult.Error("Erreur API : ${resp.code}")
+                }
+                val source = resp.body?.source() ?: return@use LlmResult.Error("Pas de body")
+                val full = StringBuilder()
+                var sentenceBuf = StringBuilder()
+                while (!source.exhausted()) {
+                    val line = source.readUtf8Line() ?: continue
+                    if (!line.startsWith("data:")) continue
+                    val data = line.substring(5).trim()
+                    if (data.isBlank() || data == "[DONE]") continue
+                    val evt = try { JSONObject(data) } catch (_: Throwable) { continue }
+                    val type = evt.optString("type")
+                    if (type == "content_block_delta") {
+                        val delta = evt.optJSONObject("delta")?.optString("text") ?: ""
+                        if (delta.isNotEmpty()) {
+                            full.append(delta)
+                            sentenceBuf.append(delta)
+                            // Emet a la fin de phrase pour TTS-er sans
+                            // attendre la fin complete.
+                            val s = sentenceBuf.toString()
+                            val lastEnd = s.indexOfLast { it in ".!?…" }
+                            if (lastEnd >= 0) {
+                                val sentence = s.substring(0, lastEnd + 1).trim()
+                                if (sentence.isNotBlank()) onDelta(sentence)
+                                sentenceBuf = StringBuilder(s.substring(lastEnd + 1))
+                            }
+                        }
+                    } else if (type == "message_stop") {
+                        // Flush du reste eventuel
+                        val rest = sentenceBuf.toString().trim()
+                        if (rest.isNotBlank()) onDelta(rest)
+                        break
+                    }
+                }
+                val result = full.toString().trim()
+                if (result.isBlank()) LlmResult.Error("Réponse vide.")
+                else LlmResult.Ok(result)
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Streaming failed", t)
+            LlmResult.Error("Réseau : ${t.message}")
+        }
+    }
+
     private fun postMessages(
         apiKey: String,
         messages: JSONArray,
