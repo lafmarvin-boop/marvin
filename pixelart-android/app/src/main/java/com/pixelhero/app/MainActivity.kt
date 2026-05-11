@@ -420,6 +420,8 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnBgLoad.setOnClickListener { pickBg.launch(arrayOf("image/*")) }
         binding.btnBgClear.setOnClickListener { binding.canvas.bgBitmap = null }
+        binding.btnBgFit.setOnClickListener { cycleBgFitMode() }
+        updateBgFitButtonLabel()
 
         binding.bgOpacity.setOnSeekBarChangeListener(simpleSeekListener { v ->
             binding.canvas.bgOpacity = v / 100f
@@ -438,6 +440,20 @@ class MainActivity : AppCompatActivity() {
         binding.fpsInput.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) project.fps = binding.fpsInput.text.toString().toIntOrNull()?.coerceIn(1, 60) ?: 8
         }
+    }
+
+    private fun cycleBgFitMode() {
+        project.bgFit = when (project.bgFit) {
+            BgFitMode.FIT -> BgFitMode.COVER
+            BgFitMode.COVER -> BgFitMode.STRETCH
+            BgFitMode.STRETCH -> BgFitMode.FIT
+        }
+        updateBgFitButtonLabel()
+        binding.canvas.invalidate()
+    }
+
+    private fun updateBgFitButtonLabel() {
+        binding.btnBgFit.text = "Mode : ${project.bgFit.label}"
     }
 
     private fun simpleSeekListener(callback: (Int) -> Unit) = object : SeekBar.OnSeekBarChangeListener {
@@ -644,18 +660,33 @@ class MainActivity : AppCompatActivity() {
         val inputW = view.findViewById<EditText>(R.id.inputW)
         val inputH = view.findViewById<EditText>(R.id.inputH)
         fun preset(w: Int, h: Int) { inputW.setText(w.toString()); inputH.setText(h.toString()) }
-        view.findViewById<View>(R.id.preset16).setOnClickListener { preset(16, 16) }
-        view.findViewById<View>(R.id.preset24).setOnClickListener { preset(24, 24) }
-        view.findViewById<View>(R.id.preset32).setOnClickListener { preset(32, 32) }
-        view.findViewById<View>(R.id.preset48).setOnClickListener { preset(48, 48) }
-        view.findViewById<View>(R.id.preset64).setOnClickListener { preset(64, 64) }
+        // Square presets
+        view.findViewById<View>(R.id.preset16).setOnClickListener  { preset(16, 16) }
+        view.findViewById<View>(R.id.preset24).setOnClickListener  { preset(24, 24) }
+        view.findViewById<View>(R.id.preset32).setOnClickListener  { preset(32, 32) }
+        view.findViewById<View>(R.id.preset48).setOnClickListener  { preset(48, 48) }
+        view.findViewById<View>(R.id.preset64).setOnClickListener  { preset(64, 64) }
+        view.findViewById<View>(R.id.preset96).setOnClickListener  { preset(96, 96) }
         view.findViewById<View>(R.id.preset128).setOnClickListener { preset(128, 128) }
+        view.findViewById<View>(R.id.preset256).setOnClickListener { preset(256, 256) }
+        // Console formats
+        view.findViewById<View>(R.id.presetGB).setOnClickListener   { preset(160, 144) }
+        view.findViewById<View>(R.id.presetGBA).setOnClickListener  { preset(240, 160) }
+        view.findViewById<View>(R.id.presetNES).setOnClickListener  { preset(256, 224) }
+        view.findViewById<View>(R.id.presetSNES).setOnClickListener { preset(256, 240) }
+        // Large formats
+        view.findViewById<View>(R.id.preset320x240).setOnClickListener { preset(320, 240) }
+        view.findViewById<View>(R.id.preset480x270).setOnClickListener { preset(480, 270) }
+        view.findViewById<View>(R.id.preset512).setOnClickListener     { preset(512, 512) }
+        view.findViewById<View>(R.id.preset640x360).setOnClickListener { preset(640, 360) }
+        view.findViewById<View>(R.id.preset800x600).setOnClickListener { preset(800, 600) }
+        view.findViewById<View>(R.id.preset1024).setOnClickListener    { preset(1024, 1024) }
         AlertDialog.Builder(this)
             .setTitle(R.string.new_project)
             .setView(view)
             .setPositiveButton(R.string.create) { _, _ ->
-                val w = inputW.text.toString().toIntOrNull()?.coerceIn(1, 512) ?: 32
-                val h = inputH.text.toString().toIntOrNull()?.coerceIn(1, 512) ?: 32
+                val w = inputW.text.toString().toIntOrNull()?.coerceIn(1, 1024) ?: 32
+                val h = inputH.text.toString().toIntOrNull()?.coerceIn(1, 1024) ?: 32
                 project = Project(width = w, height = h, frames = mutableListOf(Frame(w, h)))
                 applyProject()
             }
@@ -671,8 +702,8 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.resize)
             .setView(view)
             .setPositiveButton(R.string.resize) { _, _ ->
-                val w = view.findViewById<EditText>(R.id.inputW).text.toString().toIntOrNull()?.coerceIn(1, 512) ?: return@setPositiveButton
-                val h = view.findViewById<EditText>(R.id.inputH).text.toString().toIntOrNull()?.coerceIn(1, 512) ?: return@setPositiveButton
+                val w = view.findViewById<EditText>(R.id.inputW).text.toString().toIntOrNull()?.coerceIn(1, 1024) ?: return@setPositiveButton
+                val h = view.findViewById<EditText>(R.id.inputH).text.toString().toIntOrNull()?.coerceIn(1, 1024) ?: return@setPositiveButton
                 resizeProject(w, h)
             }
             .setNegativeButton(R.string.cancel, null)
@@ -715,6 +746,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnSymmetry.isSelected = project.symmetry != SymmetryAxis.NONE
         binding.canvas.color = project.primaryColor
         refreshCurrentColorUI()
+        updateBgFitButtonLabel()
         undoStack.clear(); redoStack.clear()
     }
 

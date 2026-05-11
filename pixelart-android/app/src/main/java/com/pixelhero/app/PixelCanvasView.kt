@@ -191,15 +191,34 @@ class PixelCanvasView @JvmOverloads constructor(
                 if (((x + y) and 1) == 0) checkerPaint1 else checkerPaint2)
         }
 
-        // BG reference
+        // BG reference (3 modes: fit / cover / stretch)
         bgBitmap?.let { bg ->
-            val ratio = min(w.toFloat() / bg.width, h.toFloat() / bg.height)
-            val dw = bg.width * ratio
-            val dh = bg.height * ratio
-            val dx = (w - dw) / 2f
-            val dy = (h - dh) / 2f
             paint.alpha = (bgOpacity * 255).toInt().coerceIn(0, 255)
-            canvas.drawBitmap(bg, null, RectF(dx, dy, dx + dw, dy + dh), paint)
+            // Clip to canvas so COVER mode doesn't overflow into the surrounding chrome
+            canvas.save()
+            canvas.clipRect(0, 0, w, h)
+            when (p.bgFit) {
+                BgFitMode.STRETCH -> {
+                    canvas.drawBitmap(bg, null, RectF(0f, 0f, w.toFloat(), h.toFloat()), paint)
+                }
+                BgFitMode.COVER -> {
+                    val ratio = max(w.toFloat() / bg.width, h.toFloat() / bg.height)
+                    val dw = bg.width * ratio
+                    val dh = bg.height * ratio
+                    val dx = (w - dw) / 2f
+                    val dy = (h - dh) / 2f
+                    canvas.drawBitmap(bg, null, RectF(dx, dy, dx + dw, dy + dh), paint)
+                }
+                BgFitMode.FIT -> {
+                    val ratio = min(w.toFloat() / bg.width, h.toFloat() / bg.height)
+                    val dw = bg.width * ratio
+                    val dh = bg.height * ratio
+                    val dx = (w - dw) / 2f
+                    val dy = (h - dh) / 2f
+                    canvas.drawBitmap(bg, null, RectF(dx, dy, dx + dw, dy + dh), paint)
+                }
+            }
+            canvas.restore()
             paint.alpha = 255
         }
 

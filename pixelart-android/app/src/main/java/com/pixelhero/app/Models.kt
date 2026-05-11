@@ -6,6 +6,12 @@ enum class Tool {
 
 enum class SymmetryAxis { NONE, HORIZONTAL, VERTICAL, BOTH }
 
+enum class BgFitMode(val label: String) {
+    FIT("Adapter"),       // proportional, fits inside (default - letterboxed)
+    COVER("Remplir"),     // proportional, fills canvas (may crop)
+    STRETCH("Étirer")     // distorts to fit exactly
+}
+
 /** A single animation frame. Pixels stored as ARGB ints, row-major. */
 class Frame(val width: Int, val height: Int) {
     val pixels: IntArray = IntArray(width * height)
@@ -85,7 +91,8 @@ class Project(
     var primaryColor: Int = 0xFFFF5577.toInt(),
     var secondaryColor: Int = 0xFF000000.toInt(),
     var onionRange: Int = 1,          // number of frames before/after to show
-    var pixelPerfect: Boolean = false
+    var pixelPerfect: Boolean = false,
+    var bgFit: BgFitMode = BgFitMode.COVER
 ) {
     val currentFrame: Frame get() = frames[currentIndex]
 

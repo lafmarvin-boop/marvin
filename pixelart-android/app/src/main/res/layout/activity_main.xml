@@ -177,6 +177,11 @@
                         android:layout_weight="1"/>
                 </LinearLayout>
 
+                <Button android:id="@+id/btnBgFit" style="@style/SmallButton"
+                    android:text="Mode : Remplir"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="4dp"/>
+
                 <TextView style="@style/Caption" android:text="@string/opacity"
                     android:layout_marginTop="6dp"/>
                 <SeekBar android:id="@+id/bgOpacity"
