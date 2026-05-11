@@ -49,6 +49,7 @@ import com.marvin.assistant.ui.MainActivity
 import com.marvin.assistant.util.LlmBackendChoice
 import com.marvin.assistant.util.Settings
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -152,6 +153,25 @@ class AssistantService : LifecycleService() {
             it.pluginManager = plugins
         }
         executor = ActionExecutor(this)
+
+        // Pre-chauffage : on initialise les composants couteux DES MAINTENANT
+        // dans un coroutine background, plutôt qu'au premier wake. Reduit
+        // la latence du premier 'jarvis' de 1-2 s.
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Charge le modele Vosk (1.4 Go) en RAM
+                voskModel.get()
+                Log.i(TAG, "Pre-warm : Vosk loaded")
+                // Initialise Piper si configure (sherpa-onnx instanciation
+                // est lente la 1ere fois)
+                if (tts.isReady()) {
+                    tts.speak("") // no-op qui force l'init du moteur
+                    Log.i(TAG, "Pre-warm : TTS ready")
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Pre-warm failed", t)
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
