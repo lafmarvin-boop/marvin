@@ -872,11 +872,28 @@ class AssistantService : LifecycleService() {
         }
     }
 
-    /** Speak + push phase Speaking pendant la lecture (utile pour le visualiseur). */
+    /** Speak + push phase Speaking pendant la lecture (utile pour le visualiseur).
+     *
+     * Stratégie streaming : on découpe la réponse en phrases et on les
+     * TTS séquentiellement. Premier mot audible plus tôt qu'en attendant
+     * la fin du payload complet. Pour la vraie streaming SSE depuis
+     * Claude, voir TODO ClaudeBackend (refactor Flow). */
     private suspend fun speakWithPhase(text: String) {
         DiscussionStateHolder.setPhase(DiscussionPhase.Speaking(text))
         if (::auditLog.isInitialized) auditLog.log(AuditLog.Type.JARVIS_SAID, text)
-        tts.speak(text)
+        // Découpe en phrases sur . ! ? : (suivi d'espace ou fin)
+        // pour démarrer le TTS plus tôt sur la première phrase.
+        val sentences = splitSentences(text)
+        for (s in sentences) {
+            if (s.isBlank()) continue
+            tts.speak(s)
+        }
+    }
+
+    private fun splitSentences(text: String): List<String> {
+        // Découpe sur ponctuation forte + espace, en conservant la ponctuation
+        val regex = Regex("(?<=[.!?…])\\s+")
+        return text.split(regex).map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     private fun pickBackend(): LlmBackend {
