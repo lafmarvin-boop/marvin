@@ -19,8 +19,10 @@ import kotlin.math.sin
 object AnimationGenerator {
 
     enum class Preset(val displayName: String, val frameCount: Int) {
-        WALK("Marche (4 frames)", 4),
-        WALK8("Marche fluide (8 frames)", 8),
+        WALK("Marche ← / → (4 frames)", 4),
+        WALK8("Marche fluide ← / → (8)", 8),
+        WALK_DOWN("Marche ↓ face (4)", 4),
+        WALK_UP("Marche ↑ dos (4)", 4),
         IDLE("Idle / respiration (4)", 4),
         ATTACK("Attaque / coup (4)", 4),
         JUMP("Saut (4)", 4),
@@ -37,6 +39,8 @@ object AnimationGenerator {
         return when (preset) {
             Preset.WALK -> walk4(base, bbox)
             Preset.WALK8 -> walk8(base, bbox)
+            Preset.WALK_DOWN -> walkDown(base, bbox)
+            Preset.WALK_UP -> walkUp(base, bbox)
             Preset.IDLE -> idle(base, bbox)
             Preset.ATTACK -> attack(base, bbox)
             Preset.JUMP -> jump(base, bbox)
@@ -135,6 +139,50 @@ object AnimationGenerator {
     }
 
     // ---- Animation presets ----
+
+    /**
+     * Marche face caméra (le héros marche vers le bas de l'écran).
+     * Le mouvement caractéristique vu de face : balancement du corps,
+     * pieds qui alternent gauche/droite, léger bob vertical.
+     */
+    private fun walkDown(base: Frame, b: BBox): List<Frame> {
+        return listOf(
+            // Frame 2: pied gauche en avant (descend 1px), corps légèrement à gauche
+            run {
+                val a = shiftHalfRegion(base, b.bodyBottom + 1, b.legsBottom, leftHalf = true, cx = b.cx, dx = 0, dy = 1)
+                shifted(a, -1, 0)
+            }.also { it.tag = "walk_down" },
+            // Frame 3: passing - corps centré, légèrement haut
+            shifted(base, 0, -1).also { it.tag = "walk_down" },
+            // Frame 4: pied droit en avant (descend 1px), corps légèrement à droite
+            run {
+                val a = shiftHalfRegion(base, b.bodyBottom + 1, b.legsBottom, leftHalf = false, cx = b.cx, dx = 0, dy = 1)
+                shifted(a, 1, 0)
+            }.also { it.tag = "walk_down" }
+        )
+    }
+
+    /**
+     * Marche dos caméra (le héros s'éloigne vers le haut).
+     * Mouvement plus discret : sway horizontal du corps + alternance des
+     * pieds. Souvent on voit moins les bras (cachés derrière).
+     */
+    private fun walkUp(base: Frame, b: BBox): List<Frame> {
+        return listOf(
+            // Frame 2: corps sway -1 (vers gauche), pied gauche se lève (-1px)
+            run {
+                val a = shifted(base, -1, 0)
+                shiftHalfRegion(a, b.bodyBottom + 1, b.legsBottom, leftHalf = true, cx = b.cx, dx = 0, dy = -1)
+            }.also { it.tag = "walk_up" },
+            // Frame 3: corps centré + très léger bob bas
+            shifted(base, 0, 1).also { it.tag = "walk_up" },
+            // Frame 4: corps sway +1 (vers droite), pied droit se lève (-1px)
+            run {
+                val a = shifted(base, 1, 0)
+                shiftHalfRegion(a, b.bodyBottom + 1, b.legsBottom, leftHalf = false, cx = b.cx, dx = 0, dy = -1)
+            }.also { it.tag = "walk_up" }
+        )
+    }
 
     private fun walk4(base: Frame, b: BBox): List<Frame> {
         // 4-frame walk cycle: contact, recoil, passing, high-point
