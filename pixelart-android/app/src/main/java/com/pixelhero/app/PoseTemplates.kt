@@ -19,10 +19,15 @@ object PoseTemplates {
         HUMANOID_FRONT("Humanoïde face"),
         HUMANOID_SIDE("Humanoïde profil"),
         HUMANOID_BACK("Humanoïde dos"),
+        WARRIOR("Guerrier (épée + bouclier)"),
+        MAGE("Mage (bâton)"),
+        ARCHER("Archer (arc)"),
         DRAGON_SIDE("Dragon profil"),
         QUADRUPED("Quadrupède (chien/chat)"),
         BIRD("Oiseau"),
-        FISH("Poisson");
+        FISH("Poisson"),
+        SLIME("Slime / blob"),
+        SKELETON("Squelette");
 
         override fun toString() = displayName
     }
@@ -36,10 +41,15 @@ object PoseTemplates {
             Pose.HUMANOID_FRONT -> HUMANOID_FRONT_ART
             Pose.HUMANOID_SIDE -> HUMANOID_SIDE_ART
             Pose.HUMANOID_BACK -> HUMANOID_BACK_ART
+            Pose.WARRIOR -> WARRIOR_ART
+            Pose.MAGE -> MAGE_ART
+            Pose.ARCHER -> ARCHER_ART
             Pose.DRAGON_SIDE -> DRAGON_SIDE_ART
             Pose.QUADRUPED -> QUADRUPED_ART
             Pose.BIRD -> BIRD_ART
             Pose.FISH -> FISH_ART
+            Pose.SLIME -> SLIME_ART
+            Pose.SKELETON -> SKELETON_ART
         }
         return renderSprite(sprite, w, h)
     }
@@ -182,5 +192,92 @@ object PoseTemplates {
         ".oo..........oo.",
         "...ooo.....ooo..",
         ".....oooooo....."
+    )
+
+    private val WARRIOR_ART = arrayOf(
+        ".....oooo.......",
+        "....o....o......",
+        "....o.++.o......",
+        ".....oooo...oo..",
+        "......++...oooo.",
+        "...oo.oo.oo.++..",
+        "..o.o.oo.o.o....",
+        ".oooo.++.oooo...",
+        ".oooo.++.oooo...",
+        "..o..oooo..o....",
+        ".....o..o.......",
+        "....+o..o+......",
+        "....o....o......",
+        "....+o..o+......",
+        ".....o..o......."
+    )
+
+    private val MAGE_ART = arrayOf(
+        "......oooo......",
+        "....oo....oo....",
+        "...o..++....o...",
+        "...o.......o....",
+        "....oo...oo.....",
+        ".....oooo.......",
+        "...oo.++.oo+....",
+        "..o..o..o..o....",
+        "..o.+oo+o..o....",
+        ".o...oo+...o....",
+        "..o..oo...o.....",
+        "...oooooo.+.....",
+        "...o....o.+.....",
+        "...o....o.......",
+        "....+oo+........"
+    )
+
+    private val ARCHER_ART = arrayOf(
+        ".....oooo.......",
+        "....o....o......",
+        "....o.++.o......",
+        ".....oooo.......",
+        "......++.+++....",
+        "...oo.oo+...+...",
+        "..o.o.ooo....+..",
+        ".o..ooo+oo...+..",
+        ".+..ooo+oo...+..",
+        "..o..oooo+..+...",
+        ".....o..+++.....",
+        "....+o..o+......",
+        "....o....o......",
+        "....+o..o+......",
+        ".....o..o......."
+    )
+
+    private val SLIME_ART = arrayOf(
+        "................",
+        "................",
+        "................",
+        "......oooo......",
+        "....oo.@.@.oo...",
+        "...o........o...",
+        "..o..........o..",
+        "..o....oo....o..",
+        ".o....oooo....o.",
+        "o..o.........o.o",
+        ".o.o.o.o.o.o.o..",
+        "................"
+    )
+
+    private val SKELETON_ART = arrayOf(
+        ".....oooo.......",
+        "....o....o......",
+        "....o.OO.o......",
+        "....o....o......",
+        ".....o.o.o......",
+        ".....oooo.......",
+        "...oo.oo.oo.....",
+        "..o.o.++.o.o....",
+        "..o..oooo..o....",
+        ".....o++o.......",
+        ".....o++o.......",
+        "....+o++o+......",
+        "....o++++o......",
+        "....+o..o+......",
+        ".....o..o......."
     )
 }

@@ -4,7 +4,7 @@ enum class Tool {
     PENCIL, ERASER, FILL, PICKER, LINE, RECT, RECT_FILL, MOVE, SELECT, WAND
 }
 
-enum class SymmetryAxis { NONE, HORIZONTAL, VERTICAL, BOTH }
+enum class SymmetryAxis { NONE, HORIZONTAL, VERTICAL, BOTH, ROTATE_4 }
 
 enum class BgFitMode(val label: String) {
     FIT("Adapter"),       // proportional, fits inside (default - letterboxed)

@@ -23,7 +23,12 @@ object Filters {
         AUTO_OUTLINE("Auto-contour"),
         DROP_SHADOW("Ombre portée"),
         BLUR("Flou léger (anti-jaggies)"),
-        POSTERIZE("Postériser (réduire couleurs)");
+        POSTERIZE("Postériser (réduire couleurs)"),
+        TEMP_WARM("Tons chauds +"),
+        TEMP_COOL("Tons froids +"),
+        CB_PROTANOPIA("Daltonisme : protanopie"),
+        CB_DEUTERANOPIA("Daltonisme : deutéranopie"),
+        CB_TRITANOPIA("Daltonisme : tritanopie");
 
         override fun toString() = displayName
     }
@@ -42,6 +47,42 @@ object Filters {
             Filter.DROP_SHADOW -> dropShadow(pixels, w, h)
             Filter.BLUR -> blur(pixels, w, h)
             Filter.POSTERIZE -> posterize(pixels, w, h, 4)
+            Filter.TEMP_WARM -> colorTemperature(pixels, w, h, +20)
+            Filter.TEMP_COOL -> colorTemperature(pixels, w, h, -20)
+            Filter.CB_PROTANOPIA -> colorBlindness(pixels, w, h, CB_PROTAN)
+            Filter.CB_DEUTERANOPIA -> colorBlindness(pixels, w, h, CB_DEUTAN)
+            Filter.CB_TRITANOPIA -> colorBlindness(pixels, w, h, CB_TRITAN)
+        }
+    }
+
+    /** Shift color temperature: positive=warmer (red+, blue-), negative=cooler. */
+    private fun colorTemperature(pixels: IntArray, w: Int, h: Int, delta: Int): IntArray {
+        return IntArray(pixels.size) { i ->
+            val c = pixels[i]
+            if ((c ushr 24) and 0xFF < 128) return@IntArray c
+            val r = (((c shr 16) and 0xFF) + delta).coerceIn(0, 255)
+            val b = ((c and 0xFF) - delta).coerceIn(0, 255)
+            val g = (c shr 8) and 0xFF
+            (c and 0xFF000000.toInt()) or (r shl 16) or (g shl 8) or b
+        }
+    }
+
+    // Color blindness matrices (Brettel/Vienot model, simplified)
+    private val CB_PROTAN = floatArrayOf(0.567f, 0.433f, 0f, 0.558f, 0.442f, 0f, 0f, 0.242f, 0.758f)
+    private val CB_DEUTAN = floatArrayOf(0.625f, 0.375f, 0f, 0.7f, 0.3f, 0f, 0f, 0.3f, 0.7f)
+    private val CB_TRITAN = floatArrayOf(0.95f, 0.05f, 0f, 0f, 0.433f, 0.567f, 0f, 0.475f, 0.525f)
+
+    private fun colorBlindness(pixels: IntArray, w: Int, h: Int, m: FloatArray): IntArray {
+        return IntArray(pixels.size) { i ->
+            val c = pixels[i]
+            if ((c ushr 24) and 0xFF < 128) return@IntArray c
+            val r = (c shr 16) and 0xFF
+            val g = (c shr 8) and 0xFF
+            val b = c and 0xFF
+            val nr = (m[0] * r + m[1] * g + m[2] * b).toInt().coerceIn(0, 255)
+            val ng = (m[3] * r + m[4] * g + m[5] * b).toInt().coerceIn(0, 255)
+            val nb = (m[6] * r + m[7] * g + m[8] * b).toInt().coerceIn(0, 255)
+            (c and 0xFF000000.toInt()) or (nr shl 16) or (ng shl 8) or nb
         }
     }
 

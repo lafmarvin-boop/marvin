@@ -416,13 +416,15 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.symmetry_none),
             getString(R.string.symmetry_h),
             getString(R.string.symmetry_v),
-            getString(R.string.symmetry_both)
+            getString(R.string.symmetry_both),
+            "Rotation 4× (kaléidoscope)"
         )
         val current = when (project.symmetry) {
             SymmetryAxis.NONE -> 0
             SymmetryAxis.HORIZONTAL -> 1
             SymmetryAxis.VERTICAL -> 2
             SymmetryAxis.BOTH -> 3
+            SymmetryAxis.ROTATE_4 -> 4
         }
         AlertDialog.Builder(this)
             .setTitle(R.string.symmetry)
@@ -431,6 +433,7 @@ class MainActivity : AppCompatActivity() {
                     1 -> SymmetryAxis.HORIZONTAL
                     2 -> SymmetryAxis.VERTICAL
                     3 -> SymmetryAxis.BOTH
+                    4 -> SymmetryAxis.ROTATE_4
                     else -> SymmetryAxis.NONE
                 }
                 binding.btnSymmetry.isSelected = project.symmetry != SymmetryAxis.NONE
@@ -979,6 +982,36 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun showTextDialog() {
+        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24) }
+        container.addView(TextView(this).apply {
+            text = "Texte à dessiner (police 5×7 pixels). Touchez ensuite le canvas pour positionner."
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 13f
+        })
+        val etText = EditText(this).apply {
+            hint = "EX: HP, SCORE, LEVEL 1"
+            setText("HELLO")
+            setTextColor(0xFFE8E8F0.toInt())
+        }
+        container.addView(etText)
+        AlertDialog.Builder(this)
+            .setTitle("Ajouter du texte")
+            .setView(container)
+            .setPositiveButton("Positionner") { _, _ ->
+                val text = etText.text.toString()
+                if (text.isEmpty()) return@setPositiveButton
+                toast("Touchez le canvas pour placer « $text »")
+                binding.canvas.nextTapHandler = { x, y ->
+                    pushUndo()
+                    PixelFont.render(project.currentFrame, x, y, text, project.primaryColor)
+                    binding.canvas.syncFrameBitmap()
+                    framesAdapter.notifyItemChanged(project.currentIndex)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     private fun sharePng() {
         val bmp = frameToBitmap(project.currentFrame, 8)
         val bytes = ByteArrayOutputStream().apply { bmp.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
@@ -1411,6 +1444,7 @@ class MainActivity : AppCompatActivity() {
             "Verrouiller couleurs…",
             "Filtres / effets…",
             "Mode tuiles / carte…",
+            "Ajouter du texte (5×7)…",
             "Partager PNG actuel",
             "Partager GIF animé",
             "Tutoriel"
@@ -1432,9 +1466,10 @@ class MainActivity : AppCompatActivity() {
                     10 -> showColorLockMenu()
                     11 -> showFiltersMenu()
                     12 -> openTileMap()
-                    13 -> sharePng()
-                    14 -> shareGif()
-                    15 -> showTutorial(force = true)
+                    13 -> showTextDialog()
+                    14 -> sharePng()
+                    15 -> shareGif()
+                    16 -> showTutorial(force = true)
                 }
             }
             .show()

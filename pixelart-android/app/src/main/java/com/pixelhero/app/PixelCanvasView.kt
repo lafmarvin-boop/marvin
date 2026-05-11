@@ -604,36 +604,37 @@ class PixelCanvasView @JvmOverloads constructor(
 
     private fun paintSinglePixelWithSymmetry(x: Int, y: Int, c: Int) {
         val p = project ?: return
-        // Color lock: if target pixel matches a locked color (and we're not erasing it), skip
         if (c != 0 && !sketchMode && x in 0 until p.width && y in 0 until p.height) {
             val target = p.currentFrame.get(x, y)
             if (target in p.lockedColors) return
         }
-        // Choose target buffer based on sketch mode
-        if (sketchMode) {
-            val buf = ensureSketchBuffer()
-            setBufPixel(buf, p.width, p.height, x, y, c)
-            when (p.symmetry) {
-                SymmetryAxis.NONE -> {}
-                SymmetryAxis.HORIZONTAL -> setBufPixel(buf, p.width, p.height, p.width - 1 - x, y, c)
-                SymmetryAxis.VERTICAL -> setBufPixel(buf, p.width, p.height, x, p.height - 1 - y, c)
-                SymmetryAxis.BOTH -> {
-                    setBufPixel(buf, p.width, p.height, p.width - 1 - x, y, c)
-                    setBufPixel(buf, p.width, p.height, x, p.height - 1 - y, c)
-                    setBufPixel(buf, p.width, p.height, p.width - 1 - x, p.height - 1 - y, c)
-                }
-            }
-            return
+        val paint: (Int, Int) -> Unit = if (sketchMode) {
+            val buf = ensureSketchBuffer();
+            { sx, sy -> setBufPixel(buf, p.width, p.height, sx, sy, c) }
+        } else {
+            { sx, sy -> p.currentFrame.set(sx, sy, c) }
         }
-        p.currentFrame.set(x, y, c)
+        applySymmetry(p, x, y, paint)
+    }
+
+    private inline fun applySymmetry(p: Project, x: Int, y: Int, paint: (Int, Int) -> Unit) {
+        paint(x, y)
         when (p.symmetry) {
             SymmetryAxis.NONE -> {}
-            SymmetryAxis.HORIZONTAL -> p.currentFrame.set(p.width - 1 - x, y, c)
-            SymmetryAxis.VERTICAL -> p.currentFrame.set(x, p.height - 1 - y, c)
+            SymmetryAxis.HORIZONTAL -> paint(p.width - 1 - x, y)
+            SymmetryAxis.VERTICAL -> paint(x, p.height - 1 - y)
             SymmetryAxis.BOTH -> {
-                p.currentFrame.set(p.width - 1 - x, y, c)
-                p.currentFrame.set(x, p.height - 1 - y, c)
-                p.currentFrame.set(p.width - 1 - x, p.height - 1 - y, c)
+                paint(p.width - 1 - x, y)
+                paint(x, p.height - 1 - y)
+                paint(p.width - 1 - x, p.height - 1 - y)
+            }
+            SymmetryAxis.ROTATE_4 -> {
+                // 4-fold rotational symmetry around canvas center
+                val cx = p.width / 2; val cy = p.height / 2
+                val dx = x - cx; val dy = y - cy
+                paint(cx + dy, cy - dx)         // 90 deg
+                paint(cx - dx, cy - dy)         // 180 deg
+                paint(cx - dy, cy + dx)         // 270 deg
             }
         }
     }
