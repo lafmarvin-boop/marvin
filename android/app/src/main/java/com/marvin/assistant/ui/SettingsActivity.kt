@@ -29,6 +29,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -757,6 +759,27 @@ private fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
 
         // ------ DIAGNOSTIC DUMP ------
         Spacer(Modifier.height(16.dp))
+        // Verifier les updates GitHub
+        var updateStatus by remember { mutableStateOf("") }
+        val scope = rememberCoroutineScope()
+        Button(
+            onClick = {
+                scope.launch {
+                    val info = com.marvin.assistant.update.UpdateChecker(ctx).check()
+                    updateStatus = if (info.hasUpdate) {
+                        "Mise à jour dispo (commit ${info.latestSha}) : ${info.message}"
+                    } else {
+                        "À jour. Dernier commit : ${info.latestSha} ${info.message}"
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Vérifier les mises à jour") }
+        if (updateStatus.isNotBlank()) {
+            Text(updateStatus, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp))
+        }
+
         Button(
             onClick = {
                 try {
