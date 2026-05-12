@@ -1902,22 +1902,52 @@ class MainActivity : AppCompatActivity() {
     private fun showImageImportOptions(bmp: Bitmap) {
         val items = arrayOf(
             "Garder comme image de fond uniquement",
-            "Pixeliser → frame courante (avec tramage)",
-            "Pixeliser → frame courante (sans tramage)",
-            "Extraire palette uniquement (16 couleurs)",
-            "Pixeliser → frame + remplacer palette"
+            "🎨 Pixeliser intelligent (game-ready)",
+            "Pixeliser basique (avec tramage)",
+            "Pixeliser basique (sans tramage)",
+            "Extraire palette uniquement (16 couleurs)"
         )
         AlertDialog.Builder(this)
             .setTitle("Image importée")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> {} // keep as bg only
-                    1 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = false)
-                    2 -> pixelizeIntoFrame(bmp, dither = false, applyPalette = false)
-                    3 -> extractPaletteFromBg(bmp)
-                    4 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = true)
+                    1 -> showSmartPixelizeStyles(bmp)
+                    2 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = false)
+                    3 -> pixelizeIntoFrame(bmp, dither = false, applyPalette = false)
+                    4 -> extractPaletteFromBg(bmp)
                 }
             }
+            .show()
+    }
+
+    private fun showSmartPixelizeStyles(bmp: Bitmap) {
+        val styles = SmartPixelize.Style.values()
+        val labels = styles.map { it.displayName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Style de pixelisation")
+            .setItems(labels) { _, which ->
+                smartPixelizeWithStyle(bmp, styles[which])
+            }
+            .show()
+    }
+
+    private fun smartPixelizeWithStyle(bmp: Bitmap, style: SmartPixelize.Style) {
+        pushUndo()
+        val (pixels, palette) = SmartPixelize.pixelize(bmp, project.width, project.height, project.bgFit, style)
+        pixels.copyInto(project.currentFrame.pixels)
+        // Auto-replace palette with the extracted one (it's been tuned to the result)
+        project.palette.clear()
+        project.palette.addAll(palette.toList())
+        paletteAdapter.notifyDataSetChanged()
+        binding.canvas.syncFrameBitmap()
+        framesAdapter.notifyItemChanged(project.currentIndex)
+        // Offer re-run with different style
+        AlertDialog.Builder(this)
+            .setTitle("Pixelisation « ${style.displayName} »")
+            .setMessage("Frame remplie + palette ${palette.size} couleurs extraite. Essayer un autre style ?")
+            .setPositiveButton("Autre style") { _, _ -> showSmartPixelizeStyles(bmp) }
+            .setNegativeButton("Garder", null)
             .show()
     }
 
