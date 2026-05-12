@@ -651,19 +651,21 @@ class PixelCanvasView @JvmOverloads constructor(
      *   3 = horizontal lines (paint when y is even)
      *   4 = sparse (paint when x and y both divisible by 2 -> 1/4 density)
      */
-    private fun ditherShouldPaint(x: Int, y: Int, pattern: Int): Boolean = when (pattern) {
-        1 -> (x + y) and 1 == 0
-        2 -> x and 1 == 0
-        3 -> y and 1 == 0
-        4 -> (x and 1 == 0) && (y and 1 == 0)
-        6 -> {
-            // Custom 4x4 pattern
-            val p = project ?: return true
-            val px = ((x % 4) + 4) % 4
-            val py = ((y % 4) + 4) % 4
-            p.customDither[py][px]
+    private fun ditherShouldPaint(x: Int, y: Int, pattern: Int): Boolean {
+        return when (pattern) {
+            1 -> (x + y) and 1 == 0
+            2 -> x and 1 == 0
+            3 -> y and 1 == 0
+            4 -> (x and 1 == 0) && (y and 1 == 0)
+            6 -> {
+                // Custom 4x4 pattern
+                val p = project ?: return true
+                val px = ((x % 4) + 4) % 4
+                val py = ((y % 4) + 4) % 4
+                p.customDither[py][px]
+            }
+            else -> true
         }
-        else -> true
     }
 
     /**
