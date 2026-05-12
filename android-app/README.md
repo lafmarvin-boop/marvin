@@ -1,51 +1,85 @@
 # Marvin Sport — App Android
 
-Application Android (Kotlin + Jetpack Compose) construite à partir du planning d'entraînement de Marvin (fichier `entrainement_marvin.xlsx`).
+Application Android (Kotlin + Jetpack Compose) construite à partir du planning
+d'entraînement de Marvin (`entrainement_marvin.xlsx`). Deux modules :
 
-## Programme
+1. **Musculation** — programme complet 12 semaines sous forme de tableaux
+2. **Course à pied** — tracking GPS façon Strava (running uniquement)
+
+## Navigation
+
+Barre de navigation inférieure à deux onglets :
+- **Musculation** (icône haltère)
+- **Course** (icône coureur)
+
+## Module Musculation
+
+### Programme
 
 - **3 phases** : Technique → Volume → Force max
 - **4 semaines** par phase, **3 séances** par semaine
-- **9 exercices principaux** + accessoires + cardio
-- Charges calculées à partir des 1RM et du % associé aux répétitions
+- Charges calculées via les 1RM et le coefficient associé aux répétitions
   (5 reps = 85%, 8 = 80%, 10 = 75%, 12 = 70%, 15 = 65%)
 
-## Tableau d'une séance
+### Tableau d'une séance
 
-Chaque séance s'affiche sous forme de tableau avec les colonnes :
-**Exercice · Séries · Reps · Charge · Repos · Annotation**
+Colonnes : **Exercice · Séries · Reps · Charge · Repos · Annotation**.
+Les paires en superset sont précédées de `↳` et signalées par un fond contrasté.
 
-Les paires en superset sont indiquées par `↳` et un fond contrasté.
+### Progression automatique
 
-## Progression automatique
+**+1,5 kg à la fin de chaque phase de 4 semaines** :
 
-Toutes les **3 séances complétées sur un même exercice**, la charge affichée
-augmente de **+1,5 kg** (compteur stocké via DataStore). Une indication
-*"+1.5 dans N"* est affichée sous la charge pour visualiser le prochain palier.
+| Phase | Loads affichées |
+| ----- | --------------- |
+| 1     | base            |
+| 2     | base + 1.5 kg   |
+| 3     | base + 3.0 kg   |
 
-Marquer / démarquer une séance se fait via le bouton "Marquer la séance comme
-terminée" en bas de l'écran séance. Les compteurs sont automatiquement
-incrémentés / décrémentés.
+Un compteur de "cycles" permet de répéter le programme avec un nouveau palier
+de +1,5 kg à chaque cycle complet.
 
-## Annotations
+### Annotations
 
-Chaque séance possède un champ libre d'annotations (ressenti, RPE,
-ajustements) sauvegardé localement.
+Chaque séance possède un champ libre (ressenti, RPE, ajustements) sauvegardé
+localement via DataStore.
+
+## Module Course à pied
+
+- **Démarrer une course** depuis l'onglet → demande automatique des permissions
+  GPS et notification → un service en avant-plan capture les positions toutes
+  les ~1.5 s même écran éteint
+- **Suivi en temps réel** : distance, durée, allure (min/km), vitesse (km/h),
+  tracé visualisé sur un Canvas
+- **Enregistrer** ou **Abandonner** à la fin de la séance
+- **Historique** : liste des courses sauvegardées avec aperçu du tracé,
+  détail accessible par clic, suppression possible
+
+### Filtrage GPS
+
+- Points avec accuracy > 30 m écartés
+- Sauts > 80 m en moins de 5 s ignorés (anti-jitter)
+
+### Permissions
+
+Demandées à l'exécution la première fois :
+- `ACCESS_FINE_LOCATION` (obligatoire)
+- `POST_NOTIFICATIONS` (Android 13+)
 
 ## Build
-
-Ouvrir le dossier `android-app/` dans Android Studio (Hedgehog ou +).
-Gradle 8.5 / AGP 8.2 / Kotlin 1.9.22 / Compose BOM 2024.02.
 
 ```bash
 cd android-app
 ./gradlew assembleDebug
 ```
 
-> Le wrapper Gradle (`gradlew`, `gradlew.bat`, `gradle-wrapper.jar`) est généré
-> par Android Studio à l'ouverture du projet, ou via `gradle wrapper`.
+> Ouvrir le dossier dans Android Studio (Hedgehog+). Le wrapper Gradle est
+> généré à l'ouverture ou via `gradle wrapper`.
 
-## Données de référence (1RM)
+Stack : Kotlin 1.9.22 · AGP 8.2 · Compose BOM 2024.02 · Material 3 ·
+Navigation Compose · DataStore · kotlinx.serialization · Play Services Location.
+
+## 1RM de référence
 
 | Exercice              | 1RM (kg) |
 | --------------------- | -------- |

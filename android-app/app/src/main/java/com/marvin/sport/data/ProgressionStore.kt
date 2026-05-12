@@ -1,30 +1,25 @@
 package com.marvin.sport.data
 
 import android.content.Context
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "marvin_progression")
 
-/** Pas de progression : +1.5 kg toutes les N séances similaires (N=3 par défaut). */
-private const val PROGRESSION_STEP_KG = 1.5
-private const val SESSIONS_PER_STEP = 3
-
 /**
- * Stocke :
- *   - Le nombre de séances complétées pour chaque exercice (clé : nom de l'exo)
- *   - Un statut "complétée" par séance (clé : identifiant de séance)
- *   - Les notes annotées par séance
+ * Progression : +1.5 kg à la fin de chaque phase de 4 semaines.
+ *   Phase 1 → charge de base
+ *   Phase 2 → +1.5 kg
+ *   Phase 3 → +3.0 kg
+ *
+ * Si l'utilisateur termine un cycle complet (les 3 phases), un compteur de
+ * cycle s'incrémente et toutes les charges repartent à +4.5 kg, +6 kg, +7.5 kg.
  */
 class ProgressionStore(private val context: Context) {
-
-    private fun completedKey(exerciseName: String) =
-        intPreferencesKey("completed_$exerciseName")
 
     private fun sessionDoneKey(sessionId: String) =
         intPreferencesKey("session_done_$sessionId")
@@ -32,8 +27,7 @@ class ProgressionStore(private val context: Context) {
     private fun noteKey(sessionId: String) =
         stringPreferencesKey("note_$sessionId")
 
-    fun completedCountFlow(exerciseName: String): Flow<Int> =
-        context.dataStore.data.map { it[completedKey(exerciseName)] ?: 0 }
+    private val cycleKey = intPreferencesKey("completed_cycles")
 
     fun isSessionDoneFlow(sessionId: String): Flow<Boolean> =
         context.dataStore.data.map { (it[sessionDoneKey(sessionId)] ?: 0) > 0 }
@@ -41,38 +35,23 @@ class ProgressionStore(private val context: Context) {
     fun noteFlow(sessionId: String): Flow<String> =
         context.dataStore.data.map { it[noteKey(sessionId)].orEmpty() }
 
-    fun allPrefsFlow(): Flow<Preferences> = context.dataStore.data
+    fun completedCyclesFlow(): Flow<Int> =
+        context.dataStore.data.map { it[cycleKey] ?: 0 }
 
-    suspend fun markSessionDone(session: Session) {
-        context.dataStore.edit { prefs ->
-            val alreadyDone = (prefs[sessionDoneKey(session.id)] ?: 0) > 0
-            if (alreadyDone) return@edit
-            prefs[sessionDoneKey(session.id)] = 1
-            session.exercises
-                .filter { it.baseLoadKg != null }
-                .forEach { exo ->
-                    val current = prefs[completedKey(exo.name)] ?: 0
-                    prefs[completedKey(exo.name)] = current + 1
-                }
-        }
+    suspend fun markSessionDone(sessionId: String) {
+        context.dataStore.edit { it[sessionDoneKey(sessionId)] = 1 }
     }
 
-    suspend fun unmarkSessionDone(session: Session) {
-        context.dataStore.edit { prefs ->
-            val alreadyDone = (prefs[sessionDoneKey(session.id)] ?: 0) > 0
-            if (!alreadyDone) return@edit
-            prefs[sessionDoneKey(session.id)] = 0
-            session.exercises
-                .filter { it.baseLoadKg != null }
-                .forEach { exo ->
-                    val current = prefs[completedKey(exo.name)] ?: 0
-                    if (current > 0) prefs[completedKey(exo.name)] = current - 1
-                }
-        }
+    suspend fun unmarkSessionDone(sessionId: String) {
+        context.dataStore.edit { it[sessionDoneKey(sessionId)] = 0 }
     }
 
     suspend fun saveNote(sessionId: String, note: String) {
         context.dataStore.edit { it[noteKey(sessionId)] = note }
+    }
+
+    suspend fun incrementCycle() {
+        context.dataStore.edit { it[cycleKey] = (it[cycleKey] ?: 0) + 1 }
     }
 
     suspend fun resetAll() {
@@ -80,17 +59,21 @@ class ProgressionStore(private val context: Context) {
     }
 
     companion object {
-        /** Charge ajustée en fonction du nombre de séances complétées sur cet exo. */
-        fun progressedLoad(baseLoadKg: Double?, completedCount: Int): Double? {
+        private const val STEP_KG = 1.5
+        private const val PHASES_PER_CYCLE = 3
+
+        /** Charge ajustée pour une phase donnée (et un nombre de cycles complétés). */
+        fun progressedLoad(
+            baseLoadKg: Double?,
+            phaseIndex: Int,
+            completedCycles: Int = 0,
+        ): Double? {
             if (baseLoadKg == null) return null
-            val steps = completedCount / SESSIONS_PER_STEP
-            return baseLoadKg + steps * PROGRESSION_STEP_KG
+            val totalSteps = phaseIndex + PHASES_PER_CYCLE * completedCycles
+            return baseLoadKg + STEP_KG * totalSteps
         }
 
-        fun stepInfo(completedCount: Int): Pair<Int, Int> {
-            val toNext = SESSIONS_PER_STEP - (completedCount % SESSIONS_PER_STEP)
-            val nextStepNumber = (completedCount / SESSIONS_PER_STEP) + 1
-            return toNext to nextStepNumber
-        }
+        fun stepKgForPhase(phaseIndex: Int, completedCycles: Int = 0): Double =
+            STEP_KG * (phaseIndex + PHASES_PER_CYCLE * completedCycles)
     }
 }

@@ -37,6 +37,7 @@ fun SessionScreen(
     val scope = rememberCoroutineScope()
     val done by store.isSessionDoneFlow(session.id).collectAsState(initial = false)
     val savedNote by store.noteFlow(session.id).collectAsState(initial = "")
+    val cycles by store.completedCyclesFlow().collectAsState(initial = 0)
     var noteText by remember(savedNote) { mutableStateOf(savedNote) }
 
     Scaffold(
@@ -76,11 +77,22 @@ fun SessionScreen(
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text("Échauffement", fontWeight = FontWeight.Bold)
                         Text(session.warmup, style = MaterialTheme.typography.bodyMedium)
+                        val step = ProgressionStore.stepKgForPhase(phase.index, cycles)
+                        if (step > 0.0) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Progression appliquée : +${formatKg(step)} (phase ${phase.index + 1}" +
+                                    if (cycles > 0) " · cycle ${cycles + 1})" else ")",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                 }
             }
             item {
-                ExerciseTable(exercises = session.exercises, store = store)
+                ExerciseTable(exercises = session.exercises, phaseIndex = phase.index, completedCycles = cycles)
             }
             item {
                 Card {
@@ -104,8 +116,8 @@ fun SessionScreen(
                 Button(
                     onClick = {
                         scope.launch {
-                            if (done) store.unmarkSessionDone(session)
-                            else store.markSessionDone(session)
+                            if (done) store.unmarkSessionDone(session.id)
+                            else store.markSessionDone(session.id)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -127,14 +139,19 @@ fun SessionScreen(
 }
 
 @Composable
-private fun ExerciseTable(exercises: List<Exercise>, store: ProgressionStore) {
+private fun ExerciseTable(exercises: List<Exercise>, phaseIndex: Int, completedCycles: Int) {
     Card {
         Column(modifier = Modifier.padding(8.dp)) {
             Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 Column {
                     TableHeader()
                     exercises.forEachIndexed { index, exo ->
-                        ExerciseRow(exo = exo, store = store, isAlt = index % 2 == 1)
+                        ExerciseRow(
+                            exo = exo,
+                            phaseIndex = phaseIndex,
+                            completedCycles = completedCycles,
+                            isAlt = index % 2 == 1,
+                        )
                     }
                 }
             }
@@ -167,11 +184,7 @@ private fun TableHeader() {
 
 @Composable
 private fun HeaderCell(text: String, width: androidx.compose.ui.unit.Dp, align: TextAlign = TextAlign.Center) {
-    Box(
-        modifier = Modifier
-            .width(width)
-            .padding(horizontal = 4.dp),
-    ) {
+    Box(modifier = Modifier.width(width).padding(horizontal = 4.dp)) {
         Text(
             text = text,
             color = MaterialTheme.colorScheme.onPrimary,
@@ -184,10 +197,14 @@ private fun HeaderCell(text: String, width: androidx.compose.ui.unit.Dp, align: 
 }
 
 @Composable
-private fun ExerciseRow(exo: Exercise, store: ProgressionStore, isAlt: Boolean) {
-    val completedCount by store.completedCountFlow(exo.name).collectAsState(initial = 0)
-    val load = ProgressionStore.progressedLoad(exo.baseLoadKg, completedCount)
-    val (toNext, _) = ProgressionStore.stepInfo(completedCount)
+private fun ExerciseRow(
+    exo: Exercise,
+    phaseIndex: Int,
+    completedCycles: Int,
+    isAlt: Boolean,
+) {
+    val load = ProgressionStore.progressedLoad(exo.baseLoadKg, phaseIndex, completedCycles)
+    val delta = if (exo.baseLoadKg != null && load != null) load - exo.baseLoadKg else 0.0
 
     val bg = when {
         exo.isSuperset -> MaterialTheme.colorScheme.surfaceVariant
@@ -219,21 +236,12 @@ private fun ExerciseRow(exo: Exercise, store: ProgressionStore, isAlt: Boolean) 
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
-            if (load != null && exo.baseLoadKg != null) {
-                val delta = load - exo.baseLoadKg
-                if (delta > 0.0) {
-                    Text(
-                        text = "+${formatKg(delta)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                } else {
-                    Text(
-                        text = "+1.5 dans $toNext",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
-                    )
-                }
+            if (delta > 0.0) {
+                Text(
+                    text = "+${formatKg(delta)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
         }
         BodyCell(text = exo.rest.ifEmpty { "—" }, width = COL_REST, align = TextAlign.Start)

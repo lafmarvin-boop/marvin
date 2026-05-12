@@ -15,42 +15,38 @@ import com.marvin.sport.data.Phase
 import com.marvin.sport.data.ProgressionStore
 import com.marvin.sport.data.TrainingProgram
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     program: TrainingProgram,
     store: ProgressionStore,
     onPhaseClick: (Int) -> Unit,
+    contentPadding: PaddingValues,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Marvin Sport") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+    val cycles by store.completedCyclesFlow().collectAsState(initial = 0)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 16.dp,
+            bottom = 16.dp + contentPadding.calculateBottomPadding(),
+        ),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item { HeaderCard(cycles = cycles) }
+        items(program.phases) { phase ->
+            PhaseCard(
+                phase = phase,
+                cycles = cycles,
+                onClick = { onPhaseClick(phase.index) },
             )
-        },
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item { HeaderCard() }
-            items(program.phases) { phase ->
-                PhaseCard(phase = phase, onClick = { onPhaseClick(phase.index) })
-            }
-            item { ProgressionLegend() }
         }
+        item { ProgressionLegend() }
     }
 }
 
 @Composable
-private fun HeaderCard() {
+private fun HeaderCard(cycles: Int) {
     Card {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -64,15 +60,25 @@ private fun HeaderCard() {
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                "3 phases — Technique, Volume, Force. 3 séances par semaine. Progression automatique : +1.5 kg toutes les 3 séances similaires.",
+                "3 phases — Technique, Volume, Force. 3 séances par semaine. Progression automatique : +1.5 kg à la fin de chaque phase de 4 semaines.",
                 style = MaterialTheme.typography.bodyMedium,
             )
+            if (cycles > 0) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Cycle en cours : ${cycles + 1}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun PhaseCard(phase: Phase, onClick: () -> Unit) {
+private fun PhaseCard(phase: Phase, cycles: Int, onClick: () -> Unit) {
+    val step = ProgressionStore.stepKgForPhase(phase.index, cycles)
     Card(onClick = onClick) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -84,7 +90,24 @@ private fun PhaseCard(phase: Phase, onClick: () -> Unit) {
             Spacer(Modifier.height(4.dp))
             Text(phase.description, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(8.dp))
-            AssistChip(onClick = onClick, label = { Text("${phase.weeks.size} semaines · ${phase.weeks.sumOf { it.sessions.size }} séances") })
+            Row {
+                AssistChip(
+                    onClick = onClick,
+                    label = {
+                        Text("${phase.weeks.size} semaines · ${phase.weeks.sumOf { it.sessions.size }} séances")
+                    },
+                )
+                if (step > 0.0) {
+                    Spacer(Modifier.width(6.dp))
+                    AssistChip(
+                        onClick = onClick,
+                        label = {
+                            val txt = if (step % 1.0 == 0.0) "+${step.toInt()} kg" else "+%.1f kg".format(step)
+                            Text(txt)
+                        },
+                    )
+                }
+            }
         }
     }
 }
@@ -98,7 +121,7 @@ private fun ProgressionLegend() {
             Text("Progression", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Coche \"Terminer la séance\" en bas de chaque séance. Toutes les 3 séances effectuées sur un même exercice, la charge affichée augmente automatiquement de 1.5 kg.",
+                "Phase 1 = charge de base. Phase 2 = +1.5 kg. Phase 3 = +3 kg. Termine un cycle complet (3 phases) pour repartir avec un nouveau palier de +1.5 kg.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }
