@@ -490,7 +490,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSmartGenerator() {
         val items = arrayOf(
-            "Frames d'animation",
+            "Frames d'animation (auto-détection corps)",
+            "🦴 Animation avec squelette (pro)",
+            "🦴 Configurer le squelette du perso",
             "Décor / scène (statique ou animé)",
             "Élément animé (flambeau, feu de camp…)",
             "Template de pose",
@@ -502,14 +504,115 @@ class MainActivity : AppCompatActivity() {
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> showAnimationGenerator()
-                    1 -> showDecorGenerator()
-                    2 -> showAnimatedElementGenerator()
-                    3 -> showPoseTemplates()
-                    4 -> showTweenDialog()
-                    5 -> showProceduralCharacterDialog()
+                    1 -> showSkeletalAnimationDialog()
+                    2 -> showSkeletonEditor()
+                    3 -> showDecorGenerator()
+                    4 -> showAnimatedElementGenerator()
+                    5 -> showPoseTemplates()
+                    6 -> showTweenDialog()
+                    7 -> showProceduralCharacterDialog()
                 }
             }
             .show()
+    }
+
+    private fun showSkeletonEditor() {
+        if (project.skeleton == null) {
+            // Auto-place from bbox
+            val bbox = computeProjectBoundingBox()
+            if (bbox == null) {
+                // Fallback to canvas
+                project.skeleton = Skeleton.humanoidTemplate(0, 0, project.width - 1, project.height - 1)
+            } else {
+                project.skeleton = Skeleton.humanoidTemplate(bbox[0], bbox[1], bbox[2], bbox[3])
+            }
+            toast("Squelette créé. Touchez un joint à déplacer.")
+        }
+        showJointPicker()
+    }
+
+    private fun computeProjectBoundingBox(): IntArray? {
+        val f = project.currentFrame
+        val pixels = if (f.layers.size > 1) f.composited() else f.pixels
+        var minX = f.width; var minY = f.height; var maxX = -1; var maxY = -1
+        for (y in 0 until f.height) for (x in 0 until f.width) {
+            if ((pixels[y * f.width + x] ushr 24) and 0xFF >= 128) {
+                if (x < minX) minX = x; if (y < minY) minY = y
+                if (x > maxX) maxX = x; if (y > maxY) maxY = y
+            }
+        }
+        if (maxX < 0) return null
+        return intArrayOf(minX, minY, maxX, maxY)
+    }
+
+    private fun showJointPicker() {
+        val sk = project.skeleton ?: return
+        // Show overlay so user sees current joint positions
+        binding.canvas.skeletonOverlay = sk
+        val joints = JointType.values()
+        val labels = joints.map { jt ->
+            val j = sk.get(jt)
+            val pos = if (j != null) "(${j.x.toInt()}, ${j.y.toInt()})" else "non placé"
+            "${jt.displayName}  $pos"
+        }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Squelette du personnage")
+            .setItems(labels) { _, which ->
+                val jt = joints[which]
+                toast("Touchez le canvas pour placer « ${jt.displayName} »")
+                binding.canvas.nextTapHandler = { x, y ->
+                    sk.set(jt, x.toFloat(), y.toFloat())
+                    binding.canvas.invalidate()
+                    toast("${jt.displayName} placé en ($x, $y)")
+                    showJointPicker()
+                }
+            }
+            .setPositiveButton("Terminer") { _, _ ->
+                binding.canvas.skeletonOverlay = null
+            }
+            .setNeutralButton("Réinitialiser auto") { _, _ ->
+                val bbox = computeProjectBoundingBox()
+                project.skeleton = if (bbox != null) {
+                    Skeleton.humanoidTemplate(bbox[0], bbox[1], bbox[2], bbox[3])
+                } else {
+                    Skeleton.humanoidTemplate(0, 0, project.width - 1, project.height - 1)
+                }
+                toast("Squelette réinitialisé")
+                showJointPicker()
+            }
+            .show()
+    }
+
+    private fun showSkeletalAnimationDialog() {
+        val sk = project.skeleton
+        if (sk == null || !sk.isComplete()) {
+            AlertDialog.Builder(this)
+                .setTitle("Squelette requis")
+                .setMessage("Pour les animations pro, placez d'abord un squelette sur votre personnage.")
+                .setPositiveButton("Configurer maintenant") { _, _ -> showSkeletonEditor() }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+            return
+        }
+        val presets = SkeletalAnimation.Preset.values()
+        val labels = presets.map { it.displayName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Animation squelette")
+            .setItems(labels) { _, which ->
+                generateSkeletalAnimation(presets[which])
+            }
+            .show()
+    }
+
+    private fun generateSkeletalAnimation(preset: SkeletalAnimation.Preset) {
+        val sk = project.skeleton ?: return
+        pushUndo()
+        val skin = PixelSkin(project.width, project.height, sk)
+        val newFrames = SkeletalAnimation.generate(project.currentFrame, skin, preset)
+        var insertAt = project.currentIndex + 1
+        newFrames.forEach { project.frames.add(insertAt++, it) }
+        framesAdapter.notifyDataSetChanged()
+        toast("${newFrames.size} frames générées (squelette ${preset.displayName})")
     }
 
     private fun showTweenDialog() {

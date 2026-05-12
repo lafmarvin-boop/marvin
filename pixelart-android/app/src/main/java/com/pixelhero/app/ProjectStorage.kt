@@ -71,6 +71,7 @@ object ProjectStorage {
             put("onionRange", project.onionRange)
             put("pixelPerfect", project.pixelPerfect)
             put("bgFit", project.bgFit.name)
+            project.skeleton?.let { put("skeleton", it.toJson()) }
             put("palette", JSONArray().apply { project.palette.forEach { put(it.toLong() and 0xFFFFFFFFL) } })
             put("recentColors", JSONArray().apply { project.recentColors.forEach { put(it.toLong() and 0xFFFFFFFFL) } })
             val framesArr = JSONArray()
@@ -185,6 +186,8 @@ object ProjectStorage {
             onionRange = json.optInt("onionRange", 1),
             pixelPerfect = json.optBoolean("pixelPerfect", false),
             bgFit = runCatching { BgFitMode.valueOf(json.optString("bgFit", "COVER")) }.getOrDefault(BgFitMode.COVER)
-        )
+        ).apply {
+            json.optJSONObject("skeleton")?.let { skeleton = Skeleton.fromJson(it) }
+        }
     }
 }

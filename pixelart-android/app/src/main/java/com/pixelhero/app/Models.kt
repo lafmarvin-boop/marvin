@@ -182,7 +182,8 @@ class Project(
     val lockedColors: MutableSet<Int> = mutableSetOf(),
     var pressureSensitive: Boolean = true,
     var onionColorPrev: Int = 0xFF00AAFF.toInt(),
-    var onionColorNext: Int = 0xFFFF4477.toInt()
+    var onionColorNext: Int = 0xFFFF4477.toInt(),
+    var skeleton: Skeleton? = null
 ) {
     val currentFrame: Frame get() = frames[currentIndex]
 
