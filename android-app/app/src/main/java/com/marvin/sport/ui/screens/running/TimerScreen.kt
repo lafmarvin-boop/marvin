@@ -1,7 +1,11 @@
 package com.marvin.sport.ui.screens.running
 
 import android.content.Context
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -25,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.marvin.sport.data.AlertMode
 import com.marvin.sport.data.TimerConfig
 import com.marvin.sport.data.TimerStore
 import kotlinx.coroutines.delay
@@ -64,7 +69,7 @@ fun TimerScreen() {
                 phaseSecondsLeft = next.seconds
                 currentRound = next.round
                 currentSet = next.set
-                vibrate(context, strong = next.phase == TimerPhase.Work || next.phase == TimerPhase.Done)
+                alert(context, mode = workingConfig.alertMode, strong = next.phase == TimerPhase.Work || next.phase == TimerPhase.Done)
                 if (next.phase == TimerPhase.Done) running = false
             }
         }
@@ -105,7 +110,7 @@ fun TimerScreen() {
                 currentSet = 1
                 running = true
                 paused = false
-                vibrate(context, strong = true)
+                alert(context, mode = workingConfig.alertMode, strong = true)
             },
         )
     }
@@ -204,6 +209,12 @@ private fun TimerConfigView(
                     onChange(config.copy(setRestSec = it))
                 }
             }
+        }
+        item {
+            AlertModeSelector(
+                mode = config.alertMode,
+                onChange = { onChange(config.copy(alertMode = it)) },
+            )
         }
         item { TotalSummary(config) }
         item {
@@ -386,6 +397,40 @@ private fun formatTime(s: Int): String {
     return if (m > 0) "%d:%02d".format(m, r) else "%02d".format(r)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AlertModeSelector(mode: AlertMode, onChange: (AlertMode) -> Unit) {
+    val options = listOf(
+        AlertMode.Vibration to "Vibration",
+        AlertMode.Beep to "Bip",
+        AlertMode.Both to "Les deux",
+    )
+    Card {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text("Alerte de transition", style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(8.dp))
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                options.forEachIndexed { index, (value, label) ->
+                    SegmentedButton(
+                        selected = mode == value,
+                        onClick = { onChange(value) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                    ) { Text(label) }
+                }
+            }
+        }
+    }
+}
+
+private fun alert(context: Context, mode: AlertMode, strong: Boolean) {
+    if (mode == AlertMode.Vibration || mode == AlertMode.Both) {
+        vibrate(context, strong)
+    }
+    if (mode == AlertMode.Beep || mode == AlertMode.Both) {
+        beep(strong)
+    }
+}
+
 @Suppress("DEPRECATION")
 private fun vibrate(context: Context, strong: Boolean) {
     val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -400,4 +445,13 @@ private fun vibrate(context: Context, strong: Boolean) {
     } else {
         vibrator.vibrate(durations, -1)
     }
+}
+
+/** Bip sur le canal Musique (audible avec écouteurs Bluetooth pendant la course). */
+private fun beep(strong: Boolean) {
+    val tone = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }.getOrNull() ?: return
+    val toneType = if (strong) ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD else ToneGenerator.TONE_PROP_BEEP
+    val duration = if (strong) 400 else 200
+    tone.startTone(toneType, duration)
+    Handler(Looper.getMainLooper()).postDelayed({ runCatching { tone.release() } }, (duration + 150).toLong())
 }
