@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,10 +20,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.marvin.sport.data.Exercise
+import com.marvin.sport.data.ExerciseInfoBank
 import com.marvin.sport.data.Phase
 import com.marvin.sport.data.ProgressionStore
 import com.marvin.sport.data.Session
 import com.marvin.sport.data.Week
+import com.marvin.sport.ui.components.ExerciseInfoSheet
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,6 +41,7 @@ fun SessionScreen(
     val done by store.isSessionDoneFlow(session.id).collectAsState(initial = false)
     val savedNote by store.noteFlow(session.id).collectAsState(initial = "")
     var noteText by remember(savedNote) { mutableStateOf(savedNote) }
+    var infoFor by remember { mutableStateOf<Exercise?>(null) }
 
     Scaffold(
         topBar = {
@@ -80,7 +84,11 @@ fun SessionScreen(
                 }
             }
             item {
-                ExerciseTable(exercises = session.exercises, store = store)
+                ExerciseTable(
+                    exercises = session.exercises,
+                    store = store,
+                    onInfoClick = { infoFor = it },
+                )
             }
             item {
                 Card {
@@ -124,17 +132,34 @@ fun SessionScreen(
             }
         }
     }
+
+    val current = infoFor
+    if (current != null) {
+        ExerciseInfoSheet(
+            info = ExerciseInfoBank.lookup(current.name),
+            onDismiss = { infoFor = null },
+        )
+    }
 }
 
 @Composable
-private fun ExerciseTable(exercises: List<Exercise>, store: ProgressionStore) {
+private fun ExerciseTable(
+    exercises: List<Exercise>,
+    store: ProgressionStore,
+    onInfoClick: (Exercise) -> Unit,
+) {
     Card {
         Column(modifier = Modifier.padding(8.dp)) {
             Box(modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 Column {
                     TableHeader()
                     exercises.forEachIndexed { index, exo ->
-                        ExerciseRow(exo = exo, store = store, isAlt = index % 2 == 1)
+                        ExerciseRow(
+                            exo = exo,
+                            store = store,
+                            isAlt = index % 2 == 1,
+                            onInfoClick = { onInfoClick(exo) },
+                        )
                     }
                 }
             }
@@ -142,6 +167,7 @@ private fun ExerciseTable(exercises: List<Exercise>, store: ProgressionStore) {
     }
 }
 
+private val COL_INFO = 40.dp
 private val COL_EXO = 180.dp
 private val COL_SETS = 56.dp
 private val COL_REPS = 100.dp
@@ -156,6 +182,7 @@ private fun TableHeader() {
             .background(MaterialTheme.colorScheme.primary)
             .padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
+        HeaderCell("", COL_INFO)
         HeaderCell("Exercice", COL_EXO, TextAlign.Start)
         HeaderCell("Séries", COL_SETS)
         HeaderCell("Reps", COL_REPS)
@@ -180,7 +207,12 @@ private fun HeaderCell(text: String, width: androidx.compose.ui.unit.Dp, align: 
 }
 
 @Composable
-private fun ExerciseRow(exo: Exercise, store: ProgressionStore, isAlt: Boolean) {
+private fun ExerciseRow(
+    exo: Exercise,
+    store: ProgressionStore,
+    isAlt: Boolean,
+    onInfoClick: () -> Unit,
+) {
     val completedCount by store.completedCountFlow(exo.name).collectAsState(initial = 0)
     val load = ProgressionStore.progressedLoad(exo.baseLoadKg, completedCount)
     val remaining = ProgressionStore.sessionsBeforeNextStep(completedCount)
@@ -196,9 +228,18 @@ private fun ExerciseRow(exo: Exercise, store: ProgressionStore, isAlt: Boolean) 
         modifier = Modifier
             .background(bg)
             .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(2.dp))
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+            .padding(vertical = 4.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(modifier = Modifier.width(COL_INFO), contentAlignment = Alignment.Center) {
+            IconButton(onClick = onInfoClick, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = Icons.Outlined.PlayCircle,
+                    contentDescription = "Voir la technique",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
         BodyCell(
             text = if (exo.isSuperset) "↳ ${exo.name}" else exo.name,
             width = COL_EXO,

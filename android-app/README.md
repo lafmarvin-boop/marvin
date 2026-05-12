@@ -1,81 +1,78 @@
 # Marvin Sport — App Android
 
-Application Android (Kotlin + Jetpack Compose). Deux modules principaux :
+Application Android (Kotlin + Jetpack Compose) avec bottom navigation à
+**4 onglets** pour basculer en un tap :
 
-1. **Programmes** — 3 plannings d'entraînement (musculation + 2 axés combat)
-2. **Course** — tracking GPS façon Strava avec carte réelle (OpenStreetMap)
+| Onglet      | Contenu                                            |
+| ----------- | -------------------------------------------------- |
+| **Muscu**     | Programme Marvin original (12 sem · 3 phases)      |
+| **Striking**  | Programme boxe / MMA debout (16 sem · 4 phases)    |
+| **Grappling** | Programme lutte / BJJ / MMA sol (16 sem · 4 phases) |
+| **Course**    | GPS façon Strava + Timer fractionné                |
 
-## Navigation
-
-Barre inférieure à deux onglets :
-- **Programmes** (icône haltère)
-- **Course** (icône coureur)
-
-## Module Programmes
-
-Sélecteur en haut de l'écran (chips) pour basculer entre :
-
-### 1. Musculation — Marvin (12 semaines)
-Programme original extrait du fichier Excel. **3 phases × 4 semaines × 3 séances**.
-- Phase 1 — Technique
-- Phase 2 — Volume
-- Phase 3 — Force maximale
-
-### 2. Striking — Boxe / MMA debout (16 semaines)
-**4 phases × 4 semaines × 3 séances**, focus explosivité du puncheur.
-- Phase 1 — PPG explosive
-- Phase 2 — Force-vitesse
-- Phase 3 — Puissance pliométrique
-- Phase 4 — Pic compétition
-
-Sessions hebdomadaires :
-- S1 — Bas du corps explosif & sprint (box jump, squat dynamique, sprint navette)
-- S2 — Push explosif & frappe (DVP balistique, lancer médecine-ball, sac)
-- S3 — Core rotation & HIIT (deadlift vitesse, twists, burpees+sprawl)
-
-### 3. Grappling — Lutte / BJJ / MMA sol (16 semaines)
-**4 phases × 4 semaines × 3 séances**, focus grip + force-endurance + posture.
-- Phase 1 — Grip & force de base
-- Phase 2 — Force-endurance
-- Phase 3 — Puissance combinée
-- Phase 4 — Pic compétition
-
-Sessions hebdomadaires :
-- S1 — Tirage explosif & grip (power clean, tractions lestées, dead-hang)
-- S2 — Chaîne postérieure & tronc isométrique (KB swing, GHR, planche)
-- S3 — Wrestling-spécifique (front squat, push press, bear crawl, sprawl)
+## Programmes d'entraînement
 
 ### Tableau d'une séance
 
-Colonnes : **Exercice · Séries · Reps · Charge · Repos · Annotation**.
-Les paires en superset sont précédées de `↳` et signalées par un fond contrasté.
+Colonnes : **▶ · Exercice · Séries · Reps · Charge · Repos · Annotation**.
+Le bouton **▶** ouvre une fiche technique avec description du mouvement et
+un lien vers une démonstration vidéo (recherche YouTube). Les paires en
+superset sont précédées de `↳`.
 
 ### Progression automatique
 
-**+1,5 kg toutes les 4 séances effectuées sur un même exercice**. Le compteur
-est par exercice et partagé entre les 3 programmes (les charges progressent
-en cohérence sur tous les programmes pour un même mouvement).
-
-- Affichage de la charge ajustée dans le tableau
-- Indicateur "palier dans N" pour visualiser le compteur
+**+1,5 kg toutes les 4 séances** effectuées sur un même exercice (compteur
+par exercice, partagé entre programmes). La colonne Charge affiche le
+palier en cours et "palier dans N" pour visualiser le compteur.
 
 ### Annotations
 
 Champ libre par séance (ressenti, RPE, ajustements) sauvegardé en local.
 
+### Détail des programmes combat
+
+**Striking — Boxe / MMA debout**
+- Phase 1 PPG explosive · 2 Force-vitesse · 3 Puissance pliométrique · 4 Pic
+- S1 Bas du corps explosif (box jump, squat dynamique, sprint navette)
+- S2 Push explosif & frappe (DVP balistique, lancer médecine-ball, sac)
+- S3 Core rotation & HIIT (deadlift vitesse, twists, burpees+sprawl)
+
+**Grappling — Lutte / BJJ / MMA sol**
+- Phase 1 Grip & force base · 2 Force-endurance · 3 Puissance combinée · 4 Pic
+- S1 Tirage explosif & grip (power clean, traction lestée, dead-hang)
+- S2 Chaîne postérieure & tronc isométrique (KB swing, GHR, planche)
+- S3 Wrestling-spécifique (front squat, push press, bear crawl, sprawl)
+
 ## Module Course
 
-- **Démarrer une course** → demande des permissions GPS et notifications
-- **Foreground service** (`RunTrackingService`) : tracking GPS continu même
-  écran éteint via `FusedLocationProviderClient`, notification persistante
-- **Carte OSM** (osmdroid, MAPNIK) avec marqueur début/fin et polyline du tracé
-- **Stats temps réel** : distance, durée, allure (min/km), vitesse (km/h)
-- **Filtrage qualité GPS** : accuracy > 30 m écartée, sauts > 80 m / < 5 s ignorés
-- **Historique** : liste des courses (mini-tracé Canvas), détail avec carte OSM
-  pleine taille et fit-to-bounds, suppression possible
+L'onglet Course propose deux sous-onglets :
+
+### GPS
+
+- Tracking GPS continu via foreground service (`FusedLocationProvider`),
+  fonctionne écran éteint
+- Carte **OpenStreetMap** (osmdroid) avec polyline et marqueurs début/fin
+- Stats temps réel : distance, durée, allure (min/km), vitesse (km/h)
+- Historique avec aperçu mini et carte détaillée pleine taille
 - Persistance JSON via DataStore
 
-Tuiles servies par OpenStreetMap — user-agent défini sur le package de l'app.
+### Timer fractionné
+
+Configurable de A à Z :
+- **Préparation** (0-60 s, par tranches de 5)
+- **Travail** (5-600 s)
+- **Repos** (0-600 s)
+- **Rounds par set** (1-50)
+- **Nombre de sets** (1-20)
+- **Repos entre sets** (si plusieurs sets, 0-600 s)
+
+Affichage durée totale estimée. En cours, l'écran passe en plein écran
+coloré (bleu prép · vert travail · orange repos · violet repos long) avec
+chrono géant, compteur set/round, vibration aux transitions et boutons
+pause / arrêt.
+
+Config persistée en DataStore : on retrouve son setup au prochain
+lancement.
 
 ## Build
 
@@ -84,14 +81,11 @@ cd android-app
 ./gradlew assembleDebug
 ```
 
-Ouvrir le dossier dans Android Studio (Hedgehog+). Wrapper Gradle généré à
-l'ouverture ou via `gradle wrapper`.
-
 Stack : Kotlin 1.9.22 · AGP 8.2 · Compose BOM 2024.02 · Material 3 ·
 Navigation Compose · DataStore · kotlinx.serialization · Play Services
 Location · osmdroid 6.1.18.
 
-## 1RM de référence (programme Musculation)
+## 1RM de référence (Muscu)
 
 | Exercice              | 1RM (kg) |
 | --------------------- | -------- |
@@ -104,6 +98,3 @@ Location · osmdroid 6.1.18.
 | Fente                 | 50       |
 | DVP couché            | 70       |
 | Écarté poulie         | 18       |
-
-Les programmes combat se basent sur ces mêmes 1RM avec des coefficients
-adaptés à la phase (PPG, force-vitesse, puissance, pic).
