@@ -105,7 +105,7 @@ object AnimationGenerator {
     private fun shifted(src: Frame, dx: Int, dy: Int): Frame =
         build(src) { x, y -> src.get(x - dx, y - dy) }
 
-    /** Shift only the pixels whose Y is in [yMin..yMax] by (dx,dy). */
+    /** Shift only the pixels whose Y is in yMin..yMax by (dx,dy). */
     private fun shiftRegion(src: Frame, yMin: Int, yMax: Int, dx: Int, dy: Int): Frame {
         return build(src) { x, y ->
             // For target pixel (x,y), find source pixel
@@ -114,7 +114,7 @@ object AnimationGenerator {
         }
     }
 
-    /** Shift only the LEFT half of region [yMin..yMax] by (dx,dy). */
+    /** Shift only the LEFT half of region yMin..yMax by (dx,dy). */
     private fun shiftHalfRegion(src: Frame, yMin: Int, yMax: Int, leftHalf: Boolean, cx: Int, dx: Int, dy: Int): Frame {
         return build(src) { x, y ->
             val sx = x - dx
@@ -129,7 +129,7 @@ object AnimationGenerator {
         }
     }
 
-    /** Vertical squash: compress region [yMin..yMax] vertically by [pixels] (top + bottom stay). */
+    /** Vertical squash: compress region yMin..yMax vertically by pixels (top + bottom stay). */
     private fun squash(src: Frame, yMin: Int, yMax: Int, pixels: Int): Frame {
         if (pixels <= 0) return src.copy()
         val out = Frame(src.width, src.height)
@@ -138,7 +138,7 @@ object AnimationGenerator {
         for (y in 0 until src.height) for (x in 0 until src.width) {
             if (y < yMin || y > yMax) out.set(x, y, src.get(x, y))
         }
-        // squash region: map srcY in [yMin..yMax] to outY in [yMin..yMax-pixels]
+        // squash region: map srcY in yMin..yMax to outY in yMin..yMax-pixels
         val srcH = yMax - yMin + 1
         val dstH = (srcH - pixels).coerceAtLeast(1)
         for (yo in 0 until dstH) {

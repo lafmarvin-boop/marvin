@@ -608,11 +608,12 @@ class PixelCanvasView @JvmOverloads constructor(
             val target = p.currentFrame.get(x, y)
             if (target in p.lockedColors) return
         }
-        val paint: (Int, Int) -> Unit = if (sketchMode) {
-            val buf = ensureSketchBuffer();
-            { sx, sy -> setBufPixel(buf, p.width, p.height, sx, sy, c) }
-        } else {
-            { sx, sy -> p.currentFrame.set(sx, sy, c) }
+        val sketchBuf: IntArray? = if (sketchMode) ensureSketchBuffer() else null
+        val frame = p.currentFrame
+        val pw = p.width; val ph = p.height
+        val paint: (Int, Int) -> Unit = { sx, sy ->
+            if (sketchBuf != null) setBufPixel(sketchBuf, pw, ph, sx, sy, c)
+            else frame.set(sx, sy, c)
         }
         applySymmetry(p, x, y, paint)
     }
