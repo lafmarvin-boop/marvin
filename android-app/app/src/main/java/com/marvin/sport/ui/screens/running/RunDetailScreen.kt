@@ -12,7 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marvin.sport.data.RunRepository
 import com.marvin.sport.data.RunStats
-import com.marvin.sport.ui.components.RunPathCanvas
+import com.marvin.sport.ui.components.OsmMap
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -93,8 +93,12 @@ fun RunDetailScreen(runId: String, onBack: () -> Unit) {
                 }
             }
             Card {
-                Box(modifier = Modifier.fillMaxWidth().height(320.dp)) {
-                    RunPathCanvas(points = run.points, modifier = Modifier.fillMaxSize())
+                Box(modifier = Modifier.fillMaxWidth().height(380.dp)) {
+                    OsmMap(
+                        points = run.points,
+                        modifier = Modifier.fillMaxSize(),
+                        centerOnLast = false,
+                    )
                 }
             }
             Text(

@@ -13,11 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marvin.sport.data.Phase
+import com.marvin.sport.data.TrainingProgram
 import com.marvin.sport.data.Week
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhaseScreen(
+    program: TrainingProgram,
     phase: Phase,
     onBack: () -> Unit,
     onWeekClick: (Int) -> Unit,
@@ -25,7 +27,12 @@ fun PhaseScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(phase.title) },
+                title = {
+                    Column {
+                        Text(phase.title, style = MaterialTheme.typography.titleMedium)
+                        Text(program.shortName, style = MaterialTheme.typography.bodySmall)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
@@ -78,10 +85,7 @@ private fun WeekCard(week: Week, onClick: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                 )
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    "${week.sessions.size} séances",
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Text("${week.sessions.size} séances", style = MaterialTheme.typography.bodySmall)
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
         }

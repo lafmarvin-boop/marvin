@@ -23,7 +23,7 @@ import androidx.core.content.ContextCompat
 import com.marvin.sport.data.RunRepository
 import com.marvin.sport.data.RunStats
 import com.marvin.sport.service.RunTrackingService
-import com.marvin.sport.ui.components.RunPathCanvas
+import com.marvin.sport.ui.components.OsmMap
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -136,8 +136,12 @@ fun RunLiveScreen(onBack: () -> Unit) {
             StatsBlock(distanceM = distance, durationMs = durationMs)
 
             Card {
-                Box(modifier = Modifier.fillMaxWidth().height(300.dp)) {
-                    RunPathCanvas(points = l?.points.orEmpty(), modifier = Modifier.fillMaxSize())
+                Box(modifier = Modifier.fillMaxWidth().height(360.dp)) {
+                    OsmMap(
+                        points = l?.points.orEmpty(),
+                        modifier = Modifier.fillMaxSize(),
+                        centerOnLast = true,
+                    )
                 }
             }
 

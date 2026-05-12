@@ -3,7 +3,6 @@ package com.marvin.sport
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -25,8 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.marvin.sport.data.Program
 import com.marvin.sport.data.ProgressionStore
+import com.marvin.sport.data.Programs
 import com.marvin.sport.ui.screens.HomeScreen
 import com.marvin.sport.ui.screens.PhaseScreen
 import com.marvin.sport.ui.screens.SessionScreen
@@ -59,38 +58,45 @@ private fun AppNavigation(store: ProgressionStore) {
         composable("main") {
             MainScaffold(
                 store = store,
-                onPhaseClick = { p -> nav.navigate("phase/$p") },
+                onPhaseClick = { programId, p -> nav.navigate("phase/$programId/$p") },
                 onStartRun = { nav.navigate("run/live") },
                 onRunClick = { id -> nav.navigate("run/detail/$id") },
             )
         }
-        composable("phase/{p}") { entry ->
+        composable("phase/{prog}/{p}") { entry ->
+            val prog = entry.arguments?.getString("prog").orEmpty()
             val p = entry.arguments?.getString("p")?.toInt() ?: 0
+            val program = Programs.byId(prog)
             PhaseScreen(
-                phase = Program.program.phases[p],
+                program = program,
+                phase = program.phases[p],
                 onBack = { nav.popBackStack() },
-                onWeekClick = { w -> nav.navigate("week/$p/$w") },
+                onWeekClick = { w -> nav.navigate("week/$prog/$p/$w") },
             )
         }
-        composable("week/{p}/{w}") { entry ->
+        composable("week/{prog}/{p}/{w}") { entry ->
+            val prog = entry.arguments?.getString("prog").orEmpty()
             val p = entry.arguments?.getString("p")?.toInt() ?: 0
             val w = entry.arguments?.getString("w")?.toInt() ?: 0
+            val program = Programs.byId(prog)
             WeekScreen(
-                phase = Program.program.phases[p],
-                week = Program.program.phases[p].weeks[w],
+                phase = program.phases[p],
+                week = program.phases[p].weeks[w],
                 store = store,
                 onBack = { nav.popBackStack() },
-                onSessionClick = { s -> nav.navigate("session/$p/$w/$s") },
+                onSessionClick = { s -> nav.navigate("session/$prog/$p/$w/$s") },
             )
         }
-        composable("session/{p}/{w}/{s}") { entry ->
+        composable("session/{prog}/{p}/{w}/{s}") { entry ->
+            val prog = entry.arguments?.getString("prog").orEmpty()
             val p = entry.arguments?.getString("p")?.toInt() ?: 0
             val w = entry.arguments?.getString("w")?.toInt() ?: 0
             val s = entry.arguments?.getString("s")?.toInt() ?: 0
+            val program = Programs.byId(prog)
             SessionScreen(
-                phase = Program.program.phases[p],
-                week = Program.program.phases[p].weeks[w],
-                session = Program.program.phases[p].weeks[w].sessions[s],
+                phase = program.phases[p],
+                week = program.phases[p].weeks[w],
+                session = program.phases[p].weeks[w].sessions[s],
                 store = store,
                 onBack = { nav.popBackStack() },
             )
@@ -108,7 +114,7 @@ private fun AppNavigation(store: ProgressionStore) {
 @Composable
 private fun MainScaffold(
     store: ProgressionStore,
-    onPhaseClick: (Int) -> Unit,
+    onPhaseClick: (programId: String, phaseIndex: Int) -> Unit,
     onStartRun: () -> Unit,
     onRunClick: (String) -> Unit,
 ) {
@@ -120,7 +126,7 @@ private fun MainScaffold(
                     selected = tab == MainTab.Strength,
                     onClick = { tab = MainTab.Strength },
                     icon = { Icon(Icons.Filled.FitnessCenter, contentDescription = null) },
-                    label = { Text("Musculation") },
+                    label = { Text("Programmes") },
                 )
                 NavigationBarItem(
                     selected = tab == MainTab.Running,
@@ -133,7 +139,6 @@ private fun MainScaffold(
     ) { padding ->
         when (tab) {
             MainTab.Strength -> HomeScreen(
-                program = Program.program,
                 store = store,
                 onPhaseClick = onPhaseClick,
                 contentPadding = padding,
