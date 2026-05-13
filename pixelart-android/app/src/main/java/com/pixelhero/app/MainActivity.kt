@@ -2637,6 +2637,7 @@ class MainActivity : AppCompatActivity() {
     private fun showImageImportOptions(bmp: Bitmap) {
         val items = arrayOf(
             "Garder uniquement comme image de fond",
+            "🤴 Convertir en perso style King God Castle",
             "🎨 Pixeliser intelligent (game-ready)",
             "Pixeliser basique avec tramage",
             "Pixeliser basique sans tramage",
@@ -2647,14 +2648,39 @@ class MainActivity : AppCompatActivity() {
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> {} // keep as bg only
-                    1 -> showSmartPixelizeStyles(bmp)
-                    2 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = false)
-                    3 -> pixelizeIntoFrame(bmp, dither = false, applyPalette = false)
-                    4 -> extractPaletteFromBg(bmp)
+                    1 -> convertToKingGodCastle(bmp)
+                    2 -> showSmartPixelizeStyles(bmp)
+                    3 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = false)
+                    4 -> pixelizeIntoFrame(bmp, dither = false, applyPalette = false)
+                    5 -> extractPaletteFromBg(bmp)
                 }
             }
             .setNegativeButton("← Retour adaptation") { _, _ -> askBgFitModeThenAction(bmp) }
             .show()
+    }
+
+    private fun convertToKingGodCastle(bmp: Bitmap) {
+        val w = project.width; val h = project.height
+        lifecycleScope.launch {
+            val (pixels, palette) = withContext(Dispatchers.Default) {
+                PhotoToCharacter.convert(bmp, w, h)
+            }
+            pushUndo()
+            pixels.copyInto(project.currentFrame.pixels)
+            project.palette.clear()
+            project.palette.addAll(palette.toList())
+            paletteAdapter.notifyDataSetChanged()
+            binding.canvas.syncFrameBitmap()
+            framesAdapter.notifyItemChanged(project.currentIndex)
+            binding.timeline.invalidate()
+            toast("Personnage style KGC généré (${palette.size} couleurs)")
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("Conversion terminée")
+                .setMessage("Astuce : ce style fonctionne mieux à 48×64 ou 64×96 pixels (chibi). " +
+                    "Vous pouvez raffiner manuellement, ou refaire la conversion après avoir redimensionné via Menu → Redimensionner.")
+                .setPositiveButton("OK", null)
+                .show()
+        }
     }
 
     private fun showSmartPixelizeStyles(bmp: Bitmap) {
