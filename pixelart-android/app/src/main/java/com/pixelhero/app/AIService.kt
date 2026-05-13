@@ -183,6 +183,19 @@ object AIService {
      * Returns null on network error; check [lastError] for details.
      */
     fun generatePollinations(prompt: String, width: Int = 512, height: Int = 512, seed: Int = -1): Bitmap? {
+        repeat(2) { attempt ->
+            val r = generatePollinationsOnce(prompt, width, height, seed)
+            if (r != null) return r
+            val err = lastError ?: ""
+            val transient = "Unable to resolve host" in err || "UnknownHostException" in err ||
+                "SocketTimeout" in err || "ConnectException" in err || "HTTP 5" in err
+            if (!transient || attempt == 1) return null
+            Thread.sleep(1000)
+        }
+        return null
+    }
+
+    private fun generatePollinationsOnce(prompt: String, width: Int, height: Int, seed: Int): Bitmap? {
         val encoded = URLEncoder.encode(prompt, "UTF-8")
         val seedParam = if (seed >= 0) "&seed=$seed" else ""
         val url = "https://image.pollinations.ai/prompt/$encoded?width=$width&height=$height&nologo=true$seedParam"
@@ -197,7 +210,7 @@ object AIService {
             if (code != 200) {
                 lastError = "Pollinations HTTP $code"
                 conn.disconnect()
-                return null
+                return@runCatching null
             }
             val bmp = conn.inputStream.use { BitmapFactory.decodeStream(it) }
             if (bmp == null) lastError = "Pollinations: image décodée invalide"
@@ -228,6 +241,20 @@ object AIService {
     }
 
     private fun tryOpenAIModel(prompt: String, apiKey: String, model: String, size: String, transparent: Boolean): Bitmap? {
+        // One automatic retry on transient DNS / connection failures.
+        repeat(2) { attempt ->
+            val result = tryOpenAIModelOnce(prompt, apiKey, model, size, transparent)
+            if (result != null) return result
+            val err = lastError ?: ""
+            val transient = "Unable to resolve host" in err || "UnknownHostException" in err ||
+                "SocketTimeout" in err || "ConnectException" in err
+            if (!transient || attempt == 1) return null
+            Thread.sleep(1000)
+        }
+        return null
+    }
+
+    private fun tryOpenAIModelOnce(prompt: String, apiKey: String, model: String, size: String, transparent: Boolean): Bitmap? {
         return runCatching {
             val conn = (URL("https://api.openai.com/v1/images/generations").openConnection() as HttpURLConnection).apply {
                 connectTimeout = 30_000
@@ -245,11 +272,9 @@ object AIService {
                 .replace("\t", " ")
                 .take(3900)
             val body = if (model == "gpt-image-1") {
-                // gpt-image-1: native transparent background, quality medium = ~$0.04 per image
                 val bg = if (transparent) ",\"background\":\"transparent\",\"output_format\":\"png\"" else ""
                 """{"model":"gpt-image-1","prompt":"$safePrompt","size":"$size","n":1,"quality":"medium"$bg}"""
             } else {
-                // dall-e-3: response_format=b64_json, no transparent option
                 """{"model":"dall-e-3","prompt":"$safePrompt","size":"$size","n":1,"response_format":"b64_json"}"""
             }
             OutputStreamWriter(conn.outputStream).use { it.write(body); it.flush() }
