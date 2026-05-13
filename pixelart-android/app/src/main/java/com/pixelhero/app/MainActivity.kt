@@ -2637,6 +2637,7 @@ class MainActivity : AppCompatActivity() {
     private fun showImageImportOptions(bmp: Bitmap) {
         val items = arrayOf(
             "Garder uniquement comme image de fond",
+            "🪄 Supprimer le fond automatiquement",
             "🤴 Convertir en perso style King God Castle",
             "🎨 Pixeliser intelligent (game-ready)",
             "Pixeliser basique avec tramage",
@@ -2648,15 +2649,53 @@ class MainActivity : AppCompatActivity() {
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> {} // keep as bg only
-                    1 -> convertToKingGodCastle(bmp)
-                    2 -> showSmartPixelizeStyles(bmp)
-                    3 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = false)
-                    4 -> pixelizeIntoFrame(bmp, dither = false, applyPalette = false)
-                    5 -> extractPaletteFromBg(bmp)
+                    1 -> removeBackgroundDialog(bmp)
+                    2 -> convertToKingGodCastle(bmp)
+                    3 -> showSmartPixelizeStyles(bmp)
+                    4 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = false)
+                    5 -> pixelizeIntoFrame(bmp, dither = false, applyPalette = false)
+                    6 -> extractPaletteFromBg(bmp)
                 }
             }
             .setNegativeButton("← Retour adaptation") { _, _ -> askBgFitModeThenAction(bmp) }
             .show()
+    }
+
+    private fun removeBackgroundDialog(originalBmp: Bitmap) {
+        // Show a slider for tolerance (default 40)
+        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24) }
+        container.addView(TextView(this).apply {
+            text = "Tolérance de couleur (0-100). Plus haut = plus de fond supprimé mais risque de manger le sujet."
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
+        })
+        val seek = SeekBar(this).apply { max = 100; progress = 40 }
+        val label = TextView(this).apply {
+            text = "Tolérance : 40"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 14f
+        }
+        seek.setOnSeekBarChangeListener(simpleSeekListener { v -> label.text = "Tolérance : $v" })
+        container.addView(label); container.addView(seek)
+        AlertDialog.Builder(this)
+            .setTitle("Supprimer le fond")
+            .setView(container)
+            .setPositiveButton("Appliquer") { _, _ ->
+                applyBackgroundRemoval(originalBmp, seek.progress)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun applyBackgroundRemoval(bmp: Bitmap, tolerance: Int) {
+        lifecycleScope.launch {
+            val cleaned = withContext(Dispatchers.Default) {
+                BackgroundRemoval.removeBackground(bmp, tolerance = tolerance, featherEdges = true)
+            }
+            binding.canvas.bgBitmap = cleaned
+            binding.canvas.invalidate()
+            toast("Fond supprimé (tolérance $tolerance)")
+            // Re-open the post-import dialog so user can pick what to do next
+            showImageImportOptions(cleaned)
+        }
     }
 
     private fun convertToKingGodCastle(bmp: Bitmap) {
