@@ -1405,10 +1405,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun showDecorGenerator() {
         val items = arrayOf(
-            "Décor statique → frame courante",
-            "Décor statique → image de fond",
-            "Décor ANIMÉ → 4 nouvelles frames",
-            "Décor ANIMÉ → 8 nouvelles frames"
+            "Décor statique → frame courante (procédural)",
+            "Décor statique → image de fond (procédural)",
+            "Décor ANIMÉ → 4 nouvelles frames (procédural)",
+            "Décor ANIMÉ → 8 nouvelles frames (procédural)",
+            "☁️ IA cloud → image de fond (qualité, internet requis)"
         )
         AlertDialog.Builder(this)
             .setTitle("Générer un décor")
@@ -1418,7 +1419,50 @@ class MainActivity : AppCompatActivity() {
                     1 -> pickAndGenerateStaticDecor(replaceFrame = false)
                     2 -> pickAndGenerateAnimatedDecor(frameCount = 4)
                     3 -> pickAndGenerateAnimatedDecor(frameCount = 8)
+                    4 -> showAICloudDecorDialog()
                 }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showAICloudDecorDialog() {
+        val decorStyles = AIService.Style.values().filter { it.isDecor }
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
+        }
+        container.addView(TextView(this).apply {
+            text = "Génère un décor via IA en ligne et le place comme image de fond. " +
+                "Vous pourrez ensuite le pixeliser comme une image importée."
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
+        })
+        container.addView(TextView(this).apply {
+            text = "\nStyle"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val styleSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                decorStyles.map { it.displayName })
+        }
+        container.addView(styleSpinner)
+        container.addView(TextView(this).apply {
+            text = "\nDescription du décor (anglais conseillé)"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val promptEt = EditText(this).apply {
+            hint = "ancient ruined temple with vines and broken pillars"
+            setText("ancient ruined temple with vines and broken pillars at sunset")
+            setTextColor(0xFFE8E8F0.toInt()); minLines = 2
+        }
+        container.addView(promptEt)
+        AlertDialog.Builder(this)
+            .setTitle("☁️ Décor IA cloud")
+            .setView(container)
+            .setPositiveButton("Générer") { _, _ ->
+                val style = decorStyles[styleSpinner.selectedItemPosition]
+                val raw = promptEt.text.toString().trim()
+                if (raw.isBlank()) { toast("Entrez une description"); return@setPositiveButton }
+                runAICloudGeneration(AIService.applyStyle(raw, style), useOpenAI = false, apiKey = "")
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
@@ -1505,12 +1549,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun showAnimationGenerator() {
         val presets = AnimationGenerator.Preset.values()
-        val labels = presets.map { it.displayName }.toTypedArray()
+        val labels = (listOf("☁️ Nouveau sprite IA → puis revenir ici pour animer") +
+            presets.map { it.displayName }).toTypedArray()
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.generate_animation))
+            .setMessage("L'animation est calculée à partir du sprite courant. " +
+                "Pour un meilleur rendu, partez d'un sprite propre (créé à la main, " +
+                "ou généré via IA cloud).")
             .setItems(labels) { _, which ->
-                val preset = presets[which]
-                generateAnimation(preset)
+                if (which == 0) {
+                    showAICloudGeneratorDialog()
+                    toast("Une fois le sprite pixelisé, ré-ouvrez ce menu pour l'animer")
+                } else {
+                    generateAnimation(presets[which - 1])
+                }
             }
             .show()
     }
@@ -2874,6 +2926,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun convertToKingGodCastle(bmp: Bitmap) {
+        AlertDialog.Builder(this)
+            .setTitle("🤴 Conversion King God Castle")
+            .setMessage("Choisissez la méthode :\n\n" +
+                "• Procédural : instantané, hors ligne, utilise les couleurs de la photo sur un sprite chibi pré-dessiné.\n\n" +
+                "• ☁️ IA cloud : qualité bien supérieure (vrai sprite chibi anime), nécessite internet et 10-60 s.")
+            .setPositiveButton("☁️ IA cloud") { _, _ -> convertToKgcViaAI(bmp) }
+            .setNeutralButton("Procédural") { _, _ -> convertToKgcProcedural(bmp) }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun convertToKgcProcedural(bmp: Bitmap) {
         val w = project.width; val h = project.height
         lifecycleScope.launch {
             val (pixels, palette) = withContext(Dispatchers.Default) {
@@ -2893,6 +2957,56 @@ class MainActivity : AppCompatActivity() {
                 .setMessage("Astuce : ce style fonctionne mieux à 48×64 ou 64×96 pixels (chibi). " +
                     "Vous pouvez raffiner manuellement, ou refaire la conversion après avoir redimensionné via Menu → Redimensionner.")
                 .setPositiveButton("OK", null)
+                .show()
+        }
+    }
+
+    private fun convertToKgcViaAI(bmp: Bitmap) {
+        lifecycleScope.launch {
+            val colors = withContext(Dispatchers.Default) { PhotoToCharacter.sampleColors(bmp) }
+            val skin = AIService.describeColor(colors.skin)
+            val hair = AIService.describeColor(colors.hair)
+            val shirt = AIService.describeColor(colors.shirt)
+            val pants = AIService.describeColor(colors.pants)
+            val basePrompt = "knight character, $hair hair, $skin skin, $shirt armor or shirt, $pants pants"
+            val et = EditText(this@MainActivity).apply {
+                setText(basePrompt); minLines = 2
+                setTextColor(0xFFE8E8F0.toInt())
+            }
+            val savedKey = AIService.loadApiKey(this@MainActivity) ?: ""
+            val keyEt = EditText(this@MainActivity).apply {
+                hint = "Clé OpenAI (vide = Pollinations gratuit)"
+                setText(savedKey)
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                setTextColor(0xFFE8E8F0.toInt())
+            }
+            val container = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
+                addView(TextView(this@MainActivity).apply {
+                    text = "Description auto-générée depuis les couleurs de votre photo. " +
+                        "Vous pouvez la modifier (ajoutez : 'female', 'wizard', 'with sword and shield', etc.)."
+                    setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
+                })
+                addView(et)
+                addView(TextView(this@MainActivity).apply {
+                    text = "\nClé OpenAI optionnelle (vide = Pollinations gratuit)"
+                    setTextColor(0xFFA5B4FF.toInt()); textSize = 12f
+                })
+                addView(keyEt)
+            }
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("☁️ KGC via IA")
+                .setView(container)
+                .setPositiveButton("Générer") { _, _ ->
+                    val raw = et.text.toString().trim()
+                    if (raw.isBlank()) { toast("Description vide"); return@setPositiveButton }
+                    val finalPrompt = AIService.applyStyle(raw, AIService.Style.KGC)
+                    val key = keyEt.text.toString().trim()
+                    val useOpenAI = key.isNotBlank()
+                    if (useOpenAI) AIService.saveApiKey(this@MainActivity, key)
+                    runAICloudGeneration(finalPrompt, useOpenAI, key)
+                }
+                .setNegativeButton(R.string.cancel, null)
                 .show()
         }
     }

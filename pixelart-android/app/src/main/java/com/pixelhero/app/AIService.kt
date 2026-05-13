@@ -20,7 +20,7 @@ import java.net.URLEncoder
 object AIService {
 
     /** Style preset prefixes that get prepended to the user prompt to steer the IA. */
-    enum class Style(val displayName: String, val prefix: String, val suffix: String) {
+    enum class Style(val displayName: String, val prefix: String, val suffix: String, val isDecor: Boolean = false) {
         FREE("Style libre", "", ""),
         KGC("King God Castle (chibi anime)",
             "high quality pixel art character sprite, chibi proportions, anime style, ",
@@ -36,11 +36,53 @@ object AIService {
             ", detailed armor, gothic, isolated, plain dark background"),
         CUTE("Mignon / Stardew",
             "pixel art cute character, Stardew Valley style, ",
-            ", smiling, full body, isolated, plain background")
+            ", smiling, full body, isolated, plain background"),
+        DECOR_FANTASY("Décor fantasy",
+            "pixel art background scene, fantasy game environment, ",
+            ", detailed, side-scroller view, no characters, no text", isDecor = true),
+        DECOR_DUNGEON("Décor donjon",
+            "pixel art dungeon background, dark stone walls, torches, ",
+            ", detailed, retro game environment, no characters", isDecor = true),
+        DECOR_VILLAGE("Décor village",
+            "pixel art village background, medieval houses, ",
+            ", detailed, daytime, retro game environment, no characters", isDecor = true),
+        DECOR_SCIFI("Décor sci-fi",
+            "pixel art sci-fi background, futuristic city or spaceship interior, ",
+            ", detailed, neon lights, no characters, no text", isDecor = true),
+        DECOR_NATURE("Décor nature",
+            "pixel art nature background, forest or mountains or beach, ",
+            ", detailed, retro game environment, no characters", isDecor = true),
+        TILE("Tile / texture (seamless)",
+            "pixel art seamless tile texture, ",
+            ", repeating pattern, top-down view, detailed, no characters", isDecor = true)
     }
 
     fun applyStyle(prompt: String, style: Style): String =
         "${style.prefix}$prompt${style.suffix}".trim()
+
+    /** Map an ARGB color int to a coarse English color word for AI prompts. */
+    fun describeColor(c: Int): String {
+        val r = (c shr 16) and 0xFF; val g = (c shr 8) and 0xFF; val b = c and 0xFF
+        val mx = maxOf(r, g, b); val mn = minOf(r, g, b)
+        val light = (mx + mn) / 2
+        if (mx - mn < 20) return when {
+            light < 40 -> "black"; light < 90 -> "dark gray"
+            light < 170 -> "gray"; light < 220 -> "light gray"; else -> "white"
+        }
+        val isLight = light > 170; val isDark = light < 80
+        val prefix = when { isDark -> "dark "; isLight -> "light "; else -> "" }
+        val hue = when {
+            r > g && r > b && g < 100 && b < 100 -> "red"
+            r > 180 && g > 100 && b < 100 -> "orange"
+            r > 180 && g > 180 && b < 120 -> "yellow"
+            g > r && g > b -> "green"
+            b > r && b > g && r < 120 -> "blue"
+            r > 100 && b > 100 && g < r && g < b -> "purple"
+            r > 120 && g > 60 && b < 60 -> "brown"
+            else -> "neutral"
+        }
+        return (prefix + hue).trim()
+    }
 
     /**
      * Generate an image via Pollinations.ai (free, no auth).

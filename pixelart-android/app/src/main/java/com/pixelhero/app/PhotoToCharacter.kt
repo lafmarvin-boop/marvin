@@ -54,17 +54,26 @@ object PhotoToCharacter {
     private const val TPL_W = 16
     private const val TPL_H = 24
 
-    fun convert(source: Bitmap, w: Int, h: Int): Pair<IntArray, IntArray> {
+    /** Skin / hair / shirt / pants colors sampled from a photo (ARGB ints). */
+    data class Colors(val skin: Int, val hair: Int, val shirt: Int, val pants: Int)
+
+    /** Public color sampler — useful for building AI prompts from a photo. */
+    fun sampleColors(source: Bitmap): Colors {
         val srcW = source.width; val srcH = source.height
         val srcPixels = IntArray(srcW * srcH)
         source.getPixels(srcPixels, 0, srcW, 0, 0, srcW, srcH)
-
         val skin = sampleSkin(srcPixels, srcW, srcH) ?: 0xFFF2C09B.toInt()
         val hair = sampleHair(srcPixels, srcW, srcH) ?: 0xFF2E1A0B.toInt()
         val shirt = sampleDominantBand(srcPixels, srcW, srcH, 0.45f, 0.65f, listOf(skin, hair))
             ?: 0xFF3366FF.toInt()
         val pants = sampleDominantBand(srcPixels, srcW, srcH, 0.7f, 0.95f, listOf(skin, hair, shirt))
             ?: 0xFF333366.toInt()
+        return Colors(skin, hair, shirt, pants)
+    }
+
+    fun convert(source: Bitmap, w: Int, h: Int): Pair<IntArray, IntArray> {
+        val c = sampleColors(source)
+        val skin = c.skin; val hair = c.hair; val shirt = c.shirt; val pants = c.pants
 
         val outline = 0xFF1A1428.toInt()
         val eye = 0xFF1A1428.toInt()
