@@ -174,6 +174,8 @@ object AnimationGenerator {
                 }
             }
         }
+        // Fill 1-pixel gaps that appear at body part boundaries (offsets diverge)
+        GapFill.apply(out, passes = 1)
         return out
     }
 

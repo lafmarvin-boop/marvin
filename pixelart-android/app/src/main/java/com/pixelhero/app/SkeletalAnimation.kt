@@ -127,25 +127,37 @@ object SkeletalAnimation {
         val out = Frame(src.width, src.height)
         out.tag = tag
         val srcPixels = if (src.layers.size > 1) src.composited() else src.pixels
-        // Build offset array indexed by jointOrder for fast lookup
-        val offsets = IntArray(skin.jointOrder.size * 2)
+        val w = src.width; val h = src.height
+        // Per-joint offset as Float (for weighted accumulation)
+        val ox = FloatArray(skin.jointOrder.size)
+        val oy = FloatArray(skin.jointOrder.size)
         for ((i, jt) in skin.jointOrder.withIndex()) {
             val o = pose[jt] ?: JointOffset(0, 0)
-            offsets[i * 2] = o.dx
-            offsets[i * 2 + 1] = o.dy
+            ox[i] = o.dx.toFloat()
+            oy[i] = o.dy.toFloat()
         }
-        for (y in 0 until src.height) for (x in 0 until src.width) {
-            val idx = y * src.width + x
+        val K = skin.k
+        for (y in 0 until h) for (x in 0 until w) {
+            val idx = y * w + x
             val c = srcPixels[idx]
             if ((c ushr 24) and 0xFF < 128) continue
-            val jointIdx = skin.assignment[idx]
-            val dx = offsets[jointIdx * 2]
-            val dy = offsets[jointIdx * 2 + 1]
-            val tx = x + dx; val ty = y + dy
-            if (tx in 0 until src.width && ty in 0 until src.height) {
+            // Weighted offset across K nearest joints — smooth deformation
+            var fdx = 0f; var fdy = 0f
+            val base = idx * K
+            for (kk in 0 until K) {
+                val jIdx = skin.nearestIdx[base + kk]
+                val wt = skin.nearestWeight[base + kk]
+                fdx += ox[jIdx] * wt
+                fdy += oy[jIdx] * wt
+            }
+            val tx = x + fdx.toInt()
+            val ty = y + fdy.toInt()
+            if (tx in 0 until w && ty in 0 until h) {
                 out.set(tx, ty, c)
             }
         }
+        // Fill gaps from offset divergence at body part boundaries
+        GapFill.apply(out, passes = 1)
         return out
     }
 

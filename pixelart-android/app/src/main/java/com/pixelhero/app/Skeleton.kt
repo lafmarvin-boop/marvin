@@ -2,11 +2,11 @@ package com.pixelhero.app
 
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.math.sqrt
 
 /**
  * Skeleton model for character animation. Each character has up to 15 joints
- * laid out as a humanoid. The user places joints on the sprite, then animations
- * move each joint independently and pixels follow their nearest joint.
+ * laid out as a humanoid.
  */
 enum class JointType(val displayName: String, val parent: JointType? = null) {
     NECK("Cou"),
@@ -41,21 +41,16 @@ data class Joint(var type: JointType, var x: Float, var y: Float) {
 
 class Skeleton {
     val joints: MutableMap<JointType, Joint> = mutableMapOf()
-
     fun get(type: JointType): Joint? = joints[type]
-
     fun set(type: JointType, x: Float, y: Float) {
         joints[type] = Joint(type, x, y)
     }
-
     fun isComplete(): Boolean = JointType.values().all { it in joints }
-
     fun copy(): Skeleton {
         val s = Skeleton()
         joints.forEach { (k, v) -> s.joints[k] = v.copy() }
         return s
     }
-
     fun toJson(): JSONObject {
         val arr = JSONArray()
         joints.values.forEach { arr.put(it.toJson()) }
@@ -73,16 +68,11 @@ class Skeleton {
             return s
         }
 
-        /**
-         * Auto-place joints assuming a humanoid character fills the bbox.
-         * Standard proportions: head ~1/4 height, torso ~3/8, legs ~3/8.
-         */
         fun humanoidTemplate(x0: Int, y0: Int, x1: Int, y1: Int): Skeleton {
             val s = Skeleton()
             val w = (x1 - x0 + 1).toFloat()
             val h = (y1 - y0 + 1).toFloat()
             val cx = (x0 + x1) / 2f
-            // Vertical landmarks
             val headY = y0 + h * 0.10f
             val neckY = y0 + h * 0.22f
             val shoulderY = y0 + h * 0.26f
@@ -91,7 +81,6 @@ class Skeleton {
             val hipY = y0 + h * 0.55f
             val kneeY = y0 + h * 0.78f
             val footY = y0 + h * 0.95f
-            // Horizontal landmarks
             val shoulderXL = cx - w * 0.20f
             val shoulderXR = cx + w * 0.20f
             val handXL = cx - w * 0.25f
@@ -121,23 +110,74 @@ class Skeleton {
 }
 
 /**
- * Maps each pixel of a frame to its nearest joint. Built once per project size
- * and joint configuration, then reused for all animations.
+ * Per-pixel binding to the K nearest joints with inverse-distance weights.
+ *
+ * Each pixel's offset during animation is computed as a WEIGHTED AVERAGE of
+ * the K nearest joints' offsets, instead of being driven by a single nearest
+ * joint. This gives smooth deformation with no visible seams at body part
+ * boundaries (the issue with hard 1-joint-per-pixel binding).
+ *
+ * K = 1: behaves like the old hard binding (used for comparison)
+ * K = 3: typical sweet spot — smooth but still snappy
+ * K = 5: very smooth but limbs may "blur" into each other
  */
-class PixelSkin(val width: Int, val height: Int, skeleton: Skeleton) {
+class PixelSkin(val width: Int, val height: Int, skeleton: Skeleton, val k: Int = 3) {
     val jointOrder: List<JointType> = skeleton.joints.keys.toList()
+
+    /** assignment[(y * w + x)] = index of NEAREST joint (kept for backward compat). */
     val assignment: IntArray = IntArray(width * height)
+
+    /** Per-pixel K nearest joint indices, packed as [K * pixelIdx + k]. */
+    val nearestIdx: IntArray = IntArray(width * height * k)
+
+    /** Per-pixel K weights (inverse distance squared, normalized). */
+    val nearestWeight: FloatArray = FloatArray(width * height * k)
 
     init {
         val joints = jointOrder.map { skeleton.joints[it]!! }
-        for (y in 0 until height) for (x in 0 until width) {
-            var bestDist = Float.MAX_VALUE; var bestIdx = 0
-            for ((i, j) in joints.withIndex()) {
-                val dx = x - j.x; val dy = y - j.y
-                val d = dx * dx + dy * dy
-                if (d < bestDist) { bestDist = d; bestIdx = i }
+        val nJ = joints.size
+        if (nJ == 0) {
+            // No joints: leave arrays at zero (assignment 0 / no weights)
+        } else {
+            val kEff = k.coerceAtMost(nJ)
+            // Reusable arrays for K-NN per pixel
+            val dist = FloatArray(nJ)
+            val idx = IntArray(nJ)
+            for (y in 0 until height) for (x in 0 until width) {
+                // Compute squared distance to every joint
+                for (i in 0 until nJ) {
+                    val dx = x - joints[i].x; val dy = y - joints[i].y
+                    dist[i] = dx * dx + dy * dy
+                    idx[i] = i
+                }
+                // Partial selection sort: pick K smallest
+                for (i in 0 until kEff) {
+                    var minK = i
+                    for (j in i + 1 until nJ) if (dist[j] < dist[minK]) minK = j
+                    if (minK != i) {
+                        val td = dist[i]; dist[i] = dist[minK]; dist[minK] = td
+                        val ti = idx[i]; idx[i] = idx[minK]; idx[minK] = ti
+                    }
+                }
+                val pixIdx = y * width + x
+                assignment[pixIdx] = idx[0]
+                // Inverse-distance weights, normalized
+                var sum = 0f
+                for (kk in 0 until kEff) {
+                    val w = 1f / (dist[kk] + 0.5f)
+                    nearestWeight[pixIdx * k + kk] = w
+                    sum += w
+                }
+                for (kk in 0 until kEff) {
+                    nearestIdx[pixIdx * k + kk] = idx[kk]
+                    nearestWeight[pixIdx * k + kk] /= sum
+                }
+                // Fill remaining slots if k > nJ
+                for (kk in kEff until k) {
+                    nearestIdx[pixIdx * k + kk] = idx[0]
+                    nearestWeight[pixIdx * k + kk] = 0f
+                }
             }
-            assignment[y * width + x] = bestIdx
         }
     }
 }
