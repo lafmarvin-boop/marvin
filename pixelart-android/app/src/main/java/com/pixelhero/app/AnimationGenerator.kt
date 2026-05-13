@@ -43,11 +43,17 @@ object AnimationGenerator {
         override fun toString() = displayName
     }
 
-    fun generate(base: Frame, preset: Preset, locomotion: LocomotionMode = LocomotionMode.WALKING): List<Frame> {
+    fun generate(base: Frame, preset: Preset, locomotion: LocomotionMode = LocomotionMode.WALKING,
+                 secondaryMotion: Boolean = true): List<Frame> {
         val bbox = computeBoundingBox(base) ?: return List(preset.frameCount) { base.copy() }
-        val frames = generateBase(base, preset, bbox)
-        return if (locomotion == LocomotionMode.WALKING) frames
-               else applyFloatingOverlay(frames, locomotion)
+        var frames = generateBase(base, preset, bbox)
+        if (locomotion != LocomotionMode.WALKING) frames = applyFloatingOverlay(frames, locomotion)
+        if (secondaryMotion) {
+            val mutable = frames.toMutableList()
+            SecondaryMotion.apply(mutable, intensity = 0.6f)
+            frames = mutable
+        }
+        return frames
     }
 
     private fun applyFloatingOverlay(frames: List<Frame>, mode: LocomotionMode): List<Frame> {

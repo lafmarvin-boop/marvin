@@ -34,10 +34,28 @@ object SkeletalAnimation {
     /** Per-frame offset for each joint type (missing = (0,0)). */
     private typealias Pose = Map<JointType, Offset>
 
-    fun generate(src: Frame, skin: PixelSkin, preset: Preset, locomotion: LocomotionMode = LocomotionMode.WALKING): List<Frame> {
+    fun generate(src: Frame, skin: PixelSkin, preset: Preset, locomotion: LocomotionMode = LocomotionMode.WALKING,
+                 easing: Easing.Curve = Easing.Curve.SINE, secondaryMotion: Boolean = true): List<Frame> {
         val basePoses = computePoses(src, preset)
-        val poses = applyLocomotion(basePoses, locomotion, src.height, preset)
-        return poses.map { pose -> renderPose(src, skin, pose, preset.name.lowercase()) }
+        val easedPoses = applyEasing(basePoses, easing)
+        val poses = applyLocomotion(easedPoses, locomotion, src.height, preset)
+        val frames = poses.map { pose -> renderPose(src, skin, pose, preset.name.lowercase()) }.toMutableList()
+        if (secondaryMotion) SecondaryMotion.apply(frames, intensity = 0.7f)
+        return frames
+    }
+
+    /**
+     * Apply an easing curve to the per-frame poses. The original poses use sine
+     * implicitly; this remaps the timing so movement feels less mechanical.
+     * We interpolate by re-sampling the poses at eased phase values.
+     */
+    private fun applyEasing(poses: List<Pose>, curve: Easing.Curve): List<Pose> {
+        if (curve == Easing.Curve.SINE) return poses  // already sine-natural
+        return poses.indices.map { i ->
+            val tEased = Easing.applyPeriodic(curve, i.toFloat() / poses.size)
+            val srcIdx = (tEased * poses.size).toInt().coerceIn(0, poses.size - 1)
+            poses[srcIdx]
+        }
     }
 
     /**
