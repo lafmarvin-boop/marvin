@@ -23,8 +23,12 @@ object AIService {
     enum class Style(val displayName: String, val prefix: String, val suffix: String, val isDecor: Boolean = false) {
         FREE("Style libre", "", ""),
         KGC("King God Castle (chibi anime)",
-            "high quality pixel art character sprite, chibi proportions, anime style, ",
-            ", full body, isolated, plain white background, detailed armor, RPG character"),
+            "King God Castle game style, mobile RPG chibi sprite, super-deformed anime proportions, " +
+            "oversized expressive head with large round eyes, tiny body, short stubby legs, " +
+            "high quality pixel art, vibrant saturated colors, soft cel-shading with clean black outline, ",
+            ", full body front view, detailed ornate armor with metallic highlights, " +
+            "decorative cape and accessories, weapon held in hand, " +
+            "isolated on plain white background, centered, no shadows, no text, cute mascot vibe"),
         RPG_8BIT("RPG 8-bit (NES/SNES)",
             "pixel art sprite, 16-bit RPG style, ",
             ", full body, isolated, plain background, retro game character"),
@@ -170,9 +174,13 @@ object AIService {
         return (prefix + hue).trim()
     }
 
+    /** Last error message captured from a generate*() call. Inspected by the UI on failure. */
+    @Volatile var lastError: String? = null
+        private set
+
     /**
      * Generate an image via Pollinations.ai (free, no auth).
-     * Returns null on network error.
+     * Returns null on network error; check [lastError] for details.
      */
     fun generatePollinations(prompt: String, width: Int = 512, height: Int = 512, seed: Int = -1): Bitmap? {
         val encoded = URLEncoder.encode(prompt, "UTF-8")
@@ -181,24 +189,28 @@ object AIService {
         return runCatching {
             val conn = (URL(url).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 30_000
-                readTimeout = 120_000  // image generation can be slow
+                readTimeout = 120_000
                 requestMethod = "GET"
                 setRequestProperty("User-Agent", "PixelHero/1.0")
             }
-            if (conn.responseCode != 200) {
+            val code = conn.responseCode
+            if (code != 200) {
+                lastError = "Pollinations HTTP $code"
                 conn.disconnect()
                 return null
             }
-            conn.inputStream.use { BitmapFactory.decodeStream(it) }
-        }.getOrNull()
+            val bmp = conn.inputStream.use { BitmapFactory.decodeStream(it) }
+            if (bmp == null) lastError = "Pollinations: image décodée invalide"
+            bmp
+        }.onFailure { lastError = "Pollinations: ${it.message ?: it.javaClass.simpleName}" }.getOrNull()
     }
 
     /**
      * Generate an image via OpenAI DALL-E 3 (requires user API key, paid).
-     * Returns null on network or auth error.
+     * Returns null on network or auth error; check [lastError] for details.
      */
     fun generateOpenAI(prompt: String, apiKey: String, size: String = "1024x1024"): Bitmap? {
-        if (apiKey.isBlank()) return null
+        if (apiKey.isBlank()) { lastError = "Clé OpenAI vide"; return null }
         return runCatching {
             val conn = (URL("https://api.openai.com/v1/images/generations").openConnection() as HttpURLConnection).apply {
                 connectTimeout = 30_000
@@ -208,25 +220,34 @@ object AIService {
                 setRequestProperty("Authorization", "Bearer $apiKey")
                 setRequestProperty("Content-Type", "application/json")
             }
-            val safePrompt = prompt.replace("\\", "\\\\").replace("\"", "\\\"")
+            val safePrompt = prompt
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", " ")
+                .replace("\r", " ")
+                .replace("\t", " ")
+                .take(3900)  // DALL-E 3 hard limit is 4000 chars
             val body = """{"model":"dall-e-3","prompt":"$safePrompt","size":"$size","n":1,"response_format":"b64_json"}"""
             OutputStreamWriter(conn.outputStream).use { it.write(body); it.flush() }
-            if (conn.responseCode != 200) {
+            val code = conn.responseCode
+            if (code != 200) {
+                val errBody = (conn.errorStream ?: conn.inputStream).bufferedReader().use { it.readText() }
+                lastError = "OpenAI HTTP $code: ${errBody.take(400)}"
                 conn.disconnect()
                 return null
             }
             val response = conn.inputStream.bufferedReader().use { it.readText() }
-            // Parse "b64_json": "..." manually to avoid heavy deps
             val key = "\"b64_json\":\""
             val idx = response.indexOf(key)
-            if (idx < 0) return null
+            if (idx < 0) { lastError = "Réponse OpenAI sans b64_json: ${response.take(200)}"; return null }
             val start = idx + key.length
             val end = response.indexOf('"', start)
-            if (end < 0) return null
+            if (end < 0) { lastError = "Réponse OpenAI tronquée"; return null }
             val b64 = response.substring(start, end)
             val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        }.getOrNull()
+                ?: run { lastError = "Image OpenAI invalide"; null }
+        }.onFailure { lastError = "OpenAI: ${it.message ?: it.javaClass.simpleName}" }.getOrNull()
     }
 
     fun saveApiKey(context: android.content.Context, key: String) {

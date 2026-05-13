@@ -787,32 +787,38 @@ class MainActivity : AppCompatActivity() {
     private fun runAICloudGeneration(prompt: String, useOpenAI: Boolean, apiKey: String) {
         val progress = AlertDialog.Builder(this)
             .setTitle("Génération en cours…")
-            .setMessage("Téléchargement de l'image IA. Cela peut prendre 10-60 secondes selon le serveur.")
+            .setMessage("Téléchargement de l'image IA puis suppression du fond. 10-60 s.")
             .setCancelable(false)
             .show()
+        val w = project.width; val h = project.height
         lifecycleScope.launch {
             val bmp = withContext(Dispatchers.IO) {
                 if (useOpenAI) AIService.generateOpenAI(prompt, apiKey)
                 else AIService.generatePollinations(prompt)
             }
-            progress.dismiss()
             if (bmp == null) {
+                progress.dismiss()
                 AlertDialog.Builder(this@MainActivity)
                     .setTitle("Échec de génération")
-                    .setMessage("L'IA n'a pas répondu. Causes possibles :\n" +
-                        "• Pas de connexion internet\n" +
+                    .setMessage("Erreur : ${AIService.lastError ?: "inconnue"}\n\n" +
+                        "Causes possibles :\n• Pas de connexion internet\n" +
                         "• Serveur surchargé (réessayez)\n" +
-                        "• Clé OpenAI invalide ou crédit épuisé\n" +
+                        "• Clé OpenAI invalide / crédit épuisé / dépassement de quota\n" +
                         "• Prompt refusé par le filtre de contenu")
                     .setPositiveButton("Réessayer") { _, _ -> showAICloudGeneratorDialog() }
                     .setNegativeButton("OK", null)
                     .show()
                 return@launch
             }
-            binding.canvas.bgBitmap = bmp
+            // Auto-remove background on the source bitmap before showing it.
+            val cleanedSource = withContext(Dispatchers.Default) {
+                BackgroundRemoval.removeBackground(bmp, tolerance = 55, featherEdges = true)
+            }
+            progress.dismiss()
+            binding.canvas.bgBitmap = cleanedSource
             binding.canvas.invalidate()
-            toast("Image IA téléchargée — choisissez maintenant comment l'intégrer")
-            askBgFitModeThenAction(bmp)
+            toast("Image IA téléchargée, fond enlevé — choisissez maintenant")
+            askBgFitModeThenAction(cleanedSource)
         }
     }
 
@@ -947,7 +953,13 @@ class MainActivity : AppCompatActivity() {
             if (successCount == 0) {
                 AlertDialog.Builder(this@MainActivity)
                     .setTitle("Échec total")
-                    .setMessage("Aucune vue n'a pu être générée. Vérifiez votre connexion et réessayez.")
+                    .setMessage("Aucune vue n'a pu être générée.\n\n" +
+                        "Dernière erreur : ${AIService.lastError ?: "inconnue"}\n\n" +
+                        "Causes courantes DALL-E :\n" +
+                        "• Clé invalide ou expirée\n" +
+                        "• Compte sans crédit (vérifiez sur platform.openai.com/usage)\n" +
+                        "• Quota d'images dépassé\n" +
+                        "• Prompt refusé (filtre de contenu)")
                     .setPositiveButton("Réessayer") { _, _ -> showAIFullCharacterDialog() }
                     .setNegativeButton("OK", null)
                     .show()
@@ -1720,26 +1732,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAnimationGenerator() {
-        val presets = AnimationGenerator.Preset.values()
-        val labels = (listOf(
-            "🎬 IA: animation frame par frame (lent, cohérent)",
-            "☁️ Nouveau sprite IA → puis revenir ici pour animer"
-        ) + presets.map { it.displayName + " (procédural)" }).toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.generate_animation))
-            .setMessage("Mode IA : chaque frame est générée par l'IA (8-15 appels, 2-5 min). " +
-                "Mode procédural : déforme la frame actuelle (rapide, moins joli).")
-            .setItems(labels) { _, which ->
-                when (which) {
-                    0 -> showAIAnimationDialog()
-                    1 -> {
-                        showAICloudGeneratorDialog()
-                        toast("Une fois le sprite pixelisé, ré-ouvrez ce menu pour l'animer")
-                    }
-                    else -> generateAnimation(presets[which - 2])
-                }
-            }
-            .show()
+        // Procedural animation removed: it produced unconvincing motion (warped pixels).
+        // Only the AI per-frame mode remains.
+        showAIAnimationDialog()
     }
 
     private fun showAIAnimationDialog() {
@@ -1859,8 +1854,10 @@ class MainActivity : AppCompatActivity() {
             val results = ArrayList<IntArray?>()
             for ((i, motion) in preset.frameDescriptors.withIndex()) {
                 progress.setMessage("${i + 1}/${preset.frameDescriptors.size} — $motion")
-                val framePrompt = "${style.prefix}$basePrompt, $motion${style.suffix}, " +
-                    "isolated on plain white background, side view, centered, full body"
+                val framePrompt = "${style.prefix}the exact same character: $basePrompt, " +
+                    "same outfit, same colors, same proportions, currently in this pose: $motion" +
+                    "${style.suffix}, side view, full body, isolated on plain white background, " +
+                    "centered, no shadows, no text, no other characters"
                 val bmp = withContext(Dispatchers.IO) {
                     if (useOpenAI) AIService.generateOpenAI(framePrompt, apiKey)
                     else AIService.generatePollinations(framePrompt, 512, 512, seed = seed)
@@ -1882,7 +1879,8 @@ class MainActivity : AppCompatActivity() {
             if (successCount == 0) {
                 AlertDialog.Builder(this@MainActivity)
                     .setTitle("Échec total")
-                    .setMessage("Aucune frame n'a pu être générée. Vérifiez votre connexion.")
+                    .setMessage("Aucune frame n'a pu être générée.\n\n" +
+                        "Dernière erreur : ${AIService.lastError ?: "inconnue"}")
                     .setPositiveButton("OK", null).show()
                 return@launch
             }
@@ -3273,39 +3271,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun convertToKingGodCastle(bmp: Bitmap) {
-        AlertDialog.Builder(this)
-            .setTitle("🤴 Conversion King God Castle")
-            .setMessage("Choisissez la méthode :\n\n" +
-                "• Procédural : instantané, hors ligne, utilise les couleurs de la photo sur un sprite chibi pré-dessiné.\n\n" +
-                "• ☁️ IA cloud : qualité bien supérieure (vrai sprite chibi anime), nécessite internet et 10-60 s.")
-            .setPositiveButton("☁️ IA cloud") { _, _ -> convertToKgcViaAI(bmp) }
-            .setNeutralButton("Procédural") { _, _ -> convertToKgcProcedural(bmp) }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun convertToKgcProcedural(bmp: Bitmap) {
-        val w = project.width; val h = project.height
-        lifecycleScope.launch {
-            val (pixels, palette) = withContext(Dispatchers.Default) {
-                PhotoToCharacter.convert(bmp, w, h)
-            }
-            pushUndo()
-            pixels.copyInto(project.currentFrame.pixels)
-            project.palette.clear()
-            project.palette.addAll(palette.toList())
-            paletteAdapter.notifyDataSetChanged()
-            binding.canvas.syncFrameBitmap()
-            framesAdapter.notifyItemChanged(project.currentIndex)
-            binding.timeline.invalidate()
-            toast("Personnage style KGC généré (${palette.size} couleurs)")
-            AlertDialog.Builder(this@MainActivity)
-                .setTitle("Conversion terminée")
-                .setMessage("Astuce : ce style fonctionne mieux à 48×64 ou 64×96 pixels (chibi). " +
-                    "Vous pouvez raffiner manuellement, ou refaire la conversion après avoir redimensionné via Menu → Redimensionner.")
-                .setPositiveButton("OK", null)
-                .show()
-        }
+        convertToKgcViaAI(bmp)
     }
 
     private fun convertToKgcViaAI(bmp: Bitmap) {
