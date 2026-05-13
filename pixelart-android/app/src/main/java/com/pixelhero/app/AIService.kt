@@ -76,6 +76,72 @@ object AIService {
         return "${style.prefix}$prompt, $viewPart${style.suffix}, isolated on plain white background, no shadows, centered".trim()
     }
 
+    /**
+     * Per-frame motion descriptors for an action. Each entry is added to the user's
+     * base prompt to produce a sequence of phase-consistent frames. Using the SAME
+     * seed across frames keeps the character roughly identical, while the action
+     * suffix advances the pose.
+     */
+    enum class AnimationPreset(val displayName: String, val frameDescriptors: List<String>) {
+        SWORD_ATTACK("Coup d'épée", listOf(
+            "neutral idle pose, sword down at side, full body",
+            "wind-up, sword raised diagonally behind body, knees slightly bent",
+            "wind-up peak, sword overhead ready to strike, arms extended up",
+            "mid-swing, sword arcing forward, dynamic action pose",
+            "strike impact, sword horizontal in front of body, motion blur lines",
+            "follow-through, sword pointing down-forward, body twisted",
+            "recovery, sword lifting back up to guard, body returning",
+            "back to idle stance, sword nearly at rest"
+        )),
+        WALK("Marche", listOf(
+            "walking, left leg forward, right arm forward, mid-stride",
+            "walking, legs near vertical, arms passing body",
+            "walking, right leg forward, left arm forward, mid-stride",
+            "walking, legs near vertical, arms passing body opposite direction"
+        )),
+        RUN("Course", listOf(
+            "running, left leg high forward, right arm forward bent, dynamic",
+            "running, both legs off ground, sprint pose",
+            "running, right leg high forward, left arm forward bent, dynamic",
+            "running, push-off pose, leaning forward"
+        )),
+        IDLE("Idle (respiration)", listOf(
+            "idle standing pose, arms at side, chest relaxed",
+            "idle standing pose, slight inhale, chest slightly raised",
+            "idle standing pose, exhale, chest relaxed",
+            "idle standing pose, neutral"
+        )),
+        CAST_SPELL("Lancer un sort", listOf(
+            "neutral pose, hands at side, full body",
+            "raising both arms forward, gathering energy",
+            "arms extended forward, glowing magic energy between hands",
+            "releasing spell, arms pushed fully forward, magical projectile beginning",
+            "follow-through, slight recoil, hands open",
+            "return to neutral, hands lowering"
+        )),
+        JUMP("Saut", listOf(
+            "crouched pose, knees bent ready to jump",
+            "starting to jump, legs extending, arms swinging up",
+            "mid-air apex, legs tucked, arms up",
+            "falling, legs extending downward, arms balanced",
+            "landing, knees absorbing impact, body lowered"
+        )),
+        DEATH("Mort", listOf(
+            "neutral standing pose",
+            "staggered, body leaning back, surprised",
+            "falling backward, arms outstretched",
+            "on the ground, lying on back, limbs sprawled",
+            "still on the ground, motionless"
+        )),
+        WAVE("Salut", listOf(
+            "neutral pose, arms at side",
+            "raising right arm forward and up",
+            "right arm overhead, waving slightly left",
+            "right arm overhead, waving slightly right",
+            "lowering right arm back to side"
+        ))
+    }
+
     /** Map an ARGB color int to a coarse English color word for AI prompts. */
     fun describeColor(c: Int): String {
         val r = (c shr 16) and 0xFF; val g = (c shr 8) and 0xFF; val b = c and 0xFF

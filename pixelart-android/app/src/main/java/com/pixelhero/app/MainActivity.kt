@@ -1718,22 +1718,197 @@ class MainActivity : AppCompatActivity() {
 
     private fun showAnimationGenerator() {
         val presets = AnimationGenerator.Preset.values()
-        val labels = (listOf("☁️ Nouveau sprite IA → puis revenir ici pour animer") +
-            presets.map { it.displayName }).toTypedArray()
+        val labels = (listOf(
+            "🎬 IA: animation frame par frame (lent, cohérent)",
+            "☁️ Nouveau sprite IA → puis revenir ici pour animer"
+        ) + presets.map { it.displayName + " (procédural)" }).toTypedArray()
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.generate_animation))
-            .setMessage("L'animation est calculée à partir du sprite courant. " +
-                "Pour un meilleur rendu, partez d'un sprite propre (créé à la main, " +
-                "ou généré via IA cloud).")
+            .setMessage("Mode IA : chaque frame est générée par l'IA (8-15 appels, 2-5 min). " +
+                "Mode procédural : déforme la frame actuelle (rapide, moins joli).")
             .setItems(labels) { _, which ->
-                if (which == 0) {
-                    showAICloudGeneratorDialog()
-                    toast("Une fois le sprite pixelisé, ré-ouvrez ce menu pour l'animer")
-                } else {
-                    generateAnimation(presets[which - 1])
+                when (which) {
+                    0 -> showAIAnimationDialog()
+                    1 -> {
+                        showAICloudGeneratorDialog()
+                        toast("Une fois le sprite pixelisé, ré-ouvrez ce menu pour l'animer")
+                    }
+                    else -> generateAnimation(presets[which - 2])
                 }
             }
             .show()
+    }
+
+    private fun showAIAnimationDialog() {
+        val presets = AIService.AnimationPreset.values()
+        val charStyles = AIService.Style.values().filter { !it.isDecor && it != AIService.Style.FREE }
+        val pixStyles = SmartPixelize.Style.values()
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
+        }
+        container.addView(TextView(this).apply {
+            text = "L'IA génère chaque frame avec un seed verrouillé pour garder le même perso. " +
+                "Comptez 8-15 appels (~2-5 min sur Pollinations, ~1-2 min sur DALL-E). " +
+                "Chaque frame est pixelisée et le fond enlevé."
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
+        })
+        container.addView(TextView(this).apply {
+            text = "\nAction"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val presetSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                presets.map { "${it.displayName} (${it.frameDescriptors.size} frames)" })
+        }
+        container.addView(presetSpinner)
+        container.addView(TextView(this).apply {
+            text = "\nStyle de personnage"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val styleSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item, charStyles.map { it.displayName })
+        }
+        container.addView(styleSpinner)
+        container.addView(TextView(this).apply {
+            text = "\nDescription du personnage (anglais)"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val promptEt = EditText(this).apply {
+            hint = "knight with silver armor and blue cape holding a longsword"
+            setText("knight with silver armor and blue cape holding a longsword")
+            setTextColor(0xFFE8E8F0.toInt()); minLines = 2
+        }
+        container.addView(promptEt)
+        container.addView(TextView(this).apply {
+            text = "\nStyle de pixelisation"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val pixSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item, pixStyles.map { it.displayName })
+            setSelection(pixStyles.indexOf(SmartPixelize.Style.CARTOON).coerceAtLeast(0))
+        }
+        container.addView(pixSpinner)
+        container.addView(TextView(this).apply {
+            text = "\nFournisseur"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val savedKey = AIService.loadApiKey(this) ?: ""
+        val providerSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                arrayOf("Pollinations.ai (gratuit, lent)", "OpenAI DALL-E 3 (clé requise)"))
+        }
+        container.addView(providerSpinner)
+        val keyLabel = TextView(this).apply {
+            text = "\nClé OpenAI"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+            visibility = View.GONE
+        }
+        val keyEt = EditText(this).apply {
+            hint = "sk-..."
+            setText(savedKey)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setTextColor(0xFFE8E8F0.toInt()); visibility = View.GONE
+        }
+        container.addView(keyLabel); container.addView(keyEt)
+        providerSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                val show = if (pos == 1) View.VISIBLE else View.GONE
+                keyLabel.visibility = show; keyEt.visibility = show
+            }
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+        AlertDialog.Builder(this)
+            .setTitle("🎬 Animation IA")
+            .setView(container)
+            .setPositiveButton("Générer") { _, _ ->
+                val preset = presets[presetSpinner.selectedItemPosition]
+                val style = charStyles[styleSpinner.selectedItemPosition]
+                val pix = pixStyles[pixSpinner.selectedItemPosition]
+                val raw = promptEt.text.toString().trim()
+                if (raw.isBlank()) { toast("Description vide"); return@setPositiveButton }
+                val useOpenAI = providerSpinner.selectedItemPosition == 1
+                val key = keyEt.text.toString().trim()
+                if (useOpenAI) {
+                    if (key.isBlank()) { toast("Clé OpenAI requise"); return@setPositiveButton }
+                    AIService.saveApiKey(this, key)
+                }
+                runAIAnimation(raw, style, preset, pix, useOpenAI, key)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun runAIAnimation(
+        basePrompt: String,
+        style: AIService.Style,
+        preset: AIService.AnimationPreset,
+        pixStyle: SmartPixelize.Style,
+        useOpenAI: Boolean,
+        apiKey: String
+    ) {
+        val progress = AlertDialog.Builder(this)
+            .setTitle("Animation IA — ${preset.displayName}")
+            .setMessage("Préparation…")
+            .setCancelable(false)
+            .show()
+        val w = project.width; val h = project.height
+        val seed = (System.currentTimeMillis() and 0xFFFF).toInt()  // shared seed = same character
+        lifecycleScope.launch {
+            val results = ArrayList<IntArray?>()
+            for ((i, motion) in preset.frameDescriptors.withIndex()) {
+                progress.setMessage("${i + 1}/${preset.frameDescriptors.size} — $motion")
+                val framePrompt = "${style.prefix}$basePrompt, $motion${style.suffix}, " +
+                    "isolated on plain white background, side view, centered, full body"
+                val bmp = withContext(Dispatchers.IO) {
+                    if (useOpenAI) AIService.generateOpenAI(framePrompt, apiKey)
+                    else AIService.generatePollinations(framePrompt, 512, 512, seed = seed)
+                }
+                if (bmp == null) { results.add(null); continue }
+                val finalPixels = withContext(Dispatchers.Default) {
+                    val (pixels, _) = SmartPixelize.pixelize(bmp, w, h, BgFitMode.FIT, pixStyle)
+                    val canvasBmp = Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888)
+                    val cleaned = BackgroundRemoval.removeBackground(canvasBmp, tolerance = 55, featherEdges = false)
+                    val out = IntArray(w * h)
+                    cleaned.getPixels(out, 0, w, 0, 0, w, h)
+                    canvasBmp.recycle(); cleaned.recycle()
+                    out
+                }
+                results.add(finalPixels)
+            }
+            progress.dismiss()
+            val successCount = results.count { it != null }
+            if (successCount == 0) {
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Échec total")
+                    .setMessage("Aucune frame n'a pu être générée. Vérifiez votre connexion.")
+                    .setPositiveButton("OK", null).show()
+                return@launch
+            }
+            pushUndo()
+            var firstApplied = false
+            var insertAt = project.currentIndex + 1
+            for ((i, px) in results.withIndex()) {
+                if (px == null) continue
+                val tag = "${preset.name.lowercase()}_${i + 1}"
+                if (!firstApplied) {
+                    px.copyInto(project.currentFrame.pixels)
+                    project.currentFrame.tag = tag
+                    firstApplied = true
+                } else {
+                    val nf = Frame(w, h, px)
+                    nf.tag = tag
+                    project.frames.add(insertAt++, nf)
+                }
+            }
+            binding.canvas.syncFrameBitmap()
+            framesAdapter.notifyDataSetChanged()
+            binding.timeline.invalidate()
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("Animation générée")
+                .setMessage("$successCount/${preset.frameDescriptors.size} frames créées. " +
+                    "Lancez la prévisualisation pour voir le mouvement. Si une frame casse, " +
+                    "supprimez-la depuis la timeline.")
+                .setPositiveButton("OK", null).show()
+        }
     }
 
     private fun generateAnimation(preset: AnimationGenerator.Preset) {
