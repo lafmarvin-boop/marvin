@@ -832,7 +832,23 @@ class MainActivity : AppCompatActivity() {
             val results = ArrayList<Pair<ViewTransform.View, IntArray?>>()
             for ((i, view) in views.withIndex()) {
                 progress.setMessage("${i + 1}/${views.size} — ${view.displayName} en cours…")
-                val viewPrompt = AIService.applyStyleWithView(prompt, style, view)
+                val viewPart = AIService.viewDescriptor(view)
+                val viewPrompt = if (useOpenAI && refBitmap != null) {
+                    // Edits mode: strict character preservation, only the camera angle may change.
+                    "This image shows a character. Re-draw the EXACT SAME character from a different camera angle ONLY. " +
+                        "STRICT RULES:\n" +
+                        "1. DO NOT add anything: no new accessories, no extra weapons, no extra clothing pieces, " +
+                        "no new colors, no shadows, no background elements, no text, no other characters.\n" +
+                        "2. DO NOT remove anything that the new angle can still show: every clothing piece, " +
+                        "armor part, cape, weapon, shield, helmet, hair element, accessory must remain.\n" +
+                        "3. DO NOT change: hair style, hair color, skin tone, every clothing color, armor design, " +
+                        "weapon shape, accessory shape, body proportions, art style.\n" +
+                        "4. The ONLY allowed change is the viewing angle: $viewPart. " +
+                        "(For a back view, the face naturally won't show — that is acceptable.)\n" +
+                        "Output: full body, isolated on plain background, centered, same character identity."
+                } else {
+                    AIService.applyStyleWithView(prompt, style, view)
+                }
                 val bmp = withContext(Dispatchers.IO) {
                     if (useOpenAI && refBitmap != null)
                         AIService.editOpenAI(refBitmap, viewPrompt, apiKey)
@@ -1761,11 +1777,17 @@ class MainActivity : AppCompatActivity() {
             for ((i, motion) in preset.frameDescriptors.withIndex()) {
                 progress.setMessage("${i + 1}/${preset.frameDescriptors.size} — $motion")
                 val framePrompt = if (useOpenAI && refBitmap != null) {
-                    // Edits mode: the AI already sees the character; just describe the new pose.
-                    "Redraw the SAME character from the reference image, " +
-                        "currently in this pose: $motion. " +
-                        "Keep identical outfit, colors, and proportions. " +
-                        "Side view, full body, isolated on plain background, no other characters."
+                    // Edits mode: strict character preservation, only the pose may change.
+                    "This image shows a character. Re-draw the EXACT SAME character with ONLY a different body pose. " +
+                        "STRICT RULES:\n" +
+                        "1. DO NOT add anything: no new accessories, no extra weapons, no extra clothing pieces, " +
+                        "no new colors, no shadows, no background elements, no text, no other characters.\n" +
+                        "2. DO NOT remove anything: every clothing piece, armor part, cape, weapon, shield, " +
+                        "helmet, hair element, facial feature, accessory must remain on the character.\n" +
+                        "3. DO NOT change: hair style, hair color, face, skin tone, eyes, mouth, every clothing color, " +
+                        "armor design, weapon shape, accessory shape, body proportions, art style.\n" +
+                        "4. The ONLY allowed change is the body pose: $motion.\n" +
+                        "Output: full body, side view, isolated on plain background, centered, same character identity."
                 } else {
                     "${style.prefix}the exact same character: $basePrompt, " +
                         "same outfit, same colors, same proportions, currently in this pose: $motion" +
