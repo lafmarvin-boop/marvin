@@ -546,11 +546,66 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showCharacterMenu() {
-        val items = arrayOf("Template de pose", "Personnage aléatoire", "🤖 Depuis un texte")
+        val items = arrayOf(
+            "Template de pose",
+            "Personnage aléatoire",
+            "🤖 Depuis un texte",
+            "🔄 Générer toutes les vues (face/dos/profil/3-quarts)"
+        )
         AlertDialog.Builder(this).setTitle("🧍 Personnage")
             .setItems(items) { _, w ->
-                when (w) { 0 -> showPoseTemplates(); 1 -> showProceduralCharacterDialog(); 2 -> showAIPromptDialog() }
+                when (w) {
+                    0 -> showPoseTemplates()
+                    1 -> showProceduralCharacterDialog()
+                    2 -> showAIPromptDialog()
+                    3 -> showAllViewsGeneratorDialog()
+                }
             }.show()
+    }
+
+    private fun showAllViewsGeneratorDialog() {
+        val views = ViewTransform.View.values()
+        val labels = views.map { "Mon perso est actuellement en : ${it.displayName}" }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Générer toutes les vues")
+            .setMessage("Choisissez d'abord l'orientation actuelle de votre perso. " +
+                "L'app générera les 5 autres vues comme nouvelles frames juste après.")
+            .setSingleChoiceItems(labels, 0) { _, _ -> /* selection only */ }
+            .setPositiveButton("Générer") { dlg, _ ->
+                val listView = (dlg as AlertDialog).listView
+                val sourceIdx = listView.checkedItemPosition.coerceAtLeast(0)
+                generateAllViewsFrom(views[sourceIdx])
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun generateAllViewsFrom(sourceView: ViewTransform.View) {
+        pushUndo()
+        val sourceFrame = project.currentFrame.copy()
+        // Tag the current frame with its view
+        project.currentFrame.tag = sourceView.displayName.lowercase().replace(' ', '_')
+        var insertAt = project.currentIndex + 1
+        var generated = 0
+        for (targetView in ViewTransform.View.values()) {
+            if (targetView == sourceView) continue
+            val transformed = ViewTransform.apply(sourceFrame,
+                ViewTransform.Transform(sourceView, targetView))
+            transformed.tag = targetView.displayName.lowercase().replace(' ', '_')
+            project.frames.add(insertAt++, transformed)
+            generated++
+        }
+        framesAdapter.notifyDataSetChanged()
+        binding.timeline.invalidate()
+        toast("$generated vues générées (depuis ${sourceView.displayName})")
+        AlertDialog.Builder(this)
+            .setTitle("Vues générées")
+            .setMessage("Les 5 vues ont été ajoutées comme nouvelles frames. " +
+                "Pensez à les raffiner manuellement — la transformation est heuristique " +
+                "(notamment 'Dos' enlève les pixels du visage). Vous pouvez naviguer entre " +
+                "elles via la timeline ou la liste des frames.")
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun showSkeletonMenu() {
