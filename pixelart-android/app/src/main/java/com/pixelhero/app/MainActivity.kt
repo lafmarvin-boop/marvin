@@ -499,6 +499,7 @@ class MainActivity : AppCompatActivity() {
             "🦴 Configurer le squelette du perso",
             "🚶 Mode de déplacement (marche / lévitation / hover)",
             "✨ Particules / effets (étincelles, fumée…)",
+            "🤖 Générer depuis un texte (mots-clés)",
             "Décor / scène (statique ou animé)",
             "Élément animé (flambeau, feu de camp…)",
             "Template de pose",
@@ -515,14 +516,67 @@ class MainActivity : AppCompatActivity() {
                     2 -> showSkeletonEditor()
                     3 -> showLocomotionPicker()
                     4 -> showParticlesDialog()
-                    5 -> showDecorGenerator()
-                    6 -> showAnimatedElementGenerator()
-                    7 -> showPoseTemplates()
-                    8 -> showTweenDialog()
-                    9 -> showPoseTweenDialog()
-                    10 -> showProceduralCharacterDialog()
+                    5 -> showAIPromptDialog()
+                    6 -> showDecorGenerator()
+                    7 -> showAnimatedElementGenerator()
+                    8 -> showPoseTemplates()
+                    9 -> showTweenDialog()
+                    10 -> showPoseTweenDialog()
+                    11 -> showProceduralCharacterDialog()
                 }
             }
+            .show()
+    }
+
+    private fun showAIPromptDialog() {
+        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24) }
+        container.addView(TextView(this).apply {
+            text = "Décrivez votre personnage en français ou anglais. L'app interprète les mots-clés (classe, couleurs, accessoires, ambiance) et génère un sprite.\n\n" +
+                "Mots-clés reconnus :\n" +
+                "• Classe : knight/mage/archer/dragon/slime/skeleton/bird/fish/wolf/cat/dog…\n" +
+                "• Couleurs : red/blue/green/violet/gold… (FR aussi)\n" +
+                "• Accessoires : sword/axe/bow/staff/shield/hat/helmet/cape/crown\n" +
+                "• Ambiance : evil/holy/magical/fire/ice/ghost\n" +
+                "• Vue : facing left/right/back, 3/4\n" +
+                "• Style : gameboy/nes/retro/cartoon/pastel"
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
+        })
+        val et = EditText(this).apply {
+            hint = "Ex: evil knight with red cape and sword facing right"
+            setText("magical mage with blue cape and staff")
+            setTextColor(0xFFE8E8F0.toInt())
+        }
+        container.addView(et)
+        AlertDialog.Builder(this)
+            .setTitle("🤖 Génération par texte")
+            .setView(container)
+            .setPositiveButton("Générer") { _, _ ->
+                val prompt = et.text.toString()
+                if (prompt.isNotBlank()) generateFromPrompt(prompt)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun generateFromPrompt(prompt: String) {
+        pushUndo()
+        val (pixels, analysis) = AIGenerator.generate(prompt, project.width, project.height)
+        pixels.copyInto(project.currentFrame.pixels)
+        binding.canvas.syncFrameBitmap()
+        framesAdapter.notifyItemChanged(project.currentIndex)
+        binding.timeline.invalidate()
+        val detected = buildString {
+            append("Pose: ${analysis.pose.displayName}")
+            if (analysis.colors.isNotEmpty()) append(" • ${analysis.colors.size} couleur(s)")
+            if (analysis.accessories.isNotEmpty()) append(" • Accessoires: ${analysis.accessories.size}")
+            if (analysis.mood != AIGenerator.Mood.NEUTRAL) append(" • Ambiance: ${analysis.mood.name}")
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Sprite généré")
+            .setMessage("Interprété : $detected\n\nVoulez-vous une autre variation ?")
+            .setPositiveButton("Régénérer") { _, _ -> generateFromPrompt(prompt) }
+            .setNeutralButton("Modifier prompt") { _, _ -> showAIPromptDialog() }
+            .setNegativeButton("Garder", null)
             .show()
     }
 
