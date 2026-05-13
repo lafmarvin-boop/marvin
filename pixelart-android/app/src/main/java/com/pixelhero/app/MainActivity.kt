@@ -550,8 +550,9 @@ class MainActivity : AppCompatActivity() {
             "Template de pose",
             "Personnage aléatoire",
             "🤖 Depuis un texte (procédural, hors ligne)",
-            "☁️ IA cloud (Pollinations / DALL-E, internet requis)",
-            "🔄 Générer toutes les vues (face/dos/profil/3-quarts)"
+            "☁️ IA cloud (Pollinations / DALL-E, 1 vue)",
+            "🎬 IA: 6 vues + pixelisation + fond enlevé (1 clic)",
+            "🔄 Générer toutes les vues (heuristique depuis frame actuelle)"
         )
         AlertDialog.Builder(this).setTitle("🧍 Personnage")
             .setItems(items) { _, w ->
@@ -560,7 +561,8 @@ class MainActivity : AppCompatActivity() {
                     1 -> showProceduralCharacterDialog()
                     2 -> showAIPromptDialog()
                     3 -> showAICloudGeneratorDialog()
-                    4 -> showAllViewsGeneratorDialog()
+                    4 -> showAIFullCharacterDialog()
+                    5 -> showAllViewsGeneratorDialog()
                 }
             }.show()
     }
@@ -811,6 +813,173 @@ class MainActivity : AppCompatActivity() {
             binding.canvas.invalidate()
             toast("Image IA téléchargée — choisissez maintenant comment l'intégrer")
             askBgFitModeThenAction(bmp)
+        }
+    }
+
+    private fun showAIFullCharacterDialog() {
+        val charStyles = AIService.Style.values().filter { !it.isDecor && it != AIService.Style.FREE }
+        val pixStyles = SmartPixelize.Style.values()
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
+        }
+        container.addView(TextView(this).apply {
+            text = "1 clic = 6 frames (face/dos/profil G/D/3-quart G/D) générées par IA, pixelisées et fond enlevé. " +
+                "Compte ~1-2 min avec Pollinations, ~30 s avec DALL-E (6 appels API)."
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
+        })
+        container.addView(TextView(this).apply {
+            text = "\nStyle de personnage"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val styleSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                charStyles.map { it.displayName })
+        }
+        container.addView(styleSpinner)
+        container.addView(TextView(this).apply {
+            text = "\nDescription (anglais conseillé)"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val promptEt = EditText(this).apply {
+            hint = "knight with silver armor, blue cape, golden crown, holding a sword"
+            setText("knight with silver armor, blue cape, golden crown, holding a sword")
+            setTextColor(0xFFE8E8F0.toInt()); minLines = 2
+        }
+        container.addView(promptEt)
+        container.addView(TextView(this).apply {
+            text = "\nStyle de pixelisation"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val pixSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                pixStyles.map { it.displayName })
+            setSelection(pixStyles.indexOf(SmartPixelize.Style.CARTOON).coerceAtLeast(0))
+        }
+        container.addView(pixSpinner)
+        container.addView(TextView(this).apply {
+            text = "\nFournisseur"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val savedKey = AIService.loadApiKey(this) ?: ""
+        val providerSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                arrayOf("Pollinations.ai (gratuit, lent)", "OpenAI DALL-E 3 (clé requise, rapide)"))
+        }
+        container.addView(providerSpinner)
+        val keyLabel = TextView(this).apply {
+            text = "\nClé OpenAI"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+            visibility = View.GONE
+        }
+        val keyEt = EditText(this).apply {
+            hint = "sk-..."
+            setText(savedKey)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setTextColor(0xFFE8E8F0.toInt()); visibility = View.GONE
+        }
+        container.addView(keyLabel); container.addView(keyEt)
+        providerSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                val show = if (pos == 1) View.VISIBLE else View.GONE
+                keyLabel.visibility = show; keyEt.visibility = show
+            }
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+        AlertDialog.Builder(this)
+            .setTitle("🎬 Personnage IA — 6 vues (1 clic)")
+            .setView(container)
+            .setPositiveButton("Tout générer") { _, _ ->
+                val style = charStyles[styleSpinner.selectedItemPosition]
+                val pix = pixStyles[pixSpinner.selectedItemPosition]
+                val raw = promptEt.text.toString().trim()
+                if (raw.isBlank()) { toast("Description vide"); return@setPositiveButton }
+                val useOpenAI = providerSpinner.selectedItemPosition == 1
+                val key = keyEt.text.toString().trim()
+                if (useOpenAI) {
+                    if (key.isBlank()) { toast("Clé OpenAI requise"); return@setPositiveButton }
+                    AIService.saveApiKey(this, key)
+                }
+                runFullCharacterGeneration(raw, style, pix, useOpenAI, key)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun runFullCharacterGeneration(
+        prompt: String, style: AIService.Style, pixStyle: SmartPixelize.Style,
+        useOpenAI: Boolean, apiKey: String
+    ) {
+        val views = ViewTransform.View.values()
+        val progress = AlertDialog.Builder(this)
+            .setTitle("Génération 6 vues")
+            .setMessage("Préparation…")
+            .setCancelable(false)
+            .show()
+        val w = project.width; val h = project.height
+        lifecycleScope.launch {
+            val results = ArrayList<Pair<ViewTransform.View, IntArray?>>()
+            for ((i, view) in views.withIndex()) {
+                progress.setMessage("${i + 1}/${views.size} — ${view.displayName} en cours…")
+                val viewPrompt = AIService.applyStyleWithView(prompt, style, view)
+                val bmp = withContext(Dispatchers.IO) {
+                    if (useOpenAI) AIService.generateOpenAI(viewPrompt, apiKey)
+                    else AIService.generatePollinations(viewPrompt, 512, 512, seed = 1000 + i)
+                }
+                if (bmp == null) {
+                    results.add(view to null)
+                    continue
+                }
+                val finalPixels = withContext(Dispatchers.Default) {
+                    val (pixels, _) = SmartPixelize.pixelize(bmp, w, h, BgFitMode.FIT, pixStyle)
+                    val canvasBmp = Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888)
+                    val cleaned = BackgroundRemoval.removeBackground(canvasBmp, tolerance = 55, featherEdges = false)
+                    val out = IntArray(w * h)
+                    cleaned.getPixels(out, 0, w, 0, 0, w, h)
+                    canvasBmp.recycle(); cleaned.recycle()
+                    out
+                }
+                results.add(view to finalPixels)
+            }
+            progress.dismiss()
+            val successCount = results.count { it.second != null }
+            if (successCount == 0) {
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Échec total")
+                    .setMessage("Aucune vue n'a pu être générée. Vérifiez votre connexion et réessayez.")
+                    .setPositiveButton("Réessayer") { _, _ -> showAIFullCharacterDialog() }
+                    .setNegativeButton("OK", null)
+                    .show()
+                return@launch
+            }
+            pushUndo()
+            // First successful view → replace current frame; the rest → append after
+            var firstApplied = false
+            var insertAt = project.currentIndex + 1
+            for ((view, px) in results) {
+                if (px == null) continue
+                val tag = view.displayName.lowercase().replace(' ', '_').replace('/', '_')
+                if (!firstApplied) {
+                    px.copyInto(project.currentFrame.pixels)
+                    project.currentFrame.tag = tag
+                    firstApplied = true
+                } else {
+                    val nf = Frame(w, h, px)
+                    nf.tag = tag
+                    project.frames.add(insertAt++, nf)
+                }
+            }
+            binding.canvas.syncFrameBitmap()
+            framesAdapter.notifyDataSetChanged()
+            binding.timeline.invalidate()
+            val missing = results.filter { it.second == null }.map { it.first.displayName }
+            val msg = if (missing.isEmpty())
+                "Les 6 vues ont été générées, pixelisées et fond enlevé. Naviguez via la timeline."
+            else
+                "$successCount/${views.size} vues OK. Vues manquantes (à relancer) : ${missing.joinToString()}"
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("Génération terminée")
+                .setMessage(msg)
+                .setPositiveButton("OK", null)
+                .show()
         }
     }
 

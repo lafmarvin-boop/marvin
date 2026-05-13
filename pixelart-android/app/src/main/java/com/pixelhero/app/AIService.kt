@@ -60,6 +60,22 @@ object AIService {
     fun applyStyle(prompt: String, style: Style): String =
         "${style.prefix}$prompt${style.suffix}".trim()
 
+    /** English camera/orientation description for a given character view. */
+    fun viewDescriptor(view: ViewTransform.View): String = when (view) {
+        ViewTransform.View.FRONT -> "front view, facing camera"
+        ViewTransform.View.BACK -> "back view, facing away from camera, back of head visible"
+        ViewTransform.View.SIDE_LEFT -> "side profile facing left, full side view"
+        ViewTransform.View.SIDE_RIGHT -> "side profile facing right, full side view"
+        ViewTransform.View.THREE_QUARTER_LEFT -> "three quarter view facing left"
+        ViewTransform.View.THREE_QUARTER_RIGHT -> "three quarter view facing right"
+    }
+
+    /** Build a prompt that asks for the SAME character but in a specific view, isolated on white. */
+    fun applyStyleWithView(prompt: String, style: Style, view: ViewTransform.View): String {
+        val viewPart = viewDescriptor(view)
+        return "${style.prefix}$prompt, $viewPart${style.suffix}, isolated on plain white background, no shadows, centered".trim()
+    }
+
     /** Map an ARGB color int to a coarse English color word for AI prompts. */
     fun describeColor(c: Int): String {
         val r = (c shr 16) and 0xFF; val g = (c shr 8) and 0xFF; val b = c and 0xFF
