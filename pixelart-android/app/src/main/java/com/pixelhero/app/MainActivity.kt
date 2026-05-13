@@ -549,7 +549,8 @@ class MainActivity : AppCompatActivity() {
         val items = arrayOf(
             "Template de pose",
             "Personnage aléatoire",
-            "🤖 Depuis un texte",
+            "🤖 Depuis un texte (procédural, hors ligne)",
+            "☁️ IA cloud (Pollinations / DALL-E, internet requis)",
             "🔄 Générer toutes les vues (face/dos/profil/3-quarts)"
         )
         AlertDialog.Builder(this).setTitle("🧍 Personnage")
@@ -558,7 +559,8 @@ class MainActivity : AppCompatActivity() {
                     0 -> showPoseTemplates()
                     1 -> showProceduralCharacterDialog()
                     2 -> showAIPromptDialog()
-                    3 -> showAllViewsGeneratorDialog()
+                    3 -> showAICloudGeneratorDialog()
+                    4 -> showAllViewsGeneratorDialog()
                 }
             }.show()
     }
@@ -692,6 +694,124 @@ class MainActivity : AppCompatActivity() {
             .setNeutralButton("Modifier prompt") { _, _ -> showAIPromptDialog() }
             .setNegativeButton("Garder", null)
             .show()
+    }
+
+    private fun showAICloudGeneratorDialog() {
+        val styles = AIService.Style.values()
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
+        }
+        container.addView(TextView(this).apply {
+            text = "Génération via IA en ligne. Le résultat sera téléchargé en image puis pixelisable. " +
+                "Pollinations.ai est gratuit et anonyme. DALL-E 3 demande une clé OpenAI (payant)."
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
+        })
+        container.addView(TextView(this).apply {
+            text = "\nStyle"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val styleSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                styles.map { it.displayName })
+            setSelection(1) // KGC default
+        }
+        container.addView(styleSpinner)
+        container.addView(TextView(this).apply {
+            text = "\nDescription (anglais conseillé)"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val promptEt = EditText(this).apply {
+            hint = "knight with silver armor, blue cape, holding a sword"
+            setText("knight with silver armor, blue cape, golden crown, holding a sword")
+            setTextColor(0xFFE8E8F0.toInt())
+            minLines = 2
+        }
+        container.addView(promptEt)
+        container.addView(TextView(this).apply {
+            text = "\nFournisseur"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+        })
+        val savedKey = AIService.loadApiKey(this) ?: ""
+        val providerLabels = arrayOf(
+            "Pollinations.ai (gratuit)",
+            "OpenAI DALL-E 3 (clé requise)"
+        )
+        val providerSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item, providerLabels)
+        }
+        container.addView(providerSpinner)
+        val keyLabel = TextView(this).apply {
+            text = "\nClé OpenAI (stockée localement)"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+            visibility = View.GONE
+        }
+        val keyEt = EditText(this).apply {
+            hint = "sk-..."
+            setText(savedKey)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setTextColor(0xFFE8E8F0.toInt())
+            visibility = View.GONE
+        }
+        container.addView(keyLabel); container.addView(keyEt)
+        providerSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                val show = if (pos == 1) View.VISIBLE else View.GONE
+                keyLabel.visibility = show; keyEt.visibility = show
+            }
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+        AlertDialog.Builder(this)
+            .setTitle("☁️ Génération IA cloud")
+            .setView(container)
+            .setPositiveButton("Générer") { _, _ ->
+                val style = styles[styleSpinner.selectedItemPosition]
+                val rawPrompt = promptEt.text.toString().trim()
+                if (rawPrompt.isBlank()) { toast("Entrez une description"); return@setPositiveButton }
+                val finalPrompt = AIService.applyStyle(rawPrompt, style)
+                val useOpenAI = providerSpinner.selectedItemPosition == 1
+                val apiKey = keyEt.text.toString().trim()
+                if (useOpenAI) {
+                    if (apiKey.isBlank()) { toast("Clé OpenAI requise"); return@setPositiveButton }
+                    AIService.saveApiKey(this, apiKey)
+                }
+                runAICloudGeneration(finalPrompt, useOpenAI, apiKey)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun runAICloudGeneration(prompt: String, useOpenAI: Boolean, apiKey: String) {
+        val progress = AlertDialog.Builder(this)
+            .setTitle("Génération en cours…")
+            .setMessage("Téléchargement de l'image IA. Cela peut prendre 10-60 secondes selon le serveur.")
+            .setCancelable(false)
+            .show()
+        lifecycleScope.launch {
+            val bmp = withContext(Dispatchers.IO) {
+                if (useOpenAI) AIService.generateOpenAI(prompt, apiKey)
+                else AIService.generatePollinations(prompt)
+            }
+            progress.dismiss()
+            if (bmp == null) {
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Échec de génération")
+                    .setMessage("L'IA n'a pas répondu. Causes possibles :\n" +
+                        "• Pas de connexion internet\n" +
+                        "• Serveur surchargé (réessayez)\n" +
+                        "• Clé OpenAI invalide ou crédit épuisé\n" +
+                        "• Prompt refusé par le filtre de contenu")
+                    .setPositiveButton("Réessayer") { _, _ -> showAICloudGeneratorDialog() }
+                    .setNegativeButton("OK", null)
+                    .show()
+                return@launch
+            }
+            binding.canvas.bgBitmap = bmp
+            binding.canvas.invalidate()
+            toast("Image IA téléchargée — choisissez maintenant comment l'intégrer")
+            askBgFitModeThenAction(bmp)
+        }
     }
 
     private fun showParticlesDialog() {
