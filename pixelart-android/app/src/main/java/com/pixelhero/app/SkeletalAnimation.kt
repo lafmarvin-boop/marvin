@@ -43,7 +43,7 @@ object SkeletalAnimation {
         val easedPoses = applyEasing(basePoses, easing)
         val poses = applyLocomotion(easedPoses, locomotion, src.height, preset)
         val frames = poses.map { pose -> renderPose(src, skin, pose, preset.name.lowercase()) }.toMutableList()
-        if (secondaryMotion) SecondaryMotion.apply(frames, intensity = 0.7f)
+        if (secondaryMotion) SecondaryMotion.apply(src, frames, intensity = 0.7f)
         return frames
     }
 

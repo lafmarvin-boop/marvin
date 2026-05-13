@@ -50,7 +50,7 @@ object AnimationGenerator {
         if (locomotion != LocomotionMode.WALKING) frames = applyFloatingOverlay(frames, locomotion)
         if (secondaryMotion) {
             val mutable = frames.toMutableList()
-            SecondaryMotion.apply(mutable, intensity = 0.6f)
+            SecondaryMotion.apply(base, mutable, intensity = 0.6f)
             frames = mutable
         }
         return frames
