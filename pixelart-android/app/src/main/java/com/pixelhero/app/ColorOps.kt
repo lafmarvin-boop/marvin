@@ -13,13 +13,20 @@ object ColorOps {
 
     /** Return up to N most-used opaque colors across all frames. */
     fun mostUsedColors(project: Project, limit: Int = 32): List<Int> {
+        return colorHistogram(project).entries.sortedByDescending { it.value }
+            .take(limit).map { it.key }
+    }
+
+    /** Full color usage count across all frames (composite-aware). */
+    fun colorHistogram(project: Project): Map<Int, Int> {
         val counts = HashMap<Int, Int>(256)
         for (f in project.frames) {
-            for (c in f.pixels) {
+            val pixels = if (f.layers.size > 1) f.composited() else f.pixels
+            for (c in pixels) {
                 if ((c ushr 24) and 0xFF < 128) continue
                 counts[c] = (counts[c] ?: 0) + 1
             }
         }
-        return counts.entries.sortedByDescending { it.value }.take(limit).map { it.key }
+        return counts
     }
 }

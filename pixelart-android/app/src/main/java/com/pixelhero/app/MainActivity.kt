@@ -1921,36 +1921,115 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showReplaceColorDialog() {
-        // Use the most-used colors as source candidates, plus palette
-        val sources = (ColorOps.mostUsedColors(project, 16) + project.palette).distinct()
+        val usedCounts = ColorOps.colorHistogram(project)
+        val sources = (usedCounts.entries.sortedByDescending { it.value }.map { it.key } +
+                       project.palette).distinct()
         if (sources.isEmpty()) { toast("Aucune couleur à remplacer"); return }
-        val labels = sources.map { String.format("#%06X", it and 0xFFFFFF) }.toTypedArray()
+        val toColor = project.primaryColor
+
+        val listView = ListView(this).apply { divider = null }
+        listView.adapter = ColorPickerAdapter(sources, usedCounts)
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(TextView(this@MainActivity).apply {
+                text = "Touchez la couleur à remplacer  →  #%06X".format(toColor and 0xFFFFFF)
+                setTextColor(0xFFE8E8F0.toInt())
+                setPadding(48, 16, 48, 4); textSize = 13f
+            })
+            // Small swatch showing destination
+            addView(View(this@MainActivity).apply {
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 24).apply {
+                    setMargins(48, 0, 48, 8)
+                }
+                setBackgroundColor(toColor)
+            })
+            addView(listView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0).apply { weight = 1f })
+        }
+
+        val dlg = AlertDialog.Builder(this)
+            .setTitle("Remplacer couleur")
+            .setView(container)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+
+        listView.setOnItemClickListener { _, _, which, _ ->
+            val from = sources[which]
+            dlg.dismiss()
+            confirmColorReplace(from, toColor)
+        }
+        dlg.show()
+    }
+
+    private fun confirmColorReplace(from: Int, to: Int) {
+        val preview = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(48, 24, 48, 24)
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+        // From swatch
+        preview.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(60, 60).apply { setMargins(0, 0, 8, 0) }
+            setBackgroundColor(from)
+        })
+        preview.addView(TextView(this).apply {
+            text = "#%06X".format(from and 0xFFFFFF)
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 13f
+        })
+        preview.addView(TextView(this).apply {
+            text = "  →  "
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 18f
+        })
+        preview.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(60, 60).apply { setMargins(8, 0, 8, 0) }
+            setBackgroundColor(to)
+        })
+        preview.addView(TextView(this).apply {
+            text = "#%06X".format(to and 0xFFFFFF)
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 13f
+        })
+
         AlertDialog.Builder(this)
-            .setTitle("Remplacer quelle couleur ?")
-            .setItems(labels) { _, which ->
-                val from = sources[which]
-                val to = project.primaryColor
-                AlertDialog.Builder(this)
-                    .setTitle("Remplacer #${"%06X".format(from and 0xFFFFFF)} par #${"%06X".format(to and 0xFFFFFF)} ?")
-                    .setMessage("Sur toutes les frames ?")
-                    .setPositiveButton("Toutes") { _, _ ->
-                        pushUndo()
-                        val n = ColorOps.replaceColor(project, from, to, allFrames = true)
-                        binding.canvas.syncFrameBitmap()
-                        framesAdapter.notifyDataSetChanged()
-                        toast("$n pixels remplacés")
-                    }
-                    .setNegativeButton("Frame actuelle") { _, _ ->
-                        pushUndo()
-                        val n = ColorOps.replaceColor(project, from, to, allFrames = false)
-                        binding.canvas.syncFrameBitmap()
-                        framesAdapter.notifyDataSetChanged()
-                        toast("$n pixels remplacés")
-                    }
-                    .setNeutralButton(R.string.cancel, null)
-                    .show()
+            .setTitle("Appliquer sur :")
+            .setView(preview)
+            .setPositiveButton("Toutes les frames") { _, _ ->
+                pushUndo()
+                val n = ColorOps.replaceColor(project, from, to, allFrames = true)
+                binding.canvas.syncFrameBitmap()
+                framesAdapter.notifyDataSetChanged()
+                binding.timeline.invalidate()
+                toast("$n pixels remplacés (toutes frames)")
             }
+            .setNeutralButton("Cette frame") { _, _ ->
+                pushUndo()
+                val n = ColorOps.replaceColor(project, from, to, allFrames = false)
+                binding.canvas.syncFrameBitmap()
+                framesAdapter.notifyItemChanged(project.currentIndex)
+                binding.timeline.invalidate()
+                toast("$n pixels remplacés (frame courante)")
+            }
+            .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    /** ListView adapter showing color swatch + hex + usage count. */
+    inner class ColorPickerAdapter(
+        private val colors: List<Int>,
+        private val counts: Map<Int, Int>
+    ) : android.widget.BaseAdapter() {
+        override fun getCount(): Int = colors.size
+        override fun getItem(position: Int): Any = colors[position]
+        override fun getItemId(position: Int): Long = position.toLong()
+        override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup?): View {
+            val v = convertView ?: layoutInflater.inflate(R.layout.item_color_swatch_row, parent, false)
+            val c = colors[position]
+            v.findViewById<View>(R.id.swatch).setBackgroundColor(c)
+            v.findViewById<TextView>(R.id.colorHex).text = "#%06X".format(c and 0xFFFFFF)
+            val n = counts[c] ?: 0
+            v.findViewById<TextView>(R.id.colorNote).text =
+                if (n > 0) "$n px utilisés" else "palette"
+            return v
+        }
     }
 
     private fun wireTimeline() {
