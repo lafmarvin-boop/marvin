@@ -34,9 +34,55 @@ object SkeletalAnimation {
     /** Per-frame offset for each joint type (missing = (0,0)). */
     private typealias Pose = Map<JointType, Offset>
 
-    fun generate(src: Frame, skin: PixelSkin, preset: Preset): List<Frame> {
-        val poses = computePoses(src, preset)
+    fun generate(src: Frame, skin: PixelSkin, preset: Preset, locomotion: LocomotionMode = LocomotionMode.WALKING): List<Frame> {
+        val basePoses = computePoses(src, preset)
+        val poses = applyLocomotion(basePoses, locomotion, src.height, preset)
         return poses.map { pose -> renderPose(src, skin, pose, preset.name.lowercase()) }
+    }
+
+    /**
+     * Post-process the per-frame poses based on the locomotion mode.
+     * - WALKING: pass-through (legs step normally)
+     * - FLOATING: kill leg horizontal motion (no stepping); add a global vertical bob to all parts;
+     *             keep arms/torso/head animation intact (attack, idle, etc still work)
+     * - HOVER: minimal change — just a soft bob; suppress most motion
+     */
+    private fun applyLocomotion(poses: List<Pose>, mode: LocomotionMode, height: Int, preset: Preset): List<Pose> {
+        if (mode == LocomotionMode.WALKING) return poses
+        val u = max(1, height / 18)
+        val frameCount = poses.size
+        return poses.mapIndexed { i, pose ->
+            val phase = i.toFloat() / frameCount * 2f * PI.toFloat()
+            // Global float bob (slower than walking bob, more graceful)
+            val bobAmp = if (mode == LocomotionMode.HOVER) u else u * 1.5f
+            val bob = (sin(phase) * bobAmp).roundToInt()
+
+            val result = mutableMapOf<JointType, Offset>()
+            for (jt in JointType.values()) {
+                var existing = pose[jt] ?: Offset(0, 0)
+                // For FLOATING/HOVER: cancel any horizontal leg movement (no stepping)
+                if (jt == JointType.HIP_L || jt == JointType.HIP_R ||
+                    jt == JointType.KNEE_L || jt == JointType.KNEE_R ||
+                    jt == JointType.FOOT_L || jt == JointType.FOOT_R) {
+                    existing = Offset(0, existing.dy)
+                }
+                // For HOVER: also dampen arm motion
+                if (mode == LocomotionMode.HOVER) {
+                    existing = Offset((existing.dx * 0.3f).toInt(), (existing.dy * 0.3f).toInt())
+                }
+                // Apply global float bob to everything
+                result[jt] = Offset(existing.dx, existing.dy + bob)
+            }
+            // Legs hang down slightly (loose) for FLOATING — feet drift lower than hips
+            if (mode == LocomotionMode.FLOATING) {
+                val drift = (sin(phase + PI.toFloat() / 2f) * u * 0.5f).roundToInt()
+                result[JointType.FOOT_L] = (result[JointType.FOOT_L] ?: Offset(0, 0)).let { Offset(it.dx, it.dy + drift) }
+                result[JointType.FOOT_R] = (result[JointType.FOOT_R] ?: Offset(0, 0)).let { Offset(it.dx, it.dy + drift) }
+                result[JointType.KNEE_L] = (result[JointType.KNEE_L] ?: Offset(0, 0)).let { Offset(it.dx, it.dy + drift / 2) }
+                result[JointType.KNEE_R] = (result[JointType.KNEE_R] ?: Offset(0, 0)).let { Offset(it.dx, it.dy + drift / 2) }
+            }
+            result
+        }
     }
 
     private fun computePoses(src: Frame, preset: Preset): List<Pose> {

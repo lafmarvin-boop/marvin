@@ -43,8 +43,36 @@ object AnimationGenerator {
         override fun toString() = displayName
     }
 
-    fun generate(base: Frame, preset: Preset): List<Frame> {
+    fun generate(base: Frame, preset: Preset, locomotion: LocomotionMode = LocomotionMode.WALKING): List<Frame> {
         val bbox = computeBoundingBox(base) ?: return List(preset.frameCount) { base.copy() }
+        val frames = generateBase(base, preset, bbox)
+        return if (locomotion == LocomotionMode.WALKING) frames
+               else applyFloatingOverlay(frames, locomotion)
+    }
+
+    private fun applyFloatingOverlay(frames: List<Frame>, mode: LocomotionMode): List<Frame> {
+        return frames.mapIndexed { i, f ->
+            val phase = i.toFloat() / frames.size * 2f * PI.toFloat()
+            val u = max(1, f.height / 18)
+            val amp = if (mode == LocomotionMode.HOVER) u else (u * 1.5f).toInt()
+            val bob = (sin(phase) * amp).roundToInt()
+            if (bob == 0) f
+            else {
+                val out = Frame(f.width, f.height)
+                out.tag = f.tag; out.delayMs = f.delayMs
+                val srcPixels = if (f.layers.size > 1) f.composited() else f.pixels
+                for (y in 0 until f.height) for (x in 0 until f.width) {
+                    val c = srcPixels[y * f.width + x]
+                    if ((c ushr 24) and 0xFF < 128) continue
+                    val ty = y + bob
+                    if (ty in 0 until f.height) out.set(x, ty, c)
+                }
+                out
+            }
+        }
+    }
+
+    private fun generateBase(base: Frame, preset: Preset, bbox: BBox): List<Frame> {
         return when (preset) {
             Preset.WALK -> walk(base, bbox, 4)
             Preset.WALK8 -> walk(base, bbox, 8)

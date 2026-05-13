@@ -493,6 +493,7 @@ class MainActivity : AppCompatActivity() {
             "Frames d'animation (auto-détection corps)",
             "🦴 Animation avec squelette (pro)",
             "🦴 Configurer le squelette du perso",
+            "🚶 Mode de déplacement (marche / lévitation / hover)",
             "Décor / scène (statique ou animé)",
             "Élément animé (flambeau, feu de camp…)",
             "Template de pose",
@@ -506,11 +507,12 @@ class MainActivity : AppCompatActivity() {
                     0 -> showAnimationGenerator()
                     1 -> showSkeletalAnimationDialog()
                     2 -> showSkeletonEditor()
-                    3 -> showDecorGenerator()
-                    4 -> showAnimatedElementGenerator()
-                    5 -> showPoseTemplates()
-                    6 -> showTweenDialog()
-                    7 -> showProceduralCharacterDialog()
+                    3 -> showLocomotionPicker()
+                    4 -> showDecorGenerator()
+                    5 -> showAnimatedElementGenerator()
+                    6 -> showPoseTemplates()
+                    7 -> showTweenDialog()
+                    8 -> showProceduralCharacterDialog()
                 }
             }
             .show()
@@ -608,11 +610,24 @@ class MainActivity : AppCompatActivity() {
         val sk = project.skeleton ?: return
         pushUndo()
         val skin = PixelSkin(project.width, project.height, sk)
-        val newFrames = SkeletalAnimation.generate(project.currentFrame, skin, preset)
+        val newFrames = SkeletalAnimation.generate(project.currentFrame, skin, preset, project.locomotion)
         var insertAt = project.currentIndex + 1
         newFrames.forEach { project.frames.add(insertAt++, it) }
         framesAdapter.notifyDataSetChanged()
-        toast("${newFrames.size} frames générées (squelette ${preset.displayName})")
+        toast("${newFrames.size} frames (${preset.displayName} • ${project.locomotion.displayName})")
+    }
+
+    private fun showLocomotionPicker() {
+        val modes = LocomotionMode.values()
+        val labels = modes.map { it.displayName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Mode de déplacement")
+            .setSingleChoiceItems(labels, project.locomotion.ordinal) { dlg, which ->
+                project.locomotion = modes[which]
+                toast("Mode: ${modes[which].displayName}")
+                dlg.dismiss()
+            }
+            .show()
     }
 
     private fun showTweenDialog() {
@@ -892,14 +907,14 @@ class MainActivity : AppCompatActivity() {
     private fun generateAnimation(preset: AnimationGenerator.Preset) {
         pushUndo()
         val base = project.currentFrame.copy()
-        val newFrames = AnimationGenerator.generate(base, preset)
+        val newFrames = AnimationGenerator.generate(base, preset, project.locomotion)
         var insertAt = project.currentIndex + 1
         for (nf in newFrames) {
             project.frames.add(insertAt++, nf)
         }
         project.currentFrame.tag = preset.name.lowercase()
         framesAdapter.notifyDataSetChanged()
-        toast("${newFrames.size} frames générées (${preset.displayName})")
+        toast("${newFrames.size} frames • ${preset.displayName} • ${project.locomotion.displayName}")
     }
 
     // ---- Right panel ----

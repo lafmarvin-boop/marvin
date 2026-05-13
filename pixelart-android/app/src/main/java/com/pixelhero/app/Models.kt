@@ -19,6 +19,18 @@ enum class PlayMode(val label: String) {
     ONCE("Une fois")       // 1, 2, 3 stop
 }
 
+/**
+ * How the character moves around. Applied to all animations.
+ * - WALKING: legs step (default for humanoid characters)
+ * - FLOATING: legs stay relaxed, body bobs up/down (ghosts, spirits, levitating mages)
+ * - HOVER: minimal motion, just a gentle bob (drones, hovering vehicles, idle creatures)
+ */
+enum class LocomotionMode(val displayName: String) {
+    WALKING("Marche (jambes alternées)"),
+    FLOATING("Lévitation (flotte + bras anim)"),
+    HOVER("Hover (immobile + bob doux)")
+}
+
 /** A single drawing layer within a frame. */
 class Layer(val width: Int, val height: Int, var name: String = "Couche", var visible: Boolean = true, var opacity: Float = 1f) {
     val pixels: IntArray = IntArray(width * height)
@@ -183,7 +195,8 @@ class Project(
     var pressureSensitive: Boolean = true,
     var onionColorPrev: Int = 0xFF00AAFF.toInt(),
     var onionColorNext: Int = 0xFFFF4477.toInt(),
-    var skeleton: Skeleton? = null
+    var skeleton: Skeleton? = null,
+    var locomotion: LocomotionMode = LocomotionMode.WALKING
 ) {
     val currentFrame: Frame get() = frames[currentIndex]
 
