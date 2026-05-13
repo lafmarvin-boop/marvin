@@ -206,11 +206,28 @@ object AIService {
     }
 
     /**
-     * Generate an image via OpenAI DALL-E 3 (requires user API key, paid).
-     * Returns null on network or auth error; check [lastError] for details.
+     * Generate an image via OpenAI. Tries gpt-image-1 first (newer model with
+     * transparent-background support), falls back to dall-e-3 if the account
+     * doesn't have access. Returns null on network or auth error;
+     * check [lastError] for details.
      */
     fun generateOpenAI(prompt: String, apiKey: String, size: String = "1024x1024"): Bitmap? {
         if (apiKey.isBlank()) { lastError = "Clé OpenAI vide"; return null }
+        // 1) Try gpt-image-1 with transparent background (saves background-removal work).
+        val primary = tryOpenAIModel(prompt, apiKey, "gpt-image-1", size, transparent = true)
+        if (primary != null) return primary
+        val primaryError = lastError
+        // 2) Fallback: dall-e-3.
+        val fallback = tryOpenAIModel(prompt, apiKey, "dall-e-3", size, transparent = false)
+        if (fallback != null) return fallback
+        // Both failed — combine errors so the user sees both attempts.
+        lastError = "Aucun modèle OpenAI accessible :\n" +
+            "• gpt-image-1: ${primaryError ?: "?"}\n" +
+            "• dall-e-3: ${lastError ?: "?"}"
+        return null
+    }
+
+    private fun tryOpenAIModel(prompt: String, apiKey: String, model: String, size: String, transparent: Boolean): Bitmap? {
         return runCatching {
             val conn = (URL("https://api.openai.com/v1/images/generations").openConnection() as HttpURLConnection).apply {
                 connectTimeout = 30_000
@@ -226,28 +243,35 @@ object AIService {
                 .replace("\n", " ")
                 .replace("\r", " ")
                 .replace("\t", " ")
-                .take(3900)  // DALL-E 3 hard limit is 4000 chars
-            val body = """{"model":"dall-e-3","prompt":"$safePrompt","size":"$size","n":1,"response_format":"b64_json"}"""
+                .take(3900)
+            val body = if (model == "gpt-image-1") {
+                // gpt-image-1: native transparent background, quality medium = ~$0.04 per image
+                val bg = if (transparent) ",\"background\":\"transparent\",\"output_format\":\"png\"" else ""
+                """{"model":"gpt-image-1","prompt":"$safePrompt","size":"$size","n":1,"quality":"medium"$bg}"""
+            } else {
+                // dall-e-3: response_format=b64_json, no transparent option
+                """{"model":"dall-e-3","prompt":"$safePrompt","size":"$size","n":1,"response_format":"b64_json"}"""
+            }
             OutputStreamWriter(conn.outputStream).use { it.write(body); it.flush() }
             val code = conn.responseCode
             if (code != 200) {
                 val errBody = (conn.errorStream ?: conn.inputStream).bufferedReader().use { it.readText() }
-                lastError = "OpenAI HTTP $code: ${errBody.take(400)}"
+                lastError = "$model HTTP $code: ${errBody.take(400)}"
                 conn.disconnect()
-                return null
+                return@runCatching null
             }
             val response = conn.inputStream.bufferedReader().use { it.readText() }
             val key = "\"b64_json\":\""
             val idx = response.indexOf(key)
-            if (idx < 0) { lastError = "Réponse OpenAI sans b64_json: ${response.take(200)}"; return null }
+            if (idx < 0) { lastError = "$model: réponse sans b64_json: ${response.take(200)}"; return@runCatching null }
             val start = idx + key.length
             val end = response.indexOf('"', start)
-            if (end < 0) { lastError = "Réponse OpenAI tronquée"; return null }
+            if (end < 0) { lastError = "$model: réponse tronquée"; return@runCatching null }
             val b64 = response.substring(start, end)
             val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                ?: run { lastError = "Image OpenAI invalide"; null }
-        }.onFailure { lastError = "OpenAI: ${it.message ?: it.javaClass.simpleName}" }.getOrNull()
+                ?: run { lastError = "$model: image décodée invalide"; null }
+        }.onFailure { lastError = "$model: ${it.message ?: it.javaClass.simpleName}" }.getOrNull()
     }
 
     fun saveApiKey(context: android.content.Context, key: String) {

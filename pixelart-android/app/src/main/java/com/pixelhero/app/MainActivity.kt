@@ -636,7 +636,7 @@ class MainActivity : AppCompatActivity() {
         val savedKey = AIService.loadApiKey(this) ?: ""
         val providerLabels = arrayOf(
             "Pollinations.ai (gratuit)",
-            "OpenAI DALL-E 3 (clé requise)"
+            "OpenAI (clé requise, auto: gpt-image-1 → dall-e-3)"
         )
         val providerSpinner = Spinner(this).apply {
             adapter = ArrayAdapter(this@MainActivity,
@@ -768,7 +768,7 @@ class MainActivity : AppCompatActivity() {
         val providerSpinner = Spinner(this).apply {
             adapter = ArrayAdapter(this@MainActivity,
                 android.R.layout.simple_spinner_dropdown_item,
-                arrayOf("Pollinations.ai (gratuit, lent)", "OpenAI DALL-E 3 (clé requise, rapide)"))
+                arrayOf("Pollinations.ai (gratuit, lent)", "OpenAI (clé requise, auto: gpt-image-1 → dall-e-3)"))
         }
         container.addView(providerSpinner)
         val keyLabel = TextView(this).apply {
@@ -1675,7 +1675,7 @@ class MainActivity : AppCompatActivity() {
         val providerSpinner = Spinner(this).apply {
             adapter = ArrayAdapter(this@MainActivity,
                 android.R.layout.simple_spinner_dropdown_item,
-                arrayOf("Pollinations.ai (gratuit, lent)", "OpenAI DALL-E 3 (clé requise)"))
+                arrayOf("Pollinations.ai (gratuit, lent)", "OpenAI (clé requise, auto: gpt-image-1 → dall-e-3)"))
         }
         container.addView(providerSpinner)
         val keyLabel = TextView(this).apply {
