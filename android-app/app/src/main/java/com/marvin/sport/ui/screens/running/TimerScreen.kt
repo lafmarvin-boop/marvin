@@ -433,12 +433,13 @@ private fun alert(context: Context, mode: AlertMode, strong: Boolean) {
 
 @Suppress("DEPRECATION")
 private fun vibrate(context: Context, strong: Boolean) {
-    val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+    val source: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val mgr = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
         mgr?.defaultVibrator
     } else {
         context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-    } ?: return
+    }
+    val vibrator = source ?: return
     val durations = if (strong) longArrayOf(0, 250, 100, 250) else longArrayOf(0, 150)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         vibrator.vibrate(VibrationEffect.createWaveform(durations, -1))

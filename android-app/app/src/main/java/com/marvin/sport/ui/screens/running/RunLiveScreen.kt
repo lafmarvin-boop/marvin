@@ -53,8 +53,8 @@ fun RunLiveScreen(onBack: () -> Unit) {
     var hasNotification by remember {
         mutableStateOf(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-                    == PackageManager.PERMISSION_GRANTED
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED
             } else true
         )
     }
@@ -62,10 +62,10 @@ fun RunLiveScreen(onBack: () -> Unit) {
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
-        hasFineLocation = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
-            || hasFineLocation
-        hasNotification = result[Manifest.permission.POST_NOTIFICATIONS] != false
-            && hasNotification
+        hasFineLocation = (result[Manifest.permission.ACCESS_FINE_LOCATION] == true) ||
+            hasFineLocation
+        hasNotification = (result[Manifest.permission.POST_NOTIFICATIONS] != false) &&
+            hasNotification
         permissionsAsked = true
         if (hasFineLocation && live == null) startTrackingService(context)
     }
