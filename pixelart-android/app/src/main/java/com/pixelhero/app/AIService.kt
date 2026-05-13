@@ -286,17 +286,39 @@ object AIService {
                 return@runCatching null
             }
             val response = conn.inputStream.bufferedReader().use { it.readText() }
-            val key = "\"b64_json\":\""
-            val idx = response.indexOf(key)
-            if (idx < 0) { lastError = "$model: réponse sans b64_json: ${response.take(200)}"; return@runCatching null }
-            val start = idx + key.length
-            val end = response.indexOf('"', start)
-            if (end < 0) { lastError = "$model: réponse tronquée"; return@runCatching null }
-            val b64 = response.substring(start, end)
+            val b64 = extractB64Json(response)
+            if (b64 == null) { lastError = "$model: réponse sans b64_json: ${response.take(200)}"; return@runCatching null }
             val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                 ?: run { lastError = "$model: image décodée invalide"; null }
         }.onFailure { lastError = "$model: ${it.message ?: it.javaClass.simpleName}" }.getOrNull()
+    }
+
+    /**
+     * Tolerant extractor for the `b64_json` field. OpenAI sometimes returns
+     * pretty-printed JSON (whitespace between `:` and the value), so a strict
+     * `indexOf("\"b64_json\":\"")` misses the field. Walks past whitespace.
+     */
+    private fun extractB64Json(response: String): String? {
+        val keyIdx = response.indexOf("\"b64_json\"")
+        if (keyIdx < 0) return null
+        var i = keyIdx + "\"b64_json\"".length
+        // Skip whitespace + ':' + whitespace
+        while (i < response.length && response[i].isWhitespace()) i++
+        if (i >= response.length || response[i] != ':') return null
+        i++
+        while (i < response.length && response[i].isWhitespace()) i++
+        if (i >= response.length || response[i] != '"') return null
+        i++  // past opening quote
+        val start = i
+        // Find the matching closing quote, honoring escapes.
+        while (i < response.length) {
+            val c = response[i]
+            if (c == '\\') { i += 2; continue }
+            if (c == '"') return response.substring(start, i)
+            i++
+        }
+        return null
     }
 
     fun saveApiKey(context: android.content.Context, key: String) {
