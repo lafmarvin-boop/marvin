@@ -2266,16 +2266,61 @@ class MainActivity : AppCompatActivity() {
 
     private fun showLayersDialog() {
         val f = project.currentFrame
-        val labels = f.layers.mapIndexed { i, l ->
-            val active = if (i == f.activeLayer) "● " else "  "
-            val vis = if (l.visible) "👁 " else "  "
-            "$active$vis${l.name}  (op ${(l.opacity * 100).toInt()}%)"
-        }.toTypedArray()
+        val scroll = ScrollView(this)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24, 24, 24, 24)
+        }
+        scroll.addView(container)
+
+        // Build / rebuild rows. Calling rebuild() refreshes the eye icon and the
+        // active-layer indicator after any change.
+        fun rebuild() {
+            container.removeAllViews()
+            f.layers.forEachIndexed { i, l ->
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    setPadding(8, 12, 8, 12)
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                }
+                // Eye toggle on the left — one click to show/hide that layer.
+                val eye = TextView(this).apply {
+                    text = if (l.visible) "👁" else "🚫"
+                    textSize = 22f
+                    setPadding(16, 8, 24, 8)
+                    isClickable = true; isFocusable = true
+                    setOnClickListener {
+                        l.visible = !l.visible
+                        text = if (l.visible) "👁" else "🚫"
+                        binding.canvas.syncFrameBitmap()
+                        framesAdapter.notifyItemChanged(project.currentIndex)
+                    }
+                }
+                row.addView(eye)
+                val activeDot = if (i == f.activeLayer) "● " else "  "
+                val label = TextView(this).apply {
+                    text = "$activeDot${l.name}   (op ${(l.opacity * 100).toInt()}%)"
+                    setTextColor(0xFFE8E8F0.toInt())
+                    textSize = 16f
+                    setPadding(16, 8, 16, 8)
+                    layoutParams = LinearLayout.LayoutParams(
+                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+                    )
+                    isClickable = true; isFocusable = true
+                    setOnClickListener {
+                        f.activeLayer = i
+                        rebuild()
+                    }
+                }
+                row.addView(label)
+                container.addView(row)
+            }
+        }
+        rebuild()
+
         AlertDialog.Builder(this)
             .setTitle("Calques (frame #${project.currentIndex + 1})")
-            .setSingleChoiceItems(labels, f.activeLayer) { _, which ->
-                f.activeLayer = which
-            }
+            .setView(scroll)
             .setPositiveButton("Fermer", null)
             .setNeutralButton("+ Ajouter") { _, _ ->
                 pushUndo()
