@@ -3137,25 +3137,59 @@ class MainActivity : AppCompatActivity() {
             contentResolver.openInputStream(uri)?.use { input ->
                 val raw = BitmapFactory.decodeStream(input)
                 if (raw != null) {
-                    // Show raw immediately so the user sees something while we strip the BG.
                     binding.canvas.bgBitmap = raw
                     project.bgFit = BgFitMode.FIT
                     binding.canvas.invalidate()
                     updateBgFitButtonLabel()
-                    // Automatic background removal on every loaded image (user request).
-                    // Runs off the UI thread; bitmap is then swapped in.
+                    askBackgroundRemovalIntensity(raw)
+                }
+            }
+        }
+    }
+
+    /**
+     * On image load: ask the user how aggressively to remove the background
+     * (or skip). Tolerance 0 = nothing removed, 100 = very aggressive.
+     */
+    private fun askBackgroundRemovalIntensity(raw: Bitmap) {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
+        }
+        container.addView(TextView(this).apply {
+            text = "Suppression du fond ?\n\nGlissez le curseur pour choisir l'intensité. " +
+                "Faible = ne retire que les zones très uniformes aux 4 coins. " +
+                "Fort = retire plus, mais risque de manger le sujet."
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
+        })
+        val seek = SeekBar(this).apply { max = 100; progress = 25 }
+        val label = TextView(this).apply {
+            text = "Tolérance : 25"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 14f
+        }
+        seek.setOnSeekBarChangeListener(simpleSeekListener { v -> label.text = "Tolérance : $v" })
+        container.addView(label); container.addView(seek)
+        AlertDialog.Builder(this)
+            .setTitle("🪄 Charger une image")
+            .setView(container)
+            .setPositiveButton("Appliquer") { _, _ ->
+                val tol = seek.progress
+                if (tol == 0) {
+                    askBgFitModeThenAction(raw)
+                } else {
                     lifecycleScope.launch {
                         val cleaned = withContext(Dispatchers.Default) {
-                            BackgroundRemoval.removeBackground(raw, tolerance = 55, featherEdges = true)
+                            BackgroundRemoval.removeBackground(raw, tolerance = tol, featherEdges = true)
                         }
                         binding.canvas.bgBitmap = cleaned
                         binding.canvas.invalidate()
-                        toast("Fond automatiquement enlevé")
+                        toast("Fond enlevé (tolérance $tol)")
                         askBgFitModeThenAction(cleaned)
                     }
                 }
             }
-        }
+            .setNeutralButton("Sans suppression") { _, _ -> askBgFitModeThenAction(raw) }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun askBgFitModeThenAction(bmp: Bitmap) {
