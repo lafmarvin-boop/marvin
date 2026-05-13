@@ -729,7 +729,8 @@ class MainActivity : AppCompatActivity() {
         }
         container.addView(TextView(this).apply {
             text = "1 clic = 6 frames (face/dos/profil G/D/3-quart G/D) générées par IA, pixelisées et fond enlevé. " +
-                "Compte ~1-2 min avec Pollinations, ~30 s avec DALL-E (6 appels API)."
+                "Avec OpenAI : VOTRE sprite courant est envoyé comme référence pour que le perso reste identique. " +
+                "Avec Pollinations : seul le texte est utilisé."
             setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
         })
         container.addView(TextView(this).apply {
@@ -823,13 +824,20 @@ class MainActivity : AppCompatActivity() {
         // Shared seed across all 6 views = Pollinations renders the SAME character
         // (only the camera angle changes via the prompt suffix).
         val seed = (System.currentTimeMillis() and 0xFFFF).toInt()
+        // OpenAI edits endpoint takes the current sprite as reference so each
+        // view shows the SAME pixelized character. Upscaled to 512×512 with
+        // nearest-neighbor so the AI sees crisp pixels, not blur.
+        val refBitmap: Bitmap? = if (useOpenAI) makeReferencePng(project.currentFrame) else null
         lifecycleScope.launch {
             val results = ArrayList<Pair<ViewTransform.View, IntArray?>>()
             for ((i, view) in views.withIndex()) {
                 progress.setMessage("${i + 1}/${views.size} — ${view.displayName} en cours…")
                 val viewPrompt = AIService.applyStyleWithView(prompt, style, view)
                 val bmp = withContext(Dispatchers.IO) {
-                    if (useOpenAI) AIService.generateOpenAI(viewPrompt, apiKey)
+                    if (useOpenAI && refBitmap != null)
+                        AIService.editOpenAI(refBitmap, viewPrompt, apiKey)
+                    else if (useOpenAI)
+                        AIService.generateOpenAI(viewPrompt, apiKey)
                     else AIService.generatePollinations(viewPrompt, 512, 512, seed = seed)
                 }
                 if (bmp == null) {
@@ -1627,9 +1635,9 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
         }
         container.addView(TextView(this).apply {
-            text = "L'IA génère chaque frame avec un seed verrouillé pour garder le même perso. " +
-                "Comptez 8-15 appels (~2-5 min sur Pollinations, ~1-2 min sur DALL-E). " +
-                "Chaque frame est pixelisée et le fond enlevé."
+            text = "L'IA génère chaque frame en partant de VOTRE sprite courant (envoyé comme référence à OpenAI). " +
+                "Le perso reste identique d'une frame à l'autre, seule la pose change. " +
+                "Comptez 8-15 appels (~1-3 min). Avec Pollinations (gratuit), seul le texte est utilisé — moins fidèle."
             setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
         })
         container.addView(TextView(this).apply {
@@ -1717,6 +1725,19 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    /**
+     * Build a 1024×1024 reference bitmap from a project frame, upscaled with
+     * nearest-neighbor so the AI sees crisp pixels (not blur). Used to seed
+     * OpenAI's edits endpoint when generating views / animation frames.
+     */
+    private fun makeReferencePng(frame: Frame): Bitmap {
+        val small = Bitmap.createBitmap(frame.pixels, frame.width, frame.height, Bitmap.Config.ARGB_8888)
+        val target = 1024
+        val scaled = Bitmap.createScaledBitmap(small, target, target, false)  // false = nearest neighbor
+        if (scaled !== small) small.recycle()
+        return scaled
+    }
+
     private fun runAIAnimation(
         basePrompt: String,
         style: AIService.Style,
@@ -1732,16 +1753,30 @@ class MainActivity : AppCompatActivity() {
             .show()
         val w = project.width; val h = project.height
         val seed = (System.currentTimeMillis() and 0xFFFF).toInt()  // shared seed = same character
+        // OpenAI edits endpoint: each frame is generated FROM the current sprite,
+        // so the AI keeps the same character look pose-by-pose.
+        val refBitmap: Bitmap? = if (useOpenAI) makeReferencePng(project.currentFrame) else null
         lifecycleScope.launch {
             val results = ArrayList<IntArray?>()
             for ((i, motion) in preset.frameDescriptors.withIndex()) {
                 progress.setMessage("${i + 1}/${preset.frameDescriptors.size} — $motion")
-                val framePrompt = "${style.prefix}the exact same character: $basePrompt, " +
-                    "same outfit, same colors, same proportions, currently in this pose: $motion" +
-                    "${style.suffix}, side view, full body, isolated on plain white background, " +
-                    "centered, no shadows, no text, no other characters"
+                val framePrompt = if (useOpenAI && refBitmap != null) {
+                    // Edits mode: the AI already sees the character; just describe the new pose.
+                    "Redraw the SAME character from the reference image, " +
+                        "currently in this pose: $motion. " +
+                        "Keep identical outfit, colors, and proportions. " +
+                        "Side view, full body, isolated on plain background, no other characters."
+                } else {
+                    "${style.prefix}the exact same character: $basePrompt, " +
+                        "same outfit, same colors, same proportions, currently in this pose: $motion" +
+                        "${style.suffix}, side view, full body, isolated on plain white background, " +
+                        "centered, no shadows, no text, no other characters"
+                }
                 val bmp = withContext(Dispatchers.IO) {
-                    if (useOpenAI) AIService.generateOpenAI(framePrompt, apiKey)
+                    if (useOpenAI && refBitmap != null)
+                        AIService.editOpenAI(refBitmap, framePrompt, apiKey)
+                    else if (useOpenAI)
+                        AIService.generateOpenAI(framePrompt, apiKey)
                     else AIService.generatePollinations(framePrompt, 512, 512, seed = seed)
                 }
                 if (bmp == null) { results.add(null); continue }
