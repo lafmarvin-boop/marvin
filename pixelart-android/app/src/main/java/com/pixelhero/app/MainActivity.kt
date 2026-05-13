@@ -3135,15 +3135,24 @@ class MainActivity : AppCompatActivity() {
     private fun loadBgImage(uri: Uri) {
         runCatching {
             contentResolver.openInputStream(uri)?.use { input ->
-                val bmp = BitmapFactory.decodeStream(input)
-                if (bmp != null) {
-                    // Step 1: immediately show the image as background with FIT default
-                    binding.canvas.bgBitmap = bmp
+                val raw = BitmapFactory.decodeStream(input)
+                if (raw != null) {
+                    // Show raw immediately so the user sees something while we strip the BG.
+                    binding.canvas.bgBitmap = raw
                     project.bgFit = BgFitMode.FIT
                     binding.canvas.invalidate()
                     updateBgFitButtonLabel()
-                    // Step 2 + 3: pick fit mode (live preview), then pick usage
-                    askBgFitModeThenAction(bmp)
+                    // Automatic background removal on every loaded image (user request).
+                    // Runs off the UI thread; bitmap is then swapped in.
+                    lifecycleScope.launch {
+                        val cleaned = withContext(Dispatchers.Default) {
+                            BackgroundRemoval.removeBackground(raw, tolerance = 55, featherEdges = true)
+                        }
+                        binding.canvas.bgBitmap = cleaned
+                        binding.canvas.invalidate()
+                        toast("Fond automatiquement enlevé")
+                        askBgFitModeThenAction(cleaned)
+                    }
                 }
             }
         }
