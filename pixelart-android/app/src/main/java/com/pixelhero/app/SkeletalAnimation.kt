@@ -75,7 +75,7 @@ object SkeletalAnimation {
         return poses.mapIndexed { i, pose ->
             val phase = i.toFloat() / frameCount * 2f * PI.toFloat()
             // Global float bob (slower than walking bob, more graceful)
-            val bobAmp = if (mode == LocomotionMode.HOVER) u else u * 1.5f
+            val bobAmp: Float = if (mode == LocomotionMode.HOVER) u.toFloat() else u * 1.5f
             val bob = (sin(phase) * bobAmp).roundToInt()
 
             val result = mutableMapOf<JointType, JointOffset>()
