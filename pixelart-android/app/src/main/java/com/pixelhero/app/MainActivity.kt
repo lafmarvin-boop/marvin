@@ -87,6 +87,7 @@ class MainActivity : AppCompatActivity() {
         wireTopBar()
         wireRightPanel()
         wireFrames()
+        wireTimeline()
 
         if (getPreferences(MODE_PRIVATE).getBoolean("firstRun", true)) {
             getPreferences(MODE_PRIVATE).edit().putBoolean("firstRun", false).apply()
@@ -615,6 +616,37 @@ class MainActivity : AppCompatActivity() {
         newFrames.forEach { project.frames.add(insertAt++, it) }
         framesAdapter.notifyDataSetChanged()
         toast("${newFrames.size} frames (${preset.displayName} • ${project.locomotion.displayName})")
+    }
+
+    private fun showStabilizerDialog() {
+        val items = arrayOf("Désactivé", "Léger (1)", "Moyen (2)", "Fort (3)", "Très fort (5)")
+        val values = intArrayOf(0, 1, 2, 3, 5)
+        val currentIdx = values.indexOf(binding.canvas.stabilizerStrength).coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle("Stabilisateur de trait")
+            .setSingleChoiceItems(items, currentIdx) { dlg, which ->
+                binding.canvas.stabilizerStrength = values[which]
+                toast("Stabilisateur: ${items[which]}")
+                dlg.dismiss()
+            }
+            .show()
+    }
+
+    private fun showViewTransformDialog() {
+        val transforms = ViewTransform.allTransforms()
+        val labels = transforms.map { it.displayName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Transformer la vue")
+            .setItems(labels) { _, which ->
+                pushUndo()
+                val t = transforms[which]
+                val newFrame = ViewTransform.apply(project.currentFrame, t)
+                newFrame.pixels.copyInto(project.currentFrame.pixels)
+                binding.canvas.syncFrameBitmap()
+                framesAdapter.notifyItemChanged(project.currentIndex)
+                toast("${t.displayName} appliqué")
+            }
+            .show()
     }
 
     private fun showLocomotionPicker() {
@@ -1470,6 +1502,14 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun wireTimeline() {
+        binding.timeline.project = project
+        binding.timeline.onFrameSelected = { idx ->
+            project.currentIndex = idx
+            refreshAfterFrameChange()
+        }
+    }
+
     // ---- Frames ----
     private fun wireFrames() {
         framesAdapter = FramesAdapter(project,
@@ -1570,6 +1610,7 @@ class MainActivity : AppCompatActivity() {
         binding.canvas.syncFrameBitmap()
         binding.canvas.syncOnionBitmap()
         framesAdapter.notifyDataSetChanged()
+        binding.timeline.invalidate()
     }
 
     // ---- Color ----
@@ -1644,6 +1685,8 @@ class MainActivity : AppCompatActivity() {
             "Partager PNG actuel",
             "Partager GIF animé",
             "Personnaliser couleurs onion skin…",
+            "Stabilisateur de trait…",
+            "Transformer la vue (face/profil/dos…)",
             "Tutoriel"
         )
         AlertDialog.Builder(this)
@@ -1667,7 +1710,9 @@ class MainActivity : AppCompatActivity() {
                     14 -> sharePng()
                     15 -> shareGif()
                     16 -> showOnionColorPicker()
-                    17 -> showTutorial(force = true)
+                    17 -> showStabilizerDialog()
+                    18 -> showViewTransformDialog()
+                    19 -> showTutorial(force = true)
                 }
             }
             .show()
@@ -1907,6 +1952,8 @@ class MainActivity : AppCompatActivity() {
         binding.canvas.color = project.primaryColor
         refreshCurrentColorUI()
         updateBgFitButtonLabel()
+        binding.timeline.project = project
+        binding.timeline.invalidate()
         undoStack.clear(); redoStack.clear()
     }
 

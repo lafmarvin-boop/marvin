@@ -55,6 +55,10 @@ class PixelCanvasView @JvmOverloads constructor(
     /** Last reported pressure from the pointer (S-Pen / stylus). 0..1, default 1. */
     private var currentPressure: Float = 1f
 
+    /** Stroke stabilizer: when > 0, drawing input is smoothed via weighted average. */
+    var stabilizerStrength: Int = 0  // 0=off, 1-5 = smoothing radius
+    private val recentInputs = ArrayDeque<FloatArray>()
+
     // Sketch layer: a separate per-frame pixel buffer rendered above the frame
     // with reduced opacity, drawn ONLY when sketchMode is true.
     var sketchMode: Boolean = false
@@ -495,6 +499,21 @@ class PixelCanvasView @JvmOverloads constructor(
     }
 
     private fun clientToPixel(x: Float, y: Float): IntArray {
+        // Apply stroke stabilizer if enabled
+        if (stabilizerStrength > 0) {
+            recentInputs.addLast(floatArrayOf(x, y))
+            while (recentInputs.size > stabilizerStrength + 1) recentInputs.removeFirst()
+            // Weighted average: newer inputs weighted higher
+            var sumX = 0f; var sumY = 0f; var sumW = 0f
+            for ((i, p) in recentInputs.withIndex()) {
+                val w = (i + 1).toFloat()
+                sumX += p[0] * w; sumY += p[1] * w; sumW += w
+            }
+            val sx = sumX / sumW; val sy = sumY / sumW
+            val px = floor((sx - translateX) / scale).toInt()
+            val py = floor((sy - translateY) / scale).toInt()
+            return intArrayOf(px, py)
+        }
         val px = floor((x - translateX) / scale).toInt()
         val py = floor((y - translateY) / scale).toInt()
         return intArrayOf(px, py)
@@ -507,6 +526,7 @@ class PixelCanvasView @JvmOverloads constructor(
         startPx = px; startPy = py
         lastPx = px; lastPy = py
         recentPixels.clear()
+        recentInputs.clear()
         onStrokeStart?.invoke()
         when (tool) {
             Tool.PENCIL -> { paintPixelSymmetric(px, py, color); syncFrameBitmap() }

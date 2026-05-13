@@ -82,6 +82,16 @@
         app:layout_constraintTop_toBottomOf="@id/topBar"
         app:layout_constraintStart_toEndOf="@id/leftBar"
         app:layout_constraintEnd_toStartOf="@id/rightPanel"
+        app:layout_constraintBottom_toTopOf="@id/timeline" />
+
+    <!-- TIMELINE SCRUBBER -->
+    <com.pixelhero.app.TimelineView
+        android:id="@+id/timeline"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:background="@color/bg_dark"
+        app:layout_constraintStart_toEndOf="@id/leftBar"
+        app:layout_constraintEnd_toStartOf="@id/rightPanel"
         app:layout_constraintBottom_toBottomOf="parent" />
 
     <!-- RIGHT PANEL -->
