@@ -523,107 +523,66 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSmartGenerator() {
         val categories = arrayOf(
-            "🧍 Personnage (poses, aléatoire, IA)",
-            "🦴 Squelette & animation pro",
-            "🎬 Animation rapide (auto-détection corps)",
+            "🧍 Personnage IA (1 vue / 6 vues / aléatoire)",
+            "🎬 Animation IA (8 actions, frame par frame)",
             "🏞️ Décor & scène",
-            "✨ Effets & filtres",
-            "🔀 Interpolation (tween)"
+            "✨ Effets (particules, filtres)",
+            "🦴 Squelette & tween (fine-tuning avancé)"
         )
         AlertDialog.Builder(this)
             .setTitle("Générer…")
             .setItems(categories) { _, which ->
                 when (which) {
                     0 -> showCharacterMenu()
-                    1 -> showSkeletonMenu()
-                    2 -> showAnimationGenerator()
-                    3 -> showDecorAndElementMenu()
-                    4 -> showEffectsMenu()
-                    5 -> showTweenMenu()
+                    1 -> showAnimationGenerator()
+                    2 -> showDecorAndElementMenu()
+                    3 -> showEffectsMenu()
+                    4 -> showSkeletonAndTweenMenu()
                 }
             }
             .show()
+    }
+
+    private fun showSkeletonAndTweenMenu() {
+        val items = arrayOf(
+            "Configurer le squelette",
+            "Animation depuis squelette (utiliser AI pour le sprite)",
+            "Interpolation entre 2 poses",
+            "🚶 Mode de déplacement (marche/flottement/hover)",
+            "🔀 Tween entre 2 frames (pixel blend)"
+        )
+        AlertDialog.Builder(this).setTitle("🦴 Squelette & tween")
+            .setItems(items) { _, w ->
+                when (w) {
+                    0 -> showSkeletonEditor()
+                    1 -> showSkeletalAnimationDialog()
+                    2 -> showPoseTweenDialog()
+                    3 -> showLocomotionPicker()
+                    4 -> showTweenDialog()
+                }
+            }.show()
     }
 
     private fun showCharacterMenu() {
         val items = arrayOf(
-            "Template de pose",
-            "Personnage aléatoire",
-            "🤖 Depuis un texte (procédural, hors ligne)",
-            "☁️ IA cloud (Pollinations / DALL-E, 1 vue)",
             "🎬 IA: 6 vues + pixelisation + fond enlevé (1 clic)",
-            "🔄 Générer toutes les vues (heuristique depuis frame actuelle)"
+            "☁️ IA cloud (1 vue seule)",
+            "Template de pose (silhouette de guide)",
+            "Personnage aléatoire (rapide, hors ligne)"
         )
         AlertDialog.Builder(this).setTitle("🧍 Personnage")
             .setItems(items) { _, w ->
                 when (w) {
-                    0 -> showPoseTemplates()
-                    1 -> showProceduralCharacterDialog()
-                    2 -> showAIPromptDialog()
-                    3 -> showAICloudGeneratorDialog()
-                    4 -> showAIFullCharacterDialog()
-                    5 -> showAllViewsGeneratorDialog()
+                    0 -> showAIFullCharacterDialog()
+                    1 -> showAICloudGeneratorDialog()
+                    2 -> showPoseTemplates()
+                    3 -> showProceduralCharacterDialog()
                 }
             }.show()
     }
 
-    private fun showAllViewsGeneratorDialog() {
-        val views = ViewTransform.View.values()
-        val labels = views.map { "Mon perso est actuellement en : ${it.displayName}" }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Générer toutes les vues")
-            .setMessage("Choisissez d'abord l'orientation actuelle de votre perso. " +
-                "L'app générera les 5 autres vues comme nouvelles frames juste après.")
-            .setSingleChoiceItems(labels, 0) { _, _ -> /* selection only */ }
-            .setPositiveButton("Générer") { dlg, _ ->
-                val listView = (dlg as AlertDialog).listView
-                val sourceIdx = listView.checkedItemPosition.coerceAtLeast(0)
-                generateAllViewsFrom(views[sourceIdx])
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun generateAllViewsFrom(sourceView: ViewTransform.View) {
-        pushUndo()
-        val sourceFrame = project.currentFrame.copy()
-        // Tag the current frame with its view
-        project.currentFrame.tag = sourceView.displayName.lowercase().replace(' ', '_')
-        var insertAt = project.currentIndex + 1
-        var generated = 0
-        for (targetView in ViewTransform.View.values()) {
-            if (targetView == sourceView) continue
-            val transformed = ViewTransform.apply(sourceFrame,
-                ViewTransform.Transform(sourceView, targetView))
-            transformed.tag = targetView.displayName.lowercase().replace(' ', '_')
-            project.frames.add(insertAt++, transformed)
-            generated++
-        }
-        framesAdapter.notifyDataSetChanged()
-        binding.timeline.invalidate()
-        toast("$generated vues générées (depuis ${sourceView.displayName})")
-        AlertDialog.Builder(this)
-            .setTitle("Vues générées")
-            .setMessage("Les 5 vues ont été ajoutées comme nouvelles frames. " +
-                "Pensez à les raffiner manuellement — la transformation est heuristique " +
-                "(notamment 'Dos' enlève les pixels du visage). Vous pouvez naviguer entre " +
-                "elles via la timeline ou la liste des frames.")
-            .setPositiveButton("OK", null)
-            .show()
-    }
-
-    private fun showSkeletonMenu() {
-        val items = arrayOf("Configurer le squelette", "Animation avec squelette",
-            "Interpolation entre 2 poses", "🚶 Mode de déplacement")
-        AlertDialog.Builder(this).setTitle("🦴 Squelette")
-            .setItems(items) { _, w ->
-                when (w) { 0 -> showSkeletonEditor(); 1 -> showSkeletalAnimationDialog()
-                    2 -> showPoseTweenDialog(); 3 -> showLocomotionPicker() }
-            }.show()
-    }
-
     private fun showDecorAndElementMenu() {
-        val items = arrayOf("Décor / scène (statique ou animé)", "Élément animé (flambeau, etc.)")
+        val items = arrayOf("Décor / scène (procédural ou IA)", "Élément animé (flambeau, etc.)")
         AlertDialog.Builder(this).setTitle("🏞️ Décor & éléments")
             .setItems(items) { _, w ->
                 when (w) { 0 -> showDecorGenerator(); 1 -> showAnimatedElementGenerator() }
@@ -636,66 +595,6 @@ class MainActivity : AppCompatActivity() {
             .setItems(items) { _, w ->
                 when (w) { 0 -> showParticlesDialog(); 1 -> showFiltersMenu() }
             }.show()
-    }
-
-    private fun showTweenMenu() {
-        val items = arrayOf("Pixel-blend entre 2 frames", "🦴 Joints entre 2 poses")
-        AlertDialog.Builder(this).setTitle("🔀 Interpolation")
-            .setItems(items) { _, w ->
-                when (w) { 0 -> showTweenDialog(); 1 -> showPoseTweenDialog() }
-            }.show()
-    }
-
-    private fun showAIPromptDialog() {
-        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24) }
-        container.addView(TextView(this).apply {
-            text = "Décrivez votre personnage en français ou anglais. L'app interprète les mots-clés (classe, couleurs, accessoires, ambiance) et génère un sprite.\n\n" +
-                "Mots-clés reconnus :\n" +
-                "• Classe : knight/mage/archer/dragon/slime/skeleton/bird/fish/wolf/cat/dog…\n" +
-                "• Couleurs : red/blue/green/violet/gold… (FR aussi)\n" +
-                "• Accessoires : sword/axe/bow/staff/shield/hat/helmet/cape/crown\n" +
-                "• Ambiance : evil/holy/magical/fire/ice/ghost\n" +
-                "• Vue : facing left/right/back, 3/4\n" +
-                "• Style : gameboy/nes/retro/cartoon/pastel"
-            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
-        })
-        val et = EditText(this).apply {
-            hint = "Ex: evil knight with red cape and sword facing right"
-            setText("magical mage with blue cape and staff")
-            setTextColor(0xFFE8E8F0.toInt())
-        }
-        container.addView(et)
-        AlertDialog.Builder(this)
-            .setTitle("🤖 Génération par texte")
-            .setView(container)
-            .setPositiveButton("Générer") { _, _ ->
-                val prompt = et.text.toString()
-                if (prompt.isNotBlank()) generateFromPrompt(prompt)
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun generateFromPrompt(prompt: String) {
-        pushUndo()
-        val (pixels, analysis) = AIGenerator.generate(prompt, project.width, project.height)
-        pixels.copyInto(project.currentFrame.pixels)
-        binding.canvas.syncFrameBitmap()
-        framesAdapter.notifyItemChanged(project.currentIndex)
-        binding.timeline.invalidate()
-        val detected = buildString {
-            append("Pose: ${analysis.pose.displayName}")
-            if (analysis.colors.isNotEmpty()) append(" • ${analysis.colors.size} couleur(s)")
-            if (analysis.accessories.isNotEmpty()) append(" • Accessoires: ${analysis.accessories.size}")
-            if (analysis.mood != AIGenerator.Mood.NEUTRAL) append(" • Ambiance: ${analysis.mood.name}")
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Sprite généré")
-            .setMessage("Interprété : $detected\n\nVoulez-vous une autre variation ?")
-            .setPositiveButton("Régénérer") { _, _ -> generateFromPrompt(prompt) }
-            .setNeutralButton("Modifier prompt") { _, _ -> showAIPromptDialog() }
-            .setNegativeButton("Garder", null)
-            .show()
     }
 
     private fun showAICloudGeneratorDialog() {
@@ -1391,23 +1290,6 @@ class MainActivity : AppCompatActivity() {
                 binding.canvas.stabilizerStrength = values[which]
                 toast("Stabilisateur: ${items[which]}")
                 dlg.dismiss()
-            }
-            .show()
-    }
-
-    private fun showViewTransformDialog() {
-        val transforms = ViewTransform.allTransforms()
-        val labels = transforms.map { it.displayName }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Transformer la vue")
-            .setItems(labels) { _, which ->
-                pushUndo()
-                val t = transforms[which]
-                val newFrame = ViewTransform.apply(project.currentFrame, t)
-                newFrame.pixels.copyInto(project.currentFrame.pixels)
-                binding.canvas.syncFrameBitmap()
-                framesAdapter.notifyItemChanged(project.currentIndex)
-                toast("${t.displayName} appliqué")
             }
             .show()
     }
@@ -2770,64 +2652,148 @@ class MainActivity : AppCompatActivity() {
     // ---- Menu ----
     private fun showMenu() {
         val items = arrayOf(
-            getString(R.string.new_project),
-            getString(R.string.save),
-            getString(R.string.load),
-            getString(R.string.export_png),
-            "Exporter chaque frame en PNG séparé",
-            getString(R.string.export_sheet),
-            getString(R.string.export_gif),
-            "Importer un sprite sheet…",
-            getString(R.string.resize),
-            "Mode de lecture animation…",
-            "Verrouiller couleurs…",
-            "Filtres / effets…",
-            "Mode tuiles / carte…",
-            "Ajouter du texte (5×7)…",
-            "Partager PNG actuel",
-            "Partager GIF animé",
-            "Personnaliser couleurs onion skin…",
-            "Stabilisateur de trait…",
-            "Transformer la vue (face/profil/dos…)",
-            "Fond global (partagé entre toutes les frames)…",
-            "Exporter projet (Unity/Godot JSON + sprite sheet)",
-            "Bibliothèque palettes étendue…",
-            "💾 Sauvegarde complète (.zip)",
-            "📥 Restaurer depuis .zip",
-            "Tutoriel"
+            "📂 Projet (nouveau / sauver / charger / backup)",
+            "📤 Exporter (PNG, GIF, sprite sheet, Unity/Godot)",
+            "📥 Importer un sprite sheet…",
+            "📐 Redimensionner le canvas",
+            "▶️ Mode de lecture animation…",
+            "🎨 Palettes & couleurs",
+            "🔧 Outils (texte, stabilisateur, onion, fond global)",
+            "✨ Filtres / effets",
+            "🗺️ Mode tuiles / carte",
+            "📖 Tutoriel"
         )
         AlertDialog.Builder(this)
             .setTitle(R.string.menu)
             .setItems(items) { _, which ->
                 when (which) {
-                    0 -> showNewProjectDialog()
-                    1 -> saveProject()
-                    2 -> showLoadDialog()
-                    3 -> exportPng()
-                    4 -> exportAllFrames()
-                    5 -> exportSpriteSheet()
-                    6 -> exportGif()
-                    7 -> importSpriteSheet()
-                    8 -> showResizeDialog()
-                    9 -> showPlayModeMenu()
-                    10 -> showColorLockMenu()
-                    11 -> showFiltersMenu()
-                    12 -> openTileMap()
-                    13 -> showTextDialog()
-                    14 -> sharePng()
-                    15 -> shareGif()
-                    16 -> showOnionColorPicker()
-                    17 -> showStabilizerDialog()
-                    18 -> showViewTransformDialog()
-                    19 -> showGlobalBackgroundDialog()
-                    20 -> exportGameDevPackage()
-                    21 -> showExtendedPalettesDialog()
-                    22 -> exportBackupZip()
-                    23 -> pickAndImportBackup()
-                    24 -> showTutorial(force = true)
+                    0 -> showProjectMenu()
+                    1 -> showExportMenu()
+                    2 -> importSpriteSheet()
+                    3 -> showResizeDialog()
+                    4 -> showPlayModeMenu()
+                    5 -> showColorAndPaletteMenu()
+                    6 -> showToolsMenu()
+                    7 -> showFiltersMenu()
+                    8 -> openTileMap()
+                    9 -> showTutorial(force = true)
                 }
             }
             .show()
+    }
+
+    private fun showProjectMenu() {
+        val items = arrayOf(
+            getString(R.string.new_project),
+            getString(R.string.save),
+            getString(R.string.load),
+            "💾 Sauvegarde complète (.zip)",
+            "📥 Restaurer depuis .zip"
+        )
+        AlertDialog.Builder(this).setTitle("📂 Projet")
+            .setItems(items) { _, w ->
+                when (w) {
+                    0 -> showNewProjectDialog()
+                    1 -> saveProject()
+                    2 -> showLoadDialog()
+                    3 -> exportBackupZip()
+                    4 -> pickAndImportBackup()
+                }
+            }.show()
+    }
+
+    private fun showExportMenu() {
+        val items = arrayOf(
+            getString(R.string.export_png) + " (frame courante)",
+            "Exporter chaque frame en PNG séparé",
+            getString(R.string.export_sheet) + " (toutes frames en grille)",
+            getString(R.string.export_gif) + " animé",
+            "Exporter projet Unity/Godot (JSON + sprite sheet)",
+            "Partager PNG actuel",
+            "Partager GIF animé"
+        )
+        AlertDialog.Builder(this).setTitle("📤 Exporter")
+            .setItems(items) { _, w ->
+                when (w) {
+                    0 -> exportPng()
+                    1 -> exportAllFrames()
+                    2 -> exportSpriteSheet()
+                    3 -> exportGif()
+                    4 -> exportGameDevPackage()
+                    5 -> sharePng()
+                    6 -> shareGif()
+                }
+            }.show()
+    }
+
+    private fun showColorAndPaletteMenu() {
+        val items = arrayOf(
+            "Verrouiller couleurs…",
+            "Bibliothèque palettes étendue…",
+            "🎨 Variantes de couleur (recolor pour ennemis)"
+        )
+        AlertDialog.Builder(this).setTitle("🎨 Couleurs & palettes")
+            .setItems(items) { _, w ->
+                when (w) {
+                    0 -> showColorLockMenu()
+                    1 -> showExtendedPalettesDialog()
+                    2 -> showPaletteSwapDialog()
+                }
+            }.show()
+    }
+
+    private fun showPaletteSwapDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("🎨 Variantes de couleur")
+            .setMessage("Génère 3 nouvelles frames à partir de la frame courante avec une rotation de teinte " +
+                "(+90° / +180° / +270°). Utile pour créer un ennemi rouge/bleu/vert depuis un seul sprite, " +
+                "ou des palette swaps pour boss / élite / armure améliorée.")
+            .setPositiveButton("Générer 3 variantes") { _, _ ->
+                pushUndo()
+                val source = project.currentFrame.pixels.copyOf()
+                val w = project.width; val h = project.height
+                val degrees = intArrayOf(90, 180, 270)
+                var insertAt = project.currentIndex + 1
+                for (deg in degrees) {
+                    val variant = IntArray(w * h)
+                    for (i in source.indices) variant[i] = rotateHue(source[i], deg)
+                    val nf = Frame(w, h, variant)
+                    nf.tag = "variant_h$deg"
+                    project.frames.add(insertAt++, nf)
+                }
+                framesAdapter.notifyDataSetChanged()
+                binding.timeline.invalidate()
+                toast("3 variantes ajoutées (hue +90 / +180 / +270)")
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun rotateHue(argb: Int, deg: Int): Int {
+        val a = (argb ushr 24) and 0xFF
+        if (a < 128) return argb
+        val hsv = FloatArray(3)
+        Color.colorToHSV(argb, hsv)
+        hsv[0] = (hsv[0] + deg) % 360f
+        return (a shl 24) or (Color.HSVToColor(hsv) and 0x00FFFFFF)
+    }
+
+    private fun showToolsMenu() {
+        val items = arrayOf(
+            "Ajouter du texte (5×7 pixel font)…",
+            "Stabilisateur de trait…",
+            "Personnaliser couleurs onion skin…",
+            "Fond global (partagé entre toutes les frames)…"
+        )
+        AlertDialog.Builder(this).setTitle("🔧 Outils")
+            .setItems(items) { _, w ->
+                when (w) {
+                    0 -> showTextDialog()
+                    1 -> showStabilizerDialog()
+                    2 -> showOnionColorPicker()
+                    3 -> showGlobalBackgroundDialog()
+                }
+            }.show()
     }
 
     private fun showPlayModeMenu() {
