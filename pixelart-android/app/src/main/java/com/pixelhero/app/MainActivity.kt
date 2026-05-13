@@ -783,10 +783,23 @@ class MainActivity : AppCompatActivity() {
             setTextColor(0xFFE8E8F0.toInt()); visibility = View.GONE
         }
         container.addView(keyLabel); container.addView(keyEt)
+        val qualityLabel = TextView(this).apply {
+            text = "\nQualité OpenAI (haute = plus fidèle au sprite, plus chère)"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f; visibility = View.GONE
+        }
+        val qualitySpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                arrayOf("Basse (~$0.01/image)", "Moyenne (~$0.04/image, défaut)", "Haute (~$0.17/image, fidèle++)"))
+            setSelection(1)
+            visibility = View.GONE
+        }
+        container.addView(qualityLabel); container.addView(qualitySpinner)
         providerSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
                 val show = if (pos == 1) View.VISIBLE else View.GONE
                 keyLabel.visibility = show; keyEt.visibility = show
+                qualityLabel.visibility = show; qualitySpinner.visibility = show
             }
             override fun onNothingSelected(p: AdapterView<*>?) {}
         }
@@ -804,7 +817,8 @@ class MainActivity : AppCompatActivity() {
                     if (key.isBlank()) { toast("Clé OpenAI requise"); return@setPositiveButton }
                     AIService.saveApiKey(this, key)
                 }
-                runFullCharacterGeneration(raw, style, pix, useOpenAI, key)
+                val quality = arrayOf("low", "medium", "high")[qualitySpinner.selectedItemPosition]
+                runFullCharacterGeneration(raw, style, pix, useOpenAI, key, quality)
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
@@ -812,7 +826,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun runFullCharacterGeneration(
         prompt: String, style: AIService.Style, pixStyle: SmartPixelize.Style,
-        useOpenAI: Boolean, apiKey: String
+        useOpenAI: Boolean, apiKey: String, quality: String = "medium"
     ) {
         val views = ViewTransform.View.values()
         val progress = AlertDialog.Builder(this)
@@ -835,23 +849,27 @@ class MainActivity : AppCompatActivity() {
                 val viewPart = AIService.viewDescriptor(view)
                 val viewPrompt = if (useOpenAI && refBitmap != null) {
                     // Edits mode: strict character preservation, only the camera angle may change.
-                    "This image shows a character. Re-draw the EXACT SAME character from a different camera angle ONLY. " +
-                        "STRICT RULES:\n" +
-                        "1. DO NOT add anything: no new accessories, no extra weapons, no extra clothing pieces, " +
-                        "no new colors, no shadows, no background elements, no text, no other characters.\n" +
-                        "2. DO NOT remove anything that the new angle can still show: every clothing piece, " +
-                        "armor part, cape, weapon, shield, helmet, hair element, accessory must remain.\n" +
-                        "3. DO NOT change: hair style, hair color, skin tone, every clothing color, armor design, " +
-                        "weapon shape, accessory shape, body proportions, art style.\n" +
-                        "4. The ONLY allowed change is the viewing angle: $viewPart. " +
-                        "(For a back view, the face naturally won't show — that is acceptable.)\n" +
-                        "Output: full body, isolated on plain background, centered, same character identity."
+                    "The reference image shows ONE character on a white background. " +
+                        "Re-draw the SAME EXACT character from a different camera angle — pixel by pixel identical " +
+                        "wherever the new angle still shows the element.\n\n" +
+                        "ABSOLUTE RULES (treat as constraints, not suggestions):\n" +
+                        "• Identity must be preserved: every visual element of the reference must remain visible " +
+                        "in the new angle whenever physically possible.\n" +
+                        "• Forbidden additions: no extra weapon, no extra accessory, no extra clothing layer, " +
+                        "no new color, no shadow, no background element, no text, no second character, no border.\n" +
+                        "• Forbidden removals: do not drop any clothing piece, armor part, cape, weapon, shield, " +
+                        "helmet, hair element, accessory present in the reference (a back view naturally hides " +
+                        "the face — that is the only acceptable omission).\n" +
+                        "• Forbidden modifications: do not change hair style/color, skin tone, any clothing color, " +
+                        "armor design, weapon shape, accessory shape, proportions, art style, line thickness.\n" +
+                        "• ONLY permitted change: viewing angle → $viewPart.\n\n" +
+                        "Output: full body, centered on plain background, same scale as reference, same art style."
                 } else {
                     AIService.applyStyleWithView(prompt, style, view)
                 }
                 val bmp = withContext(Dispatchers.IO) {
                     if (useOpenAI && refBitmap != null)
-                        AIService.editOpenAI(refBitmap, viewPrompt, apiKey)
+                        AIService.editOpenAI(refBitmap, viewPrompt, apiKey, quality = quality)
                     else if (useOpenAI)
                         AIService.generateOpenAI(viewPrompt, apiKey)
                     else AIService.generatePollinations(viewPrompt, 512, 512, seed = seed)
@@ -1713,10 +1731,23 @@ class MainActivity : AppCompatActivity() {
             setTextColor(0xFFE8E8F0.toInt()); visibility = View.GONE
         }
         container.addView(keyLabel); container.addView(keyEt)
+        val qualityLabel = TextView(this).apply {
+            text = "\nQualité OpenAI (haute = plus fidèle au sprite, plus chère)"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f; visibility = View.GONE
+        }
+        val qualitySpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                arrayOf("Basse (~$0.01/image)", "Moyenne (~$0.04/image, défaut)", "Haute (~$0.17/image, fidèle++)"))
+            setSelection(1)
+            visibility = View.GONE
+        }
+        container.addView(qualityLabel); container.addView(qualitySpinner)
         providerSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
                 val show = if (pos == 1) View.VISIBLE else View.GONE
                 keyLabel.visibility = show; keyEt.visibility = show
+                qualityLabel.visibility = show; qualitySpinner.visibility = show
             }
             override fun onNothingSelected(p: AdapterView<*>?) {}
         }
@@ -1735,23 +1766,54 @@ class MainActivity : AppCompatActivity() {
                     if (key.isBlank()) { toast("Clé OpenAI requise"); return@setPositiveButton }
                     AIService.saveApiKey(this, key)
                 }
-                runAIAnimation(raw, style, preset, pix, useOpenAI, key)
+                val quality = arrayOf("low", "medium", "high")[qualitySpinner.selectedItemPosition]
+                runAIAnimation(raw, style, preset, pix, useOpenAI, key, quality)
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
     /**
-     * Build a 1024×1024 reference bitmap from a project frame, upscaled with
-     * nearest-neighbor so the AI sees crisp pixels (not blur). Used to seed
-     * OpenAI's edits endpoint when generating views / animation frames.
+     * Build a 1024×1024 reference bitmap from a project frame for OpenAI's
+     * edits endpoint. The character is tight-cropped to its bounding box,
+     * upscaled with nearest-neighbor to preserve sharp pixels, then centered
+     * on a solid white background. This focuses the AI on the character
+     * itself (instead of letting it fill the canvas with extras) and keeps
+     * transparent areas from confusing the model.
      */
     private fun makeReferencePng(frame: Frame): Bitmap {
-        val small = Bitmap.createBitmap(frame.pixels, frame.width, frame.height, Bitmap.Config.ARGB_8888)
+        val w = frame.width; val h = frame.height
+        val regions = BodyDetector.detect(frame.pixels, w, h)
+        // Fallback: no opaque pixels -> upscale the whole frame on white
+        val bbox = regions?.bbox ?: android.graphics.Rect(0, 0, w, h)
+        val pad = 1
+        val cx0 = (bbox.left - pad).coerceAtLeast(0)
+        val cy0 = (bbox.top - pad).coerceAtLeast(0)
+        val cx1 = (bbox.right + pad).coerceAtMost(w)
+        val cy1 = (bbox.bottom + pad).coerceAtMost(h)
+        val cw = cx1 - cx0; val ch = cy1 - cy0
+        // Build a cropped bitmap of just the character
+        val cropPixels = IntArray(cw * ch)
+        for (y in 0 until ch) for (x in 0 until cw) {
+            val src = frame.pixels[(cy0 + y) * w + (cx0 + x)]
+            cropPixels[y * cw + x] = src
+        }
+        val crop = Bitmap.createBitmap(cropPixels, cw, ch, Bitmap.Config.ARGB_8888)
+        // Upscale nearest-neighbor so the character fills ~80% of the 1024 canvas
         val target = 1024
-        val scaled = Bitmap.createScaledBitmap(small, target, target, false)  // false = nearest neighbor
-        if (scaled !== small) small.recycle()
-        return scaled
+        val maxDim = maxOf(cw, ch)
+        val scale = ((target * 0.8f) / maxDim).toInt().coerceAtLeast(1)
+        val sw = cw * scale; val sh = ch * scale
+        val scaled = Bitmap.createScaledBitmap(crop, sw, sh, false)
+        crop.recycle()
+        // Compose centered on white 1024×1024
+        val canvas = Bitmap.createBitmap(target, target, Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(canvas)
+        c.drawColor(0xFFFFFFFF.toInt())
+        val ox = (target - sw) / 2; val oy = (target - sh) / 2
+        c.drawBitmap(scaled, ox.toFloat(), oy.toFloat(), null)
+        if (scaled !== canvas) scaled.recycle()
+        return canvas
     }
 
     private fun runAIAnimation(
@@ -1760,7 +1822,8 @@ class MainActivity : AppCompatActivity() {
         preset: AIService.AnimationPreset,
         pixStyle: SmartPixelize.Style,
         useOpenAI: Boolean,
-        apiKey: String
+        apiKey: String,
+        quality: String = "medium"
     ) {
         val progress = AlertDialog.Builder(this)
             .setTitle("Animation IA — ${preset.displayName}")
@@ -1778,16 +1841,21 @@ class MainActivity : AppCompatActivity() {
                 progress.setMessage("${i + 1}/${preset.frameDescriptors.size} — $motion")
                 val framePrompt = if (useOpenAI && refBitmap != null) {
                     // Edits mode: strict character preservation, only the pose may change.
-                    "This image shows a character. Re-draw the EXACT SAME character with ONLY a different body pose. " +
-                        "STRICT RULES:\n" +
-                        "1. DO NOT add anything: no new accessories, no extra weapons, no extra clothing pieces, " +
-                        "no new colors, no shadows, no background elements, no text, no other characters.\n" +
-                        "2. DO NOT remove anything: every clothing piece, armor part, cape, weapon, shield, " +
-                        "helmet, hair element, facial feature, accessory must remain on the character.\n" +
-                        "3. DO NOT change: hair style, hair color, face, skin tone, eyes, mouth, every clothing color, " +
-                        "armor design, weapon shape, accessory shape, body proportions, art style.\n" +
-                        "4. The ONLY allowed change is the body pose: $motion.\n" +
-                        "Output: full body, side view, isolated on plain background, centered, same character identity."
+                    "The reference image shows ONE character on a white background. " +
+                        "Re-draw the SAME EXACT character — pixel by pixel identical wherever the new pose allows — " +
+                        "with ONLY the body pose changed.\n\n" +
+                        "ABSOLUTE RULES (treat as constraints, not suggestions):\n" +
+                        "• Identity must be preserved: every visual element of the reference must remain. " +
+                        "If something is on the reference, it must be on the output. If something is NOT on the " +
+                        "reference, it must NOT appear on the output.\n" +
+                        "• Forbidden additions: no extra weapon, no extra accessory, no extra clothing layer, " +
+                        "no new color, no shadow, no background element, no text, no second character, no border.\n" +
+                        "• Forbidden removals: do not drop any clothing piece, armor part, cape, weapon, shield, " +
+                        "helmet, hair element, facial feature, accessory present in the reference.\n" +
+                        "• Forbidden modifications: do not change hair style/color, skin tone, eye color, mouth shape, " +
+                        "any clothing color, armor design, weapon shape, accessory shape, proportions, art style, line thickness.\n" +
+                        "• ONLY permitted change: body pose → $motion.\n\n" +
+                        "Output: full body, side view, centered on plain background, same scale as reference, same art style."
                 } else {
                     "${style.prefix}the exact same character: $basePrompt, " +
                         "same outfit, same colors, same proportions, currently in this pose: $motion" +
@@ -1796,7 +1864,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 val bmp = withContext(Dispatchers.IO) {
                     if (useOpenAI && refBitmap != null)
-                        AIService.editOpenAI(refBitmap, framePrompt, apiKey)
+                        AIService.editOpenAI(refBitmap, framePrompt, apiKey, quality = quality)
                     else if (useOpenAI)
                         AIService.generateOpenAI(framePrompt, apiKey)
                     else AIService.generatePollinations(framePrompt, 512, 512, seed = seed)

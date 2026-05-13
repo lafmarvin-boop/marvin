@@ -334,7 +334,7 @@ object AIService {
      * @param apiKey user's OpenAI key
      * @param size "1024x1024" / "1024x1536" / "1536x1024"
      */
-    fun editOpenAI(refBitmap: Bitmap, prompt: String, apiKey: String, size: String = "1024x1024"): Bitmap? {
+    fun editOpenAI(refBitmap: Bitmap, prompt: String, apiKey: String, size: String = "1024x1024", quality: String = "medium"): Bitmap? {
         if (apiKey.isBlank()) { lastError = "Clé OpenAI vide"; return null }
         // PNG-encode the reference once
         val refPng = ByteArrayOutputStream().use { os ->
@@ -342,7 +342,7 @@ object AIService {
             os.toByteArray()
         }
         repeat(2) { attempt ->
-            val r = editOpenAIOnce(refPng, prompt, apiKey, size)
+            val r = editOpenAIOnce(refPng, prompt, apiKey, size, quality)
             if (r != null) return r
             val err = lastError ?: ""
             val transient = "Unable to resolve host" in err || "UnknownHostException" in err ||
@@ -353,7 +353,7 @@ object AIService {
         return null
     }
 
-    private fun editOpenAIOnce(refPng: ByteArray, prompt: String, apiKey: String, size: String): Bitmap? {
+    private fun editOpenAIOnce(refPng: ByteArray, prompt: String, apiKey: String, size: String, quality: String): Bitmap? {
         return runCatching {
             val boundary = "----PixelHeroBoundary${System.currentTimeMillis()}"
             val conn = (URL("https://api.openai.com/v1/images/edits").openConnection() as HttpURLConnection).apply {
@@ -371,7 +371,7 @@ object AIService {
                 writeMultipartText(out, boundary, "model", "gpt-image-1")
                 writeMultipartText(out, boundary, "n", "1")
                 writeMultipartText(out, boundary, "size", size)
-                writeMultipartText(out, boundary, "quality", "medium")
+                writeMultipartText(out, boundary, "quality", quality)
                 writeMultipartText(out, boundary, "background", "transparent")
                 writeMultipartText(out, boundary, "output_format", "png")
                 out.write("--$boundary--\r\n".toByteArray())
