@@ -184,7 +184,8 @@ class Project(
     var symmetry: SymmetryAxis = SymmetryAxis.NONE,
     var primaryColor: Int = 0xFFFF5577.toInt(),
     var secondaryColor: Int = 0xFF000000.toInt(),
-    var onionRange: Int = 1,          // number of frames before/after to show
+    var onionRange: Int = 2,          // number of frames before/after to show
+    var onionTrailOnly: Boolean = false,  // when true, show only PAST frames (motion trail)
     var pixelPerfect: Boolean = false,
     var bgFit: BgFitMode = BgFitMode.COVER,
     var brushSize: Int = 1,

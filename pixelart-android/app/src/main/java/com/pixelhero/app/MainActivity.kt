@@ -631,16 +631,23 @@ class MainActivity : AppCompatActivity() {
         return intArrayOf(minX, minY, maxX, maxY)
     }
 
+    private var ikAutoEnabled: Boolean = true
+
+    private val IK_END_EFFECTORS = setOf(
+        JointType.HAND_L, JointType.HAND_R, JointType.FOOT_L, JointType.FOOT_R
+    )
+
     private fun showJointPicker() {
         val sk = project.skeleton ?: return
-        // Show overlay so user sees current joint positions
         binding.canvas.skeletonOverlay = sk
         val joints = JointType.values()
         val labels = joints.map { jt ->
             val j = sk.get(jt)
             val pos = if (j != null) "(${j.x.toInt()}, ${j.y.toInt()})" else "non placé"
-            "${jt.displayName}  $pos"
+            val ikMark = if (ikAutoEnabled && jt in IK_END_EFFECTORS) " 🦴IK" else ""
+            "${jt.displayName}  $pos$ikMark"
         }.toTypedArray()
+        val ikLabel = if (ikAutoEnabled) "IK auto: ON" else "IK auto: OFF"
         AlertDialog.Builder(this)
             .setTitle("Squelette du personnage")
             .setItems(labels) { _, which ->
@@ -648,25 +655,80 @@ class MainActivity : AppCompatActivity() {
                 toast("Touchez le canvas pour placer « ${jt.displayName} »")
                 binding.canvas.nextTapHandler = { x, y ->
                     sk.set(jt, x.toFloat(), y.toFloat())
+                    // Auto-IK: if user moved an end-effector, solve the limb
+                    if (ikAutoEnabled) IK.applyIfEndEffector(sk, jt)
                     binding.canvas.invalidate()
-                    toast("${jt.displayName} placé en ($x, $y)")
+                    val tail = if (ikAutoEnabled && jt in IK_END_EFFECTORS) " • IK appliqué" else ""
+                    toast("${jt.displayName} placé en ($x, $y)$tail")
                     showJointPicker()
                 }
             }
             .setPositiveButton("Terminer") { _, _ ->
                 binding.canvas.skeletonOverlay = null
             }
-            .setNeutralButton("Réinitialiser auto") { _, _ ->
-                val bbox = computeProjectBoundingBox()
-                project.skeleton = if (bbox != null) {
-                    Skeleton.humanoidTemplate(bbox[0], bbox[1], bbox[2], bbox[3])
-                } else {
-                    Skeleton.humanoidTemplate(0, 0, project.width - 1, project.height - 1)
-                }
-                toast("Squelette réinitialisé")
+            .setNeutralButton(ikLabel) { _, _ ->
+                ikAutoEnabled = !ikAutoEnabled
                 showJointPicker()
             }
+            .setNegativeButton("Outils…") { _, _ -> showSkeletonTools() }
             .show()
+    }
+
+    private fun showSkeletonTools() {
+        val sk = project.skeleton ?: return
+        val items = arrayOf(
+            "🔧 Appliquer IK à tous les membres",
+            "↺ Réinitialiser auto (selon bbox)",
+            "🔄 Miroir gauche → droite",
+            "🔄 Miroir droite → gauche",
+            "Effacer le squelette"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("Outils du squelette")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> {
+                        IK.applyAllLimbs(sk)
+                        binding.canvas.invalidate()
+                        toast("IK appliqué aux 4 membres")
+                        showJointPicker()
+                    }
+                    1 -> {
+                        val bbox = computeProjectBoundingBox()
+                        project.skeleton = if (bbox != null)
+                            Skeleton.humanoidTemplate(bbox[0], bbox[1], bbox[2], bbox[3])
+                        else Skeleton.humanoidTemplate(0, 0, project.width - 1, project.height - 1)
+                        showJointPicker()
+                    }
+                    2 -> { mirrorSkeleton(sk, leftToRight = true); showJointPicker() }
+                    3 -> { mirrorSkeleton(sk, leftToRight = false); showJointPicker() }
+                    4 -> {
+                        project.skeleton = null
+                        binding.canvas.skeletonOverlay = null
+                        toast("Squelette effacé")
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun mirrorSkeleton(sk: Skeleton, leftToRight: Boolean) {
+        val axis = sk.joints.values.map { it.x }.average().toFloat()
+        val pairs = listOf(
+            JointType.SHOULDER_L to JointType.SHOULDER_R,
+            JointType.ELBOW_L to JointType.ELBOW_R,
+            JointType.HAND_L to JointType.HAND_R,
+            JointType.HIP_L to JointType.HIP_R,
+            JointType.KNEE_L to JointType.KNEE_R,
+            JointType.FOOT_L to JointType.FOOT_R
+        )
+        pairs.forEach { (l, r) ->
+            val src = if (leftToRight) sk.get(l) else sk.get(r)
+            val dst = if (leftToRight) r else l
+            src?.let { sk.set(dst, 2 * axis - it.x, it.y) }
+        }
+        binding.canvas.invalidate()
+        toast("Miroir appliqué")
     }
 
     private fun showSkeletalAnimationDialog() {
@@ -1383,11 +1445,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showOnionColorPicker() {
-        val items = arrayOf("Frame précédente (défaut bleu)", "Frame suivante (défaut rouge)")
+        val trailLabel = if (project.onionTrailOnly) "Mode traînée: ON (passé seulement)" else "Mode traînée: OFF (passé+futur)"
+        val items = arrayOf(
+            "Couleur frame précédente (bleu)",
+            "Couleur frame suivante (rouge)",
+            trailLabel
+        )
         AlertDialog.Builder(this)
-            .setTitle("Couleurs onion skin")
+            .setTitle("Onion skin")
             .setItems(items) { _, which ->
-                pickOnionColor(which == 0)
+                when (which) {
+                    0 -> pickOnionColor(true)
+                    1 -> pickOnionColor(false)
+                    2 -> {
+                        project.onionTrailOnly = !project.onionTrailOnly
+                        toast(if (project.onionTrailOnly) "Mode traînée activé" else "Mode traînée désactivé")
+                        binding.canvas.syncOnionBitmap()
+                    }
+                }
             }
             .show()
     }

@@ -69,6 +69,7 @@ object ProjectStorage {
             put("primaryColor", project.primaryColor.toLong() and 0xFFFFFFFFL)
             put("secondaryColor", project.secondaryColor.toLong() and 0xFFFFFFFFL)
             put("onionRange", project.onionRange)
+            put("onionTrailOnly", project.onionTrailOnly)
             put("pixelPerfect", project.pixelPerfect)
             put("bgFit", project.bgFit.name)
             put("locomotion", project.locomotion.name)
@@ -184,7 +185,8 @@ object ProjectStorage {
             symmetry = sym,
             primaryColor = json.optLong("primaryColor", 0xFFFF5577L).toInt(),
             secondaryColor = json.optLong("secondaryColor", 0xFF000000L).toInt(),
-            onionRange = json.optInt("onionRange", 1),
+            onionRange = json.optInt("onionRange", 2),
+            onionTrailOnly = json.optBoolean("onionTrailOnly", false),
             pixelPerfect = json.optBoolean("pixelPerfect", false),
             bgFit = runCatching { BgFitMode.valueOf(json.optString("bgFit", "COVER")) }.getOrDefault(BgFitMode.COVER),
             locomotion = runCatching { LocomotionMode.valueOf(json.optString("locomotion", "WALKING")) }.getOrDefault(LocomotionMode.WALKING)

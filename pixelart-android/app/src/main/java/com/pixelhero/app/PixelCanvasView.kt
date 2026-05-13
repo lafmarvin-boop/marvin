@@ -182,7 +182,7 @@ class PixelCanvasView @JvmOverloads constructor(
         }
         onionBmps.clear()
         if (p.onionRange <= 0) return
-        // Previous frames (blue tint)
+        // Previous frames (blue tint) - always shown
         for (off in 1..p.onionRange) {
             val idx = p.currentIndex - off
             if (idx < 0) break
@@ -191,14 +191,16 @@ class PixelCanvasView @JvmOverloads constructor(
             val tint = 0x4400AAFF.toInt()
             onionBmps.add(Triple(bmp, -off, tint))
         }
-        // Next frames (red tint)
-        for (off in 1..p.onionRange) {
-            val idx = p.currentIndex + off
-            if (idx >= p.frames.size) break
-            val bmp = Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888)
-            bmp.setPixels(frameComposite(p.frames[idx]), 0, p.width, 0, 0, p.width, p.height)
-            val tint = 0x44FF4477.toInt()
-            onionBmps.add(Triple(bmp, off, tint))
+        // Next frames (red tint) - skipped in trail mode
+        if (!p.onionTrailOnly) {
+            for (off in 1..p.onionRange) {
+                val idx = p.currentIndex + off
+                if (idx >= p.frames.size) break
+                val bmp = Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888)
+                bmp.setPixels(frameComposite(p.frames[idx]), 0, p.width, 0, 0, p.width, p.height)
+                val tint = 0x44FF4477.toInt()
+                onionBmps.add(Triple(bmp, off, tint))
+            }
         }
     }
 
