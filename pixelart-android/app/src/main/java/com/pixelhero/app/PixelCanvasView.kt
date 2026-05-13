@@ -683,12 +683,20 @@ class PixelCanvasView @JvmOverloads constructor(
                 paint(p.width - 1 - x, p.height - 1 - y)
             }
             SymmetryAxis.ROTATE_4 -> {
-                // 4-fold rotational symmetry around canvas center
                 val cx = p.width / 2; val cy = p.height / 2
                 val dx = x - cx; val dy = y - cy
-                paint(cx + dy, cy - dx)         // 90 deg
-                paint(cx - dx, cy - dy)         // 180 deg
-                paint(cx - dy, cy + dx)         // 270 deg
+                paint(cx + dy, cy - dx)
+                paint(cx - dx, cy - dy)
+                paint(cx - dy, cy + dx)
+            }
+            SymmetryAxis.SKELETON_H -> {
+                // Horizontal mirror around skeleton vertical axis (mean of joint X positions)
+                val axis = p.skeleton?.let { sk ->
+                    val xs = sk.joints.values.map { it.x }
+                    if (xs.isEmpty()) null else xs.average().toFloat()
+                } ?: (p.width / 2f)
+                val mirrorX = (2f * axis - x).toInt()
+                paint(mirrorX, y)
             }
         }
     }

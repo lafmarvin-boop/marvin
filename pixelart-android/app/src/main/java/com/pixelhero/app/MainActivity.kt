@@ -463,7 +463,8 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.symmetry_h),
             getString(R.string.symmetry_v),
             getString(R.string.symmetry_both),
-            "Rotation 4× (kaléidoscope)"
+            "Rotation 4× (kaléidoscope)",
+            "🦴 Miroir autour du squelette"
         )
         val current = when (project.symmetry) {
             SymmetryAxis.NONE -> 0
@@ -471,6 +472,7 @@ class MainActivity : AppCompatActivity() {
             SymmetryAxis.VERTICAL -> 2
             SymmetryAxis.BOTH -> 3
             SymmetryAxis.ROTATE_4 -> 4
+            SymmetryAxis.SKELETON_H -> 5
         }
         AlertDialog.Builder(this)
             .setTitle(R.string.symmetry)
@@ -480,6 +482,7 @@ class MainActivity : AppCompatActivity() {
                     2 -> SymmetryAxis.VERTICAL
                     3 -> SymmetryAxis.BOTH
                     4 -> SymmetryAxis.ROTATE_4
+                    5 -> SymmetryAxis.SKELETON_H
                     else -> SymmetryAxis.NONE
                 }
                 binding.btnSymmetry.isSelected = project.symmetry != SymmetryAxis.NONE
@@ -495,10 +498,12 @@ class MainActivity : AppCompatActivity() {
             "🦴 Animation avec squelette (pro)",
             "🦴 Configurer le squelette du perso",
             "🚶 Mode de déplacement (marche / lévitation / hover)",
+            "✨ Particules / effets (étincelles, fumée…)",
             "Décor / scène (statique ou animé)",
             "Élément animé (flambeau, feu de camp…)",
             "Template de pose",
-            "Interpolation (tween) entre 2 frames",
+            "Interpolation entre 2 frames (pixel-blend)",
+            "🦴 Interpolation entre 2 poses (squelette)",
             "Personnage aléatoire (procédural)"
         )
         AlertDialog.Builder(this)
@@ -509,14 +514,92 @@ class MainActivity : AppCompatActivity() {
                     1 -> showSkeletalAnimationDialog()
                     2 -> showSkeletonEditor()
                     3 -> showLocomotionPicker()
-                    4 -> showDecorGenerator()
-                    5 -> showAnimatedElementGenerator()
-                    6 -> showPoseTemplates()
-                    7 -> showTweenDialog()
-                    8 -> showProceduralCharacterDialog()
+                    4 -> showParticlesDialog()
+                    5 -> showDecorGenerator()
+                    6 -> showAnimatedElementGenerator()
+                    7 -> showPoseTemplates()
+                    8 -> showTweenDialog()
+                    9 -> showPoseTweenDialog()
+                    10 -> showProceduralCharacterDialog()
                 }
             }
             .show()
+    }
+
+    private fun showParticlesDialog() {
+        val types = Particles.Type.values()
+        val labels = types.map { it.displayName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Particules à ajouter")
+            .setItems(labels) { _, which ->
+                val type = types[which]
+                toast("Touchez le canvas pour positionner « ${type.displayName} »")
+                binding.canvas.nextTapHandler = { x, y ->
+                    applyParticles(type, x, y)
+                }
+            }
+            .show()
+    }
+
+    private fun applyParticles(type: Particles.Type, cx: Int, cy: Int) {
+        pushUndo()
+        // Apply to current frame + the next few; if only 1 frame, create 4 frames first
+        if (project.frames.size < 4) {
+            val base = project.currentFrame
+            while (project.frames.size < 4) project.frames.add(base.copy())
+        }
+        val targetFrames = project.frames.subList(project.currentIndex, minOf(project.currentIndex + 8, project.frames.size))
+        val withParticles = Particles.apply(targetFrames.toList(), type, cx, cy)
+        withParticles.forEachIndexed { i, f ->
+            val idx = project.currentIndex + i
+            if (idx < project.frames.size) {
+                f.pixels.copyInto(project.frames[idx].pixels)
+            }
+        }
+        binding.canvas.syncFrameBitmap()
+        framesAdapter.notifyDataSetChanged()
+        binding.timeline.invalidate()
+        toast("Particules « ${type.displayName} » appliquées")
+    }
+
+    private fun showPoseTweenDialog() {
+        val sk = project.skeleton
+        if (sk == null || !sk.isComplete()) {
+            toast("Configurez d'abord un squelette")
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Interpolation de pose")
+            .setMessage("Étape 1 : votre frame actuelle est la pose A.\nÉtape 2 : modifiez le squelette pour définir la pose B.\nÉtape 3 : touchez 'Générer' pour créer les frames intermédiaires.\n\nCela vous donne une vraie animation tween image par image.")
+            .setPositiveButton("Configurer pose B") { _, _ ->
+                // Save current skeleton as pose A in a temp field
+                _poseA = sk.copy()
+                showSkeletonEditor()
+                // After editing, user must use the next dialog to generate
+                AlertDialog.Builder(this)
+                    .setTitle("Pose B définie ?")
+                    .setMessage("Réglez le squelette, puis revenez ici pour générer les frames intermédiaires.")
+                    .setPositiveButton("Générer maintenant") { _, _ -> performPoseTween() }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private var _poseA: Skeleton? = null
+
+    private fun performPoseTween() {
+        val a = _poseA ?: return
+        val b = project.skeleton ?: return
+        pushUndo()
+        val frames = PoseTween.generate(project.currentFrame, a, b, 4)
+        var insertAt = project.currentIndex + 1
+        frames.forEach { project.frames.add(insertAt++, it) }
+        framesAdapter.notifyDataSetChanged()
+        binding.timeline.invalidate()
+        _poseA = null
+        toast("${frames.size} frames intermédiaires générées")
     }
 
     private fun showSkeletonEditor() {
