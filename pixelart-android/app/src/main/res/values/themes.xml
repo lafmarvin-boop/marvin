@@ -11,5 +11,25 @@
         <item name="android:navigationBarColor">@color/bg_dark</item>
         <item name="android:textColor">@color/text</item>
         <item name="android:windowLightStatusBar">false</item>
+        <!-- AlertDialog styling: white-ish text on dark background -->
+        <item name="materialAlertDialogTheme">@style/Theme.PixelHero.AlertDialog</item>
+        <item name="alertDialogTheme">@style/Theme.PixelHero.AlertDialog</item>
+    </style>
+
+    <style name="Theme.PixelHero.AlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">@color/bg_panel</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="colorPrimary">@color/accent_light</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Theme.PixelHero.DialogButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Theme.PixelHero.DialogButton</item>
+        <item name="buttonBarNeutralButtonStyle">@style/Theme.PixelHero.DialogButton</item>
+    </style>
+
+    <style name="Theme.PixelHero.DialogButton" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/accent_light</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
     </style>
 </resources>

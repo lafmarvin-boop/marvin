@@ -15,5 +15,6 @@
     <dimen name="title_text_size">18sp</dimen>
     <dimen name="section_title_text_size">13sp</dimen>
     <dimen name="caption_text_size">12sp</dimen>
-    <dimen name="small_button_height">42dp</dimen>
+    <dimen name="small_button_height">46dp</dimen>
+    <dimen name="small_button_text_size">15sp</dimen>
 </resources>
