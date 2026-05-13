@@ -10,9 +10,13 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
@@ -23,12 +27,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.marvin.sport.data.AlertMode
 import com.marvin.sport.data.TimerConfig
 import com.marvin.sport.data.TimerStore
@@ -298,84 +306,146 @@ private fun TimerRunningView(
     onStop: () -> Unit,
 ) {
     val baseColor = when (phase) {
-        TimerPhase.Prepare -> Color(0xFF1976D2)
-        TimerPhase.Work -> Color(0xFF2E7D32)
-        TimerPhase.Rest -> Color(0xFFF57C00)
-        TimerPhase.SetRest -> Color(0xFF7B1FA2)
-        TimerPhase.Done -> Color(0xFF455A64)
+        TimerPhase.Prepare -> Color(0xFF1E88E5)
+        TimerPhase.Work -> Color(0xFF16A34A)
+        TimerPhase.Rest -> Color(0xFFF59E0B)
+        TimerPhase.SetRest -> Color(0xFF8B5CF6)
+        TimerPhase.Done -> Color(0xFF334155)
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
     val animatedColor by animateColorAsState(targetValue = baseColor, label = "phaseColor")
+    val progress = if (totalForPhase > 0) {
+        (secondsLeft.toFloat() / totalForPhase.toFloat()).coerceIn(0f, 1f)
+    } else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(durationMillis = 600),
+        label = "progress",
+    )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(animatedColor),
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(animatedColor, animatedColor.copy(alpha = 0.85f)),
+                )
+            ),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White.copy(alpha = 0.18f))
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    phaseLabel(phase),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
             Text(
-                phaseLabel(phase),
-                color = Color.White,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Set $currentSet/${config.sets} · Round $currentRound/${config.rounds}",
+                "Set $currentSet/${config.sets}  ·  Round $currentRound/${config.rounds}",
                 color = Color.White.copy(alpha = 0.9f),
                 style = MaterialTheme.typography.titleMedium,
             )
 
             Spacer(Modifier.weight(1f))
 
-            Text(
-                text = formatTime(secondsLeft),
-                color = Color.White,
-                fontSize = 120.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "${totalForPhase - secondsLeft} / $totalForPhase s",
-                color = Color.White.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Box(
+                modifier = Modifier
+                    .size(300.dp)
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val stroke = 18f
+                    val diameter = size.minDimension - stroke
+                    val topLeft = Offset(
+                        x = (size.width - diameter) / 2f,
+                        y = (size.height - diameter) / 2f,
+                    )
+                    val arcSize = Size(diameter, diameter)
+                    // Track
+                    drawArc(
+                        color = Color.White.copy(alpha = 0.22f),
+                        startAngle = -90f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = stroke, cap = StrokeCap.Round),
+                    )
+                    // Progress
+                    drawArc(
+                        color = Color.White,
+                        startAngle = -90f,
+                        sweepAngle = 360f * animatedProgress,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = stroke, cap = StrokeCap.Round),
+                    )
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = formatTime(secondsLeft),
+                        color = Color.White,
+                        style = MaterialTheme.typography.displayLarge,
+                        fontWeight = FontWeight.Black,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        "sur $totalForPhase s",
+                        color = Color.White.copy(alpha = 0.78f),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
 
             Spacer(Modifier.weight(1f))
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
+                Button(
                     onClick = onPauseResume,
                     modifier = Modifier
                         .weight(1f)
-                        .height(64.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                        .height(64.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White.copy(alpha = 0.2f),
+                        contentColor = Color.White,
+                    ),
                 ) {
                     Icon(
                         if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
                         contentDescription = null,
-                        tint = Color.White,
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(if (paused) "Reprendre" else "Pause", color = Color.White)
+                    Text(if (paused) "Reprendre" else "Pause", fontWeight = FontWeight.Bold)
                 }
                 Button(
                     onClick = onStop,
                     modifier = Modifier
                         .weight(1f)
                         .height(64.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C)),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFB71C1C),
+                        contentColor = Color.White,
+                    ),
                 ) {
                     Icon(Icons.Filled.Stop, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Arrêter")
+                    Text("Arrêter", fontWeight = FontWeight.Bold)
                 }
             }
         }

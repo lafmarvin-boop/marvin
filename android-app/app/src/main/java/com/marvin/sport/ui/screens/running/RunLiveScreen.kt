@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -155,8 +156,8 @@ fun RunLiveScreen(onBack: () -> Unit) {
 
             Spacer(Modifier.weight(1f))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(
                     onClick = {
                         scope.launch {
                             stopTrackingService(context)
@@ -164,12 +165,12 @@ fun RunLiveScreen(onBack: () -> Unit) {
                             onBack()
                         }
                     },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.weight(1f).height(58.dp),
+                    shape = androidx.compose.foundation.shape.CircleShape,
                 ) {
                     Icon(Icons.Filled.Stop, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Abandonner")
+                    Text("Abandonner", fontWeight = FontWeight.Bold)
                 }
                 Button(
                     onClick = {
@@ -179,12 +180,17 @@ fun RunLiveScreen(onBack: () -> Unit) {
                             onBack()
                         }
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).height(58.dp),
+                    shape = androidx.compose.foundation.shape.CircleShape,
                     enabled = l != null && l.points.size >= 2,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = com.marvin.sport.ui.theme.ProgramAccent.Running,
+                        contentColor = Color.White,
+                    ),
                 ) {
                     Icon(Icons.Filled.Save, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Enregistrer")
+                    Text("Enregistrer", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -193,15 +199,27 @@ fun RunLiveScreen(onBack: () -> Unit) {
 
 @Composable
 private fun StatsBlock(distanceM: Double, durationMs: Long) {
-    Card {
-        Column(modifier = Modifier.padding(16.dp)) {
+    val accent = com.marvin.sport.ui.theme.ProgramAccent.Running
+    Card(
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                "Distance".uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(2.dp))
             Text(
                 RunStats.formatDistance(distanceM),
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.displayMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = accent,
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Stat("Durée", RunStats.formatDuration(durationMs))
                 Stat("Allure", RunStats.formatPace(durationMs, distanceM))
@@ -214,8 +232,12 @@ private fun StatsBlock(distanceM: Double, durationMs: Long) {
 @Composable
 private fun Stat(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
     }
 }
 

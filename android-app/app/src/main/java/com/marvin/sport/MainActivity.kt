@@ -14,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,11 +25,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.marvin.sport.data.ProgressionStore
 import com.marvin.sport.data.Programs
+import com.marvin.sport.ui.theme.ProgramAccent
 import com.marvin.sport.ui.screens.HomeScreen
 import com.marvin.sport.ui.screens.PhaseScreen
 import com.marvin.sport.ui.screens.SessionScreen
@@ -128,14 +131,27 @@ private fun MainScaffold(
 ) {
     var tab by remember { mutableStateOf(MainTab.Strength) }
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+            ) {
                 MainTab.values().forEach { item ->
+                    val accent = item.programId?.let { ProgramAccent.forProgramId(it) }
+                        ?: ProgramAccent.Running
                     NavigationBarItem(
                         selected = tab == item,
                         onClick = { tab = item },
                         icon = { Icon(item.icon, contentDescription = null) },
                         label = { Text(item.label) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = androidx.compose.ui.graphics.Color.White,
+                            selectedTextColor = accent,
+                            indicatorColor = accent,
+                            unselectedIconColor = MaterialTheme.colorScheme.outline,
+                            unselectedTextColor = MaterialTheme.colorScheme.outline,
+                        ),
                     )
                 }
             }

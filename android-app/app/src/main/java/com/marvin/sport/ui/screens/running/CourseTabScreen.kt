@@ -1,22 +1,33 @@
 package com.marvin.sport.ui.screens.running
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.marvin.sport.ui.theme.ProgramAccent
 
 @Composable
 fun CourseTabScreen(
@@ -25,29 +36,71 @@ fun CourseTabScreen(
 ) {
     var selected by remember { mutableStateOf(0) }
     Column(modifier = Modifier.fillMaxSize()) {
-        TabRow(
-            selectedTabIndex = selected,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Tab(
+            PillTab(
+                label = "GPS",
+                icon = Icons.Filled.DirectionsRun,
                 selected = selected == 0,
+                accent = ProgramAccent.Running,
                 onClick = { selected = 0 },
-                text = { Text("GPS") },
-                icon = { Icon(Icons.Filled.DirectionsRun, contentDescription = null) },
+                modifier = Modifier.weight(1f),
             )
-            Tab(
+            PillTab(
+                label = "Timer",
+                icon = Icons.Filled.Timer,
                 selected = selected == 1,
+                accent = ProgramAccent.Running,
                 onClick = { selected = 1 },
-                text = { Text("Timer fractionné") },
-                icon = { Icon(Icons.Filled.Timer, contentDescription = null) },
+                modifier = Modifier.weight(1f),
             )
         }
-        Box(modifier = Modifier.fillMaxSize()) {
-            when (selected) {
-                0 -> RunHomeScreen(onStartRun = onStartRun, onRunClick = onRunClick)
-                1 -> TimerScreen()
+        AnimatedContent(
+            targetState = selected,
+            transitionSpec = {
+                fadeIn(tween(180)) togetherWith fadeOut(tween(180))
+            },
+            label = "courseTab",
+        ) { current ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (current) {
+                    0 -> RunHomeScreen(onStartRun = onStartRun, onRunClick = onRunClick)
+                    1 -> TimerScreen()
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun PillTab(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bg = if (selected) accent else Color.Transparent
+    val fg = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, color = fg, fontWeight = FontWeight.SemiBold)
     }
 }
