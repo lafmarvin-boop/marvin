@@ -73,7 +73,11 @@ object AIService {
     /** Build a prompt that asks for the SAME character but in a specific view, isolated on white. */
     fun applyStyleWithView(prompt: String, style: Style, view: ViewTransform.View): String {
         val viewPart = viewDescriptor(view)
-        return "${style.prefix}$prompt, $viewPart${style.suffix}, isolated on plain white background, no shadows, centered".trim()
+        // Strong anchoring: repeat the description, emphasize "same character", lock the canvas.
+        return ("${style.prefix}the exact same character: $prompt, " +
+            "shown from $viewPart, full body sprite, same outfit and same proportions, " +
+            "${style.suffix}, isolated on plain white background, no shadows, centered, " +
+            "neutral standing pose").trim()
     }
 
     /**

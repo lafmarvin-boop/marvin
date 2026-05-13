@@ -915,6 +915,9 @@ class MainActivity : AppCompatActivity() {
             .setCancelable(false)
             .show()
         val w = project.width; val h = project.height
+        // Shared seed across all 6 views = Pollinations renders the SAME character
+        // (only the camera angle changes via the prompt suffix).
+        val seed = (System.currentTimeMillis() and 0xFFFF).toInt()
         lifecycleScope.launch {
             val results = ArrayList<Pair<ViewTransform.View, IntArray?>>()
             for ((i, view) in views.withIndex()) {
@@ -922,7 +925,7 @@ class MainActivity : AppCompatActivity() {
                 val viewPrompt = AIService.applyStyleWithView(prompt, style, view)
                 val bmp = withContext(Dispatchers.IO) {
                     if (useOpenAI) AIService.generateOpenAI(viewPrompt, apiKey)
-                    else AIService.generatePollinations(viewPrompt, 512, 512, seed = 1000 + i)
+                    else AIService.generatePollinations(viewPrompt, 512, 512, seed = seed)
                 }
                 if (bmp == null) {
                     results.add(view to null)
