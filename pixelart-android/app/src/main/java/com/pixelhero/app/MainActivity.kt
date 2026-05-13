@@ -81,6 +81,25 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Crash recovery: if previous session was abnormal, offer to restore
+        if (CrashRecovery.hasUnsavedSession(this)) {
+            val recovered = CrashRecovery.restore(this)
+            if (recovered != null) {
+                AlertDialog.Builder(this)
+                    .setTitle("Récupération")
+                    .setMessage("La session précédente s'est terminée sans sauvegarde. Restaurer le projet « ${recovered.name} » ?")
+                    .setPositiveButton("Restaurer") { _, _ ->
+                        project = recovered
+                        applyProject()
+                        toast("Projet restauré")
+                    }
+                    .setNegativeButton("Ignorer", null)
+                    .setOnDismissListener { CrashRecovery.endSession(this) }
+                    .show()
+            } else CrashRecovery.endSession(this)
+        }
+        CrashRecovery.beginSession(this)
+
         project = Project()
         wireCanvas()
         wireTools()
@@ -172,6 +191,7 @@ class MainActivity : AppCompatActivity() {
         ProjectStorage.save(this, project)
         autosaveRunnable?.let { autosaveHandler.removeCallbacks(it) }
         stopMiniPreview()
+        CrashRecovery.endSession(this)
     }
 
     override fun onResume() {
@@ -199,6 +219,8 @@ class MainActivity : AppCompatActivity() {
         redoStack.clear()
         isDirty = true
         updateTitleDirty()
+        // Crash recovery: snapshot the project on every undo push
+        runCatching { CrashRecovery.snapshot(this, project) }
     }
 
     private var isDirty = false
@@ -493,39 +515,69 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSmartGenerator() {
-        val items = arrayOf(
-            "Frames d'animation (auto-détection corps)",
-            "🦴 Animation avec squelette (pro)",
-            "🦴 Configurer le squelette du perso",
-            "🚶 Mode de déplacement (marche / lévitation / hover)",
-            "✨ Particules / effets (étincelles, fumée…)",
-            "🤖 Générer depuis un texte (mots-clés)",
-            "Décor / scène (statique ou animé)",
-            "Élément animé (flambeau, feu de camp…)",
-            "Template de pose",
-            "Interpolation entre 2 frames (pixel-blend)",
-            "🦴 Interpolation entre 2 poses (squelette)",
-            "Personnage aléatoire (procédural)"
+        val categories = arrayOf(
+            "🧍 Personnage (poses, aléatoire, IA)",
+            "🦴 Squelette & animation pro",
+            "🎬 Animation rapide (auto-détection corps)",
+            "🏞️ Décor & scène",
+            "✨ Effets & filtres",
+            "🔀 Interpolation (tween)"
         )
         AlertDialog.Builder(this)
             .setTitle("Générer…")
-            .setItems(items) { _, which ->
+            .setItems(categories) { _, which ->
                 when (which) {
-                    0 -> showAnimationGenerator()
-                    1 -> showSkeletalAnimationDialog()
-                    2 -> showSkeletonEditor()
-                    3 -> showLocomotionPicker()
-                    4 -> showParticlesDialog()
-                    5 -> showAIPromptDialog()
-                    6 -> showDecorGenerator()
-                    7 -> showAnimatedElementGenerator()
-                    8 -> showPoseTemplates()
-                    9 -> showTweenDialog()
-                    10 -> showPoseTweenDialog()
-                    11 -> showProceduralCharacterDialog()
+                    0 -> showCharacterMenu()
+                    1 -> showSkeletonMenu()
+                    2 -> showAnimationGenerator()
+                    3 -> showDecorAndElementMenu()
+                    4 -> showEffectsMenu()
+                    5 -> showTweenMenu()
                 }
             }
             .show()
+    }
+
+    private fun showCharacterMenu() {
+        val items = arrayOf("Template de pose", "Personnage aléatoire", "🤖 Depuis un texte")
+        AlertDialog.Builder(this).setTitle("🧍 Personnage")
+            .setItems(items) { _, w ->
+                when (w) { 0 -> showPoseTemplates(); 1 -> showProceduralCharacterDialog(); 2 -> showAIPromptDialog() }
+            }.show()
+    }
+
+    private fun showSkeletonMenu() {
+        val items = arrayOf("Configurer le squelette", "Animation avec squelette",
+            "Interpolation entre 2 poses", "🚶 Mode de déplacement")
+        AlertDialog.Builder(this).setTitle("🦴 Squelette")
+            .setItems(items) { _, w ->
+                when (w) { 0 -> showSkeletonEditor(); 1 -> showSkeletalAnimationDialog()
+                    2 -> showPoseTweenDialog(); 3 -> showLocomotionPicker() }
+            }.show()
+    }
+
+    private fun showDecorAndElementMenu() {
+        val items = arrayOf("Décor / scène (statique ou animé)", "Élément animé (flambeau, etc.)")
+        AlertDialog.Builder(this).setTitle("🏞️ Décor & éléments")
+            .setItems(items) { _, w ->
+                when (w) { 0 -> showDecorGenerator(); 1 -> showAnimatedElementGenerator() }
+            }.show()
+    }
+
+    private fun showEffectsMenu() {
+        val items = arrayOf("✨ Particules (10 types)", "Filtres image")
+        AlertDialog.Builder(this).setTitle("✨ Effets")
+            .setItems(items) { _, w ->
+                when (w) { 0 -> showParticlesDialog(); 1 -> showFiltersMenu() }
+            }.show()
+    }
+
+    private fun showTweenMenu() {
+        val items = arrayOf("Pixel-blend entre 2 frames", "🦴 Joints entre 2 poses")
+        AlertDialog.Builder(this).setTitle("🔀 Interpolation")
+            .setItems(items) { _, w ->
+                when (w) { 0 -> showTweenDialog(); 1 -> showPoseTweenDialog() }
+            }.show()
     }
 
     private fun showAIPromptDialog() {
@@ -853,6 +905,30 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .show()
+    }
+
+    private fun exportBackupZip() {
+        lifecycleScope.launch {
+            val bytes = withContext(Dispatchers.Default) { Backup.exportAll(this@MainActivity) }
+            val name = "pixelhero_backup_${System.currentTimeMillis()}.zip"
+            savePublicImage(bytes, name, "application/zip", share = true)
+            toast("Sauvegarde créée: $name")
+        }
+    }
+
+    private val pickBackupZip = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            lifecycleScope.launch {
+                val count = withContext(Dispatchers.Default) {
+                    runCatching { Backup.importAll(this@MainActivity, uri) }.getOrDefault(0)
+                }
+                toast("$count projet(s) restauré(s)")
+            }
+        }
+    }
+
+    private fun pickAndImportBackup() {
+        pickBackupZip.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
     }
 
     private fun exportGameDevPackage() {
@@ -2024,6 +2100,8 @@ class MainActivity : AppCompatActivity() {
             "Fond global (partagé entre toutes les frames)…",
             "Exporter projet (Unity/Godot JSON + sprite sheet)",
             "Bibliothèque palettes étendue…",
+            "💾 Sauvegarde complète (.zip)",
+            "📥 Restaurer depuis .zip",
             "Tutoriel"
         )
         AlertDialog.Builder(this)
@@ -2052,7 +2130,9 @@ class MainActivity : AppCompatActivity() {
                     19 -> showGlobalBackgroundDialog()
                     20 -> exportGameDevPackage()
                     21 -> showExtendedPalettesDialog()
-                    22 -> showTutorial(force = true)
+                    22 -> exportBackupZip()
+                    23 -> pickAndImportBackup()
+                    24 -> showTutorial(force = true)
                 }
             }
             .show()

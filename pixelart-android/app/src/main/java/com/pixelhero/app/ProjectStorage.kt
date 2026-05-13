@@ -57,7 +57,12 @@ object ProjectStorage {
     fun save(context: Context, project: Project) {
         project.updatedAt = System.currentTimeMillis()
         saveThumbnail(context, project)
-        val json = JSONObject().apply {
+        File(dir(context), "${project.id}.json").writeText(serializeToJson(project).toString())
+    }
+
+    /** Build the project JSON without writing to disk (used by Backup + CrashRecovery). */
+    fun serializeToJson(project: Project): JSONObject {
+        return JSONObject().apply {
             put("id", project.id)
             put("name", project.name)
             put("width", project.width)
@@ -100,8 +105,10 @@ object ProjectStorage {
             }
             put("frames", framesArr)
         }
-        File(dir(context), "${project.id}.json").writeText(json.toString())
     }
+
+    /** Alias for fromJson (cleaner name for external callers). */
+    fun deserializeJson(json: JSONObject): Project = fromJson(json)
 
     fun load(context: Context, id: String): Project? {
         val f = File(dir(context), "$id.json")
