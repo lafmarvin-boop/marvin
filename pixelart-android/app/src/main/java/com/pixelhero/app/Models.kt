@@ -196,7 +196,9 @@ class Project(
     var onionColorPrev: Int = 0xFF00AAFF.toInt(),
     var onionColorNext: Int = 0xFFFF4477.toInt(),
     var skeleton: Skeleton? = null,
-    var locomotion: LocomotionMode = LocomotionMode.WALKING
+    var locomotion: LocomotionMode = LocomotionMode.WALKING,
+    /** Shared static background drawn under every frame's composite. Optional. */
+    var globalBackground: Layer? = null
 ) {
     val currentFrame: Frame get() = frames[currentIndex]
 

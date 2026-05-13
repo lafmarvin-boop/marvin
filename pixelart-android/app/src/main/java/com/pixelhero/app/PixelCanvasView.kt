@@ -205,9 +205,20 @@ class PixelCanvasView @JvmOverloads constructor(
     fun syncFrameBitmap() {
         val p = project ?: return
         val bmp = frameBmp ?: return
-        // Use composited view if multi-layer; otherwise direct pixels for speed
-        val data = if (p.currentFrame.layers.size > 1) p.currentFrame.composited() else p.currentFrame.pixels
-        bmp.setPixels(data, 0, p.width, 0, 0, p.width, p.height)
+        val frameData = if (p.currentFrame.layers.size > 1) p.currentFrame.composited() else p.currentFrame.pixels
+        val bg = p.globalBackground
+        if (bg != null) {
+            // Composite globalBg under frameData
+            val combined = IntArray(p.width * p.height)
+            bg.pixels.copyInto(combined)
+            for (i in combined.indices) {
+                val fc = frameData[i]
+                if ((fc ushr 24) and 0xFF >= 128) combined[i] = fc
+            }
+            bmp.setPixels(combined, 0, p.width, 0, 0, p.width, p.height)
+        } else {
+            bmp.setPixels(frameData, 0, p.width, 0, 0, p.width, p.height)
+        }
         invalidate()
     }
 

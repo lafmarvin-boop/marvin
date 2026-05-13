@@ -701,6 +701,128 @@ class MainActivity : AppCompatActivity() {
         toast("${newFrames.size} frames (${preset.displayName} • ${project.locomotion.displayName})")
     }
 
+    private fun showGlobalBackgroundDialog() {
+        val items = mutableListOf<String>()
+        items.add("Capturer la frame actuelle comme fond global")
+        if (project.globalBackground != null) {
+            items.add("Retirer le fond global")
+            items.add("Aperçu du fond (passer en frame fond)")
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Fond global")
+            .setItems(items.toTypedArray()) { _, which ->
+                when (which) {
+                    0 -> {
+                        // Capture current frame's active layer as global background
+                        val l = Layer(project.width, project.height, "Fond global")
+                        project.currentFrame.pixels.copyInto(l.pixels)
+                        project.globalBackground = l
+                        toast("Fond global défini (composé sous toutes les frames)")
+                        binding.canvas.syncFrameBitmap()
+                    }
+                    1 -> {
+                        project.globalBackground = null
+                        toast("Fond global retiré")
+                        binding.canvas.syncFrameBitmap()
+                    }
+                    2 -> {
+                        // Show the bg as a new frame (read-only preview, no insert)
+                        val bg = project.globalBackground ?: return@setItems
+                        val tmp = Frame(project.width, project.height)
+                        bg.pixels.copyInto(tmp.pixels)
+                        project.frames.add(project.currentIndex + 1, tmp.also { it.tag = "global_bg_preview" })
+                        framesAdapter.notifyDataSetChanged()
+                        binding.timeline.invalidate()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun exportGameDevPackage() {
+        lifecycleScope.launch {
+            withContext(Dispatchers.Default) {
+                // 1. Sprite sheet PNG (one row per tag, cells per frame)
+                val scale = 1
+                val cols = project.frames.size
+                val sheet = Bitmap.createBitmap(project.width * cols, project.height, Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(sheet)
+                val paint = android.graphics.Paint().apply { isFilterBitmap = false }
+                project.frames.forEachIndexed { i, f ->
+                    val b = frameToBitmap(f, scale)
+                    canvas.drawBitmap(b, (i * project.width).toFloat(), 0f, paint)
+                    b.recycle()
+                }
+                val pngBytes = ByteArrayOutputStream().apply { sheet.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
+                sheet.recycle()
+                savePublicImage(pngBytes, "${project.name}_atlas.png", "image/png")
+                // 2. JSON atlas describing frames + tags (Aseprite-like format)
+                val atlas = org.json.JSONObject().apply {
+                    put("frames", org.json.JSONArray().apply {
+                        project.frames.forEachIndexed { i, f ->
+                            put(org.json.JSONObject().apply {
+                                put("filename", "${project.name}_${i}")
+                                put("frame", org.json.JSONObject().apply {
+                                    put("x", i * project.width); put("y", 0)
+                                    put("w", project.width); put("h", project.height)
+                                })
+                                put("duration", project.delayForFrame(i))
+                                if (f.tag.isNotEmpty()) put("tag", f.tag)
+                            })
+                        }
+                    })
+                    put("meta", org.json.JSONObject().apply {
+                        put("app", "PixelHero")
+                        put("version", "1.0")
+                        put("image", "${project.name}_atlas.png")
+                        put("format", "RGBA8888")
+                        put("size", org.json.JSONObject().apply {
+                            put("w", project.width * project.frames.size)
+                            put("h", project.height)
+                        })
+                        put("frameTags", org.json.JSONArray().apply {
+                            val tagGroups = project.frames.withIndex().groupBy { it.value.tag }
+                                .filter { it.key.isNotEmpty() }
+                            tagGroups.forEach { (tag, frames) ->
+                                put(org.json.JSONObject().apply {
+                                    put("name", tag)
+                                    put("from", frames.first().index)
+                                    put("to", frames.last().index)
+                                    put("direction", "forward")
+                                })
+                            }
+                        })
+                    })
+                }
+                val jsonBytes = atlas.toString(2).toByteArray()
+                savePublicImage(jsonBytes, "${project.name}_atlas.json", "application/json")
+            }
+            toast("Exporté: ${project.name}_atlas.png + .json (Pictures/PixelHero)")
+        }
+    }
+
+    private fun showExtendedPalettesDialog() {
+        val groups = ExtendedPalettes.GROUPS
+        val groupLabels = groups.keys.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Catégorie de palette")
+            .setItems(groupLabels) { _, gIdx ->
+                val palettes = groups[groupLabels[gIdx]] ?: return@setItems
+                val pLabels = palettes.map { it.name }.toTypedArray()
+                AlertDialog.Builder(this)
+                    .setTitle(groupLabels[gIdx])
+                    .setItems(pLabels) { _, pIdx ->
+                        val palette = palettes[pIdx]
+                        project.palette.clear()
+                        project.palette.addAll(palette.colors)
+                        paletteAdapter.notifyDataSetChanged()
+                        toast("Palette « ${palette.name} » appliquée")
+                    }
+                    .show()
+            }
+            .show()
+    }
+
     private fun showStabilizerDialog() {
         val items = arrayOf("Désactivé", "Léger (1)", "Moyen (2)", "Fort (3)", "Très fort (5)")
         val values = intArrayOf(0, 1, 2, 3, 5)
@@ -1770,6 +1892,9 @@ class MainActivity : AppCompatActivity() {
             "Personnaliser couleurs onion skin…",
             "Stabilisateur de trait…",
             "Transformer la vue (face/profil/dos…)",
+            "Fond global (partagé entre toutes les frames)…",
+            "Exporter projet (Unity/Godot JSON + sprite sheet)",
+            "Bibliothèque palettes étendue…",
             "Tutoriel"
         )
         AlertDialog.Builder(this)
@@ -1795,7 +1920,10 @@ class MainActivity : AppCompatActivity() {
                     16 -> showOnionColorPicker()
                     17 -> showStabilizerDialog()
                     18 -> showViewTransformDialog()
-                    19 -> showTutorial(force = true)
+                    19 -> showGlobalBackgroundDialog()
+                    20 -> exportGameDevPackage()
+                    21 -> showExtendedPalettesDialog()
+                    22 -> showTutorial(force = true)
                 }
             }
             .show()
