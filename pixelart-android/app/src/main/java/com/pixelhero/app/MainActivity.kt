@@ -18,6 +18,7 @@ import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -77,7 +78,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Splash screen API (animated fade-out). Auto on Android 12+, fallback theme below.
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Apply Material You dynamic colors on Android 12+ (no-op on older)
+        try {
+            com.google.android.material.color.DynamicColors.applyToActivityIfAvailable(this)
+        } catch (_: Throwable) {}
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -1803,24 +1810,58 @@ class MainActivity : AppCompatActivity() {
     private fun askFilterScope(filter: Filters.Filter) {
         AlertDialog.Builder(this)
             .setTitle("Appliquer « ${filter.displayName} » sur :")
-            .setItems(arrayOf("Frame courante", "Toutes les frames")) { _, scope ->
-                pushUndo()
-                val outlineColor = project.primaryColor
-                if (scope == 0) {
-                    val out = Filters.apply(project.currentFrame.pixels, project.width, project.height, filter, outlineColor)
-                    out.copyInto(project.currentFrame.pixels)
-                } else {
-                    project.frames.forEach { f ->
-                        val out = Filters.apply(f.pixels, f.width, f.height, filter, outlineColor)
-                        out.copyInto(f.pixels)
-                    }
+            .setItems(arrayOf("Frame courante", "Toutes les frames", "Plage de frames…")) { _, scope ->
+                when (scope) {
+                    0 -> applyFilterRange(filter, project.currentIndex, project.currentIndex)
+                    1 -> applyFilterRange(filter, 0, project.frames.size - 1)
+                    2 -> askFilterRange(filter)
                 }
-                binding.canvas.syncFrameBitmap()
-                framesAdapter.notifyDataSetChanged()
-                toast("Filtre appliqué")
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    private fun askFilterRange(filter: Filters.Filter) {
+        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24) }
+        container.addView(TextView(this).apply {
+            text = "Plage de frames (1 à ${project.frames.size})"
+            setTextColor(0xFFE8E8F0.toInt())
+        })
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val etFrom = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER; setText("1"); setTextColor(0xFFE8E8F0.toInt())
+        }
+        val etTo = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER; setText("${project.frames.size}"); setTextColor(0xFFE8E8F0.toInt())
+        }
+        val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        etFrom.layoutParams = lp; etTo.layoutParams = lp
+        row.addView(etFrom); row.addView(etTo)
+        container.addView(row)
+        AlertDialog.Builder(this)
+            .setTitle("Plage pour « ${filter.displayName} »")
+            .setView(container)
+            .setPositiveButton("Appliquer") { _, _ ->
+                val from = (etFrom.text.toString().toIntOrNull() ?: 1).coerceIn(1, project.frames.size) - 1
+                val to = (etTo.text.toString().toIntOrNull() ?: project.frames.size).coerceIn(1, project.frames.size) - 1
+                applyFilterRange(filter, minOf(from, to), maxOf(from, to))
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun applyFilterRange(filter: Filters.Filter, fromIdx: Int, toIdx: Int) {
+        pushUndo()
+        val outlineColor = project.primaryColor
+        for (i in fromIdx..toIdx) {
+            val f = project.frames.getOrNull(i) ?: continue
+            val out = Filters.apply(f.pixels, f.width, f.height, filter, outlineColor)
+            out.copyInto(f.pixels)
+        }
+        binding.canvas.syncFrameBitmap()
+        framesAdapter.notifyDataSetChanged()
+        binding.timeline.invalidate()
+        toast("Filtre appliqué sur ${toIdx - fromIdx + 1} frame(s)")
     }
 
     private fun showColorLockMenu() {
