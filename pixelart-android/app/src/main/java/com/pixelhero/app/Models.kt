@@ -187,7 +187,7 @@ class Project(
     var onionRange: Int = 2,          // number of frames before/after to show
     var onionTrailOnly: Boolean = false,  // when true, show only PAST frames (motion trail)
     var pixelPerfect: Boolean = false,
-    var bgFit: BgFitMode = BgFitMode.COVER,
+    var bgFit: BgFitMode = BgFitMode.FIT,
     var brushSize: Int = 1,
     var ditherPattern: Int = 0,  // 0=none, 1=checker, 2=v.lines, 3=h.lines, 4=sparse, 5=primary+secondary mix, 6=custom
     var customDither: Array<BooleanArray> = Array(4) { BooleanArray(4) },  // 4x4 pattern for ditherPattern=6

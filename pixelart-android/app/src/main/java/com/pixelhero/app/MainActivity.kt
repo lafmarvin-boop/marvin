@@ -2598,22 +2598,52 @@ class MainActivity : AppCompatActivity() {
         runCatching {
             contentResolver.openInputStream(uri)?.use { input ->
                 val bmp = BitmapFactory.decodeStream(input)
-                binding.canvas.bgBitmap = bmp
-                if (bmp != null) showImageImportOptions(bmp)
+                if (bmp != null) {
+                    // Step 1: immediately show the image as background with FIT default
+                    binding.canvas.bgBitmap = bmp
+                    project.bgFit = BgFitMode.FIT
+                    binding.canvas.invalidate()
+                    updateBgFitButtonLabel()
+                    // Step 2 + 3: pick fit mode (live preview), then pick usage
+                    askBgFitModeThenAction(bmp)
+                }
             }
         }
     }
 
+    private fun askBgFitModeThenAction(bmp: Bitmap) {
+        val modes = BgFitMode.values()
+        val labels = modes.map { it.label + " - " + when (it) {
+            BgFitMode.FIT -> "garde l'image entière (bandes vides)"
+            BgFitMode.COVER -> "remplit le canvas (rogne les bords)"
+            BgFitMode.STRETCH -> "déforme pour remplir exactement"
+        } }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Adaptation de l'image (aperçu en direct)")
+            .setSingleChoiceItems(labels, project.bgFit.ordinal) { _, which ->
+                project.bgFit = modes[which]
+                updateBgFitButtonLabel()
+                binding.canvas.invalidate()
+            }
+            .setPositiveButton("Suivant →") { _, _ ->
+                showImageImportOptions(bmp)
+            }
+            .setNegativeButton(R.string.cancel) { _, _ ->
+                // User cancelled: keep image as bg, no further processing
+            }
+            .show()
+    }
+
     private fun showImageImportOptions(bmp: Bitmap) {
         val items = arrayOf(
-            "Garder comme image de fond uniquement",
+            "Garder uniquement comme image de fond",
             "🎨 Pixeliser intelligent (game-ready)",
-            "Pixeliser basique (avec tramage)",
-            "Pixeliser basique (sans tramage)",
-            "Extraire palette uniquement (16 couleurs)"
+            "Pixeliser basique avec tramage",
+            "Pixeliser basique sans tramage",
+            "Extraire palette (16 couleurs)"
         )
         AlertDialog.Builder(this)
-            .setTitle("Image importée")
+            .setTitle("Que faire avec cette image ?")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> {} // keep as bg only
@@ -2623,6 +2653,7 @@ class MainActivity : AppCompatActivity() {
                     4 -> extractPaletteFromBg(bmp)
                 }
             }
+            .setNegativeButton("← Retour adaptation") { _, _ -> askBgFitModeThenAction(bmp) }
             .show()
     }
 

@@ -195,7 +195,7 @@ object ProjectStorage {
             onionRange = json.optInt("onionRange", 2),
             onionTrailOnly = json.optBoolean("onionTrailOnly", false),
             pixelPerfect = json.optBoolean("pixelPerfect", false),
-            bgFit = runCatching { BgFitMode.valueOf(json.optString("bgFit", "COVER")) }.getOrDefault(BgFitMode.COVER),
+            bgFit = runCatching { BgFitMode.valueOf(json.optString("bgFit", "FIT")) }.getOrDefault(BgFitMode.FIT),
             locomotion = runCatching { LocomotionMode.valueOf(json.optString("locomotion", "WALKING")) }.getOrDefault(LocomotionMode.WALKING)
         ).apply {
             json.optJSONObject("skeleton")?.let { skeleton = Skeleton.fromJson(it) }
