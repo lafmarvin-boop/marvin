@@ -1,122 +1,113 @@
 package com.pixelhero.app
 
 import android.graphics.Bitmap
-import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Convert a photo to a King God Castle-style chibi pixel art character.
+ * Convert a photo to a King God Castle-style chibi character.
  *
- * Style characteristics targeted:
- *   - Chibi proportions: head ~45% of total height
- *   - Clean 1-pixel black outline around the silhouette
- *   - Limited palette (~12 colors), no dithering — flat-shaded look
- *   - Simple body shape using PoseTemplate.HUMANOID_FRONT
- *   - Face region cropped from the photo via skin-blob detection
+ * IMPORTANT: this is NOT face-from-photo synthesis. Real photorealistic
+ * portrait -> pixel art conversion requires an ML model (Stable Diffusion,
+ * etc.) which we cannot embed on-device. What this DOES:
+ *   1. Sample skin / hair / shirt / pants colors from the photo
+ *   2. Render a hand-crafted chibi sprite template using those colors
+ *   3. Result: a clean KGC-style chibi with YOUR photo's color palette
+ *      (not your actual face features)
  *
- * NOT a deep-learning portrait synthesis (we don't have on-device ML). It's
- * a procedural composition: detect face in photo → upscale into top half of
- * canvas → procedural body below with clothing colours sampled from the photo.
+ * The template is a 16x24 ASCII sprite drawn to look like King God Castle's
+ * chibi style: oversized head, big eyes, small torso, short legs, clear
+ * outline. Scaled to the project canvas with nearest-neighbor.
  */
 object PhotoToCharacter {
+
+    // ---- Chibi sprite template (16 wide x 24 tall) ----
+    // O = outline   S = skin       H = hair
+    // E = eye dark  M = mouth      C = shirt
+    // B = belt      P = pants      F = boot
+    // . = transparent
+    private val TEMPLATE = arrayOf(
+        "....OOOOOO......",  //  0
+        "..OOHHHHHHOO....",  //  1
+        ".OHHHHHHHHHHO...",  //  2
+        ".OHHHHHHHHHHO...",  //  3
+        ".OHSSSSSSSSSHO..",  //  4
+        ".OHSSSSSSSSSHO..",  //  5
+        ".OHSEESSSEESHO..",  //  6  eyes
+        ".OHSEESSSEESHO..",  //  7
+        ".OHSSSSSSSSSHO..",  //  8
+        ".OHSSSSMMSSSHO..",  //  9  mouth
+        ".OHSSSSSSSSSHO..",  // 10
+        "..OHHSSSSSSHHO..",  // 11
+        "...OOSSSSSSO....",  // 12  chin
+        "....OSSSSO......",  // 13  neck
+        "...OCCCCCCCCO...",  // 14  shoulders
+        "..OCCCCCCCCCCO..",  // 15
+        "..OCCCCCCCCCCO..",  // 16
+        "..OBBBBBBBBBBO..",  // 17  belt
+        "..OCCCCCCCCCCO..",  // 18
+        "..OPPPP..PPPPO..",  // 19  legs gap
+        "..OPPPP..PPPPO..",  // 20
+        "..OPPPP..PPPPO..",  // 21
+        "..OFFFFOOFFFFO..",  // 22  boots
+        "...OOOOOOOOOO..."   // 23
+    )
+    private const val TPL_W = 16
+    private const val TPL_H = 24
 
     fun convert(source: Bitmap, w: Int, h: Int): Pair<IntArray, IntArray> {
         val srcW = source.width; val srcH = source.height
         val srcPixels = IntArray(srcW * srcH)
         source.getPixels(srcPixels, 0, srcW, 0, 0, srcW, srcH)
 
-        // 1. Detect face region (skin-blob bounding box of upper area)
-        val face = detectFaceRect(srcPixels, srcW, srcH)
+        val skin = sampleSkin(srcPixels, srcW, srcH) ?: 0xFFF2C09B.toInt()
+        val hair = sampleHair(srcPixels, srcW, srcH) ?: 0xFF2E1A0B.toInt()
+        val shirt = sampleDominantBand(srcPixels, srcW, srcH, 0.45f, 0.65f, listOf(skin, hair))
+            ?: 0xFF3366FF.toInt()
+        val pants = sampleDominantBand(srcPixels, srcW, srcH, 0.7f, 0.95f, listOf(skin, hair, shirt))
+            ?: 0xFF333366.toInt()
 
-        // 2. Sample 2 clothing colours from below the face
-        val shirtSampleY = (face.bottom + (srcH - face.bottom) * 0.2f).toInt().coerceAtMost(srcH - 1)
-        val pantsSampleY = (face.bottom + (srcH - face.bottom) * 0.6f).toInt().coerceAtMost(srcH - 1)
-        val shirtColor = sampleDominantColor(srcPixels, srcW, srcH, face.left, shirtSampleY, face.right, shirtSampleY + 10)
-            .takeIf { it != 0 } ?: 0xFF3366FF.toInt()
-        val pantsColor = sampleDominantColor(srcPixels, srcW, srcH, face.left, pantsSampleY, face.right, pantsSampleY + 10)
-            .takeIf { it != 0 } ?: 0xFF333366.toInt()
-        val hairColor = sampleDominantNonSkinTop(srcPixels, srcW, srcH, face)
-            .takeIf { it != 0 } ?: 0xFF2E1A0B.toInt()
-        val skinColor = sampleSkin(srcPixels, srcW, srcH, face)
+        val outline = 0xFF1A1428.toInt()
+        val eye = 0xFF1A1428.toInt()
+        val mouth = darken(skin, 0.55f)
+        val belt = darken(shirt, 0.55f)
+        val boot = darken(pants, 0.55f)
 
-        // 3. Build the output: head crop on top, simple body shape below
-        val headBottom = (h * 0.45f).toInt().coerceAtLeast(8)
-        val torsoBottom = (h * 0.78f).toInt().coerceAtLeast(headBottom + 4)
+        val charToColor = mapOf(
+            '.' to 0,
+            'O' to outline,
+            'S' to skin,
+            'H' to hair,
+            'E' to eye,
+            'M' to mouth,
+            'C' to shirt,
+            'B' to belt,
+            'P' to pants,
+            'F' to boot
+        )
+
         val pixels = IntArray(w * h)
-
-        // 3a. Crop the face from the source, fit into top portion of canvas
-        // Make the face crop SQUARE and slightly enlarged (chibi has big head)
-        val faceW = face.right - face.left + 1
-        val faceH = face.bottom - face.top + 1
-        val cropSize = max(faceW, faceH)
-        val cropCx = (face.left + face.right) / 2
-        val cropCy = (face.top + face.bottom) / 2 - faceH / 6  // bias up slightly
-        val cropL = (cropCx - cropSize / 2).coerceAtLeast(0)
-        val cropT = (cropCy - cropSize / 2).coerceAtLeast(0)
-        val cropR = (cropL + cropSize).coerceAtMost(srcW)
-        val cropB = (cropT + cropSize).coerceAtMost(srcH)
-        val cropBmp = try {
-            Bitmap.createBitmap(source, cropL, cropT, cropR - cropL, cropB - cropT)
-        } catch (e: Exception) { source }
-
-        // 3b. Downscale the face crop into the head region (centered)
-        val headRegionW = (w * 0.9f).toInt().coerceAtMost(w)
-        val headRegionH = headBottom
-        val headPixels = ImageToPixelArt.downscale(cropBmp, headRegionW, headRegionH, BgFitMode.COVER)
-        val headOffsetX = (w - headRegionW) / 2
-        for (y in 0 until headRegionH) for (x in 0 until headRegionW) {
-            pixels[y * w + (x + headOffsetX)] = headPixels[y * headRegionW + x]
-        }
-
-        // 4. Draw a simple chibi body below
-        drawChibiBody(pixels, w, h, headBottom, torsoBottom, shirtColor, pantsColor, skinColor)
-
-        // 5. Quantize: median cut to ~12 colors
-        var palette = SmartPixelize.medianCut(pixels, 12)
-        if (palette.isNotEmpty()) {
-            palette = SmartPixelize.kmeansRefine(pixels, palette, 3)
-            // Apply nearest-color (no dither: hard-edge shading like KGC)
-            for (i in pixels.indices) {
-                pixels[i] = nearestColorRgb(pixels[i], palette)
+        val scale = min(w.toFloat() / TPL_W, h.toFloat() / TPL_H)
+        val renderW = (TPL_W * scale).toInt().coerceAtLeast(1)
+        val renderH = (TPL_H * scale).toInt().coerceAtLeast(1)
+        val offX = (w - renderW) / 2
+        val offY = (h - renderH) / 2
+        for (y in 0 until renderH) for (x in 0 until renderW) {
+            val tx = (x.toFloat() / renderW * TPL_W).toInt().coerceIn(0, TPL_W - 1)
+            val ty = (y.toFloat() / renderH * TPL_H).toInt().coerceIn(0, TPL_H - 1)
+            val ch = TEMPLATE[ty][tx]
+            val color = charToColor[ch] ?: 0
+            if (color != 0) {
+                pixels[(offY + y) * w + (offX + x)] = color
             }
         }
 
-        // 6. Add 1-pixel black outline around the silhouette
-        addOutline(pixels, w, h)
-
-        // 7. Ensure black is in the palette (it likely is from the outline)
-        val finalPalette = if (palette.any { (it and 0xFFFFFF) < 0x202020 })
-            palette else palette + intArrayOf(0xFF1A1428.toInt())
-
-        return pixels to finalPalette
+        val palette = pixels.toSet().filter { (it ushr 24) and 0xFF >= 128 }.toIntArray()
+        return pixels to palette
     }
 
     // ========================================================================
-    // Face detection (skin-blob bounding box, upper portion)
+    // Color sampling
     // ========================================================================
-    data class FaceRect(val left: Int, val top: Int, val right: Int, val bottom: Int)
-
-    private fun detectFaceRect(pixels: IntArray, w: Int, h: Int): FaceRect {
-        // Scan only upper 70% of the image (face usually in upper portion)
-        val scanH = (h * 0.7f).toInt()
-        var minX = w; var maxX = -1; var minY = scanH; var maxY = -1; var count = 0
-        for (y in 0 until scanH) for (x in 0 until w) {
-            if (isSkinLike(pixels[y * w + x])) {
-                if (x < minX) minX = x; if (x > maxX) maxX = x
-                if (y < minY) minY = y; if (y > maxY) maxY = y
-                count++
-            }
-        }
-        if (count < 50 || maxX < 0) {
-            // Fallback: center crop assuming portrait
-            val s = min(w, h) * 2 / 3
-            val cx = w / 2; val cy = h / 3
-            return FaceRect(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2)
-        }
-        // Restrict to upper portion of skin region (face vs hands/neck)
-        val faceBottom = minY + (maxY - minY + 1) * 2 / 3
-        return FaceRect(minX, minY, maxX, faceBottom)
-    }
 
     private fun isSkinLike(c: Int): Boolean {
         val r = (c shr 16) and 0xFF
@@ -125,60 +116,10 @@ object PhotoToCharacter {
         return r in 80..255 && r > g && g > b && (r - g) in 6..90 && (g - b) in 0..70
     }
 
-    // ========================================================================
-    // Color sampling helpers
-    // ========================================================================
-    private fun sampleDominantColor(pixels: IntArray, w: Int, h: Int,
-                                     x0: Int, y0: Int, x1: Int, y1: Int): Int {
-        val xa = x0.coerceIn(0, w - 1); val xb = x1.coerceIn(0, w - 1)
-        val ya = y0.coerceIn(0, h - 1); val yb = y1.coerceIn(0, h - 1)
-        if (xa >= xb || ya >= yb) return 0
-        val counts = HashMap<Int, Int>()
-        for (y in ya..yb) for (x in xa..xb) {
-            val c = pixels[y * w + x]
-            if ((c ushr 24) and 0xFF < 128) continue
-            // Quantize to 5 bits for grouping
-            val r = ((c shr 16) and 0xFF) shr 3
-            val g = ((c shr 8) and 0xFF) shr 3
-            val b = (c and 0xFF) shr 3
-            val key = (r shl 10) or (g shl 5) or b
-            counts[key] = (counts[key] ?: 0) + 1
-        }
-        val best = counts.entries.maxByOrNull { it.value } ?: return 0
-        val key = best.key
-        val r = ((key shr 10) and 0x1F) shl 3
-        val g = ((key shr 5) and 0x1F) shl 3
-        val b = (key and 0x1F) shl 3
-        return 0xFF000000.toInt() or (r shl 16) or (g shl 8) or b
-    }
-
-    private fun sampleDominantNonSkinTop(pixels: IntArray, w: Int, h: Int, face: FaceRect): Int {
-        // Hair: dominant non-skin color in the top of the face rect
-        val topBand = face.top.coerceAtLeast(0)..((face.top + (face.bottom - face.top) / 3).coerceAtMost(h - 1))
-        val counts = HashMap<Int, Int>()
-        for (y in topBand) for (x in face.left..face.right) {
-            if (x !in 0 until w) continue
-            val c = pixels[y * w + x]
-            if ((c ushr 24) and 0xFF < 128) continue
-            if (isSkinLike(c)) continue
-            val r = ((c shr 16) and 0xFF) shr 3
-            val g = ((c shr 8) and 0xFF) shr 3
-            val b = (c and 0xFF) shr 3
-            val key = (r shl 10) or (g shl 5) or b
-            counts[key] = (counts[key] ?: 0) + 1
-        }
-        val best = counts.entries.maxByOrNull { it.value } ?: return 0
-        val k = best.key
-        val r = ((k shr 10) and 0x1F) shl 3
-        val g = ((k shr 5) and 0x1F) shl 3
-        val b = (k and 0x1F) shl 3
-        return 0xFF000000.toInt() or (r shl 16) or (g shl 8) or b
-    }
-
-    private fun sampleSkin(pixels: IntArray, w: Int, h: Int, face: FaceRect): Int {
+    private fun sampleSkin(pixels: IntArray, w: Int, h: Int): Int? {
+        val scanH = (h * 0.6f).toInt()
         var rSum = 0L; var gSum = 0L; var bSum = 0L; var n = 0
-        for (y in face.top..face.bottom) for (x in face.left..face.right) {
-            if (x !in 0 until w || y !in 0 until h) continue
+        for (y in 0 until scanH) for (x in 0 until w) {
             val c = pixels[y * w + x]
             if (!isSkinLike(c)) continue
             rSum += (c shr 16) and 0xFF
@@ -186,83 +127,62 @@ object PhotoToCharacter {
             bSum += c and 0xFF
             n++
         }
-        if (n == 0) return 0xFFF2C09B.toInt()
+        if (n < 30) return null
         return 0xFF000000.toInt() or
             ((rSum / n).toInt() shl 16) or ((gSum / n).toInt() shl 8) or (bSum / n).toInt()
     }
 
-    // ========================================================================
-    // Body composition
-    // ========================================================================
-    private fun drawChibiBody(pixels: IntArray, w: Int, h: Int,
-                              headBottom: Int, torsoBottom: Int,
-                              shirtColor: Int, pantsColor: Int, skinColor: Int) {
-        val cx = w / 2
-        // Torso: rectangle 60% of canvas width
-        val torsoHalf = (w * 0.30f).toInt().coerceAtLeast(2)
-        // Neck: small skin band at top of torso
-        val neckTop = headBottom
-        val neckBottom = (headBottom + (torsoBottom - headBottom) * 0.15f).toInt()
-        for (y in neckTop..neckBottom) for (x in (cx - torsoHalf/3)..(cx + torsoHalf/3)) {
-            setPx(pixels, w, h, x, y, skinColor)
-        }
-        // Shirt
-        for (y in (neckBottom + 1)..torsoBottom) for (x in (cx - torsoHalf)..(cx + torsoHalf)) {
-            setPx(pixels, w, h, x, y, shirtColor)
-        }
-        // Arms (just hint: skin colored bands on each side)
-        for (y in (neckBottom + 2)..(neckBottom + (torsoBottom - neckBottom) * 2 / 3)) {
-            for (dx in 0..1) {
-                setPx(pixels, w, h, cx - torsoHalf - 1 - dx, y, skinColor)
-                setPx(pixels, w, h, cx + torsoHalf + 1 + dx, y, skinColor)
-            }
-        }
-        // Legs (two columns of pants color)
-        val legHalfGap = max(1, w / 24)
-        val legWidth = max(2, w / 10)
-        for (y in (torsoBottom + 1) until h) {
-            for (dx in 0 until legWidth) {
-                setPx(pixels, w, h, cx - legHalfGap - dx, y, pantsColor)
-                setPx(pixels, w, h, cx + legHalfGap + dx, y, pantsColor)
-            }
-        }
+    private fun sampleHair(pixels: IntArray, w: Int, h: Int): Int? {
+        val scanH = (h * 0.3f).toInt()
+        return dominantColorInBand(pixels, w, h, 0, scanH, exclude = null, excludeSkin = true)
     }
 
-    private fun setPx(pixels: IntArray, w: Int, h: Int, x: Int, y: Int, c: Int) {
-        if (x in 0 until w && y in 0 until h) pixels[y * w + x] = c
+    private fun sampleDominantBand(pixels: IntArray, w: Int, h: Int,
+                                    fromFrac: Float, toFrac: Float,
+                                    excludeColors: List<Int>): Int? {
+        val fromY = (h * fromFrac).toInt().coerceIn(0, h - 1)
+        val toY = (h * toFrac).toInt().coerceIn(0, h - 1)
+        if (toY <= fromY) return null
+        return dominantColorInBand(pixels, w, h, fromY, toY, exclude = excludeColors, excludeSkin = true)
     }
 
-    // ========================================================================
-    // Outline + nearest color
-    // ========================================================================
-    private fun nearestColorRgb(c: Int, palette: IntArray): Int {
-        if ((c ushr 24) and 0xFF < 128) return 0
-        val r = (c shr 16) and 0xFF; val g = (c shr 8) and 0xFF; val b = c and 0xFF
-        var best = palette[0]; var bestDist = Int.MAX_VALUE
-        for (pc in palette) {
-            val pr = (pc shr 16) and 0xFF
-            val pg = (pc shr 8) and 0xFF
-            val pb = pc and 0xFF
-            val d = (r - pr) * (r - pr) + (g - pg) * (g - pg) + (b - pb) * (b - pb)
-            if (d < bestDist) { bestDist = d; best = pc }
-        }
-        return best
-    }
-
-    /** Add a 1-px dark outline around all opaque regions. */
-    private fun addOutline(pixels: IntArray, w: Int, h: Int) {
-        val outline = 0xFF1A1428.toInt()
-        val mask = BooleanArray(pixels.size)
-        for (y in 0 until h) for (x in 0 until w) {
+    private fun dominantColorInBand(pixels: IntArray, w: Int, h: Int,
+                                    fromY: Int, toY: Int,
+                                    exclude: List<Int>?,
+                                    excludeSkin: Boolean): Int? {
+        val excludeKeys = exclude?.map { bucketKey(it) }?.toSet() ?: emptySet()
+        val counts = HashMap<Int, Int>()
+        for (y in fromY..toY) for (x in 0 until w) {
             val c = pixels[y * w + x]
-            if ((c ushr 24) and 0xFF >= 128) continue
-            // Look for opaque neighbor
-            val n = (y > 0 && (pixels[(y - 1) * w + x] ushr 24) and 0xFF >= 128) ||
-                    (y < h - 1 && (pixels[(y + 1) * w + x] ushr 24) and 0xFF >= 128) ||
-                    (x > 0 && (pixels[y * w + (x - 1)] ushr 24) and 0xFF >= 128) ||
-                    (x < w - 1 && (pixels[y * w + (x + 1)] ushr 24) and 0xFF >= 128)
-            if (n) mask[y * w + x] = true
+            if ((c ushr 24) and 0xFF < 128) continue
+            if (excludeSkin && isSkinLike(c)) continue
+            val key = bucketKey(c)
+            if (key in excludeKeys) continue
+            counts[key] = (counts[key] ?: 0) + 1
         }
-        for (i in mask.indices) if (mask[i]) pixels[i] = outline
+        val best = counts.entries.maxByOrNull { it.value } ?: return null
+        if (best.value < 8) return null
+        return bucketToColor(best.key)
+    }
+
+    private fun bucketKey(c: Int): Int {
+        val r = ((c shr 16) and 0xFF) shr 3
+        val g = ((c shr 8) and 0xFF) shr 3
+        val b = (c and 0xFF) shr 3
+        return (r shl 10) or (g shl 5) or b
+    }
+
+    private fun bucketToColor(key: Int): Int {
+        val r = ((key shr 10) and 0x1F) shl 3
+        val g = ((key shr 5) and 0x1F) shl 3
+        val b = (key and 0x1F) shl 3
+        return 0xFF000000.toInt() or (r shl 16) or (g shl 8) or b
+    }
+
+    private fun darken(c: Int, factor: Float): Int {
+        val r = (((c shr 16) and 0xFF) * factor).toInt().coerceIn(0, 255)
+        val g = (((c shr 8) and 0xFF) * factor).toInt().coerceIn(0, 255)
+        val b = ((c and 0xFF) * factor).toInt().coerceIn(0, 255)
+        return 0xFF000000.toInt() or (r shl 16) or (g shl 8) or b
     }
 }
