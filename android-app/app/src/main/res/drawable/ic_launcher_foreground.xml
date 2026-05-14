@@ -1,28 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Halo / glow autour du bolt (très transparent) -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M30,40 L30,68 L36,68 L36,58 L42,58 L42,68 L48,68 L48,40 L42,40 L42,52 L36,52 L36,40 Z" />
+        android:fillColor="#33F97316"
+        android:pathData="M 64,12 L 22,60 L 46,60 L 36,98 L 84,46 L 60,46 Z" />
+
+    <!-- Bolt principal — orange vif Marvin -->
+    <path android:pathData="M 64,16 L 26,60 L 48,60 L 38,94 L 80,48 L 60,48 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="26" android:startY="16"
+                android:endX="80" android:endY="94">
+                <item android:offset="0.0" android:color="#FFB347" />
+                <item android:offset="0.5" android:color="#F97316" />
+                <item android:offset="1.0" android:color="#DC2626" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Highlight intérieur — touche brillante -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M60,40 L60,68 L66,68 L66,58 L72,58 L72,68 L78,68 L78,40 L72,40 L72,52 L66,52 L66,40 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M22,50 L26,50 L26,58 L22,58 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M82,50 L86,50 L86,58 L82,58 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M16,52 L22,52 L22,56 L16,56 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M86,52 L92,52 L92,56 L86,56 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M48,52 L60,52 L60,56 L48,56 Z" />
+        android:fillColor="#80FFFFFF"
+        android:pathData="M 60,22 L 36,56 L 46,56 L 42,72 L 56,52 L 50,52 Z" />
+
+    <!-- Trois petites barres tranchantes en bas — détail combat / vitesse -->
+    <path android:fillColor="#F97316"
+          android:pathData="M 18,98 L 30,92 L 30,96 L 22,100 Z" />
+    <path android:fillColor="#F97316"
+          android:pathData="M 32,100 L 44,94 L 44,98 L 36,102 Z" />
 </vector>
