@@ -3,8 +3,10 @@ package com.marvin.sport.ui.screens.running
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -15,13 +17,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.marvin.sport.data.RunBlock
+import com.marvin.sport.data.RunRepository
 import com.marvin.sport.data.RunSession
 import com.marvin.sport.data.RunningProgramBuilder
 import com.marvin.sport.ui.components.HeroBanner
 import com.marvin.sport.ui.theme.ProgramAccent
 
 @Composable
-fun RunningProgramScreen() {
+fun RunningProgramScreen(onStartRun: () -> Unit) {
     val accent = ProgramAccent.Running
     val program = RunningProgramBuilder.program
 
@@ -49,7 +52,14 @@ fun RunningProgramScreen() {
             }
             week.sessions.forEach { session ->
                 item {
-                    RunSessionCard(session = session, accent = accent)
+                    RunSessionCard(
+                        session = session,
+                        accent = accent,
+                        onStart = {
+                            RunRepository.setNextTarget(session.targetKm * 1000.0)
+                            onStartRun()
+                        },
+                    )
                 }
             }
         }
@@ -58,7 +68,7 @@ fun RunningProgramScreen() {
 }
 
 @Composable
-private fun RunSessionCard(session: RunSession, accent: Color) {
+private fun RunSessionCard(session: RunSession, accent: Color, onStart: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -111,6 +121,19 @@ private fun RunSessionCard(session: RunSession, accent: Color) {
             Spacer(Modifier.height(10.dp))
             session.blocks.forEach { block ->
                 BlockRow(block = block, accent = accent)
+            }
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onStart,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White),
+            ) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text("Démarrer (%.1f km)".format(session.targetKm), fontWeight = FontWeight.Bold)
             }
         }
     }

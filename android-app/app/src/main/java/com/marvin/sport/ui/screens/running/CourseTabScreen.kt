@@ -61,7 +61,7 @@ fun CourseTabScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 when (current) {
                     0 -> RunHomeScreen(onStartRun = onStartRun, onRunClick = onRunClick)
-                    1 -> RunningProgramScreen()
+                    1 -> RunningProgramScreen(onStartRun = onStartRun)
                     2 -> TimerScreen()
                 }
             }

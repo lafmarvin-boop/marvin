@@ -19,6 +19,7 @@ data class Run(
     val distanceM: Double,
     val points: List<RunPoint>,
     val note: String = "",
+    val targetM: Double? = null,
 )
 
 /** État live d'une course en cours. */
@@ -27,4 +28,6 @@ data class LiveRun(
     val points: List<RunPoint> = emptyList(),
     val distanceM: Double = 0.0,
     val lastUpdateMs: Long = startedAt,
+    val targetM: Double? = null,
+    val milestonesReached: Set<Int> = emptySet(),
 )

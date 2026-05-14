@@ -8,12 +8,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.DirectionsRun
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +29,7 @@ import com.marvin.sport.data.RunRepository
 import com.marvin.sport.data.RunStats
 import com.marvin.sport.ui.components.HeroBanner
 import com.marvin.sport.ui.components.RunPathCanvas
+import com.marvin.sport.ui.components.TargetDistanceDialog
 import com.marvin.sport.ui.theme.ProgramAccent
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -38,6 +43,7 @@ fun RunHomeScreen(
     val runs by RunRepository.savedRuns.collectAsState()
     val live by RunRepository.currentRun.collectAsState()
     val accent = ProgramAccent.Running
+    var showDistanceDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -78,27 +84,59 @@ fun RunHomeScreen(
             }
         }
 
-        Button(
-            onClick = onStartRun,
+        Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(16.dp)
-                .fillMaxWidth()
-                .height(60.dp),
-            shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = accent,
-                contentColor = Color.White,
-            ),
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                if (live != null) "Reprendre le suivi" else "Démarrer une course",
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium,
-            )
+            Button(
+                onClick = {
+                    RunRepository.setNextTarget(null)
+                    onStartRun()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(60.dp),
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = accent,
+                    contentColor = Color.White,
+                ),
+            ) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    if (live != null) "Reprendre" else "Course libre",
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            OutlinedButton(
+                onClick = { showDistanceDialog = true },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(60.dp),
+                shape = CircleShape,
+                enabled = live == null,
+            ) {
+                Icon(Icons.Filled.Flag, contentDescription = null)
+                Spacer(Modifier.width(6.dp))
+                Text("Objectif", fontWeight = FontWeight.Bold)
+            }
         }
+    }
+
+    if (showDistanceDialog) {
+        TargetDistanceDialog(
+            accent = accent,
+            onDismiss = { showDistanceDialog = false },
+            onPicked = { targetM ->
+                RunRepository.setNextTarget(targetM)
+                showDistanceDialog = false
+                onStartRun()
+            },
+        )
     }
 }
 

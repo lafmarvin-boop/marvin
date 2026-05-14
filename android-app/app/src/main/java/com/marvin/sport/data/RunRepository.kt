@@ -7,8 +7,11 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -19,13 +22,8 @@ import java.util.UUID
 private val Context.runDataStore by preferencesDataStore(name = "marvin_runs")
 private val SAVED_RUNS_KEY = stringPreferencesKey("saved_runs_json")
 
-/**
- * Dépôt unique de courses :
- *   - état de la course en cours (`currentRun`) alimenté par le service GPS
- *   - liste des courses sauvegardées (`savedRuns`) persistée en DataStore
- *
- * Initialisé une seule fois depuis l'Application class.
- */
+private val MILESTONES = listOf(25, 50, 75, 100)
+
 object RunRepository {
 
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = false }
@@ -39,6 +37,13 @@ object RunRepository {
 
     private val _savedRuns = MutableStateFlow<List<Run>>(emptyList())
     val savedRuns: StateFlow<List<Run>> = _savedRuns.asStateFlow()
+
+    private val _milestoneEvents = MutableSharedFlow<Int>(extraBufferCapacity = 8)
+    /** Émet 25 / 50 / 75 / 100 dès qu'un palier de la course en cours est franchi. */
+    val milestoneEvents: SharedFlow<Int> = _milestoneEvents.asSharedFlow()
+
+    /** Cible passée par la home / programme avant la navigation vers l'écran live. */
+    @Volatile private var nextTargetM: Double? = null
 
     fun init(context: Context) {
         if (initialized) return
@@ -63,15 +68,24 @@ object RunRepository {
         appContext.runDataStore.edit { it[SAVED_RUNS_KEY] = serialized }
     }
 
-    fun startRun() {
-        val now = System.currentTimeMillis()
-        _currentRun.value = LiveRun(startedAt = now, lastUpdateMs = now)
+    fun setNextTarget(targetM: Double?) {
+        nextTargetM = targetM
     }
 
-    /** Ajoute un point GPS, calcule le delta de distance par rapport au dernier point fiable. */
+    fun consumeNextTarget(): Double? {
+        val t = nextTargetM
+        nextTargetM = null
+        return t
+    }
+
+    fun startRun(targetM: Double? = null) {
+        val now = System.currentTimeMillis()
+        _currentRun.value = LiveRun(startedAt = now, lastUpdateMs = now, targetM = targetM)
+    }
+
+    /** Ajoute un point GPS et déclenche les paliers de distance s'il y a un objectif. */
     fun addPoint(lat: Double, lng: Double, altitude: Double, accuracyM: Float) {
         val live = _currentRun.value ?: return
-        // Filtrage qualité GPS : on rejette les points trop imprécis.
         if (accuracyM > 30f) return
 
         val now = System.currentTimeMillis()
@@ -80,19 +94,35 @@ object RunRepository {
         val previous = live.points.lastOrNull()
         val delta = if (previous != null) {
             val d = RunStats.haversineM(previous.lat, previous.lng, lat, lng)
-            // Ignore les sauts > 80 m en moins de 5 s (anomalie GPS).
             val dtMs = now - previous.timestampMs
             if (d > 80 && dtMs < 5_000) 0.0 else d
         } else 0.0
 
+        val newDistance = live.distanceM + delta
+
+        // Détection des paliers : on ne déclenche un palier qu'une seule fois.
+        val newlyReached = mutableListOf<Int>()
+        val updatedMilestones = live.milestonesReached.toMutableSet()
+        if (live.targetM != null && live.targetM > 0) {
+            val pct = (newDistance / live.targetM * 100).toInt()
+            MILESTONES.forEach { milestone ->
+                if (pct >= milestone && milestone !in updatedMilestones) {
+                    updatedMilestones += milestone
+                    newlyReached += milestone
+                }
+            }
+        }
+
         _currentRun.value = live.copy(
             points = live.points + point,
-            distanceM = live.distanceM + delta,
+            distanceM = newDistance,
             lastUpdateMs = now,
+            milestonesReached = updatedMilestones,
         )
+
+        newlyReached.forEach { milestone -> _milestoneEvents.tryEmit(milestone) }
     }
 
-    /** Stoppe la course en cours. Si garder=true, l'enregistre dans la liste. */
     suspend fun stopAndSave(keep: Boolean): Run? {
         val live = _currentRun.value ?: return null
         _currentRun.value = null
@@ -104,6 +134,7 @@ object RunRepository {
             durationMs = live.lastUpdateMs - live.startedAt,
             distanceM = live.distanceM,
             points = live.points,
+            targetM = live.targetM,
         )
         _savedRuns.value = listOf(run) + _savedRuns.value
         persist()
