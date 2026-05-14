@@ -40,9 +40,6 @@ class PixelCanvasView @JvmOverloads constructor(
 
     val selection = Selection()
 
-    /** Optional skeleton overlay drawn on top of the canvas (during editing). */
-    var skeletonOverlay: Skeleton? = null
-        set(value) { field = value; invalidate() }
 
     // Tap-to-place callback: when non-null, the next canvas tap calls this
     // with pixel coordinates instead of starting a stroke.
@@ -406,34 +403,6 @@ class PixelCanvasView @JvmOverloads constructor(
             canvas.drawRect(rx, ry, rx + size, ry + size, borderPnt)
         }
 
-        // Skeleton overlay (joints + bones)
-        skeletonOverlay?.let { skel ->
-            val bonePaint = Paint().apply {
-                color = 0xFFFFFFFF.toInt(); strokeWidth = 0.2f; style = Paint.Style.STROKE
-            }
-            // Draw bones
-            for (jt in JointType.values()) {
-                val joint = skel.get(jt) ?: continue
-                val parent = jt.parent?.let { skel.get(it) } ?: continue
-                canvas.drawLine(parent.x, parent.y, joint.x, joint.y, bonePaint)
-            }
-            // Draw joints (colored dots)
-            for (jt in JointType.values()) {
-                val joint = skel.get(jt) ?: continue
-                val color = when (jt) {
-                    JointType.HEAD, JointType.NECK -> 0xFFFFFF00.toInt()
-                    JointType.SHOULDER_L, JointType.ELBOW_L, JointType.HAND_L -> 0xFF00FF00.toInt()
-                    JointType.SHOULDER_R, JointType.ELBOW_R, JointType.HAND_R -> 0xFF00CCFF.toInt()
-                    JointType.HIP_CENTER -> 0xFFFF00FF.toInt()
-                    JointType.HIP_L, JointType.KNEE_L, JointType.FOOT_L -> 0xFFFF6600.toInt()
-                    JointType.HIP_R, JointType.KNEE_R, JointType.FOOT_R -> 0xFFFF0066.toInt()
-                }
-                val dotPaint = Paint().apply { this.color = color; style = Paint.Style.FILL }
-                val edgePaint = Paint().apply { this.color = 0xFF000000.toInt(); style = Paint.Style.STROKE; strokeWidth = 0.15f }
-                canvas.drawCircle(joint.x + 0.5f, joint.y + 0.5f, 0.7f, dotPaint)
-                canvas.drawCircle(joint.x + 0.5f, joint.y + 0.5f, 0.7f, edgePaint)
-            }
-        }
 
         // Border
         canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), borderPaint)
@@ -701,15 +670,6 @@ class PixelCanvasView @JvmOverloads constructor(
                 paint(cx + dy, cy - dx)
                 paint(cx - dx, cy - dy)
                 paint(cx - dy, cy + dx)
-            }
-            SymmetryAxis.SKELETON_H -> {
-                // Horizontal mirror around skeleton vertical axis (mean of joint X positions)
-                val axis = p.skeleton?.let { sk ->
-                    val xs = sk.joints.values.map { it.x }
-                    if (xs.isEmpty()) null else xs.average().toFloat()
-                } ?: (p.width / 2f)
-                val mirrorX = (2f * axis - x).toInt()
-                paint(mirrorX, y)
             }
         }
     }

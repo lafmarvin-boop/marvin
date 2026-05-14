@@ -4,7 +4,7 @@ enum class Tool {
     PENCIL, ERASER, FILL, PICKER, LINE, RECT, RECT_FILL, MOVE, SELECT, WAND
 }
 
-enum class SymmetryAxis { NONE, HORIZONTAL, VERTICAL, BOTH, ROTATE_4, SKELETON_H }
+enum class SymmetryAxis { NONE, HORIZONTAL, VERTICAL, BOTH, ROTATE_4 }
 
 enum class BgFitMode(val label: String) {
     FIT("Adapter"),       // proportional, fits inside (default - letterboxed)
@@ -17,18 +17,6 @@ enum class PlayMode(val label: String) {
     PING_PONG("Ping-pong"),// 1, 2, 3, 2, 1, 2, 3...
     REVERSE("Inverse"),    // 3, 2, 1, 3, 2, 1...
     ONCE("Une fois")       // 1, 2, 3 stop
-}
-
-/**
- * How the character moves around. Applied to all animations.
- * - WALKING: legs step (default for humanoid characters)
- * - FLOATING: legs stay relaxed, body bobs up/down (ghosts, spirits, levitating mages)
- * - HOVER: minimal motion, just a gentle bob (drones, hovering vehicles, idle creatures)
- */
-enum class LocomotionMode(val displayName: String) {
-    WALKING("Marche (jambes alternées)"),
-    FLOATING("Lévitation (flotte + bras anim)"),
-    HOVER("Hover (immobile + bob doux)")
 }
 
 /** A single drawing layer within a frame. */
@@ -175,7 +163,7 @@ class Project(
     var width: Int = 32,
     var height: Int = 32,
     var fps: Int = 8,
-    val frames: MutableList<Frame> = mutableListOf(Frame(32, 32)),
+    val frames: MutableList<Frame> = mutableListOf(Frame(64, 64)),
     var currentIndex: Int = 0,
     val palette: MutableList<Int> = DEFAULT_PALETTE.toMutableList(),
     val recentColors: MutableList<Int> = mutableListOf(),
@@ -196,8 +184,6 @@ class Project(
     var pressureSensitive: Boolean = true,
     var onionColorPrev: Int = 0xFF00AAFF.toInt(),
     var onionColorNext: Int = 0xFFFF4477.toInt(),
-    var skeleton: Skeleton? = null,
-    var locomotion: LocomotionMode = LocomotionMode.WALKING,
     /** Shared static background drawn under every frame's composite. Optional. */
     var globalBackground: Layer? = null
 ) {

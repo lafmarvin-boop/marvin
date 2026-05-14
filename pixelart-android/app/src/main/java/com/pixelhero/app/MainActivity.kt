@@ -492,8 +492,7 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.symmetry_h),
             getString(R.string.symmetry_v),
             getString(R.string.symmetry_both),
-            "Rotation 4× (kaléidoscope)",
-            "🦴 Miroir autour du squelette"
+            "Rotation 4× (kaléidoscope)"
         )
         val current = when (project.symmetry) {
             SymmetryAxis.NONE -> 0
@@ -501,7 +500,6 @@ class MainActivity : AppCompatActivity() {
             SymmetryAxis.VERTICAL -> 2
             SymmetryAxis.BOTH -> 3
             SymmetryAxis.ROTATE_4 -> 4
-            SymmetryAxis.SKELETON_H -> 5
         }
         AlertDialog.Builder(this)
             .setTitle(R.string.symmetry)
@@ -511,7 +509,6 @@ class MainActivity : AppCompatActivity() {
                     2 -> SymmetryAxis.VERTICAL
                     3 -> SymmetryAxis.BOTH
                     4 -> SymmetryAxis.ROTATE_4
-                    5 -> SymmetryAxis.SKELETON_H
                     else -> SymmetryAxis.NONE
                 }
                 binding.btnSymmetry.isSelected = project.symmetry != SymmetryAxis.NONE
@@ -523,70 +520,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSmartGenerator() {
         val categories = arrayOf(
-            "🧍 Personnage IA (1 vue / 6 vues / aléatoire)",
-            "🎬 Animation IA (8 actions, frame par frame)",
-            "🏞️ Décor & scène",
+            "🏞️ Décor & scène (procédural)",
             "✨ Effets (particules, filtres)",
-            "🦴 Squelette & tween (fine-tuning avancé)"
+            "🔀 Tween entre 2 frames (pixel blend)"
         )
         AlertDialog.Builder(this)
             .setTitle("Générer…")
             .setItems(categories) { _, which ->
                 when (which) {
-                    0 -> showCharacterMenu()
-                    1 -> showAnimationGenerator()
-                    2 -> showDecorAndElementMenu()
-                    3 -> showEffectsMenu()
-                    4 -> showSkeletonAndTweenMenu()
+                    0 -> showDecorGenerator()
+                    1 -> showEffectsMenu()
+                    2 -> showTweenDialog()
                 }
             }
             .show()
-    }
-
-    private fun showSkeletonAndTweenMenu() {
-        val items = arrayOf(
-            "Configurer le squelette",
-            "Animation depuis squelette (utiliser AI pour le sprite)",
-            "Interpolation entre 2 poses",
-            "🚶 Mode de déplacement (marche/flottement/hover)",
-            "🔀 Tween entre 2 frames (pixel blend)"
-        )
-        AlertDialog.Builder(this).setTitle("🦴 Squelette & tween")
-            .setItems(items) { _, w ->
-                when (w) {
-                    0 -> showSkeletonEditor()
-                    1 -> showSkeletalAnimationDialog()
-                    2 -> showPoseTweenDialog()
-                    3 -> showLocomotionPicker()
-                    4 -> showTweenDialog()
-                }
-            }.show()
-    }
-
-    private fun showCharacterMenu() {
-        val items = arrayOf(
-            "🎬 IA: 6 vues + pixelisation + fond enlevé (1 clic)",
-            "☁️ IA cloud (1 vue seule)",
-            "Template de pose (silhouette de guide)",
-            "Personnage aléatoire (rapide, hors ligne)"
-        )
-        AlertDialog.Builder(this).setTitle("🧍 Personnage")
-            .setItems(items) { _, w ->
-                when (w) {
-                    0 -> showAIFullCharacterDialog()
-                    1 -> showAICloudGeneratorDialog()
-                    2 -> showPoseTemplates()
-                    3 -> showProceduralCharacterDialog()
-                }
-            }.show()
-    }
-
-    private fun showDecorAndElementMenu() {
-        val items = arrayOf("Décor / scène (procédural ou IA)", "Élément animé (flambeau, etc.)")
-        AlertDialog.Builder(this).setTitle("🏞️ Décor & éléments")
-            .setItems(items) { _, w ->
-                when (w) { 0 -> showDecorGenerator(); 1 -> showAnimatedElementGenerator() }
-            }.show()
     }
 
     private fun showEffectsMenu() {
@@ -597,347 +544,6 @@ class MainActivity : AppCompatActivity() {
             }.show()
     }
 
-    private fun showAICloudGeneratorDialog() {
-        val styles = AIService.Style.values()
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
-        }
-        container.addView(TextView(this).apply {
-            text = "Génération via IA en ligne. Le résultat sera téléchargé en image puis pixelisable. " +
-                "Pollinations.ai est gratuit et anonyme. DALL-E 3 demande une clé OpenAI (payant)."
-            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
-        })
-        container.addView(TextView(this).apply {
-            text = "\nStyle"
-            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val styleSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                styles.map { it.displayName })
-            setSelection(1) // KGC default
-        }
-        container.addView(styleSpinner)
-        container.addView(TextView(this).apply {
-            text = "\nDescription (anglais conseillé)"
-            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val promptEt = EditText(this).apply {
-            hint = "knight with silver armor, blue cape, holding a sword"
-            setText("knight with silver armor, blue cape, golden crown, holding a sword")
-            setTextColor(0xFFE8E8F0.toInt())
-            minLines = 2
-        }
-        container.addView(promptEt)
-        container.addView(TextView(this).apply {
-            text = "\nFournisseur"
-            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val savedKey = AIService.loadApiKey(this) ?: ""
-        val providerLabels = arrayOf(
-            "Pollinations.ai (gratuit)",
-            "OpenAI (clé requise, auto: gpt-image-1 → dall-e-3)"
-        )
-        val providerSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item, providerLabels)
-        }
-        container.addView(providerSpinner)
-        val keyLabel = TextView(this).apply {
-            text = "\nClé OpenAI (stockée localement)"
-            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-            visibility = View.GONE
-        }
-        val keyEt = EditText(this).apply {
-            hint = "sk-..."
-            setText(savedKey)
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            setTextColor(0xFFE8E8F0.toInt())
-            visibility = View.GONE
-        }
-        container.addView(keyLabel); container.addView(keyEt)
-        providerSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
-                val show = if (pos == 1) View.VISIBLE else View.GONE
-                keyLabel.visibility = show; keyEt.visibility = show
-            }
-            override fun onNothingSelected(p: AdapterView<*>?) {}
-        }
-        AlertDialog.Builder(this)
-            .setTitle("☁️ Génération IA cloud")
-            .setView(container)
-            .setPositiveButton("Générer") { _, _ ->
-                val style = styles[styleSpinner.selectedItemPosition]
-                val rawPrompt = promptEt.text.toString().trim()
-                if (rawPrompt.isBlank()) { toast("Entrez une description"); return@setPositiveButton }
-                val finalPrompt = AIService.applyStyle(rawPrompt, style)
-                val useOpenAI = providerSpinner.selectedItemPosition == 1
-                val apiKey = keyEt.text.toString().trim()
-                if (useOpenAI) {
-                    if (apiKey.isBlank()) { toast("Clé OpenAI requise"); return@setPositiveButton }
-                    AIService.saveApiKey(this, apiKey)
-                }
-                runAICloudGeneration(finalPrompt, useOpenAI, apiKey)
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun runAICloudGeneration(prompt: String, useOpenAI: Boolean, apiKey: String) {
-        val progress = AlertDialog.Builder(this)
-            .setTitle("Génération en cours…")
-            .setMessage("Téléchargement de l'image IA puis suppression du fond. 10-60 s.")
-            .setCancelable(false)
-            .show()
-        val w = project.width; val h = project.height
-        lifecycleScope.launch {
-            val bmp = withContext(Dispatchers.IO) {
-                if (useOpenAI) AIService.generateOpenAI(prompt, apiKey)
-                else AIService.generatePollinations(prompt)
-            }
-            if (bmp == null) {
-                progress.dismiss()
-                AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Échec de génération")
-                    .setMessage("Erreur : ${AIService.lastError ?: "inconnue"}\n\n" +
-                        "Causes possibles :\n• Pas de connexion internet\n" +
-                        "• Serveur surchargé (réessayez)\n" +
-                        "• Clé OpenAI invalide / crédit épuisé / dépassement de quota\n" +
-                        "• Prompt refusé par le filtre de contenu")
-                    .setPositiveButton("Réessayer") { _, _ -> showAICloudGeneratorDialog() }
-                    .setNegativeButton("OK", null)
-                    .show()
-                return@launch
-            }
-            // Auto-remove background on the source bitmap before showing it.
-            val cleanedSource = withContext(Dispatchers.Default) {
-                BackgroundRemoval.removeBackground(bmp, tolerance = 55, featherEdges = true)
-            }
-            progress.dismiss()
-            binding.canvas.bgBitmap = cleanedSource
-            binding.canvas.invalidate()
-            toast("Image IA téléchargée, fond enlevé — choisissez maintenant")
-            askBgFitModeThenAction(cleanedSource)
-        }
-    }
-
-    private fun showAIFullCharacterDialog() {
-        val charStyles = AIService.Style.values().filter { !it.isDecor && it != AIService.Style.FREE }
-        val pixStyles = SmartPixelize.Style.values()
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
-        }
-        container.addView(TextView(this).apply {
-            text = "1 clic = 6 frames (face/dos/profil G/D/3-quart G/D) générées par IA, pixelisées et fond enlevé. " +
-                "Avec OpenAI : VOTRE sprite courant est envoyé comme référence pour que le perso reste identique. " +
-                "Avec Pollinations : seul le texte est utilisé."
-            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
-        })
-        container.addView(TextView(this).apply {
-            text = "\nStyle de personnage"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val styleSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                charStyles.map { it.displayName })
-        }
-        container.addView(styleSpinner)
-        container.addView(TextView(this).apply {
-            text = "\nDescription (anglais conseillé)"
-            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val promptEt = EditText(this).apply {
-            hint = "knight with silver armor, blue cape, golden crown, holding a sword"
-            setText("knight with silver armor, blue cape, golden crown, holding a sword")
-            setTextColor(0xFFE8E8F0.toInt()); minLines = 2
-        }
-        container.addView(promptEt)
-        container.addView(TextView(this).apply {
-            text = "\nStyle de pixelisation"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val pixSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                pixStyles.map { it.displayName })
-            setSelection(pixStyles.indexOf(SmartPixelize.Style.CARTOON).coerceAtLeast(0))
-        }
-        container.addView(pixSpinner)
-        container.addView(TextView(this).apply {
-            text = "\nFournisseur"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val savedKey = AIService.loadApiKey(this) ?: ""
-        val providerSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                arrayOf("Pollinations.ai (gratuit, lent)", "OpenAI (clé requise, auto: gpt-image-1 → dall-e-3)"))
-        }
-        container.addView(providerSpinner)
-        val keyLabel = TextView(this).apply {
-            text = "\nClé OpenAI"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-            visibility = View.GONE
-        }
-        val keyEt = EditText(this).apply {
-            hint = "sk-..."
-            setText(savedKey)
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            setTextColor(0xFFE8E8F0.toInt()); visibility = View.GONE
-        }
-        container.addView(keyLabel); container.addView(keyEt)
-        val qualityLabel = TextView(this).apply {
-            text = "\nQualité OpenAI (haute = plus fidèle au sprite, plus chère)"
-            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f; visibility = View.GONE
-        }
-        val qualitySpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                arrayOf("Basse (~$0.01/image)", "Moyenne (~$0.04/image, défaut)", "Haute (~$0.17/image, fidèle++)"))
-            setSelection(1)
-            visibility = View.GONE
-        }
-        container.addView(qualityLabel); container.addView(qualitySpinner)
-        providerSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
-                val show = if (pos == 1) View.VISIBLE else View.GONE
-                keyLabel.visibility = show; keyEt.visibility = show
-                qualityLabel.visibility = show; qualitySpinner.visibility = show
-            }
-            override fun onNothingSelected(p: AdapterView<*>?) {}
-        }
-        AlertDialog.Builder(this)
-            .setTitle("🎬 Personnage IA — 6 vues (1 clic)")
-            .setView(container)
-            .setPositiveButton("Tout générer") { _, _ ->
-                val style = charStyles[styleSpinner.selectedItemPosition]
-                val pix = pixStyles[pixSpinner.selectedItemPosition]
-                val raw = promptEt.text.toString().trim()
-                if (raw.isBlank()) { toast("Description vide"); return@setPositiveButton }
-                val useOpenAI = providerSpinner.selectedItemPosition == 1
-                val key = keyEt.text.toString().trim()
-                if (useOpenAI) {
-                    if (key.isBlank()) { toast("Clé OpenAI requise"); return@setPositiveButton }
-                    AIService.saveApiKey(this, key)
-                }
-                val quality = arrayOf("low", "medium", "high")[qualitySpinner.selectedItemPosition]
-                runFullCharacterGeneration(raw, style, pix, useOpenAI, key, quality)
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun runFullCharacterGeneration(
-        prompt: String, style: AIService.Style, pixStyle: SmartPixelize.Style,
-        useOpenAI: Boolean, apiKey: String, quality: String = "medium"
-    ) {
-        val views = ViewTransform.View.values()
-        val progress = AlertDialog.Builder(this)
-            .setTitle("Génération 6 vues")
-            .setMessage("Préparation…")
-            .setCancelable(false)
-            .show()
-        val w = project.width; val h = project.height
-        // Shared seed across all 6 views = Pollinations renders the SAME character
-        // (only the camera angle changes via the prompt suffix).
-        val seed = (System.currentTimeMillis() and 0xFFFF).toInt()
-        // OpenAI edits endpoint takes the current sprite as reference so each
-        // view shows the SAME pixelized character. Upscaled to 512×512 with
-        // nearest-neighbor so the AI sees crisp pixels, not blur.
-        val refBitmap: Bitmap? = if (useOpenAI) makeReferencePng(project.currentFrame) else null
-        lifecycleScope.launch {
-            val results = ArrayList<Pair<ViewTransform.View, IntArray?>>()
-            for ((i, view) in views.withIndex()) {
-                progress.setMessage("${i + 1}/${views.size} — ${view.displayName} en cours…")
-                val viewPart = AIService.viewDescriptor(view)
-                val viewPrompt = if (useOpenAI && refBitmap != null) {
-                    // Edits mode: strict character preservation, only the camera angle may change.
-                    "The reference image shows ONE character on a white background. " +
-                        "Re-draw the SAME EXACT character from a different camera angle — pixel by pixel identical " +
-                        "wherever the new angle still shows the element.\n\n" +
-                        "ABSOLUTE RULES (treat as constraints, not suggestions):\n" +
-                        "• Identity must be preserved: every visual element of the reference must remain visible " +
-                        "in the new angle whenever physically possible.\n" +
-                        "• Forbidden additions: no extra weapon, no extra accessory, no extra clothing layer, " +
-                        "no new color, no shadow, no background element, no text, no second character, no border.\n" +
-                        "• Forbidden removals: do not drop any clothing piece, armor part, cape, weapon, shield, " +
-                        "helmet, hair element, accessory present in the reference (a back view naturally hides " +
-                        "the face — that is the only acceptable omission).\n" +
-                        "• Forbidden modifications: do not change hair style/color, skin tone, any clothing color, " +
-                        "armor design, weapon shape, accessory shape, proportions, art style, line thickness.\n" +
-                        "• ONLY permitted change: viewing angle → $viewPart.\n\n" +
-                        "Output: full body, centered on plain background, same scale as reference, same art style."
-                } else {
-                    AIService.applyStyleWithView(prompt, style, view)
-                }
-                val bmp = withContext(Dispatchers.IO) {
-                    if (useOpenAI && refBitmap != null)
-                        AIService.editOpenAI(refBitmap, viewPrompt, apiKey, quality = quality)
-                    else if (useOpenAI)
-                        AIService.generateOpenAI(viewPrompt, apiKey)
-                    else AIService.generatePollinations(viewPrompt, 512, 512, seed = seed)
-                }
-                if (bmp == null) {
-                    results.add(view to null)
-                    continue
-                }
-                val finalPixels = withContext(Dispatchers.Default) {
-                    val (pixels, _) = SmartPixelize.pixelize(bmp, w, h, BgFitMode.FIT, pixStyle)
-                    val canvasBmp = Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888)
-                    val cleaned = BackgroundRemoval.removeBackground(canvasBmp, tolerance = 55, featherEdges = false)
-                    val out = IntArray(w * h)
-                    cleaned.getPixels(out, 0, w, 0, 0, w, h)
-                    canvasBmp.recycle(); cleaned.recycle()
-                    out
-                }
-                results.add(view to finalPixels)
-            }
-            progress.dismiss()
-            val successCount = results.count { it.second != null }
-            if (successCount == 0) {
-                AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Échec total")
-                    .setMessage("Aucune vue n'a pu être générée.\n\n" +
-                        "Dernière erreur : ${AIService.lastError ?: "inconnue"}\n\n" +
-                        "Causes courantes DALL-E :\n" +
-                        "• Clé invalide ou expirée\n" +
-                        "• Compte sans crédit (vérifiez sur platform.openai.com/usage)\n" +
-                        "• Quota d'images dépassé\n" +
-                        "• Prompt refusé (filtre de contenu)")
-                    .setPositiveButton("Réessayer") { _, _ -> showAIFullCharacterDialog() }
-                    .setNegativeButton("OK", null)
-                    .show()
-                return@launch
-            }
-            pushUndo()
-            // First successful view → replace current frame; the rest → append after
-            var firstApplied = false
-            var insertAt = project.currentIndex + 1
-            for ((view, px) in results) {
-                if (px == null) continue
-                val tag = view.displayName.lowercase().replace(' ', '_').replace('/', '_')
-                if (!firstApplied) {
-                    px.copyInto(project.currentFrame.pixels)
-                    project.currentFrame.tag = tag
-                    firstApplied = true
-                } else {
-                    val nf = Frame(w, h, px)
-                    nf.tag = tag
-                    project.frames.add(insertAt++, nf)
-                }
-            }
-            binding.canvas.syncFrameBitmap()
-            framesAdapter.notifyDataSetChanged()
-            binding.timeline.invalidate()
-            val missing = results.filter { it.second == null }.map { it.first.displayName }
-            val msg = if (missing.isEmpty())
-                "Les 6 vues ont été générées, pixelisées et fond enlevé. Naviguez via la timeline."
-            else
-                "$successCount/${views.size} vues OK. Vues manquantes (à relancer) : ${missing.joinToString()}"
-            AlertDialog.Builder(this@MainActivity)
-                .setTitle("Génération terminée")
-                .setMessage(msg)
-                .setPositiveButton("OK", null)
-                .show()
-        }
-    }
 
     private fun showParticlesDialog() {
         val types = Particles.Type.values()
@@ -973,207 +579,6 @@ class MainActivity : AppCompatActivity() {
         framesAdapter.notifyDataSetChanged()
         binding.timeline.invalidate()
         toast("Particules « ${type.displayName} » appliquées")
-    }
-
-    private fun showPoseTweenDialog() {
-        val sk = project.skeleton
-        if (sk == null || !sk.isComplete()) {
-            toast("Configurez d'abord un squelette")
-            return
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Interpolation de pose")
-            .setMessage("Étape 1 : votre frame actuelle est la pose A.\nÉtape 2 : modifiez le squelette pour définir la pose B.\nÉtape 3 : touchez 'Générer' pour créer les frames intermédiaires.\n\nCela vous donne une vraie animation tween image par image.")
-            .setPositiveButton("Configurer pose B") { _, _ ->
-                // Save current skeleton as pose A in a temp field
-                _poseA = sk.copy()
-                showSkeletonEditor()
-                // After editing, user must use the next dialog to generate
-                AlertDialog.Builder(this)
-                    .setTitle("Pose B définie ?")
-                    .setMessage("Réglez le squelette, puis revenez ici pour générer les frames intermédiaires.")
-                    .setPositiveButton("Générer maintenant") { _, _ -> performPoseTween() }
-                    .setNegativeButton(R.string.cancel, null)
-                    .show()
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private var _poseA: Skeleton? = null
-
-    private fun performPoseTween() {
-        val a = _poseA ?: return
-        val b = project.skeleton ?: return
-        pushUndo()
-        val frames = PoseTween.generate(project.currentFrame, a, b, 4)
-        var insertAt = project.currentIndex + 1
-        frames.forEach { project.frames.add(insertAt++, it) }
-        framesAdapter.notifyDataSetChanged()
-        binding.timeline.invalidate()
-        _poseA = null
-        toast("${frames.size} frames intermédiaires générées")
-    }
-
-    private fun showSkeletonEditor() {
-        if (project.skeleton == null) {
-            // Auto-place from bbox
-            val bbox = computeProjectBoundingBox()
-            if (bbox == null) {
-                // Fallback to canvas
-                project.skeleton = Skeleton.humanoidTemplate(0, 0, project.width - 1, project.height - 1)
-            } else {
-                project.skeleton = Skeleton.humanoidTemplate(bbox[0], bbox[1], bbox[2], bbox[3])
-            }
-            toast("Squelette créé. Touchez un joint à déplacer.")
-        }
-        showJointPicker()
-    }
-
-    private fun computeProjectBoundingBox(): IntArray? {
-        val f = project.currentFrame
-        val pixels = if (f.layers.size > 1) f.composited() else f.pixels
-        var minX = f.width; var minY = f.height; var maxX = -1; var maxY = -1
-        for (y in 0 until f.height) for (x in 0 until f.width) {
-            if ((pixels[y * f.width + x] ushr 24) and 0xFF >= 128) {
-                if (x < minX) minX = x; if (y < minY) minY = y
-                if (x > maxX) maxX = x; if (y > maxY) maxY = y
-            }
-        }
-        if (maxX < 0) return null
-        return intArrayOf(minX, minY, maxX, maxY)
-    }
-
-    private var ikAutoEnabled: Boolean = true
-
-    private val IK_END_EFFECTORS = setOf(
-        JointType.HAND_L, JointType.HAND_R, JointType.FOOT_L, JointType.FOOT_R
-    )
-
-    private fun showJointPicker() {
-        val sk = project.skeleton ?: return
-        binding.canvas.skeletonOverlay = sk
-        val joints = JointType.values()
-        val labels = joints.map { jt ->
-            val j = sk.get(jt)
-            val pos = if (j != null) "(${j.x.toInt()}, ${j.y.toInt()})" else "non placé"
-            val ikMark = if (ikAutoEnabled && jt in IK_END_EFFECTORS) " 🦴IK" else ""
-            "${jt.displayName}  $pos$ikMark"
-        }.toTypedArray()
-        val ikLabel = if (ikAutoEnabled) "IK auto: ON" else "IK auto: OFF"
-        AlertDialog.Builder(this)
-            .setTitle("Squelette du personnage")
-            .setItems(labels) { _, which ->
-                val jt = joints[which]
-                toast("Touchez le canvas pour placer « ${jt.displayName} »")
-                binding.canvas.nextTapHandler = { x, y ->
-                    sk.set(jt, x.toFloat(), y.toFloat())
-                    // Auto-IK: if user moved an end-effector, solve the limb
-                    if (ikAutoEnabled) IK.applyIfEndEffector(sk, jt)
-                    binding.canvas.invalidate()
-                    val tail = if (ikAutoEnabled && jt in IK_END_EFFECTORS) " • IK appliqué" else ""
-                    toast("${jt.displayName} placé en ($x, $y)$tail")
-                    showJointPicker()
-                }
-            }
-            .setPositiveButton("Terminer") { _, _ ->
-                binding.canvas.skeletonOverlay = null
-            }
-            .setNeutralButton(ikLabel) { _, _ ->
-                ikAutoEnabled = !ikAutoEnabled
-                showJointPicker()
-            }
-            .setNegativeButton("Outils…") { _, _ -> showSkeletonTools() }
-            .show()
-    }
-
-    private fun showSkeletonTools() {
-        val sk = project.skeleton ?: return
-        val items = arrayOf(
-            "🔧 Appliquer IK à tous les membres",
-            "↺ Réinitialiser auto (selon bbox)",
-            "🔄 Miroir gauche → droite",
-            "🔄 Miroir droite → gauche",
-            "Effacer le squelette"
-        )
-        AlertDialog.Builder(this)
-            .setTitle("Outils du squelette")
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> {
-                        IK.applyAllLimbs(sk)
-                        binding.canvas.invalidate()
-                        toast("IK appliqué aux 4 membres")
-                        showJointPicker()
-                    }
-                    1 -> {
-                        val bbox = computeProjectBoundingBox()
-                        project.skeleton = if (bbox != null)
-                            Skeleton.humanoidTemplate(bbox[0], bbox[1], bbox[2], bbox[3])
-                        else Skeleton.humanoidTemplate(0, 0, project.width - 1, project.height - 1)
-                        showJointPicker()
-                    }
-                    2 -> { mirrorSkeleton(sk, leftToRight = true); showJointPicker() }
-                    3 -> { mirrorSkeleton(sk, leftToRight = false); showJointPicker() }
-                    4 -> {
-                        project.skeleton = null
-                        binding.canvas.skeletonOverlay = null
-                        toast("Squelette effacé")
-                    }
-                }
-            }
-            .show()
-    }
-
-    private fun mirrorSkeleton(sk: Skeleton, leftToRight: Boolean) {
-        val axis = sk.joints.values.map { it.x }.average().toFloat()
-        val pairs = listOf(
-            JointType.SHOULDER_L to JointType.SHOULDER_R,
-            JointType.ELBOW_L to JointType.ELBOW_R,
-            JointType.HAND_L to JointType.HAND_R,
-            JointType.HIP_L to JointType.HIP_R,
-            JointType.KNEE_L to JointType.KNEE_R,
-            JointType.FOOT_L to JointType.FOOT_R
-        )
-        pairs.forEach { (l, r) ->
-            val src = if (leftToRight) sk.get(l) else sk.get(r)
-            val dst = if (leftToRight) r else l
-            src?.let { sk.set(dst, 2 * axis - it.x, it.y) }
-        }
-        binding.canvas.invalidate()
-        toast("Miroir appliqué")
-    }
-
-    private fun showSkeletalAnimationDialog() {
-        val sk = project.skeleton
-        if (sk == null || !sk.isComplete()) {
-            AlertDialog.Builder(this)
-                .setTitle("Squelette requis")
-                .setMessage("Pour les animations pro, placez d'abord un squelette sur votre personnage.")
-                .setPositiveButton("Configurer maintenant") { _, _ -> showSkeletonEditor() }
-                .setNegativeButton(R.string.cancel, null)
-                .show()
-            return
-        }
-        val presets = SkeletalAnimation.Preset.values()
-        val labels = presets.map { it.displayName }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Animation squelette")
-            .setItems(labels) { _, which ->
-                generateSkeletalAnimation(presets[which])
-            }
-            .show()
-    }
-
-    private fun generateSkeletalAnimation(preset: SkeletalAnimation.Preset) {
-        val sk = project.skeleton ?: return
-        pushUndo()
-        val skin = PixelSkin(project.width, project.height, sk)
-        val newFrames = SkeletalAnimation.generate(project.currentFrame, skin, preset, project.locomotion)
-        var insertAt = project.currentIndex + 1
-        newFrames.forEach { project.frames.add(insertAt++, it) }
-        framesAdapter.notifyDataSetChanged()
-        toast("${newFrames.size} frames (${preset.displayName} • ${project.locomotion.displayName})")
     }
 
     private fun showGlobalBackgroundDialog() {
@@ -1336,19 +741,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showLocomotionPicker() {
-        val modes = LocomotionMode.values()
-        val labels = modes.map { it.displayName }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Mode de déplacement")
-            .setSingleChoiceItems(labels, project.locomotion.ordinal) { dlg, which ->
-                project.locomotion = modes[which]
-                toast("Mode: ${modes[which].displayName}")
-                dlg.dismiss()
-            }
-            .show()
-    }
-
     private fun showTweenDialog() {
         if (project.frames.size < 2) {
             toast("Il faut au moins 2 frames"); return
@@ -1397,120 +789,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showProceduralCharacterDialog() {
-        val poses = PoseTemplates.Pose.values()
-        val labels = poses.map { it.displayName }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Base du personnage")
-            .setItems(labels) { _, which ->
-                pushUndo()
-                val pixels = ProceduralCharacter.generate(poses[which], project.width, project.height)
-                pixels.copyInto(project.currentFrame.pixels)
-                binding.canvas.syncFrameBitmap()
-                framesAdapter.notifyItemChanged(project.currentIndex)
-                AlertDialog.Builder(this)
-                    .setTitle("Personnage généré")
-                    .setMessage("Voulez-vous une autre variation ?")
-                    .setPositiveButton("Régénérer") { _, _ -> showProceduralCharacterDialog() }
-                    .setNegativeButton("Garder", null)
-                    .show()
-            }
-            .show()
-    }
-
-    private fun showAnimatedElementGenerator() {
-        val types = AnimatedElement.Type.values()
-        val labels = types.map { it.displayName }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Élément animé à ajouter")
-            .setItems(labels) { _, which ->
-                showElementPositionPicker(types[which])
-            }
-            .show()
-    }
-
-    private fun showElementPositionPicker(type: AnimatedElement.Type) {
-        val items = arrayOf(
-            "Centre",
-            "Centre haut",
-            "Centre bas",
-            "Coin haut-gauche",
-            "Coin haut-droit",
-            "Coin bas-gauche",
-            "Coin bas-droit",
-            "Position personnalisée (tap suivant)"
-        )
-        AlertDialog.Builder(this)
-            .setTitle("Position pour « ${type.displayName} »")
-            .setItems(items) { _, which ->
-                val (cx, cy) = when (which) {
-                    0 -> project.width / 2 to project.height / 2
-                    1 -> project.width / 2 to project.height / 4
-                    2 -> project.width / 2 to project.height * 3 / 4
-                    3 -> project.width / 4 to project.height / 4
-                    4 -> project.width * 3 / 4 to project.height / 4
-                    5 -> project.width / 4 to project.height * 3 / 4
-                    6 -> project.width * 3 / 4 to project.height * 3 / 4
-                    else -> {
-                        toast("Touchez le canvas pour placer l'élément")
-                        waitForCanvasTapToPlaceElement(type)
-                        return@setItems
-                    }
-                }
-                placeAnimatedElement(type, cx, cy)
-            }
-            .show()
-    }
-
-    private fun waitForCanvasTapToPlaceElement(type: AnimatedElement.Type) {
-        toast("Touchez le canvas pour placer « ${type.displayName} »")
-        binding.canvas.nextTapHandler = { x, y ->
-            placeAnimatedElement(type, x, y)
-        }
-    }
-
-    private fun placeAnimatedElement(type: AnimatedElement.Type, cx: Int, cy: Int) {
-        pushUndo()
-        // Ensure we have enough frames for the animation
-        val targetFrames = type.recommendedFrames
-        val startIdx = project.currentIndex
-        // If only 1 frame, duplicate the current frame to make targetFrames copies
-        if (project.frames.size < targetFrames) {
-            val needed = targetFrames - project.frames.size + startIdx
-            val baseFrame = project.currentFrame.copy()
-            while (project.frames.size <= needed) {
-                project.frames.add(baseFrame.copy())
-            }
-        }
-        // Apply element to next [targetFrames] frames (cycling)
-        for (k in 0 until targetFrames) {
-            val frameIdx = (startIdx + k).coerceAtMost(project.frames.size - 1)
-            val targetFrame = project.frames[frameIdx]
-            AnimatedElement.render(targetFrame, cx, cy, type, k, targetFrames)
-        }
-        binding.canvas.syncFrameBitmap()
-        framesAdapter.notifyDataSetChanged()
-        toast("« ${type.displayName} » placé en ($cx, $cy) sur $targetFrames frames")
-    }
-
-    private fun showPoseTemplates() {
-        val poses = PoseTemplates.Pose.values()
-        val labels = poses.map { it.displayName }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Template de pose (silhouette guide)")
-            .setItems(labels) { _, which ->
-                pushUndo()
-                val pixels = PoseTemplates.render(poses[which], project.width, project.height)
-                // Merge with existing frame (don't erase content, just add outline)
-                val f = project.currentFrame
-                for (i in pixels.indices) if (pixels[i] != 0) f.pixels[i] = pixels[i]
-                binding.canvas.syncFrameBitmap()
-                framesAdapter.notifyItemChanged(project.currentIndex)
-                toast("Template ${poses[which].displayName} ajouté")
-            }
-            .show()
-    }
-
     private fun showDecorGenerator() {
         val items = arrayOf(
             "Décor statique → frame courante (procédural)",
@@ -1529,48 +807,6 @@ class MainActivity : AppCompatActivity() {
                     3 -> pickAndGenerateAnimatedDecor(frameCount = 8)
                     4 -> showAICloudDecorDialog()
                 }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun showAICloudDecorDialog() {
-        val decorStyles = AIService.Style.values().filter { it.isDecor }
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
-        }
-        container.addView(TextView(this).apply {
-            text = "Génère un décor via IA en ligne et le place comme image de fond. " +
-                "Vous pourrez ensuite le pixeliser comme une image importée."
-            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
-        })
-        container.addView(TextView(this).apply {
-            text = "\nStyle"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val styleSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                decorStyles.map { it.displayName })
-        }
-        container.addView(styleSpinner)
-        container.addView(TextView(this).apply {
-            text = "\nDescription du décor (anglais conseillé)"
-            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val promptEt = EditText(this).apply {
-            hint = "ancient ruined temple with vines and broken pillars"
-            setText("ancient ruined temple with vines and broken pillars at sunset")
-            setTextColor(0xFFE8E8F0.toInt()); minLines = 2
-        }
-        container.addView(promptEt)
-        AlertDialog.Builder(this)
-            .setTitle("☁️ Décor IA cloud")
-            .setView(container)
-            .setPositiveButton("Générer") { _, _ ->
-                val style = decorStyles[styleSpinner.selectedItemPosition]
-                val raw = promptEt.text.toString().trim()
-                if (raw.isBlank()) { toast("Entrez une description"); return@setPositiveButton }
-                runAICloudGeneration(AIService.applyStyle(raw, style), useOpenAI = false, apiKey = "")
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
@@ -1655,282 +891,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showAnimationGenerator() {
-        // Procedural animation removed: it produced unconvincing motion (warped pixels).
-        // Only the AI per-frame mode remains.
-        showAIAnimationDialog()
-    }
-
-    private fun showAIAnimationDialog() {
-        val presets = AIService.AnimationPreset.values()
-        val charStyles = AIService.Style.values().filter { !it.isDecor && it != AIService.Style.FREE }
-        val pixStyles = SmartPixelize.Style.values()
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
-        }
-        container.addView(TextView(this).apply {
-            text = "L'IA génère chaque frame en partant de VOTRE sprite courant (envoyé comme référence à OpenAI). " +
-                "Le perso reste identique d'une frame à l'autre, seule la pose change. " +
-                "Comptez 8-15 appels (~1-3 min). Avec Pollinations (gratuit), seul le texte est utilisé — moins fidèle."
-            setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
-        })
-        container.addView(TextView(this).apply {
-            text = "\nAction"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val presetSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                presets.map { "${it.displayName} (${it.frameDescriptors.size} frames)" })
-        }
-        container.addView(presetSpinner)
-        container.addView(TextView(this).apply {
-            text = "\nStyle de personnage"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val styleSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item, charStyles.map { it.displayName })
-        }
-        container.addView(styleSpinner)
-        container.addView(TextView(this).apply {
-            text = "\nDescription du personnage (anglais)"
-            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val promptEt = EditText(this).apply {
-            hint = "knight with silver armor and blue cape holding a longsword"
-            setText("knight with silver armor and blue cape holding a longsword")
-            setTextColor(0xFFE8E8F0.toInt()); minLines = 2
-        }
-        container.addView(promptEt)
-        container.addView(TextView(this).apply {
-            text = "\nStyle de pixelisation"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val pixSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item, pixStyles.map { it.displayName })
-            setSelection(pixStyles.indexOf(SmartPixelize.Style.CARTOON).coerceAtLeast(0))
-        }
-        container.addView(pixSpinner)
-        container.addView(TextView(this).apply {
-            text = "\nFournisseur"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-        })
-        val savedKey = AIService.loadApiKey(this) ?: ""
-        val providerSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                arrayOf("Pollinations.ai (gratuit, lent)", "OpenAI (clé requise, auto: gpt-image-1 → dall-e-3)"))
-        }
-        container.addView(providerSpinner)
-        val keyLabel = TextView(this).apply {
-            text = "\nClé OpenAI"; setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
-            visibility = View.GONE
-        }
-        val keyEt = EditText(this).apply {
-            hint = "sk-..."
-            setText(savedKey)
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-            setTextColor(0xFFE8E8F0.toInt()); visibility = View.GONE
-        }
-        container.addView(keyLabel); container.addView(keyEt)
-        val qualityLabel = TextView(this).apply {
-            text = "\nQualité OpenAI (haute = plus fidèle au sprite, plus chère)"
-            setTextColor(0xFFA5B4FF.toInt()); textSize = 13f; visibility = View.GONE
-        }
-        val qualitySpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                arrayOf("Basse (~$0.01/image)", "Moyenne (~$0.04/image, défaut)", "Haute (~$0.17/image, fidèle++)"))
-            setSelection(1)
-            visibility = View.GONE
-        }
-        container.addView(qualityLabel); container.addView(qualitySpinner)
-        providerSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
-                val show = if (pos == 1) View.VISIBLE else View.GONE
-                keyLabel.visibility = show; keyEt.visibility = show
-                qualityLabel.visibility = show; qualitySpinner.visibility = show
-            }
-            override fun onNothingSelected(p: AdapterView<*>?) {}
-        }
-        AlertDialog.Builder(this)
-            .setTitle("🎬 Animation IA")
-            .setView(container)
-            .setPositiveButton("Générer") { _, _ ->
-                val preset = presets[presetSpinner.selectedItemPosition]
-                val style = charStyles[styleSpinner.selectedItemPosition]
-                val pix = pixStyles[pixSpinner.selectedItemPosition]
-                val raw = promptEt.text.toString().trim()
-                if (raw.isBlank()) { toast("Description vide"); return@setPositiveButton }
-                val useOpenAI = providerSpinner.selectedItemPosition == 1
-                val key = keyEt.text.toString().trim()
-                if (useOpenAI) {
-                    if (key.isBlank()) { toast("Clé OpenAI requise"); return@setPositiveButton }
-                    AIService.saveApiKey(this, key)
-                }
-                val quality = arrayOf("low", "medium", "high")[qualitySpinner.selectedItemPosition]
-                runAIAnimation(raw, style, preset, pix, useOpenAI, key, quality)
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    /**
-     * Build a 1024×1024 reference bitmap from a project frame for OpenAI's
-     * edits endpoint. The character is tight-cropped to its bounding box,
-     * upscaled with nearest-neighbor to preserve sharp pixels, then centered
-     * on a solid white background. This focuses the AI on the character
-     * itself (instead of letting it fill the canvas with extras) and keeps
-     * transparent areas from confusing the model.
-     */
-    private fun makeReferencePng(frame: Frame): Bitmap {
-        val w = frame.width; val h = frame.height
-        val regions = BodyDetector.detect(frame.pixels, w, h)
-        // Fallback: no opaque pixels -> upscale the whole frame on white
-        val bbox = regions?.bbox ?: android.graphics.Rect(0, 0, w, h)
-        val pad = 1
-        val cx0 = (bbox.left - pad).coerceAtLeast(0)
-        val cy0 = (bbox.top - pad).coerceAtLeast(0)
-        val cx1 = (bbox.right + pad).coerceAtMost(w)
-        val cy1 = (bbox.bottom + pad).coerceAtMost(h)
-        val cw = cx1 - cx0; val ch = cy1 - cy0
-        // Build a cropped bitmap of just the character
-        val cropPixels = IntArray(cw * ch)
-        for (y in 0 until ch) for (x in 0 until cw) {
-            val src = frame.pixels[(cy0 + y) * w + (cx0 + x)]
-            cropPixels[y * cw + x] = src
-        }
-        val crop = Bitmap.createBitmap(cropPixels, cw, ch, Bitmap.Config.ARGB_8888)
-        // Upscale nearest-neighbor so the character fills ~80% of the 1024 canvas
-        val target = 1024
-        val maxDim = maxOf(cw, ch)
-        val scale = ((target * 0.8f) / maxDim).toInt().coerceAtLeast(1)
-        val sw = cw * scale; val sh = ch * scale
-        val scaled = Bitmap.createScaledBitmap(crop, sw, sh, false)
-        crop.recycle()
-        // Compose centered on white 1024×1024
-        val canvas = Bitmap.createBitmap(target, target, Bitmap.Config.ARGB_8888)
-        val c = android.graphics.Canvas(canvas)
-        c.drawColor(0xFFFFFFFF.toInt())
-        val ox = (target - sw) / 2; val oy = (target - sh) / 2
-        c.drawBitmap(scaled, ox.toFloat(), oy.toFloat(), null)
-        if (scaled !== canvas) scaled.recycle()
-        return canvas
-    }
-
-    private fun runAIAnimation(
-        basePrompt: String,
-        style: AIService.Style,
-        preset: AIService.AnimationPreset,
-        pixStyle: SmartPixelize.Style,
-        useOpenAI: Boolean,
-        apiKey: String,
-        quality: String = "medium"
-    ) {
-        val progress = AlertDialog.Builder(this)
-            .setTitle("Animation IA — ${preset.displayName}")
-            .setMessage("Préparation…")
-            .setCancelable(false)
-            .show()
-        val w = project.width; val h = project.height
-        val seed = (System.currentTimeMillis() and 0xFFFF).toInt()  // shared seed = same character
-        // OpenAI edits endpoint: each frame is generated FROM the current sprite,
-        // so the AI keeps the same character look pose-by-pose.
-        val refBitmap: Bitmap? = if (useOpenAI) makeReferencePng(project.currentFrame) else null
-        lifecycleScope.launch {
-            val results = ArrayList<IntArray?>()
-            for ((i, motion) in preset.frameDescriptors.withIndex()) {
-                progress.setMessage("${i + 1}/${preset.frameDescriptors.size} — $motion")
-                val framePrompt = if (useOpenAI && refBitmap != null) {
-                    // Edits mode: strict character preservation, only the pose may change.
-                    "The reference image shows ONE character on a white background. " +
-                        "Re-draw the SAME EXACT character — pixel by pixel identical wherever the new pose allows — " +
-                        "with ONLY the body pose changed.\n\n" +
-                        "ABSOLUTE RULES (treat as constraints, not suggestions):\n" +
-                        "• Identity must be preserved: every visual element of the reference must remain. " +
-                        "If something is on the reference, it must be on the output. If something is NOT on the " +
-                        "reference, it must NOT appear on the output.\n" +
-                        "• Forbidden additions: no extra weapon, no extra accessory, no extra clothing layer, " +
-                        "no new color, no shadow, no background element, no text, no second character, no border.\n" +
-                        "• Forbidden removals: do not drop any clothing piece, armor part, cape, weapon, shield, " +
-                        "helmet, hair element, facial feature, accessory present in the reference.\n" +
-                        "• Forbidden modifications: do not change hair style/color, skin tone, eye color, mouth shape, " +
-                        "any clothing color, armor design, weapon shape, accessory shape, proportions, art style, line thickness.\n" +
-                        "• ONLY permitted change: body pose → $motion.\n\n" +
-                        "Output: full body, side view, centered on plain background, same scale as reference, same art style."
-                } else {
-                    "${style.prefix}the exact same character: $basePrompt, " +
-                        "same outfit, same colors, same proportions, currently in this pose: $motion" +
-                        "${style.suffix}, side view, full body, isolated on plain white background, " +
-                        "centered, no shadows, no text, no other characters"
-                }
-                val bmp = withContext(Dispatchers.IO) {
-                    if (useOpenAI && refBitmap != null)
-                        AIService.editOpenAI(refBitmap, framePrompt, apiKey, quality = quality)
-                    else if (useOpenAI)
-                        AIService.generateOpenAI(framePrompt, apiKey)
-                    else AIService.generatePollinations(framePrompt, 512, 512, seed = seed)
-                }
-                if (bmp == null) { results.add(null); continue }
-                val finalPixels = withContext(Dispatchers.Default) {
-                    val (pixels, _) = SmartPixelize.pixelize(bmp, w, h, BgFitMode.FIT, pixStyle)
-                    val canvasBmp = Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888)
-                    val cleaned = BackgroundRemoval.removeBackground(canvasBmp, tolerance = 55, featherEdges = false)
-                    val out = IntArray(w * h)
-                    cleaned.getPixels(out, 0, w, 0, 0, w, h)
-                    canvasBmp.recycle(); cleaned.recycle()
-                    out
-                }
-                results.add(finalPixels)
-            }
-            progress.dismiss()
-            val successCount = results.count { it != null }
-            if (successCount == 0) {
-                AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Échec total")
-                    .setMessage("Aucune frame n'a pu être générée.\n\n" +
-                        "Dernière erreur : ${AIService.lastError ?: "inconnue"}")
-                    .setPositiveButton("OK", null).show()
-                return@launch
-            }
-            pushUndo()
-            var firstApplied = false
-            var insertAt = project.currentIndex + 1
-            for ((i, px) in results.withIndex()) {
-                if (px == null) continue
-                val tag = "${preset.name.lowercase()}_${i + 1}"
-                if (!firstApplied) {
-                    px.copyInto(project.currentFrame.pixels)
-                    project.currentFrame.tag = tag
-                    firstApplied = true
-                } else {
-                    val nf = Frame(w, h, px)
-                    nf.tag = tag
-                    project.frames.add(insertAt++, nf)
-                }
-            }
-            binding.canvas.syncFrameBitmap()
-            framesAdapter.notifyDataSetChanged()
-            binding.timeline.invalidate()
-            AlertDialog.Builder(this@MainActivity)
-                .setTitle("Animation générée")
-                .setMessage("$successCount/${preset.frameDescriptors.size} frames créées. " +
-                    "Lancez la prévisualisation pour voir le mouvement. Si une frame casse, " +
-                    "supprimez-la depuis la timeline.")
-                .setPositiveButton("OK", null).show()
-        }
-    }
-
-    private fun generateAnimation(preset: AnimationGenerator.Preset) {
-        pushUndo()
-        val base = project.currentFrame.copy()
-        val newFrames = AnimationGenerator.generate(base, preset, project.locomotion)
-        var insertAt = project.currentIndex + 1
-        for (nf in newFrames) {
-            project.frames.add(insertAt++, nf)
-        }
-        project.currentFrame.tag = preset.name.lowercase()
-        framesAdapter.notifyDataSetChanged()
-        toast("${newFrames.size} frames • ${preset.displayName} • ${project.locomotion.displayName}")
-    }
 
     // ---- Right panel ----
     private fun wireRightPanel() {
@@ -2899,53 +1859,15 @@ class MainActivity : AppCompatActivity() {
     private fun showColorAndPaletteMenu() {
         val items = arrayOf(
             "Verrouiller couleurs…",
-            "Bibliothèque palettes étendue…",
-            "🎨 Variantes de couleur (recolor pour ennemis)"
+            "Bibliothèque palettes étendue…"
         )
         AlertDialog.Builder(this).setTitle("🎨 Couleurs & palettes")
             .setItems(items) { _, w ->
                 when (w) {
                     0 -> showColorLockMenu()
                     1 -> showExtendedPalettesDialog()
-                    2 -> showPaletteSwapDialog()
                 }
             }.show()
-    }
-
-    private fun showPaletteSwapDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("🎨 Variantes de couleur")
-            .setMessage("Génère 3 nouvelles frames à partir de la frame courante avec une rotation de teinte " +
-                "(+90° / +180° / +270°). Utile pour créer un ennemi rouge/bleu/vert depuis un seul sprite, " +
-                "ou des palette swaps pour boss / élite / armure améliorée.")
-            .setPositiveButton("Générer 3 variantes") { _, _ ->
-                pushUndo()
-                val source = project.currentFrame.pixels.copyOf()
-                val w = project.width; val h = project.height
-                val degrees = intArrayOf(90, 180, 270)
-                var insertAt = project.currentIndex + 1
-                for (deg in degrees) {
-                    val variant = IntArray(w * h)
-                    for (i in source.indices) variant[i] = rotateHue(source[i], deg)
-                    val nf = Frame(w, h, variant)
-                    nf.tag = "variant_h$deg"
-                    project.frames.add(insertAt++, nf)
-                }
-                framesAdapter.notifyDataSetChanged()
-                binding.timeline.invalidate()
-                toast("3 variantes ajoutées (hue +90 / +180 / +270)")
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun rotateHue(argb: Int, deg: Int): Int {
-        val a = (argb ushr 24) and 0xFF
-        if (a < 128) return argb
-        val hsv = FloatArray(3)
-        Color.colorToHSV(argb, hsv)
-        hsv[0] = (hsv[0] + deg) % 360f
-        return (a shl 24) or (Color.HSVToColor(hsv) and 0x00FFFFFF)
     }
 
     private fun showToolsMenu() {
@@ -3101,34 +2023,35 @@ class MainActivity : AppCompatActivity() {
         val view = layoutInflater.inflate(R.layout.dialog_new_project, null)
         val inputW = view.findViewById<EditText>(R.id.inputW)
         val inputH = view.findViewById<EditText>(R.id.inputH)
+        // Default to 64×64 — the canvas size this app is now optimized for.
+        inputW.setText("64"); inputH.setText("64")
         fun preset(w: Int, h: Int) { inputW.setText(w.toString()); inputH.setText(h.toString()) }
-        // Square presets
-        view.findViewById<View>(R.id.preset16).setOnClickListener  { preset(16, 16) }
-        view.findViewById<View>(R.id.preset24).setOnClickListener  { preset(24, 24) }
-        view.findViewById<View>(R.id.preset32).setOnClickListener  { preset(32, 32) }
-        view.findViewById<View>(R.id.preset48).setOnClickListener  { preset(48, 48) }
-        view.findViewById<View>(R.id.preset64).setOnClickListener  { preset(64, 64) }
-        view.findViewById<View>(R.id.preset96).setOnClickListener  { preset(96, 96) }
-        view.findViewById<View>(R.id.preset128).setOnClickListener { preset(128, 128) }
-        view.findViewById<View>(R.id.preset256).setOnClickListener { preset(256, 256) }
-        // Console formats
-        view.findViewById<View>(R.id.presetGB).setOnClickListener   { preset(160, 144) }
-        view.findViewById<View>(R.id.presetGBA).setOnClickListener  { preset(240, 160) }
-        view.findViewById<View>(R.id.presetNES).setOnClickListener  { preset(256, 224) }
-        view.findViewById<View>(R.id.presetSNES).setOnClickListener { preset(256, 240) }
-        // Large formats
-        view.findViewById<View>(R.id.preset320x240).setOnClickListener { preset(320, 240) }
-        view.findViewById<View>(R.id.preset480x270).setOnClickListener { preset(480, 270) }
-        view.findViewById<View>(R.id.preset512).setOnClickListener     { preset(512, 512) }
-        view.findViewById<View>(R.id.preset640x360).setOnClickListener { preset(640, 360) }
-        view.findViewById<View>(R.id.preset800x600).setOnClickListener { preset(800, 600) }
-        view.findViewById<View>(R.id.preset1024).setOnClickListener    { preset(1024, 1024) }
+        // Square presets (≤ 600)
+        view.findViewById<View>(R.id.preset16)?.setOnClickListener  { preset(16, 16) }
+        view.findViewById<View>(R.id.preset24)?.setOnClickListener  { preset(24, 24) }
+        view.findViewById<View>(R.id.preset32)?.setOnClickListener  { preset(32, 32) }
+        view.findViewById<View>(R.id.preset48)?.setOnClickListener  { preset(48, 48) }
+        view.findViewById<View>(R.id.preset64)?.setOnClickListener  { preset(64, 64) }
+        view.findViewById<View>(R.id.preset96)?.setOnClickListener  { preset(96, 96) }
+        view.findViewById<View>(R.id.preset128)?.setOnClickListener { preset(128, 128) }
+        view.findViewById<View>(R.id.preset256)?.setOnClickListener { preset(256, 256) }
+        view.findViewById<View>(R.id.presetGB)?.setOnClickListener   { preset(160, 144) }
+        view.findViewById<View>(R.id.presetGBA)?.setOnClickListener  { preset(240, 160) }
+        view.findViewById<View>(R.id.presetNES)?.setOnClickListener  { preset(256, 224) }
+        view.findViewById<View>(R.id.presetSNES)?.setOnClickListener { preset(256, 240) }
+        view.findViewById<View>(R.id.preset320x240)?.setOnClickListener { preset(320, 240) }
+        view.findViewById<View>(R.id.preset480x270)?.setOnClickListener { preset(480, 270) }
+        view.findViewById<View>(R.id.preset512)?.setOnClickListener     { preset(512, 512) }
+        // Hide presets above the 600 cap (640x360, 800x600, 1024).
+        view.findViewById<View>(R.id.preset640x360)?.visibility = View.GONE
+        view.findViewById<View>(R.id.preset800x600)?.visibility = View.GONE
+        view.findViewById<View>(R.id.preset1024)?.visibility = View.GONE
         AlertDialog.Builder(this)
             .setTitle(R.string.new_project)
             .setView(view)
             .setPositiveButton(R.string.create) { _, _ ->
-                val w = inputW.text.toString().toIntOrNull()?.coerceIn(1, 1024) ?: 32
-                val h = inputH.text.toString().toIntOrNull()?.coerceIn(1, 1024) ?: 32
+                val w = inputW.text.toString().toIntOrNull()?.coerceIn(1, 600) ?: 64
+                val h = inputH.text.toString().toIntOrNull()?.coerceIn(1, 600) ?: 64
                 project = Project(width = w, height = h, frames = mutableListOf(Frame(w, h)))
                 applyProject()
             }
@@ -3140,12 +2063,15 @@ class MainActivity : AppCompatActivity() {
         val view = layoutInflater.inflate(R.layout.dialog_new_project, null)
         view.findViewById<EditText>(R.id.inputW).setText(project.width.toString())
         view.findViewById<EditText>(R.id.inputH).setText(project.height.toString())
+        view.findViewById<View>(R.id.preset640x360)?.visibility = View.GONE
+        view.findViewById<View>(R.id.preset800x600)?.visibility = View.GONE
+        view.findViewById<View>(R.id.preset1024)?.visibility = View.GONE
         AlertDialog.Builder(this)
             .setTitle(R.string.resize)
             .setView(view)
             .setPositiveButton(R.string.resize) { _, _ ->
-                val w = view.findViewById<EditText>(R.id.inputW).text.toString().toIntOrNull()?.coerceIn(1, 1024) ?: return@setPositiveButton
-                val h = view.findViewById<EditText>(R.id.inputH).text.toString().toIntOrNull()?.coerceIn(1, 1024) ?: return@setPositiveButton
+                val w = view.findViewById<EditText>(R.id.inputW).text.toString().toIntOrNull()?.coerceIn(1, 600) ?: return@setPositiveButton
+                val h = view.findViewById<EditText>(R.id.inputH).text.toString().toIntOrNull()?.coerceIn(1, 600) ?: return@setPositiveButton
                 resizeProject(w, h)
             }
             .setNegativeButton(R.string.cancel, null)
@@ -3389,7 +2315,6 @@ class MainActivity : AppCompatActivity() {
         val items = arrayOf(
             "Garder uniquement comme image de fond",
             "🪄 Supprimer le fond automatiquement",
-            "🤴 Convertir en perso style King God Castle",
             "🎨 Pixeliser intelligent (game-ready)",
             "Pixeliser basique avec tramage",
             "Pixeliser basique sans tramage",
@@ -3401,11 +2326,10 @@ class MainActivity : AppCompatActivity() {
                 when (which) {
                     0 -> {} // keep as bg only
                     1 -> removeBackgroundDialog(bmp)
-                    2 -> convertToKingGodCastle(bmp)
-                    3 -> showSmartPixelizeStyles(bmp)
-                    4 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = false)
-                    5 -> pixelizeIntoFrame(bmp, dither = false, applyPalette = false)
-                    6 -> extractPaletteFromBg(bmp)
+                    2 -> showSmartPixelizeStyles(bmp)
+                    3 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = false)
+                    4 -> pixelizeIntoFrame(bmp, dither = false, applyPalette = false)
+                    5 -> extractPaletteFromBg(bmp)
                 }
             }
             .setNegativeButton("← Retour adaptation") { _, _ -> askBgFitModeThenAction(bmp) }
@@ -3446,60 +2370,6 @@ class MainActivity : AppCompatActivity() {
             toast("Fond supprimé (tolérance $tolerance)")
             // Re-open the post-import dialog so user can pick what to do next
             showImageImportOptions(cleaned)
-        }
-    }
-
-    private fun convertToKingGodCastle(bmp: Bitmap) {
-        convertToKgcViaAI(bmp)
-    }
-
-    private fun convertToKgcViaAI(bmp: Bitmap) {
-        lifecycleScope.launch {
-            val colors = withContext(Dispatchers.Default) { PhotoToCharacter.sampleColors(bmp) }
-            val skin = AIService.describeColor(colors.skin)
-            val hair = AIService.describeColor(colors.hair)
-            val shirt = AIService.describeColor(colors.shirt)
-            val pants = AIService.describeColor(colors.pants)
-            val basePrompt = "knight character, $hair hair, $skin skin, $shirt armor or shirt, $pants pants"
-            val et = EditText(this@MainActivity).apply {
-                setText(basePrompt); minLines = 2
-                setTextColor(0xFFE8E8F0.toInt())
-            }
-            val savedKey = AIService.loadApiKey(this@MainActivity) ?: ""
-            val keyEt = EditText(this@MainActivity).apply {
-                hint = "Clé OpenAI (vide = Pollinations gratuit)"
-                setText(savedKey)
-                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-                setTextColor(0xFFE8E8F0.toInt())
-            }
-            val container = LinearLayout(this@MainActivity).apply {
-                orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
-                addView(TextView(this@MainActivity).apply {
-                    text = "Description auto-générée depuis les couleurs de votre photo. " +
-                        "Vous pouvez la modifier (ajoutez : 'female', 'wizard', 'with sword and shield', etc.)."
-                    setTextColor(0xFFE8E8F0.toInt()); textSize = 12f
-                })
-                addView(et)
-                addView(TextView(this@MainActivity).apply {
-                    text = "\nClé OpenAI optionnelle (vide = Pollinations gratuit)"
-                    setTextColor(0xFFA5B4FF.toInt()); textSize = 12f
-                })
-                addView(keyEt)
-            }
-            AlertDialog.Builder(this@MainActivity)
-                .setTitle("☁️ KGC via IA")
-                .setView(container)
-                .setPositiveButton("Générer") { _, _ ->
-                    val raw = et.text.toString().trim()
-                    if (raw.isBlank()) { toast("Description vide"); return@setPositiveButton }
-                    val finalPrompt = AIService.applyStyle(raw, AIService.Style.KGC)
-                    val key = keyEt.text.toString().trim()
-                    val useOpenAI = key.isNotBlank()
-                    if (useOpenAI) AIService.saveApiKey(this@MainActivity, key)
-                    runAICloudGeneration(finalPrompt, useOpenAI, key)
-                }
-                .setNegativeButton(R.string.cancel, null)
-                .show()
         }
     }
 
