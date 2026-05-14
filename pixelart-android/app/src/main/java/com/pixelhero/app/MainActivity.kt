@@ -791,11 +791,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun showDecorGenerator() {
         val items = arrayOf(
-            "Décor statique → frame courante (procédural)",
-            "Décor statique → image de fond (procédural)",
-            "Décor ANIMÉ → 4 nouvelles frames (procédural)",
-            "Décor ANIMÉ → 8 nouvelles frames (procédural)",
-            "☁️ IA cloud → image de fond (qualité, internet requis)"
+            "Décor statique → frame courante",
+            "Décor statique → image de fond",
+            "🎬 Décor animé → 4 nouvelles frames",
+            "🎬 Décor animé → 8 nouvelles frames"
         )
         AlertDialog.Builder(this)
             .setTitle("Générer un décor")
@@ -805,7 +804,6 @@ class MainActivity : AppCompatActivity() {
                     1 -> pickAndGenerateStaticDecor(replaceFrame = false)
                     2 -> pickAndGenerateAnimatedDecor(frameCount = 4)
                     3 -> pickAndGenerateAnimatedDecor(frameCount = 8)
-                    4 -> showAICloudDecorDialog()
                 }
             }
             .setNegativeButton(R.string.cancel, null)
