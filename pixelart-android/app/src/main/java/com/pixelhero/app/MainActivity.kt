@@ -2313,9 +2313,8 @@ class MainActivity : AppCompatActivity() {
         val items = arrayOf(
             "Garder uniquement comme image de fond",
             "🪄 Supprimer le fond automatiquement",
-            "🎨 Pixeliser intelligent (game-ready)",
-            "Pixeliser basique avec tramage",
-            "Pixeliser basique sans tramage",
+            "🎨 Pixeliser intelligent (canvas actuel)",
+            "🎯 Pixeliser à une résolution choisie (32 / 48 / 64 / …)",
             "Extraire palette (16 couleurs)"
         )
         AlertDialog.Builder(this)
@@ -2325,12 +2324,75 @@ class MainActivity : AppCompatActivity() {
                     0 -> {} // keep as bg only
                     1 -> removeBackgroundDialog(bmp)
                     2 -> showSmartPixelizeStyles(bmp)
-                    3 -> pixelizeIntoFrame(bmp, dither = true, applyPalette = false)
-                    4 -> pixelizeIntoFrame(bmp, dither = false, applyPalette = false)
-                    5 -> extractPaletteFromBg(bmp)
+                    3 -> showTargetResolutionPicker(bmp)
+                    4 -> extractPaletteFromBg(bmp)
                 }
             }
             .setNegativeButton("← Retour adaptation") { _, _ -> askBgFitModeThenAction(bmp) }
+            .show()
+    }
+
+    /**
+     * Let the user pick a target canvas resolution, then a pixelize style.
+     * Smaller resolutions => simpler / blockier output. Larger => more detail
+     * preserved. The project canvas is resized to match, then SmartPixelize
+     * runs on the source bitmap to fill the new frame.
+     */
+    private fun showTargetResolutionPicker(bmp: Bitmap) {
+        val sizes = intArrayOf(16, 24, 32, 48, 64, 96, 128, 192)
+        val labels = sizes.map {
+            val tag = when {
+                it <= 24 -> "très simple"
+                it <= 48 -> "simple"
+                it <= 96 -> "détaillé"
+                else -> "très détaillé"
+            }
+            "${it}×${it}  ($tag)"
+        }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Résolution cible")
+            .setMessage("Plus la résolution est petite, plus le visuel est simplifié. " +
+                "Le canvas du projet sera redimensionné à la taille choisie.")
+            .setItems(labels) { _, which ->
+                val size = sizes[which]
+                showStyleForTargetResolution(bmp, size)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showStyleForTargetResolution(bmp: Bitmap, size: Int) {
+        val styles = SmartPixelize.Style.values()
+        val labels = styles.map { it.displayName }.toTypedArray()
+        // PRO is index 0 and recommended — pre-select it.
+        AlertDialog.Builder(this)
+            .setTitle("Style à appliquer en ${size}×${size}")
+            .setSingleChoiceItems(labels, 0) { dlg, which ->
+                pixelizeAtTargetResolution(bmp, size, styles[which])
+                dlg.dismiss()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun pixelizeAtTargetResolution(bmp: Bitmap, size: Int, style: SmartPixelize.Style) {
+        pushUndo()
+        // Resize project canvas to the target size (square — 32×32, 48×48, …)
+        if (project.width != size || project.height != size) resizeProject(size, size)
+        // Now run SmartPixelize against the current (resized) canvas dimensions.
+        val (pixels, palette) = SmartPixelize.pixelize(bmp, project.width, project.height, project.bgFit, style)
+        pixels.copyInto(project.currentFrame.pixels)
+        project.palette.clear()
+        project.palette.addAll(palette.toList())
+        paletteAdapter.notifyDataSetChanged()
+        binding.canvas.syncFrameBitmap()
+        framesAdapter.notifyItemChanged(project.currentIndex)
+        AlertDialog.Builder(this)
+            .setTitle("Pixelisé en ${size}×${size}")
+            .setMessage("Style ${style.displayName} • palette ${palette.size} couleurs. Essayer un autre style ou une autre résolution ?")
+            .setPositiveButton("Autre style") { _, _ -> showStyleForTargetResolution(bmp, size) }
+            .setNeutralButton("Autre résolution") { _, _ -> showTargetResolutionPicker(bmp) }
+            .setNegativeButton("Garder", null)
             .show()
     }
 
@@ -2399,27 +2461,6 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Autre style") { _, _ -> showSmartPixelizeStyles(bmp) }
             .setNegativeButton("Garder", null)
             .show()
-    }
-
-    private fun pixelizeIntoFrame(bmp: Bitmap, dither: Boolean, applyPalette: Boolean) {
-        pushUndo()
-        val pixels = ImageToPixelArt.pixelize(
-            bitmap = bmp,
-            w = project.width, h = project.height,
-            paletteSize = 16,
-            fit = project.bgFit,
-            dither = dither
-        )
-        pixels.copyInto(project.currentFrame.pixels)
-        binding.canvas.syncFrameBitmap()
-        framesAdapter.notifyItemChanged(project.currentIndex)
-        if (applyPalette) {
-            val pal = ImageToPixelArt.extractPalette(pixels, 16)
-            project.palette.clear()
-            project.palette.addAll(pal.toList())
-            paletteAdapter.notifyDataSetChanged()
-        }
-        toast("Pixel art généré (${pixels.size} pixels)")
     }
 
     private fun extractPaletteFromBg(bmp: Bitmap) {

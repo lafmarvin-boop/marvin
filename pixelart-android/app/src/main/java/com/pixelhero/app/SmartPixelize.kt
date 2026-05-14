@@ -24,6 +24,7 @@ import kotlin.math.sqrt
 object SmartPixelize {
 
     enum class Style(val displayName: String) {
+        PRO("⭐ Pro (ultra propre)"),
         STANDARD("Standard (équilibré)"),
         VIBRANT("Vibrant (saturé)"),
         CARTOON("Cartoon (lisse + contour)"),
@@ -50,6 +51,15 @@ object SmartPixelize {
     )
 
     fun styleOptions(style: Style): Options = when (style) {
+        // PRO: bilateral denoise (preserves edges), no pre-blur (sharp), 18-color palette,
+        // 6 K-means refinement iterations (tight clusters), no dither (clean blocks),
+        // LAB perceptual color matching. Pair with the box-averaging downscale path
+        // for output that looks hand-pixelled.
+        Style.PRO -> Options(
+            paletteSize = 18, preBlur = false, bilateral = true,
+            saturationBoost = 1.05f, dither = DitherMode.NONE,
+            outline = false, kmeansIterations = 6, useLab = true
+        )
         Style.STANDARD -> Options()
         Style.VIBRANT -> Options(paletteSize = 20, saturationBoost = 1.35f, dither = DitherMode.FLOYD)
         Style.CARTOON -> Options(paletteSize = 12, bilateral = true, preBlur = false,
@@ -128,6 +138,13 @@ object SmartPixelize {
     // ========================================================================
     // Downscale
     // ========================================================================
+    /**
+     * Picks between bilinear (Android-accelerated) and box-area-averaging
+     * downscale. Box averaging produces clean, alias-free pixel art when
+     * the source is significantly larger than the target — the gold-standard
+     * approach used by tools like Aseprite for photo→pixel-art conversion.
+     * Bilinear is good enough when the ratio is close to 1.
+     */
     private fun bilinearDownscale(src: Bitmap, w: Int, h: Int, fit: BgFitMode): IntArray {
         val srcW = src.width; val srcH = src.height
         val targetW: Int; val targetH: Int; val dx0: Int; val dy0: Int
@@ -145,15 +162,57 @@ object SmartPixelize {
             }
         }
         val tw = targetW.coerceAtLeast(1); val th = targetH.coerceAtLeast(1)
-        val scaled = Bitmap.createScaledBitmap(src, tw, th, true)
-        val scaledPixels = IntArray(tw * th)
-        scaled.getPixels(scaledPixels, 0, tw, 0, 0, tw, th)
-        if (scaled !== src) scaled.recycle()
+        val ratio = max(srcW.toFloat() / tw, srcH.toFloat() / th)
+        val scaledPixels: IntArray = if (ratio > 1.5f) {
+            // Box-area-averaging: average every source pixel that maps into each
+            // destination pixel. Removes high-frequency noise that bilinear
+            // sampling otherwise aliases into the result.
+            boxAreaDownscale(src, tw, th)
+        } else {
+            val scaled = Bitmap.createScaledBitmap(src, tw, th, true)
+            val px = IntArray(tw * th)
+            scaled.getPixels(px, 0, tw, 0, 0, tw, th)
+            if (scaled !== src) scaled.recycle()
+            px
+        }
         val out = IntArray(w * h)
         for (y in 0 until h) for (x in 0 until w) {
             val sx = x - dx0; val sy = y - dy0
             if (sx in 0 until tw && sy in 0 until th) {
                 out[y * w + x] = scaledPixels[sy * tw + sx]
+            }
+        }
+        return out
+    }
+
+    private fun boxAreaDownscale(src: Bitmap, tw: Int, th: Int): IntArray {
+        val srcW = src.width; val srcH = src.height
+        val srcPixels = IntArray(srcW * srcH)
+        src.getPixels(srcPixels, 0, srcW, 0, 0, srcW, srcH)
+        val out = IntArray(tw * th)
+        val scaleX = srcW.toFloat() / tw
+        val scaleY = srcH.toFloat() / th
+        for (ty in 0 until th) {
+            val sy0 = (ty * scaleY).toInt().coerceIn(0, srcH - 1)
+            val sy1 = ((ty + 1) * scaleY).toInt().coerceIn(sy0 + 1, srcH)
+            for (tx in 0 until tw) {
+                val sx0 = (tx * scaleX).toInt().coerceIn(0, srcW - 1)
+                val sx1 = ((tx + 1) * scaleX).toInt().coerceIn(sx0 + 1, srcW)
+                var rs = 0L; var gs = 0L; var bs = 0L; var asum = 0L; var n = 0
+                for (yy in sy0 until sy1) for (xx in sx0 until sx1) {
+                    val c = srcPixels[yy * srcW + xx]
+                    asum += (c ushr 24) and 0xFF
+                    rs   += (c shr 16) and 0xFF
+                    gs   += (c shr 8)  and 0xFF
+                    bs   += c and 0xFF
+                    n++
+                }
+                if (n == 0) { out[ty * tw + tx] = 0; continue }
+                val ar = (asum / n).toInt()
+                val rr = (rs / n).toInt()
+                val gr = (gs / n).toInt()
+                val br = (bs / n).toInt()
+                out[ty * tw + tx] = (ar shl 24) or (rr shl 16) or (gr shl 8) or br
             }
         }
         return out
