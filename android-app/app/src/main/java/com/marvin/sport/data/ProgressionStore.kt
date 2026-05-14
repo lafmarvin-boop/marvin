@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "marvin_progression")
@@ -55,7 +56,7 @@ class ProgressionStore(private val context: Context) {
             if (already) return@edit
             prefs[sessionDoneKey(session.id)] = 1
             session.exercises
-                .filter { it.baseLoadKg != null }
+                .filter { it.oneRmKey != null }
                 .forEach { exo ->
                     val cur = prefs[completedKey(exo.name)] ?: 0
                     prefs[completedKey(exo.name)] = cur + 1
@@ -69,11 +70,35 @@ class ProgressionStore(private val context: Context) {
             if (!already) return@edit
             prefs[sessionDoneKey(session.id)] = 0
             session.exercises
-                .filter { it.baseLoadKg != null }
+                .filter { it.oneRmKey != null }
                 .forEach { exo ->
                     val cur = prefs[completedKey(exo.name)] ?: 0
                     if (cur > 0) prefs[completedKey(exo.name)] = cur - 1
                 }
+        }
+    }
+
+    /**
+     * Réinitialise toutes les séances d'un programme (utilisé quand l'utilisateur
+     * a complété toutes les séances de toutes les phases).
+     */
+    suspend fun resetProgram(program: TrainingProgram) {
+        context.dataStore.edit { prefs ->
+            program.phases.forEach { ph ->
+                ph.weeks.forEach { w ->
+                    w.sessions.forEach { s -> prefs[sessionDoneKey(s.id)] = 0 }
+                }
+            }
+        }
+    }
+
+    /** Vrai si toutes les séances de toutes les phases du programme sont cochées. */
+    suspend fun isProgramFullyComplete(program: TrainingProgram): Boolean {
+        val data = context.dataStore.data.first()
+        return program.phases.all { ph ->
+            ph.weeks.all { w ->
+                w.sessions.all { s -> (data[sessionDoneKey(s.id)] ?: 0) > 0 }
+            }
         }
     }
 

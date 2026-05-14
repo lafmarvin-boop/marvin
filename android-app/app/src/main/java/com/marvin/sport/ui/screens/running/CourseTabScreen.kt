@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,34 +46,23 @@ fun CourseTabScreen(
                 .padding(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PillTab(
-                label = "GPS",
-                icon = Icons.Filled.DirectionsRun,
-                selected = selected == 0,
-                accent = ProgramAccent.Running,
-                onClick = { selected = 0 },
-                modifier = Modifier.weight(1f),
-            )
-            PillTab(
-                label = "Timer",
-                icon = Icons.Filled.Timer,
-                selected = selected == 1,
-                accent = ProgramAccent.Running,
-                onClick = { selected = 1 },
-                modifier = Modifier.weight(1f),
-            )
+            PillTab("GPS", Icons.Filled.DirectionsRun, selected == 0, ProgramAccent.Running,
+                onClick = { selected = 0 }, modifier = Modifier.weight(1f))
+            PillTab("Programme", Icons.Filled.Speed, selected == 1, ProgramAccent.Running,
+                onClick = { selected = 1 }, modifier = Modifier.weight(1f))
+            PillTab("Timer", Icons.Filled.Timer, selected == 2, ProgramAccent.Running,
+                onClick = { selected = 2 }, modifier = Modifier.weight(1f))
         }
         AnimatedContent(
             targetState = selected,
-            transitionSpec = {
-                fadeIn(tween(180)) togetherWith fadeOut(tween(180))
-            },
+            transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(180)) },
             label = "courseTab",
         ) { current ->
             Box(modifier = Modifier.fillMaxSize()) {
                 when (current) {
                     0 -> RunHomeScreen(onStartRun = onStartRun, onRunClick = onRunClick)
-                    1 -> TimerScreen()
+                    1 -> RunningProgramScreen()
+                    2 -> TimerScreen()
                 }
             }
         }
@@ -99,8 +89,8 @@ private fun PillTab(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(label, color = fg, fontWeight = FontWeight.SemiBold)
+        Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(label, color = fg, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
     }
 }

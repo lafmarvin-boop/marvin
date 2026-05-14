@@ -4,7 +4,10 @@ data class Exercise(
     val name: String,
     val sets: String,
     val reps: String,
-    val baseLoadKg: Double? = null,
+    /** Clé dans la banque 1RM. `null` pour les exercices au poids du corps / sans charge. */
+    val oneRmKey: String? = null,
+    /** Pourcentage du 1RM à appliquer (1.0 = utiliser le poids tel quel, ex. médecine-ball). */
+    val percentage: Double = 1.0,
     val rest: String = "",
     val isSuperset: Boolean = false,
     val supersetGroup: Int = 0,

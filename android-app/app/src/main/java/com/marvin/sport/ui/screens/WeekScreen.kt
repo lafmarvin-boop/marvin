@@ -88,9 +88,14 @@ private fun SessionCard(
     Card(
         onClick = onClick,
         colors = CardDefaults.cardColors(
-            containerColor = if (done) accent.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface
+            containerColor = if (done) com.marvin.sport.ui.theme.SuccessGreen.copy(alpha = 0.14f)
+            else MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (done) 0.dp else 1.dp),
+        border = if (done) androidx.compose.foundation.BorderStroke(
+            1.5.dp,
+            com.marvin.sport.ui.theme.SuccessGreen.copy(alpha = 0.6f)
+        ) else null,
     ) {
         Row(
             modifier = Modifier
@@ -103,24 +108,43 @@ private fun SessionCard(
                     .size(46.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(
-                        if (done) accent.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant
+                        if (done) com.marvin.sport.ui.theme.SuccessGreen
+                        else MaterialTheme.colorScheme.surfaceVariant
                     ),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = if (done) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
                     contentDescription = null,
-                    tint = if (done) accent else MaterialTheme.colorScheme.outline,
+                    tint = if (done) Color.White else MaterialTheme.colorScheme.outline,
                 )
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Séance ${session.sessionIndex + 1}".uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = accent,
-                    fontWeight = FontWeight.Bold,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Séance ${session.sessionIndex + 1}".uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accent,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    if (done) {
+                        Spacer(Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(com.marvin.sport.ui.theme.SuccessGreen)
+                                .padding(horizontal = 6.dp, vertical = 1.dp),
+                        ) {
+                            Text(
+                                "FAIT",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold,
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.height(2.dp))
                 Text(
                     session.title.substringAfter("— ", session.title),
