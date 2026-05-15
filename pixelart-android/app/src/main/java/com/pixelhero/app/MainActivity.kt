@@ -2349,16 +2349,40 @@ class MainActivity : AppCompatActivity() {
             }
             "${it}×${it}  ($tag)"
         }.toTypedArray()
-        // AlertDialog can't show both a message and a list — the message would
-        // hide the items. The label suffixes already convey the trade-off.
-        AlertDialog.Builder(this)
-            .setTitle("Résolution cible (canvas sera redimensionné)")
-            .setItems(labels) { _, which ->
-                val size = sizes[which]
-                showStyleForTargetResolution(bmp, size)
-            }
+        // Custom-view dialog so the size buttons always render — bypassing the
+        // AlertDialog setItems / setMessage incompatibility.
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 24, 32, 24)
+        }
+        container.addView(TextView(this).apply {
+            text = "Choisissez la résolution. Plus elle est petite, plus le rendu est simplifié. " +
+                "Le canvas sera redimensionné automatiquement."
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 13f
+            setPadding(16, 8, 16, 24)
+        })
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("🎯 Résolution cible")
+            .setView(ScrollView(this).apply { addView(container) })
             .setNegativeButton(R.string.cancel, null)
-            .show()
+            .create()
+        sizes.forEachIndexed { i, sz ->
+            container.addView(Button(this).apply {
+                text = labels[i]
+                textSize = 16f
+                isAllCaps = false
+                setPadding(24, 24, 24, 24)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { setMargins(0, 8, 0, 8) }
+                setOnClickListener {
+                    dialog.dismiss()
+                    showStyleForTargetResolution(bmp, sz)
+                }
+            })
+        }
+        dialog.show()
     }
 
     private fun showStyleForTargetResolution(bmp: Bitmap, size: Int) {
