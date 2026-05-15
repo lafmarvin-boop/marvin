@@ -743,47 +743,113 @@ class MainActivity : AppCompatActivity() {
 
     private fun showTweenDialog() {
         if (project.frames.size < 2) {
-            toast("Il faut au moins 2 frames"); return
+            toast("Il faut au moins 2 frames. Crée une frame d'arrivée d'abord.")
+            return
         }
-        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24) }
-        container.addView(TextView(this).apply {
-            text = "Interpolation entre :\n• Frame de départ : actuelle (#${project.currentIndex + 1})\n• Frame d'arrivée : à choisir\n\nLes N frames générées seront insérées entre les deux."
+        val startIdx = project.currentIndex
+        // Default target = frame just after the current one (or just before if current is last)
+        var targetIdx = if (startIdx + 1 < project.frames.size) startIdx + 1 else startIdx - 1
+
+        val outer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 16, 32, 16)
+        }
+        outer.addView(TextView(this).apply {
+            text = "Crée des frames intermédiaires entre 2 frames clés. " +
+                "L'app interpole couleur par couleur pour servir de guide à ton dessin."
             setTextColor(0xFFE8E8F0.toInt()); textSize = 13f
+            setPadding(0, 0, 0, 16)
         })
-        val etTarget = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER
-            hint = "Index de la frame d'arrivée (1..${project.frames.size})"
-            setText("${project.currentIndex + 2}")
-            setTextColor(0xFFE8E8F0.toInt())
+
+        // --- DÉPART (current frame, info only) ---
+        outer.addView(TextView(this).apply {
+            text = "🟢 Départ : frame #${startIdx + 1} (la frame courante)"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 15f
+            setPadding(0, 0, 0, 8)
+        })
+
+        // --- ARRIVÉE (target picker with prev/next stepper) ---
+        val targetLabel = TextView(this).apply {
+            text = "🔴 Arrivée : frame #${targetIdx + 1}"
+            setTextColor(0xFFA5B4FF.toInt()); textSize = 15f
+            gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
-        val etCount = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER
-            hint = "Nombre de frames intermédiaires (1-20)"
-            setText("3")
-            setTextColor(0xFFE8E8F0.toInt())
+        val targetRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, 16)
         }
-        container.addView(etTarget); container.addView(etCount)
+        val btnPrev = Button(this).apply {
+            text = "◀"; textSize = 18f; isAllCaps = false
+            setOnClickListener {
+                val candidates = (0 until project.frames.size).filter { it != startIdx }
+                val cur = candidates.indexOf(targetIdx)
+                targetIdx = candidates[if (cur <= 0) candidates.size - 1 else cur - 1]
+                targetLabel.text = "🔴 Arrivée : frame #${targetIdx + 1}"
+            }
+        }
+        val btnNext = Button(this).apply {
+            text = "▶"; textSize = 18f; isAllCaps = false
+            setOnClickListener {
+                val candidates = (0 until project.frames.size).filter { it != startIdx }
+                val cur = candidates.indexOf(targetIdx)
+                targetIdx = candidates[if (cur >= candidates.size - 1) 0 else cur + 1]
+                targetLabel.text = "🔴 Arrivée : frame #${targetIdx + 1}"
+            }
+        }
+        targetRow.addView(btnPrev); targetRow.addView(targetLabel); targetRow.addView(btnNext)
+        outer.addView(targetRow)
+
+        // --- NOMBRE DE FRAMES INTERMÉDIAIRES ---
+        val countLabel = TextView(this).apply {
+            text = "Frames intermédiaires : 3"
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 15f
+            setPadding(0, 16, 0, 4)
+        }
+        val countSeek = SeekBar(this).apply {
+            max = 19  // → 1..20
+            progress = 2  // → 3 by default
+        }
+        countSeek.setOnSeekBarChangeListener(simpleSeekListener { v ->
+            countLabel.text = "Frames intermédiaires : ${v + 1}"
+        })
+        outer.addView(countLabel); outer.addView(countSeek)
+
+        // --- COURBE D'EASING ---
+        outer.addView(TextView(this).apply {
+            text = "Courbe (timing du mouvement)"
+            setTextColor(0xFFE8E8F0.toInt()); textSize = 15f
+            setPadding(0, 16, 0, 4)
+        })
+        val curves = Easing.Curve.values()
+        val curveSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity,
+                android.R.layout.simple_spinner_dropdown_item, curves.map { it.displayName })
+            setSelection(curves.indexOf(Easing.Curve.LINEAR).coerceAtLeast(0))
+        }
+        outer.addView(curveSpinner)
+
         AlertDialog.Builder(this)
-            .setTitle("Interpolation (Tween)")
-            .setView(container)
+            .setTitle("🔀 Interpolation entre 2 frames")
+            .setView(ScrollView(this).apply { addView(outer) })
             .setPositiveButton("Générer") { _, _ ->
-                val target = (etTarget.text.toString().toIntOrNull() ?: 2) - 1
-                val count = etCount.text.toString().toIntOrNull()?.coerceIn(1, 20) ?: 3
-                if (target !in 0 until project.frames.size || target == project.currentIndex) {
-                    toast("Index invalide"); return@setPositiveButton
+                val count = (countSeek.progress + 1).coerceIn(1, 20)
+                val curve = curves[curveSpinner.selectedItemPosition]
+                if (targetIdx !in 0 until project.frames.size || targetIdx == startIdx) {
+                    toast("Choisis une frame d'arrivée différente"); return@setPositiveButton
                 }
                 pushUndo()
-                val a = project.currentFrame
-                val b = project.frames[target]
-                val tweens = Tweening.generate(a, b, count)
-                // Insert between current and target
-                val insertAt = minOf(project.currentIndex, target) + 1
+                val a = project.frames[startIdx]
+                val b = project.frames[targetIdx]
+                val tweens = Tweening.generate(a, b, count, curve)
+                val insertAt = minOf(startIdx, targetIdx) + 1
                 tweens.forEachIndexed { idx, frame ->
                     project.frames.add(insertAt + idx, frame)
                 }
                 framesAdapter.notifyDataSetChanged()
                 refreshAfterFrameChange()
-                toast("$count frames intermédiaires créées")
+                toast("$count frames intermédiaires créées (${curve.displayName})")
             }
             .setNegativeButton(R.string.cancel, null)
             .show()

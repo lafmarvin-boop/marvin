@@ -14,13 +14,14 @@ import android.graphics.Color
 object Tweening {
 
     /** Returns [steps] new frames, in order, that fade from [a] to [b]. */
-    fun generate(a: Frame, b: Frame, steps: Int): List<Frame> {
+    fun generate(a: Frame, b: Frame, steps: Int, curve: Easing.Curve = Easing.Curve.LINEAR): List<Frame> {
         require(a.width == b.width && a.height == b.height) { "Frames must be same size" }
         val w = a.width; val h = a.height
         val aPx = if (a.layers.size > 1) a.composited() else a.pixels
         val bPx = if (b.layers.size > 1) b.composited() else b.pixels
         return (1..steps).map { i ->
-            val t = i.toFloat() / (steps + 1)
+            val rawT = i.toFloat() / (steps + 1)
+            val t = Easing.apply(curve, rawT)
             val out = Frame(w, h)
             out.tag = "tween"
             for (k in aPx.indices) {
