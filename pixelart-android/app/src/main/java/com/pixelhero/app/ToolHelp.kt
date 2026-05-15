@@ -40,6 +40,12 @@ object ToolHelp {
             "• Touchez une zone\n• Tous les pixels touchant celui-ci (et de même couleur) deviennent la couleur active\n• Ne franchit PAS un contour de couleur différente",
             "Vous avez dessiné un cercle vide en noir : touchez l'intérieur avec le pot bleu pour le remplir d'un coup."
         )
+        entries["unfill"] = Entry(
+            "🪣🚫 Pot inverse (efface zone)",
+            "Inverse du pot : au lieu de remplir avec la couleur active, rend transparente toute la zone connectée de même couleur. Mêmes règles de propagation que le pot normal.",
+            "• Touchez une zone\n• Tous les pixels connectés (4 voisins) de cette couleur deviennent transparents\n• S'arrête au contour de couleur différente",
+            "Tu veux supprimer l'intérieur d'un perso pour ne garder que la silhouette : touche l'intérieur avec le pot inverse."
+        )
         entries["picker"] = Entry(
             "💧 Pipette (I)",
             "Récupère la couleur du pixel touché et la met comme couleur active.",

@@ -247,6 +247,7 @@ class MainActivity : AppCompatActivity() {
             Triple(binding.toolPencil,    Tool.PENCIL,    "pencil"),
             Triple(binding.toolEraser,    Tool.ERASER,    "eraser"),
             Triple(binding.toolFill,      Tool.FILL,      "fill"),
+            Triple(binding.toolUnfill,    Tool.UNFILL,    "unfill"),
             Triple(binding.toolPicker,    Tool.PICKER,    "picker"),
             Triple(binding.toolLine,      Tool.LINE,      "line"),
             Triple(binding.toolRect,      Tool.RECT,      "rect"),

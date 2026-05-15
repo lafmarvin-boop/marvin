@@ -56,6 +56,8 @@
             <ImageButton android:id="@+id/toolPencil"    style="@style/ToolButton" android:src="@drawable/ic_pencil"/>
             <ImageButton android:id="@+id/toolEraser"    style="@style/ToolButton" android:src="@drawable/ic_eraser"/>
             <ImageButton android:id="@+id/toolFill"      style="@style/ToolButton" android:src="@drawable/ic_fill"/>
+            <ImageButton android:id="@+id/toolUnfill"    style="@style/ToolButton" android:src="@drawable/ic_unfill"
+                android:contentDescription="Effacer zone (pot inverse)"/>
             <ImageButton android:id="@+id/toolPicker"    style="@style/ToolButton" android:src="@drawable/ic_picker"/>
             <ImageButton android:id="@+id/toolLine"      style="@style/ToolButton" android:src="@drawable/ic_line"/>
             <ImageButton android:id="@+id/toolRect"      style="@style/ToolButton" android:src="@drawable/ic_rect"/>

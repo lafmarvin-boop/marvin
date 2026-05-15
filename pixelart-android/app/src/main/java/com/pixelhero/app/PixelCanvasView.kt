@@ -546,6 +546,7 @@ class PixelCanvasView @JvmOverloads constructor(
             Tool.PENCIL -> { paintPixelSymmetric(px, py, color); syncFrameBitmap() }
             Tool.ERASER -> { paintPixelSymmetric(px, py, 0); syncFrameBitmap() }
             Tool.FILL -> { floodFill(px, py, color); syncFrameBitmap(); onProjectChanged?.invoke() }
+            Tool.UNFILL -> { floodFill(px, py, 0); syncFrameBitmap(); onProjectChanged?.invoke() }
             Tool.PICKER -> { val c = p.currentFrame.get(px, py); if (Color.alpha(c) > 0) onColorPicked?.invoke(c) }
             Tool.LINE, Tool.RECT, Tool.RECT_FILL -> { previewActive = true; updatePreview(); invalidate() }
             Tool.SELECT -> {
