@@ -24,13 +24,19 @@ class Layer(val width: Int, val height: Int, var name: String = "Couche", var vi
     val pixels: IntArray = IntArray(width * height)
     /** Dirty flag for downstream caches (composite, thumbnail). */
     @Transient var dirty: Boolean = true
+    /**
+     * Optional group label. Layers that share the same non-null groupName are
+     * rendered together in the layers strip (with a group header) and persist
+     * across frame copies. Toggling the group's eye toggles all members.
+     */
+    var groupName: String? = null
     constructor(width: Int, height: Int, name: String, source: IntArray) : this(width, height, name) {
         require(source.size == width * height) { "Layer size mismatch" }
         source.copyInto(pixels)
     }
     fun copy(): Layer {
         val l = Layer(width, height, name, pixels.copyOf())
-        l.visible = visible; l.opacity = opacity
+        l.visible = visible; l.opacity = opacity; l.groupName = groupName
         return l
     }
 }

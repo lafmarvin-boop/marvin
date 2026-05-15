@@ -91,6 +91,7 @@ object ProjectStorage {
                     lo.put("name", layer.name)
                     lo.put("visible", layer.visible)
                     lo.put("opacity", layer.opacity.toDouble())
+                    layer.groupName?.let { lo.put("groupName", it) }
                     lo.put("data", Base64.encodeToString(buf.array(), Base64.NO_WRAP))
                     layersArr.put(lo)
                 }
@@ -144,6 +145,7 @@ object ProjectStorage {
                             val layer = Layer(w, h, lo.optString("name", "Couche ${li + 1}"), ints)
                             layer.visible = lo.optBoolean("visible", true)
                             layer.opacity = lo.optDouble("opacity", 1.0).toFloat()
+                            layer.groupName = if (lo.has("groupName")) lo.optString("groupName", null) else null
                             f.layers.add(layer)
                         }
                         f.activeLayer = entry.optInt("activeLayer", 0).coerceIn(0, f.layers.size - 1)

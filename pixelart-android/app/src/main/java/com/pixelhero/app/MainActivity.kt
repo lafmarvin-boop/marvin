@@ -356,6 +356,7 @@ class MainActivity : AppCompatActivity() {
         items.add(getString(R.string.copy))
         items.add(getString(R.string.cut))
         if (clipboardPixels != null) items.add(getString(R.string.paste))
+        if (clipboardPixels != null) items.add("📋➡ Coller dans un autre calque…")
         items.add(getString(R.string.flip_h))
         items.add(getString(R.string.flip_v))
         items.add("Recadrer le canvas à cette sélection")
@@ -371,7 +372,7 @@ class MainActivity : AppCompatActivity() {
                         pair?.let {
                             clipboardW = it.first
                             clipboardPixels = it.second
-                            toast("Copié")
+                            toast("Copié — vous pouvez maintenant changer de calque puis coller")
                         }
                     }
                     getString(R.string.cut) -> {
@@ -381,12 +382,15 @@ class MainActivity : AppCompatActivity() {
                         }
                         binding.canvas.cutSelectionToClipboard()
                         binding.canvas.invalidate()
-                        toast("Coupé")
+                        toast("Coupé — vous pouvez maintenant changer de calque puis coller")
                     }
                     getString(R.string.paste) -> {
                         val pixels = clipboardPixels ?: return@setItems
                         pushUndo()
                         binding.canvas.pasteClipboard(clipboardW, pixels, sel.xMin.coerceAtLeast(0), sel.yMin.coerceAtLeast(0))
+                    }
+                    "📋➡ Coller dans un autre calque…" -> {
+                        showPasteIntoLayerPicker(sel)
                     }
                     getString(R.string.flip_h) -> {
                         flipSelection(horizontal = true)
@@ -405,6 +409,37 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+            .show()
+    }
+
+    /**
+     * Pick a target layer (creating a new one if needed) and paste the
+     * clipboard content into it at the current selection origin.
+     */
+    private fun showPasteIntoLayerPicker(sel: Selection) {
+        val pixels = clipboardPixels ?: return
+        val f = project.currentFrame
+        val items = (f.layers.indices.map { i -> "Calque ${i + 1} : ${f.layers[i].name}" }
+            + listOf("➕ Nouveau calque")).toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Coller dans quel calque ?")
+            .setItems(items) { _, which ->
+                pushUndo()
+                if (which == f.layers.size) {
+                    f.addLayer()
+                    f.activeLayer = f.layers.size - 1
+                    refreshLayersStrip()
+                } else {
+                    f.activeLayer = which
+                    refreshLayersStrip()
+                }
+                binding.canvas.pasteClipboard(
+                    clipboardW, pixels,
+                    sel.xMin.coerceAtLeast(0), sel.yMin.coerceAtLeast(0)
+                )
+                toast("Collé dans « ${f.layers[f.activeLayer].name} »")
+            }
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
@@ -1365,10 +1400,12 @@ class MainActivity : AppCompatActivity() {
     private fun showLayerActions() {
         val f = project.currentFrame
         val l = f.layers[f.activeLayer]
+        val groupAction = if (l.groupName == null) "📁 Mettre dans un groupe…" else "📁 Sortir du groupe « ${l.groupName} »"
         val items = arrayOf(
             if (l.visible) "Masquer" else "Afficher",
             "Renommer…",
             "Opacité…",
+            groupAction,
             "Supprimer",
             "Monter (au-dessus)",
             "Descendre (en dessous)",
@@ -1381,18 +1418,59 @@ class MainActivity : AppCompatActivity() {
                     0 -> { l.visible = !l.visible; binding.canvas.syncFrameBitmap() }
                     1 -> renameLayer(l)
                     2 -> showLayerOpacity(l)
-                    3 -> {
+                    3 -> if (l.groupName == null) showAssignGroupDialog(l) else { l.groupName = null; toast("Sorti du groupe") }
+                    4 -> {
                         pushUndo()
                         if (!f.removeLayer(f.activeLayer)) toast("Au moins 1 calque requis")
                         else binding.canvas.syncFrameBitmap()
                     }
-                    4 -> moveLayer(+1)
-                    5 -> moveLayer(-1)
-                    6 -> mergeDown()
+                    5 -> moveLayer(+1)
+                    6 -> moveLayer(-1)
+                    7 -> mergeDown()
                 }
                 framesAdapter.notifyItemChanged(project.currentIndex)
                 refreshLayersStrip()
             }
+            .show()
+    }
+
+    /**
+     * Pick an existing group name from this frame's layers, or create a new
+     * one. Assigning a group keeps the layer where it is in the stack but
+     * makes it appear under the group header in the layers strip.
+     */
+    private fun showAssignGroupDialog(l: Layer) {
+        val existing = project.currentFrame.layers
+            .mapNotNull { it.groupName }.distinct()
+        val items = (existing + listOf("➕ Nouveau groupe…")).toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Mettre « ${l.name} » dans un groupe")
+            .setItems(items) { _, which ->
+                if (which == existing.size) {
+                    val input = EditText(this).apply {
+                        hint = "Nom du groupe (ex: corps, arme, fond)"
+                        setTextColor(0xFFE8E8F0.toInt())
+                    }
+                    AlertDialog.Builder(this)
+                        .setTitle("Nouveau groupe")
+                        .setView(input)
+                        .setPositiveButton("OK") { _, _ ->
+                            val name = input.text.toString().trim()
+                            if (name.isNotBlank()) {
+                                l.groupName = name
+                                refreshLayersStrip()
+                                toast("Ajouté au groupe « $name »")
+                            }
+                        }
+                        .setNegativeButton(R.string.cancel, null)
+                        .show()
+                } else {
+                    l.groupName = existing[which]
+                    refreshLayersStrip()
+                    toast("Ajouté au groupe « ${existing[which]} »")
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
@@ -1798,56 +1876,115 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Rebuild the inline layers strip in the right panel: one row per layer
-     * with a clickable eye toggle on the left and the layer name on the right.
-     * Tap eye = show/hide layer. Tap name = make that layer active. Bypasses
-     * the Calques dialog entirely for the most common visibility workflow.
+     * Rebuild the inline layers strip in the right panel. Layers that share
+     * a [Layer.groupName] are rendered together under a group header whose
+     * eye toggles every member's visibility at once. Ungrouped layers render
+     * one row each.
+     *
+     * Tap eye = show/hide layer (or whole group on a header).
+     * Tap name = make that layer active.
      */
     private fun refreshLayersStrip() {
         val strip = binding.layersStrip
         strip.removeAllViews()
         val f = project.currentFrame
-        // Iterate top-down so the topmost layer (highest index) appears first
-        // — matches the painter's expectation in the dialog.
-        for (i in f.layers.indices.reversed()) {
+        // Walk top-down (highest index first) so the painter sees the same
+        // stacking as the canvas. Within each step we either add a single row,
+        // or a group header followed by its members.
+        var i = f.layers.size - 1
+        val seenGroups = HashSet<String>()
+        while (i >= 0) {
             val layer = f.layers[i]
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setPadding(4, 4, 4, 4)
-                gravity = android.view.Gravity.CENTER_VERTICAL
-                if (i == f.activeLayer) setBackgroundColor(0x33A5B4FF)
+            val grp = layer.groupName
+            if (grp != null && grp !in seenGroups) {
+                seenGroups.add(grp)
+                addGroupHeader(strip, f, grp)
+                // Render every layer with this group, top-down
+                f.layers.indices.reversed()
+                    .filter { f.layers[it].groupName == grp }
+                    .forEach { addLayerRow(strip, f, it, indented = true) }
+                // Skip ahead past contiguous group members that were just rendered
+                while (i >= 0 && f.layers[i].groupName == grp) i--
+            } else if (grp != null) {
+                // Already rendered as part of an earlier group section
+                i--
+            } else {
+                addLayerRow(strip, f, i, indented = false)
+                i--
             }
-            val eye = TextView(this).apply {
-                text = if (layer.visible) "👁" else "🚫"
-                textSize = 16f
-                setPadding(8, 4, 12, 4)
-                isClickable = true; isFocusable = true
-                setOnClickListener {
-                    layer.visible = !layer.visible
-                    text = if (layer.visible) "👁" else "🚫"
-                    binding.canvas.syncFrameBitmap()
-                    framesAdapter.notifyItemChanged(project.currentIndex)
-                }
-            }
-            val name = TextView(this).apply {
-                text = layer.name
-                setTextColor(0xFFE8E8F0.toInt())
-                textSize = 13f
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                layoutParams = LinearLayout.LayoutParams(
-                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-                )
-                isClickable = true; isFocusable = true
-                setOnClickListener {
-                    f.activeLayer = i
-                    refreshLayersStrip()
-                    binding.canvas.invalidate()
-                }
-            }
-            row.addView(eye); row.addView(name)
-            strip.addView(row)
         }
+    }
+
+    private fun addGroupHeader(strip: LinearLayout, f: Frame, groupName: String) {
+        val members = f.layers.filter { it.groupName == groupName }
+        val anyVisible = members.any { it.visible }
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(4, 6, 4, 6)
+            setBackgroundColor(0x22FFFFFF)
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+        val eye = TextView(this).apply {
+            text = if (anyVisible) "👁" else "🚫"
+            textSize = 16f
+            setPadding(8, 4, 12, 4)
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                val turnOn = !anyVisible
+                members.forEach { it.visible = turnOn }
+                binding.canvas.syncFrameBitmap()
+                framesAdapter.notifyItemChanged(project.currentIndex)
+                refreshLayersStrip()
+            }
+        }
+        val name = TextView(this).apply {
+            text = "📁 $groupName"
+            setTextColor(0xFFA5B4FF.toInt())
+            textSize = 13f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }
+        row.addView(eye); row.addView(name)
+        strip.addView(row)
+    }
+
+    private fun addLayerRow(strip: LinearLayout, f: Frame, i: Int, indented: Boolean) {
+        val layer = f.layers[i]
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(if (indented) 28 else 4, 4, 4, 4)
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            if (i == f.activeLayer) setBackgroundColor(0x33A5B4FF)
+        }
+        val eye = TextView(this).apply {
+            text = if (layer.visible) "👁" else "🚫"
+            textSize = 16f
+            setPadding(8, 4, 12, 4)
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                layer.visible = !layer.visible
+                text = if (layer.visible) "👁" else "🚫"
+                binding.canvas.syncFrameBitmap()
+                framesAdapter.notifyItemChanged(project.currentIndex)
+            }
+        }
+        val name = TextView(this).apply {
+            text = layer.name
+            setTextColor(0xFFE8E8F0.toInt())
+            textSize = 13f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+            )
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                f.activeLayer = i
+                refreshLayersStrip()
+                binding.canvas.invalidate()
+            }
+        }
+        row.addView(eye); row.addView(name)
+        strip.addView(row)
     }
 
     // ---- Color ----
