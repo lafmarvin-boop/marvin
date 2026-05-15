@@ -220,6 +220,9 @@ class MainActivity : AppCompatActivity() {
                 framesAdapter.notifyItemChanged(project.currentIndex)
         }
         binding.canvas.onColorPicked = { c -> setColor(c) }
+        // Right after the user finishes drawing a selection rectangle, open
+        // the actions menu so they can pick Move / Copy / Cut / Paste etc.
+        binding.canvas.onSelectionCreated = { showSelectionActions() }
     }
 
     private fun pushUndo() {
@@ -262,6 +265,12 @@ class MainActivity : AppCompatActivity() {
                 tools.forEach { (b, _, _) -> b.isSelected = false }
                 btn.isSelected = true
                 binding.canvas.tool = tool
+                when (tool) {
+                    Tool.SELECT -> toast("Trace un rectangle. Glisse-le ensuite pour déplacer l'élément.")
+                    Tool.WAND -> toast("Touche un pixel. La zone connectée de même couleur sera sélectionnée.")
+                    Tool.UNFILL -> toast("Touche une zone : tous les pixels connectés deviennent transparents.")
+                    else -> {}
+                }
                 if (tool == Tool.SELECT || tool == Tool.WAND) showSelectionActions()
             }
             btn.setOnLongClickListener {
@@ -353,6 +362,7 @@ class MainActivity : AppCompatActivity() {
         if (!binding.canvas.selection.active) return
         val hasFloating = binding.canvas.selection.floating != null
         val items = mutableListOf<String>()
+        if (hasFloating) items.add("🖐 Déplacer (glisse-la sur la feuille)")
         items.add(getString(R.string.copy))
         items.add(getString(R.string.cut))
         if (clipboardPixels != null) items.add(getString(R.string.paste))
@@ -366,6 +376,9 @@ class MainActivity : AppCompatActivity() {
             .setItems(items.toTypedArray()) { _, which ->
                 val sel = binding.canvas.selection
                 when (items[which]) {
+                    "🖐 Déplacer (glisse-la sur la feuille)" -> {
+                        toast("Glisse à l'écran pour positionner. Tape ailleurs pour valider.")
+                    }
                     getString(R.string.copy) -> {
                         val pair = binding.canvas.copySelectionToClipboard()
                             ?: liftAndCopy()

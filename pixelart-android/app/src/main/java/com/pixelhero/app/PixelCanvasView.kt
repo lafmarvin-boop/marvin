@@ -135,6 +135,8 @@ class PixelCanvasView @JvmOverloads constructor(
     var onProjectChanged: (() -> Unit)? = null
     var onColorPicked: ((Int) -> Unit)? = null
     var onStrokeStart: (() -> Unit)? = null
+    /** Fired after a SELECT-tool rectangle is finished and lifted to floating. */
+    var onSelectionCreated: (() -> Unit)? = null
     var onStrokeEnd: (() -> Unit)? = null
 
     private val paint = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
@@ -622,8 +624,9 @@ class PixelCanvasView @JvmOverloads constructor(
             Tool.RECT_FILL -> { drawRect(startPx, startPy, lastPx, lastPy, color, true); syncFrameBitmap() }
             Tool.SELECT -> {
                 if (selectionDragMode == SelectionDragMode.CREATE && selection.active) {
-                    // Lift selected pixels into floating
+                    // Lift selected pixels into floating — they become draggable.
                     liftSelectionToFloating()
+                    onSelectionCreated?.invoke()
                 }
                 selectionDragMode = SelectionDragMode.NONE
             }
