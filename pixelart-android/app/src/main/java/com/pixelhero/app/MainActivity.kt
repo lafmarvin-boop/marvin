@@ -212,6 +212,8 @@ class MainActivity : AppCompatActivity() {
         binding.canvas.project = project
         binding.canvas.color = project.primaryColor
         binding.canvas.tool = Tool.PENCIL
+        binding.canvas.palmRejection = getSharedPreferences("settings", MODE_PRIVATE)
+            .getBoolean("palmRejection", true)
         binding.canvas.onStrokeStart = { pushUndo() }
         binding.canvas.onProjectChanged = {
             if (project.frames.indices.contains(project.currentIndex))
@@ -1935,11 +1937,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showToolsMenu() {
+        val palmOn = binding.canvas.palmRejection
         val items = arrayOf(
             "Ajouter du texte (5×7 pixel font)…",
             "Stabilisateur de trait…",
             "Personnaliser couleurs onion skin…",
-            "Fond global (partagé entre toutes les frames)…"
+            "Fond global (partagé entre toutes les frames)…",
+            "✋ Rejet de la paume (stylet) : " + if (palmOn) "ON" else "OFF"
         )
         AlertDialog.Builder(this).setTitle("🔧 Outils")
             .setItems(items) { _, w ->
@@ -1948,8 +1952,17 @@ class MainActivity : AppCompatActivity() {
                     1 -> showStabilizerDialog()
                     2 -> showOnionColorPicker()
                     3 -> showGlobalBackgroundDialog()
+                    4 -> togglePalmRejection()
                 }
             }.show()
+    }
+
+    private fun togglePalmRejection() {
+        binding.canvas.palmRejection = !binding.canvas.palmRejection
+        getSharedPreferences("settings", MODE_PRIVATE).edit()
+            .putBoolean("palmRejection", binding.canvas.palmRejection).apply()
+        val state = if (binding.canvas.palmRejection) "activé" else "désactivé"
+        toast("Rejet de la paume $state")
     }
 
     private fun showPlayModeMenu() {

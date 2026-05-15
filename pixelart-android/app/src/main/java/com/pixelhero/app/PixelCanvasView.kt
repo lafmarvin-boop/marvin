@@ -107,6 +107,15 @@ class PixelCanvasView @JvmOverloads constructor(
     private var panStartY = 0f
     private var translateStartX = 0f
     private var translateStartY = 0f
+
+    /**
+     * Palm rejection: when ON, finger touches are ignored if a stylus was
+     * active within the last [palmRejectionWindowMs] ms. When you put the
+     * stylus down, your palm resting on the screen is silently dropped.
+     */
+    var palmRejection: Boolean = true
+    private var lastStylusEventTime: Long = 0L
+    private val palmRejectionWindowMs = 1500L
     private var pinching = false
 
     // Pixel-perfect: track recent pixel positions to delete corners
@@ -412,6 +421,29 @@ class PixelCanvasView @JvmOverloads constructor(
 
     // -- Touch handling --
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // Palm rejection: if any pointer in this batch is a stylus, mark the
+        // stylus active. While the stylus is recently active, finger pointers
+        // are silently dropped — the user's palm resting on the tablet stops
+        // creating fake taps. When the stylus has been away long enough
+        // (palmRejectionWindowMs), fingers work normally again.
+        if (palmRejection) {
+            var hasStylus = false
+            for (i in 0 until event.pointerCount) {
+                val tt = event.getToolType(i)
+                if (tt == MotionEvent.TOOL_TYPE_STYLUS || tt == MotionEvent.TOOL_TYPE_ERASER) {
+                    hasStylus = true
+                    lastStylusEventTime = System.currentTimeMillis()
+                    break
+                }
+            }
+            if (!hasStylus) {
+                val sinceStylus = System.currentTimeMillis() - lastStylusEventTime
+                if (sinceStylus < palmRejectionWindowMs) {
+                    // Within the rejection window: drop finger events entirely.
+                    return true
+                }
+            }
+        }
         scaleGD.onTouchEvent(event)
         val action = event.actionMasked
         val idx = event.actionIndex
