@@ -20,6 +20,15 @@ object GrapplingProgramBuilder {
     private const val WARMUP_POST = "Hip airplane 2x6 / cat-cow 2x10 / bird-dog 2x10 / pont fessier 2x12"
     private const val WARMUP_WREST = "Tour de tapis / shrimps / sprawls 3x10 / shadow grappling 3 min"
 
+    /** Finisher cardio explosif — 5 min max (10 rounds 30 s / 30 s). */
+    private fun cardioFinisher(annotation: String) = Exercise(
+        name = "Cardio explosif final",
+        sets = "10",
+        reps = "30 s ON / 30 s OFF",
+        rest = "—",
+        annotation = annotation,
+    )
+
     private data class WeekSpec(
         val sets: Int, val mainReps: Int, val isoSec: Int, val gripSec: Int, val rounds: Int,
     )
@@ -78,6 +87,7 @@ object GrapplingProgramBuilder {
             Exercise("Dead-hang lesté", "3", "${spec.gripSec} s", "Traction lestée", 1.0, REST_ISO, annotation = "Grip isométrique"),
             Exercise("Fermières (gi-grip simulé)", "3", "${spec.gripSec} s par main", rest = REST_ISO, isSuperset = true, supersetGroup = 2),
             Exercise("Curl marteau", "3", "10 reps", "Curl marteau", 1.0, REST_CIRCUIT, isSuperset = true, supersetGroup = 2),
+            cardioFinisher("Sprawl + sprint 10 m en alternance — type takedown defense"),
         ),
     )
 
@@ -93,6 +103,7 @@ object GrapplingProgramBuilder {
             Exercise("Planche bras tendus", "3", "${spec.isoSec} s", rest = REST_ISO),
             Exercise("Hollow body hold", "3", "${spec.isoSec} s", rest = REST_ISO),
             Exercise("Wall sit lesté", "3", "${spec.isoSec} s", "Wall sit lesté", 1.0, REST_ISO, annotation = "Sac/plaque sur cuisses"),
+            cardioFinisher("KB swing + burpee alternés — explosivité hanches"),
         ),
     )
 

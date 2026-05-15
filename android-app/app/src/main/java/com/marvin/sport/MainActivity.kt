@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.marvin.sport.data.CustomLoadStore
 import com.marvin.sport.data.OneRepMaxStore
 import com.marvin.sport.data.ProgressionStore
 import com.marvin.sport.data.Programs
@@ -48,10 +49,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val store = ProgressionStore(applicationContext)
         val oneRm = OneRepMaxStore(applicationContext)
+        val customLoads = CustomLoadStore(applicationContext)
         setContent {
             MarvinSportTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AppNavigation(store = store, oneRm = oneRm)
+                    AppNavigation(store = store, oneRm = oneRm, customLoads = customLoads)
                 }
             }
         }
@@ -65,7 +67,11 @@ private enum class MainTab(val label: String, val icon: ImageVector, val accent:
 }
 
 @Composable
-private fun AppNavigation(store: ProgressionStore, oneRm: OneRepMaxStore) {
+private fun AppNavigation(
+    store: ProgressionStore,
+    oneRm: OneRepMaxStore,
+    customLoads: CustomLoadStore,
+) {
     val nav = rememberNavController()
     NavHost(navController = nav, startDestination = "main") {
         composable("main") {
@@ -114,6 +120,7 @@ private fun AppNavigation(store: ProgressionStore, oneRm: OneRepMaxStore) {
                 session = program.phases[p].weeks[w].sessions[s],
                 store = store,
                 oneRm = oneRm,
+                customLoads = customLoads,
                 onBack = { nav.popBackStack() },
             )
         }

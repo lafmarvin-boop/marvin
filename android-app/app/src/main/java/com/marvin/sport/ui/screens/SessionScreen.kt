@@ -23,7 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.marvin.sport.data.DefaultOneRm
+import com.marvin.sport.data.CustomLoadStore
 import com.marvin.sport.data.Exercise
 import com.marvin.sport.data.ExerciseInfoBank
 import com.marvin.sport.data.OneRepMaxStore
@@ -35,6 +35,7 @@ import com.marvin.sport.data.Week
 import com.marvin.sport.ui.components.ExerciseInfoSheet
 import com.marvin.sport.ui.theme.ProgramAccent
 import com.marvin.sport.ui.theme.SuccessGreen
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,6 +47,7 @@ fun SessionScreen(
     session: Session,
     store: ProgressionStore,
     oneRm: OneRepMaxStore,
+    customLoads: CustomLoadStore,
     onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -54,7 +56,7 @@ fun SessionScreen(
     val savedNote by store.noteFlow(session.id).collectAsState(initial = "")
     var noteText by remember(savedNote) { mutableStateOf(savedNote) }
     var infoFor by remember { mutableStateOf<Exercise?>(null) }
-    var editingRm by remember { mutableStateOf<Exercise?>(null) }
+    var editingCharge by remember { mutableStateOf<Exercise?>(null) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -146,10 +148,10 @@ fun SessionScreen(
                 ExerciseCard(
                     exo = exo,
                     accent = accent,
-                    store = store,
                     oneRm = oneRm,
+                    customLoads = customLoads,
                     onInfoClick = { infoFor = exo },
-                    onEditCharge = { editingRm = exo },
+                    onEditCharge = { editingCharge = exo },
                 )
             }
             item {
@@ -172,13 +174,13 @@ fun SessionScreen(
         )
     }
 
-    val ed = editingRm
-    if (ed?.oneRmKey != null) {
+    val ed = editingCharge
+    if (ed != null) {
         ChargeEditDialog(
             exercise = ed,
             oneRm = oneRm,
-            onDismiss = { editingRm = null },
-            onSaved = { editingRm = null },
+            customLoads = customLoads,
+            onDismiss = { editingCharge = null },
         )
     }
 }
@@ -210,15 +212,19 @@ private fun WarmupBlock(text: String, accent: Color) {
 private fun ExerciseCard(
     exo: Exercise,
     accent: Color,
-    store: ProgressionStore,
     oneRm: OneRepMaxStore,
+    customLoads: CustomLoadStore,
     onInfoClick: () -> Unit,
     onEditCharge: () -> Unit,
 ) {
     val rmKey = exo.oneRmKey
-    val rmKg by (rmKey?.let { oneRm.valueFlow(it) } ?: kotlinx.coroutines.flow.flowOf(0.0))
+    val rmKg by (rmKey?.let { oneRm.valueFlow(it) } ?: flowOf(0.0))
         .collectAsState(initial = 0.0)
-    val computedLoad = rmKey?.let { rmKg * exo.percentage }
+    val customLoad by customLoads.valueFlow(exo.name).collectAsState(initial = null)
+
+    val computedFromRm = rmKey?.let { rmKg * exo.percentage }
+    val effectiveLoad: Double? = customLoad ?: computedFromRm
+    val isCustom = customLoad != null
 
     Card(
         modifier = Modifier
@@ -284,43 +290,52 @@ private fun ExerciseCard(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        if (rmKey != null) {
-                            Spacer(Modifier.width(6.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .background(accent.copy(alpha = 0.12f))
-                                    .clickable(role = Role.Button, onClick = onEditCharge)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp),
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Filled.Edit,
-                                        contentDescription = "Modifier la charge",
-                                        tint = accent,
-                                        modifier = Modifier.size(10.dp),
-                                    )
-                                    Spacer(Modifier.width(2.dp))
-                                    Text(
-                                        "MODIF",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = accent,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
+                        Spacer(Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(accent.copy(alpha = 0.12f))
+                                .clickable(role = Role.Button, onClick = onEditCharge)
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Filled.Edit,
+                                    contentDescription = "Modifier la charge",
+                                    tint = accent,
+                                    modifier = Modifier.size(10.dp),
+                                )
+                                Spacer(Modifier.width(2.dp))
+                                Text(
+                                    "MODIF",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = accent,
+                                    fontWeight = FontWeight.Bold,
+                                )
                             }
                         }
                     }
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = computedLoad?.let { formatKg(it) } ?: "—",
+                        text = effectiveLoad?.let { formatKg(it) } ?: "—",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = if (computedLoad != null) accent else MaterialTheme.colorScheme.onSurface,
+                        color = if (effectiveLoad != null) accent else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (rmKey != null) {
-                        Text(
+                    when {
+                        isCustom -> Text(
+                            "Charge perso",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        rmKey != null -> Text(
                             "${(exo.percentage * 100).toInt()}% de ${formatKg(rmKg)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                        else -> Text(
+                            "Poids du corps",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline,
                         )
@@ -400,13 +415,18 @@ private fun NoteCard(value: String, onChange: (String) -> Unit) {
 private fun ChargeEditDialog(
     exercise: Exercise,
     oneRm: OneRepMaxStore,
+    customLoads: CustomLoadStore,
     onDismiss: () -> Unit,
-    onSaved: () -> Unit,
 ) {
-    val rmKey = exercise.oneRmKey ?: return
     val scope = rememberCoroutineScope()
-    val current by oneRm.valueFlow(rmKey).collectAsState(initial = DefaultOneRm.map[rmKey] ?: 0.0)
-    var text by remember(current) { mutableStateOf(formatKgInput(current)) }
+    val rmKey = exercise.oneRmKey
+    val rmKg by (rmKey?.let { oneRm.valueFlow(it) } ?: flowOf(0.0))
+        .collectAsState(initial = 0.0)
+    val savedCustom by customLoads.valueFlow(exercise.name).collectAsState(initial = null)
+
+    val computedFromRm = rmKey?.let { rmKg * exercise.percentage }
+    val initialValue = savedCustom ?: computedFromRm
+    var text by remember(initialValue) { mutableStateOf(initialValue?.let { formatKgInput(it) } ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -414,7 +434,7 @@ private fun ChargeEditDialog(
         text = {
             Column {
                 Text(
-                    "Charge maximale (1RM) pour « $rmKey »",
+                    "Charge utilisée pour cet exercice (en kg).",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -429,24 +449,54 @@ private fun ChargeEditDialog(
                     ),
                 )
                 Spacer(Modifier.height(8.dp))
-                Text(
-                    "Cet exercice utilise ${(exercise.percentage * 100).toInt()}% de cette valeur.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
-                )
+                if (computedFromRm != null && rmKey != null) {
+                    Text(
+                        "Valeur calculée : ${formatKg(computedFromRm)} (${(exercise.percentage * 100).toInt()}% de ${formatKg(rmKg)} 1RM).",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                    Text(
+                        "Modifie ici pour un override perso. Pour changer le 1RM global, utilise l'onglet Charges.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                } else {
+                    Text(
+                        "Pas de 1RM associé — utile pour un poids ajouté (gilet lesté, sac, kettlebell).",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+                if (savedCustom != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "⚙ Override perso enregistré : ${formatKg(savedCustom!!)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
         },
         confirmButton = {
             Button(onClick = {
                 val parsed = text.replace(',', '.').toDoubleOrNull()
                 if (parsed != null && parsed >= 0.0) {
-                    scope.launch { oneRm.set(rmKey, parsed) }
-                    onSaved()
+                    scope.launch { customLoads.set(exercise.name, parsed) }
+                    onDismiss()
                 }
             }) { Text("Enregistrer") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annuler") }
+            Row {
+                if (savedCustom != null) {
+                    TextButton(onClick = {
+                        scope.launch { customLoads.clear(exercise.name) }
+                        onDismiss()
+                    }) { Text("Effacer") }
+                }
+                TextButton(onClick = onDismiss) { Text("Annuler") }
+            }
         },
     )
 }

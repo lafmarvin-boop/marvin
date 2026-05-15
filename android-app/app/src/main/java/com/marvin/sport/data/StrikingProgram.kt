@@ -20,6 +20,15 @@ object StrikingProgramBuilder {
     private const val WARMUP_UP = "Mobilité épaules/T-spine / pompes progressives / shadow boxing 3 min"
     private const val WARMUP_CORE = "Mobilité hanches/colonne / cat-cow / planche 30 s / 100 cordes"
 
+    /** Finisher cardio explosif standard — 5 min max (10 rounds 30 s / 30 s). */
+    private fun cardioFinisher(annotation: String) = Exercise(
+        name = "Cardio explosif final",
+        sets = "10",
+        reps = "30 s ON / 30 s OFF",
+        rest = "—",
+        annotation = annotation,
+    )
+
     private data class WeekSpec(val sets: Int, val plyoReps: Int, val mainReps: Int, val rounds: Int)
 
     private fun phaseScheme(phase: Int): List<WeekSpec> = when (phase) {
@@ -71,8 +80,7 @@ object StrikingProgramBuilder {
             Exercise("Back squat dynamique", "${spec.sets}", "${spec.mainReps} reps", "Back Squat", loads.squatPct, REST_EXPLO, annotation = "Vitesse concentrique max"),
             Exercise("Fente sautée alternée", "3", "${spec.plyoReps} par jambe", rest = REST_PLYO, isSuperset = true, supersetGroup = 1),
             Exercise("Sprint navette 20 m", "2", "${spec.rounds} rounds", rest = REST_CIRCUIT, isSuperset = true, supersetGroup = 1),
-            Exercise("Mollets / proprioception", "3", "12 reps", rest = REST_CIRCUIT),
-            Exercise("Étirements actifs", "1", "5 min", rest = "—"),
+            cardioFinisher("Sprint navettes 30 s / 30 s — alternance sprint linéaire / sauts groupés"),
         ),
     )
 
@@ -88,6 +96,7 @@ object StrikingProgramBuilder {
             Exercise("DVP incliné contrôlé", "3", "${spec.mainReps + 2} reps", "DVP Incliné", loads.inclinePct, REST_EXPLO),
             Exercise("Frappe sac (combos 1-2-3-2)", "3", "${spec.rounds} rounds 1 min", rest = "1 min repos par round", annotation = "Vitesse > puissance"),
             Exercise("Triceps corde / Élévation latérale", "3", "12 reps", "Triceps corde", 1.0, REST_CIRCUIT, isSuperset = true, supersetGroup = 2),
+            cardioFinisher("Sac de frappe combos 1-2-3-2 / corde rapide en alternance"),
         ),
     )
 
