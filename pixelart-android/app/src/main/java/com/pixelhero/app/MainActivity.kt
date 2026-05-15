@@ -2349,10 +2349,10 @@ class MainActivity : AppCompatActivity() {
             }
             "${it}×${it}  ($tag)"
         }.toTypedArray()
+        // AlertDialog can't show both a message and a list — the message would
+        // hide the items. The label suffixes already convey the trade-off.
         AlertDialog.Builder(this)
-            .setTitle("Résolution cible")
-            .setMessage("Plus la résolution est petite, plus le visuel est simplifié. " +
-                "Le canvas du projet sera redimensionné à la taille choisie.")
+            .setTitle("Résolution cible (canvas sera redimensionné)")
             .setItems(labels) { _, which ->
                 val size = sizes[which]
                 showStyleForTargetResolution(bmp, size)
