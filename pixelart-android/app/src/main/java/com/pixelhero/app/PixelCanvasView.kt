@@ -131,8 +131,8 @@ class PixelCanvasView @JvmOverloads constructor(
     private val paint = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
     private val gridPaint = Paint().apply { color = 0x33FFFFFF; style = Paint.Style.STROKE; strokeWidth = 0f }
     private val gridMajorPaint = Paint().apply { color = 0x66A5B4FF; style = Paint.Style.STROKE; strokeWidth = 0f }
-    private val checkerPaint1 = Paint().apply { color = 0xFF22222E.toInt() }
-    private val checkerPaint2 = Paint().apply { color = 0xFF15151F.toInt() }
+    private val checkerPaint1 = Paint().apply { color = 0xFFE8E8EE.toInt() }
+    private val checkerPaint2 = Paint().apply { color = 0xFFCCCCD5.toInt() }
     private val borderPaint = Paint().apply { color = 0xFF6677AA.toInt(); style = Paint.Style.STROKE; strokeWidth = 2f }
     private val previewPaint = Paint().apply { style = Paint.Style.FILL }
     private val selDashPaint = Paint().apply {
