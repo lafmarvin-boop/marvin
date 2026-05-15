@@ -298,6 +298,17 @@
                     android:text="Calques…"
                     android:layout_width="match_parent" android:layout_marginTop="6dp"/>
 
+                <!-- Inline layers strip: one row per layer with a clickable eye toggle.
+                     Populated and refreshed from code. Visible without opening
+                     the Calques dialog. -->
+                <LinearLayout android:id="@+id/layersStrip"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@color/bg_panel"
+                    android:padding="4dp"
+                    android:layout_marginTop="4dp"/>
+
                 <androidx.recyclerview.widget.RecyclerView android:id="@+id/framesList"
                     android:layout_width="match_parent" android:layout_height="@dimen/frames_list_height"
                     android:background="@color/bg" android:padding="4dp"

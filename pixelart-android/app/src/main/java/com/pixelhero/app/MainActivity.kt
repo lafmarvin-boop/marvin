@@ -1354,6 +1354,7 @@ class MainActivity : AppCompatActivity() {
                 f.addLayer()
                 binding.canvas.syncFrameBitmap()
                 framesAdapter.notifyItemChanged(project.currentIndex)
+                refreshLayersStrip()
                 toast("Couche ajoutée")
                 showLayersDialog()
             }
@@ -1390,6 +1391,7 @@ class MainActivity : AppCompatActivity() {
                     6 -> mergeDown()
                 }
                 framesAdapter.notifyItemChanged(project.currentIndex)
+                refreshLayersStrip()
             }
             .show()
     }
@@ -1792,6 +1794,60 @@ class MainActivity : AppCompatActivity() {
         binding.canvas.syncOnionBitmap()
         framesAdapter.notifyDataSetChanged()
         binding.timeline.invalidate()
+        refreshLayersStrip()
+    }
+
+    /**
+     * Rebuild the inline layers strip in the right panel: one row per layer
+     * with a clickable eye toggle on the left and the layer name on the right.
+     * Tap eye = show/hide layer. Tap name = make that layer active. Bypasses
+     * the Calques dialog entirely for the most common visibility workflow.
+     */
+    private fun refreshLayersStrip() {
+        val strip = binding.layersStrip
+        strip.removeAllViews()
+        val f = project.currentFrame
+        // Iterate top-down so the topmost layer (highest index) appears first
+        // — matches the painter's expectation in the dialog.
+        for (i in f.layers.indices.reversed()) {
+            val layer = f.layers[i]
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(4, 4, 4, 4)
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                if (i == f.activeLayer) setBackgroundColor(0x33A5B4FF)
+            }
+            val eye = TextView(this).apply {
+                text = if (layer.visible) "👁" else "🚫"
+                textSize = 16f
+                setPadding(8, 4, 12, 4)
+                isClickable = true; isFocusable = true
+                setOnClickListener {
+                    layer.visible = !layer.visible
+                    text = if (layer.visible) "👁" else "🚫"
+                    binding.canvas.syncFrameBitmap()
+                    framesAdapter.notifyItemChanged(project.currentIndex)
+                }
+            }
+            val name = TextView(this).apply {
+                text = layer.name
+                setTextColor(0xFFE8E8F0.toInt())
+                textSize = 13f
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                layoutParams = LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+                )
+                isClickable = true; isFocusable = true
+                setOnClickListener {
+                    f.activeLayer = i
+                    refreshLayersStrip()
+                    binding.canvas.invalidate()
+                }
+            }
+            row.addView(eye); row.addView(name)
+            strip.addView(row)
+        }
     }
 
     // ---- Color ----
@@ -2207,6 +2263,7 @@ class MainActivity : AppCompatActivity() {
         binding.timeline.project = project
         binding.timeline.invalidate()
         undoStack.clear(); redoStack.clear()
+        refreshLayersStrip()
     }
 
     // ---- Save / Load ----
