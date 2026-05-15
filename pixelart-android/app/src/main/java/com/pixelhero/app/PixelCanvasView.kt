@@ -215,7 +215,10 @@ class PixelCanvasView @JvmOverloads constructor(
     fun syncFrameBitmap() {
         val p = project ?: return
         val bmp = frameBmp ?: return
-        val frameData = if (p.currentFrame.layers.size > 1) p.currentFrame.composited() else p.currentFrame.pixels
+        // ALWAYS composite — even a single-layer frame must be hidden when
+        // its only layer is invisible. The previous shortcut returned the
+        // active layer's raw pixels and bypassed visibility flags.
+        val frameData = p.currentFrame.composited()
         val bg = p.globalBackground
         if (bg != null) {
             // Composite globalBg under frameData
@@ -237,8 +240,7 @@ class PixelCanvasView @JvmOverloads constructor(
         invalidate()
     }
 
-    private fun frameComposite(f: Frame): IntArray =
-        if (f.layers.size > 1) f.composited() else f.pixels
+    private fun frameComposite(f: Frame): IntArray = f.composited()
 
     fun resetView() {
         val p = project ?: return

@@ -2502,13 +2502,58 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDeleteDialog(list: List<org.json.JSONObject>) {
+        if (list.isEmpty()) { toast("Aucun projet"); return }
         val labels = list.map { it.optString("name") }.toTypedArray()
+        val checked = BooleanArray(list.size)
         AlertDialog.Builder(this)
-            .setTitle("Supprimer un projet")
-            .setItems(labels) { _, which ->
-                ProjectStorage.delete(this, list[which].optString("id"))
-                toast("Supprimé")
+            .setTitle("Supprimer des projets (coche tout ce qui doit partir)")
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
+                checked[which] = isChecked
             }
+            .setPositiveButton("Supprimer") { _, _ ->
+                val toRemove = list.filterIndexed { i, _ -> checked[i] }
+                if (toRemove.isEmpty()) { toast("Rien de coché"); return@setPositiveButton }
+                // Confirmation since this is destructive and bulk
+                AlertDialog.Builder(this)
+                    .setTitle("Confirmer")
+                    .setMessage("Supprimer ${toRemove.size} projet(s) ?\n" +
+                        toRemove.joinToString("\n") { "• " + it.optString("name") })
+                    .setPositiveButton("Oui, supprimer") { _, _ ->
+                        toRemove.forEach { ProjectStorage.delete(this, it.optString("id")) }
+                        toast("${toRemove.size} projet(s) supprimé(s)")
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+            }
+            .setNeutralButton("Tout cocher") { _, _ ->
+                showDeleteDialogAllChecked(list)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showDeleteDialogAllChecked(list: List<org.json.JSONObject>) {
+        val labels = list.map { it.optString("name") }.toTypedArray()
+        val checked = BooleanArray(list.size) { true }
+        AlertDialog.Builder(this)
+            .setTitle("Supprimer des projets")
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
+                checked[which] = isChecked
+            }
+            .setPositiveButton("Supprimer") { _, _ ->
+                val toRemove = list.filterIndexed { i, _ -> checked[i] }
+                if (toRemove.isEmpty()) return@setPositiveButton
+                AlertDialog.Builder(this)
+                    .setTitle("Confirmer")
+                    .setMessage("Supprimer ${toRemove.size} projet(s) ?")
+                    .setPositiveButton("Oui") { _, _ ->
+                        toRemove.forEach { ProjectStorage.delete(this, it.optString("id")) }
+                        toast("${toRemove.size} projet(s) supprimé(s)")
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+            }
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
