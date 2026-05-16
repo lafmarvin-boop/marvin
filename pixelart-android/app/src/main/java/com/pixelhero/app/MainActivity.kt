@@ -256,6 +256,7 @@ class MainActivity : AppCompatActivity() {
             Triple(binding.toolRect,      Tool.RECT,      "rect"),
             Triple(binding.toolRectFill,  Tool.RECT_FILL, "rectfill"),
             Triple(binding.toolSelect,    Tool.SELECT,    "select"),
+            Triple(binding.toolLasso,     Tool.LASSO,     "lasso"),
             Triple(binding.toolWand,      Tool.WAND,      "wand"),
             Triple(binding.toolMove,      Tool.MOVE,      "move")
         )
@@ -267,9 +268,14 @@ class MainActivity : AppCompatActivity() {
                 binding.canvas.tool = tool
                 when (tool) {
                     Tool.SELECT -> toast("Trace un rectangle. Glisse-le ensuite pour déplacer l'élément.")
+                    Tool.LASSO -> toast("Dessine le contour à main levée. Relâche pour valider la sélection.")
                     Tool.WAND -> toast("Touche un pixel. La zone connectée de même couleur sera sélectionnée.")
                     Tool.UNFILL -> toast("Touche une zone : tous les pixels connectés deviennent transparents.")
                     else -> {}
+                }
+                // Leaving lasso/refine modes resets the refine state.
+                if (tool != Tool.SELECT && tool != Tool.LASSO && tool != Tool.WAND) {
+                    binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.NONE
                 }
                 if (tool == Tool.SELECT || tool == Tool.WAND) showSelectionActions()
             }
@@ -363,6 +369,8 @@ class MainActivity : AppCompatActivity() {
         val hasFloating = binding.canvas.selection.floating != null
         val items = mutableListOf<String>()
         if (hasFloating) items.add("🖐 Déplacer (glisse-la sur la feuille)")
+        items.add("➕ Ajouter des pixels (pinceau)")
+        items.add("➖ Retirer des pixels (pinceau)")
         items.add(getString(R.string.copy))
         items.add(getString(R.string.cut))
         if (clipboardPixels != null) items.add(getString(R.string.paste))
@@ -378,6 +386,14 @@ class MainActivity : AppCompatActivity() {
                 when (items[which]) {
                     "🖐 Déplacer (glisse-la sur la feuille)" -> {
                         toast("Glisse à l'écran pour positionner. Tape ailleurs pour valider.")
+                    }
+                    "➕ Ajouter des pixels (pinceau)" -> {
+                        binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.ADD
+                        toast("Touche des pixels pour les ajouter à la sélection. Change d'outil pour sortir.")
+                    }
+                    "➖ Retirer des pixels (pinceau)" -> {
+                        binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.SUB
+                        toast("Touche des pixels pour les retirer de la sélection. Change d'outil pour sortir.")
                     }
                     getString(R.string.copy) -> {
                         val pair = binding.canvas.copySelectionToClipboard()

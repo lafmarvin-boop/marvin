@@ -82,6 +82,12 @@ object ToolHelp {
             "• Touchez un pixel\n• Tous les pixels adjacents de cette couleur sont sélectionnés\n• Appui long pour menu copier/coller/miroir",
             "Pour changer la couleur d'un t-shirt rouge : baguette sur le rouge, puis menu → Coller (avec autre couleur préchargée)."
         )
+        entries["lasso"] = Entry(
+            "🪢 Lasso (sélection main levée)",
+            "Trace à main levée le contour d'une zone à sélectionner — n'importe quelle forme. Le menu d'actions s'ouvre automatiquement à la fin du tracé : déplacer, couper, ajouter/retirer des pixels au pinceau, etc.",
+            "• Glisse pour tracer le contour\n• Relâche → polygone fermé + zone soulevée comme sélection flottante\n• Dans le menu, choisis « Ajouter / Retirer des pixels » pour affiner pixel par pixel",
+            "Tu veux sélectionner uniquement la tête de ton perso sans les épaules : trace autour de la tête au lasso, puis affine avec ➖ Retirer des pixels."
+        )
         entries["move"] = Entry(
             "✋ Déplacer la vue (M / Espace)",
             "Déplace la vue (caméra) sans dessiner. Utile pour naviguer sur un grand canvas.",

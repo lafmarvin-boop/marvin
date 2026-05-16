@@ -131,6 +131,17 @@ class PixelCanvasView @JvmOverloads constructor(
     private var floatingDragOffsetX = 0
     private var floatingDragOffsetY = 0
 
+    /** Points traced during a LASSO drag (canvas-pixel coords). */
+    private val lassoPoints = ArrayList<IntArray>()
+
+    /**
+     * Selection refine mode: while ADD or SUB, touches on the canvas modify
+     * the selection mask instead of drawing. NONE disables.
+     */
+    enum class SelectionRefineMode { NONE, ADD, SUB }
+    var selectionRefineMode: SelectionRefineMode = SelectionRefineMode.NONE
+        set(value) { field = value; invalidate() }
+
     // Listeners
     var onProjectChanged: (() -> Unit)? = null
     var onColorPicked: ((Int) -> Unit)? = null
@@ -169,6 +180,29 @@ class PixelCanvasView @JvmOverloads constructor(
             return true
         }
     })
+
+    /**
+     * Stylus long-press detector: when the stylus is held still for ~400 ms
+     * without lift, we switch the current gesture into a pan (canvas drag)
+     * until the stylus is lifted. Lets users move around the drawing without
+     * leaving their stylus tool.
+     */
+    private var stylusLongPressArmed = false
+    private var stylusLongPressActive = false
+    private var stylusLongPressX = 0f
+    private var stylusLongPressY = 0f
+    private val stylusLongPressDelayMs = 400L
+    private val stylusLongPressMoveTolerance = 8f  // px before we cancel arming
+    private val stylusLongPressRunnable = Runnable {
+        if (stylusLongPressArmed) {
+            stylusLongPressActive = true
+            // Cancel any in-progress stroke and start panning from current touch.
+            cancelStroke()
+            panStartX = stylusLongPressX; panStartY = stylusLongPressY
+            translateStartX = translateX; translateStartY = translateY
+            performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        }
+    }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -373,6 +407,20 @@ class PixelCanvasView @JvmOverloads constructor(
             }
         }
 
+        // Lasso in-progress path (drawn while the user is still tracing)
+        if (lassoPoints.size >= 2) {
+            val lassoPaint = Paint().apply {
+                color = 0xFFA5B4FF.toInt(); style = Paint.Style.STROKE
+                strokeWidth = 0.3f
+            }
+            val path = android.graphics.Path()
+            path.moveTo(lassoPoints[0][0] + 0.5f, lassoPoints[0][1] + 0.5f)
+            for (i in 1 until lassoPoints.size) {
+                path.lineTo(lassoPoints[i][0] + 0.5f, lassoPoints[i][1] + 0.5f)
+            }
+            canvas.drawPath(path, lassoPaint)
+        }
+
         // Symmetry axis indicator
         if (p.symmetry != SymmetryAxis.NONE) {
             if (p.symmetry == SymmetryAxis.HORIZONTAL || p.symmetry == SymmetryAxis.BOTH) {
@@ -451,11 +499,24 @@ class PixelCanvasView @JvmOverloads constructor(
         scaleGD.onTouchEvent(event)
         val action = event.actionMasked
         val idx = event.actionIndex
+        val primaryIsStylus = run {
+            val tt = event.getToolType(event.actionIndex.coerceAtMost(event.pointerCount - 1))
+            tt == MotionEvent.TOOL_TYPE_STYLUS || tt == MotionEvent.TOOL_TYPE_ERASER
+        }
         when (action) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val id = event.getPointerId(idx)
                 activePointers[id] = PointF(event.getX(idx), event.getY(idx))
                 currentPressure = event.getPressure(idx).coerceIn(0.1f, 1f).takeIf { it > 0f } ?: 1f
+                // Arm stylus long-press: schedule pan-mode after the delay if
+                // the stylus stays still.
+                if (primaryIsStylus && activePointers.size == 1) {
+                    stylusLongPressArmed = true
+                    stylusLongPressActive = false
+                    stylusLongPressX = event.x
+                    stylusLongPressY = event.y
+                    postDelayed(stylusLongPressRunnable, stylusLongPressDelayMs)
+                }
                 if (activePointers.size == 1) {
                     val coords = clientToPixel(event.x, event.y)
                     // Intercept for one-shot tap handler if registered
@@ -488,7 +549,22 @@ class PixelCanvasView @JvmOverloads constructor(
                 // Use the historical max pressure across this batch
                 val pressure = (0 until event.pointerCount).maxOf { event.getPressure(it) }
                 if (pressure > 0f) currentPressure = pressure.coerceIn(0.1f, 1f)
-                if (pinching && activePointers.size == 2) {
+                // If the stylus moved too much before the long-press timer
+                // fires, cancel the arming so we don't grab a normal stroke.
+                if (stylusLongPressArmed && !stylusLongPressActive) {
+                    val dx = event.x - stylusLongPressX
+                    val dy = event.y - stylusLongPressY
+                    if (dx * dx + dy * dy > stylusLongPressMoveTolerance * stylusLongPressMoveTolerance) {
+                        stylusLongPressArmed = false
+                        removeCallbacks(stylusLongPressRunnable)
+                    }
+                }
+                // Stylus long-press is ACTIVE → behave like pan.
+                if (stylusLongPressActive && activePointers.size == 1) {
+                    translateX = translateStartX + (event.x - panStartX)
+                    translateY = translateStartY + (event.y - panStartY)
+                    invalidate()
+                } else if (pinching && activePointers.size == 2) {
                     val pts = activePointers.values.toList()
                     val cx = (pts[0].x + pts[1].x) / 2f
                     val cy = (pts[0].y + pts[1].y) / 2f
@@ -511,6 +587,12 @@ class PixelCanvasView @JvmOverloads constructor(
                 activePointers.remove(event.getPointerId(idx))
                 if (activePointers.size < 2) pinching = false
                 if (activePointers.isEmpty() && isDrawing) endStroke()
+                // Reset stylus long-press state on lift.
+                if (activePointers.isEmpty()) {
+                    stylusLongPressArmed = false
+                    stylusLongPressActive = false
+                    removeCallbacks(stylusLongPressRunnable)
+                }
             }
         }
         return true
@@ -576,7 +658,19 @@ class PixelCanvasView @JvmOverloads constructor(
                 wandSelectFloodFill(px, py)
                 invalidate()
             }
+            Tool.LASSO -> {
+                commitFloatingSelection()
+                selection.clear()
+                lassoPoints.clear()
+                lassoPoints.add(intArrayOf(px, py))
+                invalidate()
+            }
             else -> {}
+        }
+        // Selection refine: a touch in ADD/SUB mode flips the mask at this
+        // pixel and re-lifts so the canvas reflects it.
+        if (selectionRefineMode != SelectionRefineMode.NONE && selection.active) {
+            refineMaskAt(px, py)
         }
     }
 
@@ -614,7 +708,16 @@ class PixelCanvasView @JvmOverloads constructor(
                     else -> {}
                 }
             }
+            Tool.LASSO -> {
+                if (lassoPoints.isEmpty() || lassoPoints.last()[0] != px || lassoPoints.last()[1] != py) {
+                    lassoPoints.add(intArrayOf(px, py))
+                    invalidate()
+                }
+            }
             else -> {}
+        }
+        if (selectionRefineMode != SelectionRefineMode.NONE && selection.active) {
+            refineMaskAt(px, py)
         }
         lastPx = px; lastPy = py
     }
@@ -631,6 +734,14 @@ class PixelCanvasView @JvmOverloads constructor(
                     onSelectionCreated?.invoke()
                 }
                 selectionDragMode = SelectionDragMode.NONE
+            }
+            Tool.LASSO -> {
+                if (lassoPoints.size >= 3) {
+                    finalizeLassoSelection()
+                    onSelectionCreated?.invoke()
+                }
+                lassoPoints.clear()
+                invalidate()
             }
             else -> {}
         }
@@ -783,12 +894,18 @@ class PixelCanvasView @JvmOverloads constructor(
         val w = selection.width
         val h = selection.height
         if (w <= 0 || h <= 0) return
+        val mask = selection.mask
         val floating = IntArray(w * h)
         for (y in 0 until h) for (x in 0 until w) {
             val sx = selection.xMin + x
             val sy = selection.yMin + y
-            floating[y * w + x] = p.currentFrame.get(sx, sy)
-            p.currentFrame.set(sx, sy, 0) // clear source
+            val inMask = mask?.let { it.getOrNull(y * w + x) == true } ?: true
+            if (inMask) {
+                floating[y * w + x] = p.currentFrame.get(sx, sy)
+                p.currentFrame.set(sx, sy, 0)  // clear source
+            }
+            // else: leave floating[i] = 0 (transparent) so committing later
+            // doesn't paint anything outside the lasso shape.
         }
         selection.floating = floating
         selection.floatW = w
@@ -940,6 +1057,91 @@ class PixelCanvasView @JvmOverloads constructor(
         selection.clear()
         syncFrameBitmap()
         onProjectChanged?.invoke()
+    }
+
+    /**
+     * Close the lasso polygon, rasterize it to a mask, set the selection
+     * bbox + mask, lift the floating content. Even-odd point-in-polygon
+     * fill of every pixel inside the bbox.
+     */
+    private fun finalizeLassoSelection() {
+        val p = project ?: return
+        if (lassoPoints.size < 3) return
+        // Compute polygon bbox clipped to canvas
+        var xMin = Int.MAX_VALUE; var xMax = Int.MIN_VALUE
+        var yMin = Int.MAX_VALUE; var yMax = Int.MIN_VALUE
+        for (pt in lassoPoints) {
+            if (pt[0] < xMin) xMin = pt[0]; if (pt[0] > xMax) xMax = pt[0]
+            if (pt[1] < yMin) yMin = pt[1]; if (pt[1] > yMax) yMax = pt[1]
+        }
+        xMin = xMin.coerceAtLeast(0); yMin = yMin.coerceAtLeast(0)
+        xMax = xMax.coerceAtMost(p.width - 1); yMax = yMax.coerceAtMost(p.height - 1)
+        if (xMax < xMin || yMax < yMin) return
+        val w = xMax - xMin + 1
+        val h = yMax - yMin + 1
+        val mask = BooleanArray(w * h)
+        // Point-in-polygon for every pixel center. Even-odd rule via horizontal ray cast.
+        val n = lassoPoints.size
+        for (yy in 0 until h) {
+            val py = yMin + yy + 0.5f
+            for (xx in 0 until w) {
+                val pxc = xMin + xx + 0.5f
+                var inside = false
+                var j = n - 1
+                for (i in 0 until n) {
+                    val xi = lassoPoints[i][0].toFloat(); val yi = lassoPoints[i][1].toFloat()
+                    val xj = lassoPoints[j][0].toFloat(); val yj = lassoPoints[j][1].toFloat()
+                    if (((yi > py) != (yj > py)) &&
+                        (pxc < (xj - xi) * (py - yi) / ((yj - yi).takeIf { it != 0f } ?: 1e-6f) + xi)) {
+                        inside = !inside
+                    }
+                    j = i
+                }
+                if (inside) mask[yy * w + xx] = true
+            }
+        }
+        selection.clear()
+        selection.active = true
+        selection.x0 = xMin; selection.y0 = yMin
+        selection.x1 = xMax; selection.y1 = yMax
+        selection.mask = mask
+        liftSelectionToFloating()
+    }
+
+    /** Toggle a single mask cell at the given canvas pixel — used by the ADD/SUB refine modes. */
+    private fun refineMaskAt(px: Int, py: Int) {
+        if (!selection.active) return
+        // Re-commit any floating first so we mutate the source frame, not the floating copy.
+        val hadFloating = selection.floating != null
+        if (hadFloating) commitFloatingSelection()
+        val w = selection.width
+        val h = selection.height
+        var mask = selection.mask
+        // Expand bbox if the new pixel falls outside
+        val newXMin = minOf(selection.xMin, px).coerceAtLeast(0)
+        val newYMin = minOf(selection.yMin, py).coerceAtLeast(0)
+        val p = project ?: return
+        val newXMax = maxOf(selection.xMax, px).coerceAtMost(p.width - 1)
+        val newYMax = maxOf(selection.yMax, py).coerceAtMost(p.height - 1)
+        val nw = newXMax - newXMin + 1
+        val nh = newYMax - newYMin + 1
+        val newMask = BooleanArray(nw * nh)
+        // Copy old mask into new bbox space (default true if old mask was null)
+        for (y in 0 until h) for (x in 0 until w) {
+            val cellOld = mask?.getOrNull(y * w + x) ?: true
+            val sx = (selection.xMin + x) - newXMin
+            val sy = (selection.yMin + y) - newYMin
+            newMask[sy * nw + sx] = cellOld
+        }
+        // Apply ADD or SUB at (px, py)
+        val lx = px - newXMin; val ly = py - newYMin
+        if (lx in 0 until nw && ly in 0 until nh) {
+            newMask[ly * nw + lx] = (selectionRefineMode == SelectionRefineMode.ADD)
+        }
+        selection.x0 = newXMin; selection.y0 = newYMin
+        selection.x1 = newXMax; selection.y1 = newYMax
+        selection.mask = newMask
+        liftSelectionToFloating()
     }
 
     /** Magic wand selection: flood-select all 4-connected pixels matching the target color. */

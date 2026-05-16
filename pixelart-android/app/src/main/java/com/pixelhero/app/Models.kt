@@ -1,7 +1,7 @@
 package com.pixelhero.app
 
 enum class Tool {
-    PENCIL, ERASER, FILL, UNFILL, PICKER, LINE, RECT, RECT_FILL, MOVE, SELECT, WAND
+    PENCIL, ERASER, FILL, UNFILL, PICKER, LINE, RECT, RECT_FILL, MOVE, SELECT, WAND, LASSO
 }
 
 enum class SymmetryAxis { NONE, HORIZONTAL, VERTICAL, BOTH, ROTATE_4 }
@@ -245,6 +245,13 @@ class Selection {
     var floatH: Int = 0
     var floatX: Int = 0
     var floatY: Int = 0
+    /**
+     * Per-pixel mask describing exactly which cells inside the bbox are
+     * part of the selection. When null, the whole bbox is selected.
+     * Indexed by (y - yMin) * width + (x - xMin). Used by lasso and the
+     * refine-pixel modes to mark non-rectangular shapes.
+     */
+    var mask: BooleanArray? = null
 
     val xMin get() = minOf(x0, x1)
     val xMax get() = maxOf(x0, x1)
@@ -253,8 +260,20 @@ class Selection {
     val width get() = xMax - xMin + 1
     val height get() = yMax - yMin + 1
 
+    /** Returns true if (x,y) is part of the selection (bbox + mask check). */
+    fun contains(x: Int, y: Int): Boolean {
+        if (!active) return false
+        if (x !in xMin..xMax || y !in yMin..yMax) return false
+        val m = mask ?: return true
+        val lx = x - xMin; val ly = y - yMin
+        val w = width
+        val idx = ly * w + lx
+        return idx in m.indices && m[idx]
+    }
+
     fun clear() {
         active = false; floating = null
         x0 = -1; y0 = -1; x1 = -1; y1 = -1
+        mask = null
     }
 }
