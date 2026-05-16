@@ -32,6 +32,12 @@ data class Wallet(
 
     // Plafond cumulé d'investissement (0 = illimité)
     val maxTotalSpend: Double = 0.0,
+
+    // Take-profit automatique : quand la P&L latente atteint le seuil,
+    // vend un pourcentage des holdings pour sécuriser le gain en cash.
+    val takeProfitEnabled: Boolean = false,
+    val takeProfitThresholdEur: Double = 100.0,
+    val takeProfitSellPercent: Double = 10.0,
 ) {
     companion object {
         const val DCA_ID = "dca"
@@ -47,6 +53,9 @@ data class Wallet(
                 dcaAmount = 5.0,
                 dcaIntervalHours = 12,
                 maxTotalSpend = 50.0,
+                takeProfitEnabled = true,
+                takeProfitThresholdEur = 100.0,
+                takeProfitSellPercent = 10.0,
             ),
             Wallet(
                 id = GRID_ID,

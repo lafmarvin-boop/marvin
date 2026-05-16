@@ -19,6 +19,7 @@ import com.marvin.cryptobot.domain.strategy.DcaStrategy
 import com.marvin.cryptobot.domain.strategy.GridStrategy
 import com.marvin.cryptobot.domain.strategy.Strategy
 import com.marvin.cryptobot.domain.strategy.StrategyOutcome
+import com.marvin.cryptobot.domain.strategy.TakeProfit
 import java.util.concurrent.TimeUnit
 
 /**
@@ -42,21 +43,57 @@ class TradingWorker(
         for (wallet in wallets) {
             if (!wallet.enabled) continue
 
-            // DCA respecte son propre intervalle
-            if (wallet.type == StrategyType.DCA && !shouldRunDca(container, wallet)) continue
-
-            val strategy = strategyFor(wallet, container)
-            when (val outcome = strategy.runOnce(wallet)) {
-                is StrategyOutcome.Executed -> {
-                    container.walletStore.update(wallet.id) { outcome.updatedWallet }
-                    outcome.trades.forEach { notify(wallet, it) }
+            // 1) Stratégie principale (DCA respecte son intervalle, Grid agit à chaque palier)
+            val shouldRunStrategy = wallet.type != StrategyType.DCA || shouldRunDca(container, wallet)
+            if (shouldRunStrategy) {
+                val strategy = strategyFor(wallet, container)
+                when (val outcome = strategy.runOnce(wallet)) {
+                    is StrategyOutcome.Executed -> {
+                        container.walletStore.update(wallet.id) { outcome.updatedWallet }
+                        outcome.trades.forEach { notify(wallet, it) }
+                    }
+                    is StrategyOutcome.Skipped -> Unit
+                    is StrategyOutcome.Failure -> success = false
                 }
-                is StrategyOutcome.Skipped -> Unit
-                is StrategyOutcome.Failure -> success = false
+            }
+
+            // 2) Take-profit (toujours évalué, même si la stratégie principale a sauté ce tour)
+            val currentWallet = container.walletStore.byId(wallet.id) ?: continue
+            if (currentWallet.takeProfitEnabled && currentWallet.holdingsBase > 0) {
+                val price = runCatching {
+                    container.newBinanceClient().lastPrice(currentWallet.symbol)
+                }.getOrNull()
+                if (price != null) {
+                    val cashBefore = currentWallet.balanceQuote
+                    val updated = TakeProfit.maybeApply(currentWallet, price, container)
+                    if (updated.holdingsBase < currentWallet.holdingsBase) {
+                        container.walletStore.update(wallet.id) { updated }
+                        notifyTakeProfit(wallet, updated.balanceQuote - cashBefore)
+                    }
+                }
             }
         }
 
         return if (success) Result.success() else if (runAttemptCount < 3) Result.retry() else Result.failure()
+    }
+
+    private fun notifyTakeProfit(wallet: Wallet, cashGained: Double) {
+        val intent = Intent(applicationContext, MainActivity::class.java)
+        val pi = PendingIntent.getActivity(
+            applicationContext, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val n = NotificationCompat.Builder(applicationContext, CryptoBotApp.CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("💰 Take-profit ${wallet.name}")
+            .setContentText("+%.2f € sécurisés en cash".format(cashGained))
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .build()
+        runCatching {
+            NotificationManagerCompat.from(applicationContext)
+                .notify((wallet.id.hashCode() and 0x7FFFFFFF), n)
+        }
     }
 
     private suspend fun shouldRunDca(container: AppContainer, wallet: Wallet): Boolean {

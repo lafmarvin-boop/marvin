@@ -262,6 +262,15 @@ private fun WalletCard(
                 )
             }
 
+            if (wallet.takeProfitEnabled) {
+                Text(
+                    "💰 TP auto: revend ${wallet.takeProfitSellPercent.toInt()}% " +
+                        "à chaque +${wallet.takeProfitThresholdEur.toInt()} € de P&L",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
+
             // Stratégie spécifique
             when (wallet.type) {
                 StrategyType.DCA -> Text(

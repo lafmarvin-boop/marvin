@@ -124,6 +124,9 @@ class WalletStore(context: Context) {
                 put("gridAmountPerStep", w.gridAmountPerStep)
                 put("gridReferencePrice", w.gridReferencePrice)
                 put("maxTotalSpend", w.maxTotalSpend)
+                put("takeProfitEnabled", w.takeProfitEnabled)
+                put("takeProfitThresholdEur", w.takeProfitThresholdEur)
+                put("takeProfitSellPercent", w.takeProfitSellPercent)
             })
         }
         return arr.toString()
@@ -151,6 +154,9 @@ class WalletStore(context: Context) {
                 gridAmountPerStep = o.optDouble("gridAmountPerStep", 5.0),
                 gridReferencePrice = o.optDouble("gridReferencePrice", 0.0),
                 maxTotalSpend = o.optDouble("maxTotalSpend", 0.0),
+                takeProfitEnabled = o.optBoolean("takeProfitEnabled", false),
+                takeProfitThresholdEur = o.optDouble("takeProfitThresholdEur", 100.0),
+                takeProfitSellPercent = o.optDouble("takeProfitSellPercent", 10.0),
             )
         }
         return out

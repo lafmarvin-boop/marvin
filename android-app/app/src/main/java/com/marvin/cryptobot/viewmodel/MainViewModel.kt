@@ -75,6 +75,16 @@ class MainViewModel(private val container: AppContainer) : ViewModel() {
         container.walletStore.update(id) { it.copy(maxTotalSpend = value) }
     }
 
+    fun setTakeProfit(id: String, enabled: Boolean, thresholdEur: Double, sellPercent: Double) {
+        container.walletStore.update(id) {
+            it.copy(
+                takeProfitEnabled = enabled,
+                takeProfitThresholdEur = thresholdEur.coerceAtLeast(0.0),
+                takeProfitSellPercent = sellPercent.coerceIn(0.0, 100.0),
+            )
+        }
+    }
+
     fun depositToWallet(id: String, amount: Double) {
         if (amount <= 0) return
         container.walletStore.update(id) {

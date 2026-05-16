@@ -97,6 +97,37 @@ class BinanceClient(
         )
     }
 
+    /**
+     * Vente au marché par quantité en base-currency.
+     *
+     * Ex: symbol=BTCEUR, quantity=0.0001 => vend 0.0001 BTC contre EUR.
+     */
+    fun marketSellBase(symbol: String, quantity: Double): OrderResult {
+        require(apiKey != null && apiSecret != null) { "Clés API requises pour un ordre live" }
+        val params = mapOf(
+            "symbol" to symbol,
+            "side" to "SELL",
+            "type" to "MARKET",
+            "quantity" to formatNumber(quantity),
+            "newOrderRespType" to "FULL",
+            "timestamp" to serverTime().toString(),
+            "recvWindow" to "10000",
+        )
+        val resp = signedPost("/api/v3/order", params)
+        val json = JSONObject(resp)
+        val orderId = json.optLong("orderId", -1L)
+        val executedQty = json.optString("executedQty", "0").toDouble()
+        val cummulativeQuoteQty = json.optString("cummulativeQuoteQty", "0").toDouble()
+        val avgPrice = if (executedQty > 0.0) cummulativeQuoteQty / executedQty else 0.0
+        return OrderResult(
+            orderId = orderId,
+            executedQty = executedQty,
+            quoteSpent = cummulativeQuoteQty, // ici: montant reçu
+            avgPrice = avgPrice,
+            raw = resp,
+        )
+    }
+
     private fun signedGet(path: String, params: Map<String, String>): String {
         val key = requireNotNull(apiKey) { "apiKey absent" }
         val signed = sign(params)

@@ -18,6 +18,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -65,6 +66,9 @@ fun SettingsScreen(vm: MainViewModel) {
                 onSetDca = { amount, hours -> vm.setDcaParams(wallet.id, amount, hours) },
                 onSetGrid = { step, amount -> vm.setGridParams(wallet.id, step, amount) },
                 onSetMaxSpend = { vm.setMaxSpend(wallet.id, it) },
+                onSetTakeProfit = { enabled, threshold, pct ->
+                    vm.setTakeProfit(wallet.id, enabled, threshold, pct)
+                },
                 onDeposit = { vm.depositToWallet(wallet.id, it) },
                 onReset = { vm.resetWallet(wallet.id) },
             )
@@ -154,6 +158,7 @@ private fun WalletSettingsCard(
     onSetDca: (Double, Int) -> Unit,
     onSetGrid: (Double, Double) -> Unit,
     onSetMaxSpend: (Double) -> Unit,
+    onSetTakeProfit: (Boolean, Double, Double) -> Unit,
     onDeposit: (Double) -> Unit,
     onReset: () -> Unit,
 ) {
@@ -163,6 +168,9 @@ private fun WalletSettingsCard(
     var gridStep by remember(wallet.gridStepPercent) { mutableStateOf(wallet.gridStepPercent.toString()) }
     var gridAmount by remember(wallet.gridAmountPerStep) { mutableStateOf(wallet.gridAmountPerStep.toString()) }
     var maxSpend by remember(wallet.maxTotalSpend) { mutableStateOf(wallet.maxTotalSpend.toString()) }
+    var tpEnabled by remember(wallet.takeProfitEnabled) { mutableStateOf(wallet.takeProfitEnabled) }
+    var tpThreshold by remember(wallet.takeProfitThresholdEur) { mutableStateOf(wallet.takeProfitThresholdEur.toString()) }
+    var tpPercent by remember(wallet.takeProfitSellPercent) { mutableStateOf(wallet.takeProfitSellPercent.toString()) }
     var depositAmount by remember { mutableStateOf("") }
     val typeLabel = when (wallet.type) {
         StrategyType.DCA -> "📅 DCA"
@@ -251,6 +259,42 @@ private fun WalletSettingsCard(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            // --- Take-profit automatique ---
+            Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    "💰 Take-profit auto",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(checked = tpEnabled, onCheckedChange = { tpEnabled = it })
+            }
+            if (tpEnabled) {
+                Text(
+                    "Quand le P&L dépasse le seuil, le bot vend automatiquement " +
+                        "le pourcentage indiqué pour sécuriser le gain en cash.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedTextField(
+                    value = tpThreshold,
+                    onValueChange = { tpThreshold = it },
+                    label = { Text("Seuil P&L (EUR) — ex: 100") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = tpPercent,
+                    onValueChange = { tpPercent = it },
+                    label = { Text("Vendre (%) des holdings — ex: 10") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
             Button(
                 onClick = {
                     onSetSymbol(symbol)
@@ -265,6 +309,11 @@ private fun WalletSettingsCard(
                         )
                     }
                     onSetMaxSpend(maxSpend.toDoubleOrNull() ?: wallet.maxTotalSpend)
+                    onSetTakeProfit(
+                        tpEnabled,
+                        tpThreshold.toDoubleOrNull() ?: wallet.takeProfitThresholdEur,
+                        tpPercent.toDoubleOrNull() ?: wallet.takeProfitSellPercent,
+                    )
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Enregistrer") }
