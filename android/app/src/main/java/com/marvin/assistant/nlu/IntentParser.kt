@@ -106,7 +106,7 @@ class IntentParser {
         Rule(Regex("""hors service""")) { MarvinIntent.GoToSleep },
 
         // ---- Spotify ----
-        Rule(Regex("""(joue|lance|mets) (?:de la )?musique""")) { MarvinIntent.Spotify.Play },
+        Rule(Regex("""(joue|lance|mets) (?:de la |la |des |une )?musique""")) { MarvinIntent.Spotify.Play },
         Rule(Regex("""(?:mets|joue|lance) (.+?) sur spotify""")) {
             MarvinIntent.Spotify.Search(it.groupValues[1].trim())
         },
@@ -365,10 +365,16 @@ class IntentParser {
             MarvinIntent.Ecovacs(EcovacsAction.DOCK)
         },
 
-        // ---- Ouvrir une app par nom ----
-        Rule(Regex("""ouvre (?:l'app(?:lication)? )?(spotify|whatsapp|waze|familywall|boursobank|banque pop(?:ulaire)?|ecovacs(?: home)?)""")) {
-            val name = it.groupValues[1].trim()
-            MarvinIntent.OpenApp(name)
+        // ---- Ouvrir une app par nom (GENERIQUE — DOIT RESTER EN DERNIER) ----
+        // Cette règle catch-all matche n'importe quel nom d'app.
+        // L'OpenAppAction fait du fuzzy matching contre le PackageManager
+        // pour trouver l'app installée correspondante.
+        //
+        // Important : cette regle est ancrée au debut (^) et placee en
+        // DERNIER pour ne pas voler des matches aux règles spécifiques
+        // ('lance strava en mode trail' doit aller vers StravaStart).
+        Rule(Regex("""^(?:ouvre|lance|démarre|demarre|active|exécute|execute|montre)\s+(?:l'app(?:lication)? |l'|le |la |les )?(.+?)$""")) {
+            MarvinIntent.OpenApp(it.groupValues[1].trim())
         }
     )
 }

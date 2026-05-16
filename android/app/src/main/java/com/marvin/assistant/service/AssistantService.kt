@@ -168,6 +168,9 @@ class AssistantService : LifecycleService() {
                     tts.speak("") // no-op qui force l'init du moteur
                     Log.i(TAG, "Pre-warm : TTS ready")
                 }
+                // Scan toutes les apps installees pour le launcher universel
+                com.marvin.assistant.actions.AppCatalog(this@AssistantService).all()
+                Log.i(TAG, "Pre-warm : App catalog ready")
             } catch (t: Throwable) {
                 Log.w(TAG, "Pre-warm failed", t)
             }
@@ -416,15 +419,18 @@ class AssistantService : LifecycleService() {
 
     private fun buildHelpText(): String = """
         Voici ce que je peux faire. Pour la météo, l'heure, les SMS, les
-        appels manqués, les notifications, demande-moi directement. Pour
-        les rappels, dis « rappelle-moi de X dans Y minutes ». Pour la
+        appels manqués, les notifications, les emails, demande-moi directement.
+        Pour lancer n'importe quelle application installée, dis « ouvre » ou
+        « lance » suivi du nom (Netflix, Discord, Photos, etc.). Pour Strava,
+        précise le sport : « lance Strava en mode course à pied ».
+        Pour les rappels, dis « rappelle-moi de X dans Y minutes ». Pour la
         liste de courses, « ajoute X à la liste ». Pour les calculs,
         donne-moi l'opération. Pour la traduction, « traduis X en Y ».
-        Pour mes routines, « routine matin, soir ou news ». Pour prendre
-        une photo, « prends une photo ». Pour t'apprendre quelque chose,
-        « souviens-toi que X ». Pour me corriger, « quand je dis X
-        comprends Y ». Et pour tout le reste, pose-moi simplement ta
-        question, je chercherai sur internet si besoin.
+        Pour les routines, « routine matin, soir ou news ». Pour prendre
+        une photo, « prends une photo ». Pour reconnaître une musique,
+        « c'est quoi cette musique ». Pour t'apprendre quelque chose,
+        « souviens-toi que X ». Et pour tout le reste, pose-moi simplement
+        ta question, je chercherai sur internet si besoin.
     """.trimIndent().replace("\n", " ").replace(Regex("\\s+"), " ")
 
     private fun stripWakeWord(transcript: String): String {
