@@ -161,6 +161,14 @@ class PixelCanvasView @JvmOverloads constructor(
         color = 0xFFFFFFFF.toInt(); style = Paint.Style.STROKE; strokeWidth = 0f
         pathEffect = DashPathEffect(floatArrayOf(2f, 2f), 0f)
     }
+    /** Soft cyan overlay drawn over every selected cell so the user can SEE the mask shape. */
+    private val selFillPaint = Paint().apply {
+        color = 0x4455CCFF; style = Paint.Style.FILL
+    }
+    /** Crisp outline drawn along the boundary of the selection mask. */
+    private val selOutlinePaint = Paint().apply {
+        color = 0xFFFFFFFF.toInt(); style = Paint.Style.STROKE; strokeWidth = 0.18f
+    }
     private val selSymPaint = Paint().apply {
         color = 0x6655AAFF.toInt(); style = Paint.Style.STROKE; strokeWidth = 0f
     }
@@ -445,11 +453,55 @@ class PixelCanvasView @JvmOverloads constructor(
             }
         }
 
-        // Selection rectangle (dashed)
+        // Selection — render the exact shape (mask) when present, otherwise the bbox.
+        // While the selection is floating (lifted), anchor the overlay to the
+        // current floating position so dragging stays visually correct.
         if (selection.active) {
-            val r = RectF(selection.xMin.toFloat(), selection.yMin.toFloat(),
-                selection.xMax + 1f, selection.yMax + 1f)
-            canvas.drawRect(r, selDashPaint)
+            val mask = selection.mask
+            val floating = selection.floating
+            val ox: Float
+            val oy: Float
+            val rectW: Float
+            val rectH: Float
+            if (floating != null) {
+                ox = selection.floatX.toFloat(); oy = selection.floatY.toFloat()
+                rectW = selection.floatW.toFloat(); rectH = selection.floatH.toFloat()
+            } else {
+                ox = selection.xMin.toFloat(); oy = selection.yMin.toFloat()
+                rectW = selection.width.toFloat(); rectH = selection.height.toFloat()
+            }
+            if (mask == null) {
+                // Simple rectangle: fill + dashed outline.
+                val r = RectF(ox, oy, ox + rectW, oy + rectH)
+                canvas.drawRect(r, selFillPaint)
+                canvas.drawRect(r, selDashPaint)
+            } else {
+                val mw = selection.width
+                val mh = selection.height
+                // Fill every selected cell with a soft cyan overlay.
+                for (yy in 0 until mh) for (xx in 0 until mw) {
+                    if (!mask[yy * mw + xx]) continue
+                    canvas.drawRect(
+                        ox + xx, oy + yy,
+                        ox + xx + 1f, oy + yy + 1f,
+                        selFillPaint
+                    )
+                }
+                // Crisp boundary: for each selected cell, draw the edges that
+                // border a non-selected (or out-of-mask) neighbor.
+                for (yy in 0 until mh) for (xx in 0 until mw) {
+                    if (!mask[yy * mw + xx]) continue
+                    val left = xx == 0 || !mask[yy * mw + (xx - 1)]
+                    val right = xx == mw - 1 || !mask[yy * mw + (xx + 1)]
+                    val top = yy == 0 || !mask[(yy - 1) * mw + xx]
+                    val bottom = yy == mh - 1 || !mask[(yy + 1) * mw + xx]
+                    val cx0 = ox + xx; val cy0 = oy + yy
+                    if (top)    canvas.drawLine(cx0, cy0, cx0 + 1f, cy0, selOutlinePaint)
+                    if (bottom) canvas.drawLine(cx0, cy0 + 1f, cx0 + 1f, cy0 + 1f, selOutlinePaint)
+                    if (left)   canvas.drawLine(cx0, cy0, cx0, cy0 + 1f, selOutlinePaint)
+                    if (right)  canvas.drawLine(cx0 + 1f, cy0, cx0 + 1f, cy0 + 1f, selOutlinePaint)
+                }
+            }
         }
 
         // Brush hover outline (around last touched pixel, sized to brush)
