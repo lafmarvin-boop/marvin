@@ -31,6 +31,10 @@ object Filters {
         VIGNETTE("Vignette (coins assombris)"),
         PIXELATE_2X("Pixeliser 2×2"),
         PIXELATE_4X("Pixeliser 4×4"),
+        FIRE_AURA("🔥 Aura de feu"),
+        ICE_FROST("❄️ Givre / glace"),
+        ELECTRIC("⚡ Électrique"),
+        RAINBOW_HUE("🌈 Arc-en-ciel"),
         BLUR("Flou léger (anti-jaggies)"),
         POSTERIZE("Postériser (réduire couleurs)"),
         TEMP_WARM("Tons chauds +"),
@@ -63,6 +67,10 @@ object Filters {
             Filter.VIGNETTE -> vignette(pixels, w, h)
             Filter.PIXELATE_2X -> pixelate(pixels, w, h, 2)
             Filter.PIXELATE_4X -> pixelate(pixels, w, h, 4)
+            Filter.FIRE_AURA -> fireAura(pixels, w, h)
+            Filter.ICE_FROST -> iceFrost(pixels, w, h)
+            Filter.ELECTRIC -> electric(pixels, w, h)
+            Filter.RAINBOW_HUE -> rainbowHue(pixels, w, h)
             Filter.BLUR -> blur(pixels, w, h)
             Filter.POSTERIZE -> posterize(pixels, w, h, 4)
             Filter.TEMP_WARM -> colorTemperature(pixels, w, h, +20)
@@ -209,6 +217,110 @@ object Filters {
             val gg = (((c shr 8) and 0xFF) * falloff).toInt().coerceIn(0, 255)
             val bb = ((c and 0xFF) * falloff).toInt().coerceIn(0, 255)
             (c and 0xFF000000.toInt()) or (rr shl 16) or (gg shl 8) or bb
+        }
+    }
+
+    /** Orange/red halo + warmed sprite + a few flickering hot pixels. */
+    private fun fireAura(pixels: IntArray, w: Int, h: Int): IntArray {
+        // 1. Halo with fire-orange tint
+        val out = outerGlow(pixels, w, h, 0xFFFF6A1A.toInt())
+        val rng = java.util.Random()
+        // 2. Warm the opaque pixels slightly toward orange
+        for (i in pixels.indices) {
+            val src = pixels[i]
+            if ((src ushr 24) and 0xFF < 128) continue
+            val r = (((src shr 16) and 0xFF) + 25).coerceAtMost(255)
+            val g = (((src shr 8) and 0xFF) + 5).coerceAtLeast(0)
+            val b = ((src and 0xFF) - 25).coerceAtLeast(0)
+            out[i] = (src and 0xFF000000.toInt()) or (r shl 16) or (g shl 8) or b
+        }
+        // 3. Random hot spots above the sprite (flames flicker)
+        val opaqueRows = BooleanArray(h)
+        for (y in 0 until h) for (x in 0 until w) {
+            if ((pixels[y * w + x] ushr 24) and 0xFF >= 128) { opaqueRows[y] = true; break }
+        }
+        val topRow = opaqueRows.indexOfFirst { it }.coerceAtLeast(0)
+        for (xi in 0 until w) {
+            if (rng.nextFloat() < 0.20f) {
+                val yy = (topRow - 1 - rng.nextInt(2)).coerceAtLeast(0)
+                val color = when (rng.nextInt(3)) {
+                    0 -> 0xFFFFEE55.toInt()
+                    1 -> 0xFFFF8833.toInt()
+                    else -> 0xFFFFB23A.toInt()
+                }
+                out[yy * w + xi] = color
+            }
+        }
+        return out
+    }
+
+    /** Cool tint + brighten + light frost speckles near edges. */
+    private fun iceFrost(pixels: IntArray, w: Int, h: Int): IntArray {
+        val out = IntArray(pixels.size)
+        for (i in pixels.indices) {
+            val src = pixels[i]
+            if ((src ushr 24) and 0xFF < 128) { out[i] = src; continue }
+            val r = (((src shr 16) and 0xFF) - 18).coerceAtLeast(0)
+            val g = (((src shr 8) and 0xFF) + 6).coerceAtMost(255)
+            val b = ((src and 0xFF) + 30).coerceAtMost(255)
+            out[i] = (src and 0xFF000000.toInt()) or (r shl 16) or (g shl 8) or b
+        }
+        // White frost dots near silhouette edges
+        val rng = java.util.Random()
+        for (y in 0 until h) for (x in 0 until w) {
+            if ((pixels[y * w + x] ushr 24) and 0xFF < 128) continue
+            val edge = (x == 0 || y == 0 || x == w - 1 || y == h - 1) ||
+                (pixels[y * w + (x - 1)] ushr 24) and 0xFF < 128 ||
+                (pixels[y * w + (x + 1)] ushr 24) and 0xFF < 128 ||
+                (pixels[(y - 1) * w + x] ushr 24) and 0xFF < 128 ||
+                (pixels[(y + 1) * w + x] ushr 24) and 0xFF < 128
+            if (edge && rng.nextFloat() < 0.25f) {
+                out[y * w + x] = 0xFFEFFAFF.toInt()
+            }
+        }
+        return out
+    }
+
+    /** Electric arcs: cyan-blue sparks scattered along edges + slight blue tint. */
+    private fun electric(pixels: IntArray, w: Int, h: Int): IntArray {
+        val out = IntArray(pixels.size)
+        for (i in pixels.indices) {
+            val src = pixels[i]
+            if ((src ushr 24) and 0xFF < 128) { out[i] = src; continue }
+            val r = (((src shr 16) and 0xFF) - 10).coerceAtLeast(0)
+            val g = ((src shr 8) and 0xFF)
+            val b = ((src and 0xFF) + 25).coerceAtMost(255)
+            out[i] = (src and 0xFF000000.toInt()) or (r shl 16) or (g shl 8) or b
+        }
+        val rng = java.util.Random()
+        // Branch a few short lightning-like paths starting from random edge pixels
+        repeat((w * h / 24).coerceAtLeast(4)) {
+            var x = rng.nextInt(w); var y = rng.nextInt(h)
+            // Only start from opaque edge pixels
+            if ((pixels[y * w + x] ushr 24) and 0xFF < 128) return@repeat
+            val len = 3 + rng.nextInt(5)
+            repeat(len) {
+                if (x !in 0 until w || y !in 0 until h) return@repeat
+                out[y * w + x] = if (rng.nextBoolean()) 0xFFAAEFFF.toInt() else 0xFF5588FF.toInt()
+                x += rng.nextInt(3) - 1
+                y += rng.nextInt(3) - 1
+            }
+        }
+        return out
+    }
+
+    /** Hue rotation that increases with the y position — vertical rainbow tint. */
+    private fun rainbowHue(pixels: IntArray, w: Int, h: Int): IntArray {
+        val hsv = FloatArray(3)
+        return IntArray(pixels.size) { i ->
+            val src = pixels[i]
+            if ((src ushr 24) and 0xFF < 128) return@IntArray src
+            val y = i / w
+            val deltaHue = (y.toFloat() / h.coerceAtLeast(1)) * 360f
+            android.graphics.Color.colorToHSV(src, hsv)
+            hsv[0] = (hsv[0] + deltaHue) % 360f
+            val rgb = android.graphics.Color.HSVToColor(hsv) and 0x00FFFFFF
+            (src and 0xFF000000.toInt()) or rgb
         }
     }
 

@@ -87,13 +87,31 @@
         </LinearLayout>
     </ScrollView>
 
+    <!-- INLINE TOP PALETTE — shown above the canvas in place of modal dialogs
+         for tool sub-menus (Décor, Effets, Magie générale). -->
+    <HorizontalScrollView
+        android:id="@+id/topPalette"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_panel"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/topBar"
+        app:layout_constraintStart_toEndOf="@id/leftBar"
+        app:layout_constraintEnd_toStartOf="@id/rightPanel">
+        <LinearLayout android:id="@+id/topPaletteRow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="4dp"/>
+    </HorizontalScrollView>
+
     <!-- CANVAS -->
     <com.pixelhero.app.PixelCanvasView
         android:id="@+id/canvas"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:background="@color/bg"
-        app:layout_constraintTop_toBottomOf="@id/topBar"
+        app:layout_constraintTop_toBottomOf="@id/topPalette"
         app:layout_constraintStart_toEndOf="@id/leftBar"
         app:layout_constraintEnd_toStartOf="@id/rightPanel"
         app:layout_constraintBottom_toTopOf="@id/selectionPalette" />
@@ -325,6 +343,23 @@
                     <Button android:id="@+id/btnTween" style="@style/SmallButton"
                         android:text="🔀" android:layout_marginStart="6dp"/>
                 </LinearLayout>
+
+                <!-- Animation speed multiplier (applied to both Play and miniPreview) -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginTop="6dp"
+                    android:gravity="center_vertical">
+                    <TextView android:id="@+id/speedLabel"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Vitesse 1×" android:textColor="@color/text_dim"
+                        android:textSize="11sp"/>
+                    <SeekBar android:id="@+id/speedSeek"
+                        android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:layout_marginStart="8dp"
+                        android:max="16" android:progress="4"/>
+                </LinearLayout>
+                <Button android:id="@+id/btnFrameDelay" style="@style/SmallButton"
+                    android:text="⏱ Délai frame courante…"
+                    android:layout_width="match_parent" android:layout_marginTop="4dp"/>
 
                 <Button android:id="@+id/btnLayers" style="@style/SmallButton"
                     android:text="Calques…"

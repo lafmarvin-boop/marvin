@@ -56,6 +56,8 @@ class MainActivity : AppCompatActivity() {
     private var animTimer: Runnable? = null
     private val animHandler = Handler(Looper.getMainLooper())
     private var isPlaying = false
+    /** Speed multiplier applied to both Play and miniPreview (0.25× to 4×). */
+    private var previewSpeed: Float = 1f
     private var savedFrameIdx = 0
     private var playIdx = 0
 
@@ -150,7 +152,9 @@ class MainActivity : AppCompatActivity() {
                     miniPreviewIdx = miniNextIndex(miniPreviewIdx, project.frames.size, project.playMode)
                     if (miniPreviewIdx < 0) miniPreviewIdx = 0
                 }
-                val delay = (1000L / project.fps.coerceAtLeast(1)).coerceAtLeast(50L)
+                // Respect per-frame delay if set; otherwise project FPS. Scaled by speed multiplier.
+                val baseDelay = project.delayForFrame(miniPreviewIdx).toLong()
+                val delay = (baseDelay / previewSpeed).toLong().coerceAtLeast(30L)
                 miniPreviewHandler.postDelayed(this, delay)
             }
         }
@@ -640,9 +644,9 @@ class MainActivity : AppCompatActivity() {
         binding.btnMenu.setOnClickListener { showMenu() }
         binding.btnQuickSave.setOnClickListener { quickSaveProject() }
         binding.btnSymmetry.setOnClickListener { showSymmetryMenu() }
-        binding.btnDecor.setOnClickListener { showDecorGenerator() }
-        binding.btnEffects.setOnClickListener { showEffectsMenu() }
-        binding.btnMagic.setOnClickListener { showSmartGenerator() }
+        binding.btnDecor.setOnClickListener { openDecorPalette() }
+        binding.btnEffects.setOnClickListener { openEffectsPalette() }
+        binding.btnMagic.setOnClickListener { openMagicPalette() }
         binding.btnTween.setOnClickListener { showTweenDialog() }
         binding.btnUndo.attachHelp("undo")
         binding.btnRedo.attachHelp("redo")
@@ -1237,6 +1241,17 @@ class MainActivity : AppCompatActivity() {
         binding.btnPreviewToggle.setOnClickListener {
             miniPreviewEnabled = !miniPreviewEnabled
             binding.btnPreviewToggle.text = if (miniPreviewEnabled) "Stop" else "Play"
+        }
+
+        // Speed multiplier: SeekBar 0..16 mapped to 0.25× … 4× (mid=4 → 1×)
+        binding.speedSeek.setOnSeekBarChangeListener(simpleSeekListener { v ->
+            // exponential mapping so 1× sits at the middle and the slider feels natural
+            val ratio = Math.pow(2.0, (v - 4) / 4.0).toFloat()
+            previewSpeed = ratio.coerceIn(0.25f, 4f)
+            binding.speedLabel.text = "Vitesse ${String.format("%.2f", previewSpeed)}×"
+        })
+        binding.btnFrameDelay.setOnClickListener {
+            showFrameEditDialog(project.currentIndex)
         }
 
         // Sketch mode
@@ -2595,6 +2610,75 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    // ---- Top palette ----
+    /**
+     * Populate the inline top palette (above the canvas) with one button per
+     * entry. Replaces modal sub-menu dialogs for Décor / Effets / Magie.
+     * Tapping a button runs its action and closes the palette.
+     */
+    private fun showTopPalette(title: String, entries: List<Pair<String, () -> Unit>>) {
+        val row = binding.topPaletteRow
+        row.removeAllViews()
+        // Title chip on the left
+        row.addView(TextView(this).apply {
+            text = title
+            setTextColor(0xFFA5B4FF.toInt())
+            textSize = 14f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(12, 12, 16, 12)
+        })
+        for ((label, action) in entries) {
+            row.addView(Button(this).apply {
+                text = label
+                textSize = 14f
+                isAllCaps = false
+                setPadding(16, 8, 16, 8)
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { setMargins(4, 4, 4, 4) }
+                layoutParams = lp
+                setOnClickListener { closeTopPalette(); action() }
+            })
+        }
+        // Close ✕
+        row.addView(Button(this).apply {
+            text = "✕"; textSize = 14f; isAllCaps = false
+            setPadding(16, 8, 16, 8)
+            setOnClickListener { closeTopPalette() }
+        })
+        binding.topPalette.visibility = View.VISIBLE
+    }
+
+    private fun closeTopPalette() {
+        binding.topPalette.visibility = View.GONE
+        binding.topPaletteRow.removeAllViews()
+    }
+
+    private fun openDecorPalette() {
+        showTopPalette("🏞️ Décor", listOf(
+            "Statique → frame" to { pickAndGenerateStaticDecor(replaceFrame = true) },
+            "Statique → fond" to { pickAndGenerateStaticDecor(replaceFrame = false) },
+            "🎬 Animé 4 frames" to { pickAndGenerateAnimatedDecor(frameCount = 4) },
+            "🎬 Animé 8 frames" to { pickAndGenerateAnimatedDecor(frameCount = 8) }
+        ))
+    }
+
+    private fun openEffectsPalette() {
+        showTopPalette("✨ Effets", listOf(
+            "Particules" to { showParticlesDialog() },
+            "Filtres image" to { showFiltersMenu() }
+        ))
+    }
+
+    private fun openMagicPalette() {
+        showTopPalette("🪄 Générer", listOf(
+            "🏞️ Décor" to { openDecorPalette() },
+            "✨ Effets" to { openEffectsPalette() },
+            "🔀 Tween 2 frames" to { showTweenDialog() }
+        ))
+    }
+
     /** One-tap save reusing the existing project name (no dialog). */
     private fun quickSaveProject() {
         ProjectStorage.save(this, project)
@@ -3122,7 +3206,7 @@ class MainActivity : AppCompatActivity() {
                 if (!isPlaying) return
                 project.currentIndex = playIdx
                 binding.canvas.syncFrameBitmap()
-                val delay = project.delayForFrame(playIdx).toLong().coerceAtLeast(20L)
+                val delay = (project.delayForFrame(playIdx) / previewSpeed).toLong().coerceAtLeast(20L)
                 playIdx = nextPlayIndex(playIdx, project.frames.size, project.playMode)
                 if (playIdx < 0) { stopPlay(); return }
                 animHandler.postDelayed(this, delay)
