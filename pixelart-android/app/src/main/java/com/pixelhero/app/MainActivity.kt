@@ -222,7 +222,119 @@ class MainActivity : AppCompatActivity() {
         binding.canvas.onColorPicked = { c -> setColor(c) }
         // Right after the user finishes drawing a selection rectangle, open
         // the actions menu so they can pick Move / Copy / Cut / Paste etc.
-        binding.canvas.onSelectionCreated = { showSelectionActions() }
+        binding.canvas.onSelectionCreated = { refreshSelectionPalette() }
+        binding.canvas.onSelectionStateChanged = { refreshSelectionPalette() }
+    }
+
+    /**
+     * Build a contextual horizontal palette at the bottom of the canvas (just
+     * above the timeline) with one-tap actions for the active selection.
+     * Hidden when no selection is active.
+     */
+    private fun refreshSelectionPalette() {
+        val sel = binding.canvas.selection
+        val row = binding.selectionPaletteRow
+        val container = binding.selectionPalette
+        if (!sel.active) {
+            container.visibility = View.GONE
+            row.removeAllViews()
+            return
+        }
+        container.visibility = View.VISIBLE
+        row.removeAllViews()
+
+        fun btn(label: String, onClick: () -> Unit): Button = Button(this).apply {
+            text = label
+            textSize = 14f
+            isAllCaps = false
+            minWidth = (resources.displayMetrics.density * 56).toInt()
+            setPadding(16, 8, 16, 8)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(4, 0, 4, 0) }
+            layoutParams = lp
+            setOnClickListener { onClick() }
+        }
+
+        // Selection-tool switchers
+        row.addView(btn("▭") {
+            binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.NONE
+            switchTool(Tool.SELECT, toastIt = false)
+            toast("Trace un rectangle.")
+        })
+        row.addView(btn("🪢") {
+            binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.NONE
+            switchTool(Tool.LASSO, toastIt = false)
+            toast("Trace le contour à main levée.")
+        })
+        row.addView(btn("🪄") {
+            binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.NONE
+            switchTool(Tool.WAND, toastIt = false)
+            toast("Touche une zone à sélectionner par couleur.")
+        })
+        // Refine
+        row.addView(btn("➕") {
+            binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.ADD
+            toast("Touche des pixels pour les AJOUTER à la sélection")
+        })
+        row.addView(btn("➖") {
+            binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.SUB
+            toast("Touche des pixels pour les RETIRER de la sélection")
+        })
+        // Clipboard
+        row.addView(btn("📋") {
+            val pair = binding.canvas.copySelectionToClipboard() ?: liftAndCopy()
+            pair?.let { clipboardW = it.first; clipboardPixels = it.second; toast("Copié") }
+        })
+        row.addView(btn("✂") {
+            if (sel.floating == null) liftAndCopy()
+            binding.canvas.copySelectionToClipboard()?.let { clipboardW = it.first; clipboardPixels = it.second }
+            binding.canvas.cutSelectionToClipboard()
+            binding.canvas.invalidate()
+            toast("Coupé")
+        })
+        if (clipboardPixels != null) {
+            row.addView(btn("📌") {
+                val pixels = clipboardPixels ?: return@btn
+                pushUndo()
+                binding.canvas.pasteClipboard(clipboardW, pixels,
+                    sel.xMin.coerceAtLeast(0), sel.yMin.coerceAtLeast(0))
+            })
+            row.addView(btn("📌→") { showPasteIntoLayerPicker(sel) })
+        }
+        // Flip / commit
+        row.addView(btn("↔") { flipSelection(horizontal = true) })
+        row.addView(btn("↕") { flipSelection(horizontal = false) })
+        row.addView(btn("✓") {
+            pushUndo()
+            binding.canvas.commitFloatingSelection()
+            binding.canvas.selection.clear()
+            binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.NONE
+            binding.canvas.invalidate()
+            refreshSelectionPalette()
+        })
+    }
+
+    /** Helper that updates the toolbar selected state when switching tool from code. */
+    private fun switchTool(tool: Tool, toastIt: Boolean = true) {
+        val btnMap = mapOf(
+            Tool.PENCIL to binding.toolPencil,
+            Tool.ERASER to binding.toolEraser,
+            Tool.FILL to binding.toolFill,
+            Tool.UNFILL to binding.toolUnfill,
+            Tool.PICKER to binding.toolPicker,
+            Tool.LINE to binding.toolLine,
+            Tool.RECT to binding.toolRect,
+            Tool.RECT_FILL to binding.toolRectFill,
+            Tool.SELECT to binding.toolSelect,
+            Tool.LASSO to binding.toolLasso,
+            Tool.WAND to binding.toolWand,
+            Tool.MOVE to binding.toolMove
+        )
+        btnMap.values.forEach { it.isSelected = false }
+        btnMap[tool]?.isSelected = true
+        binding.canvas.tool = tool
     }
 
     private fun pushUndo() {
@@ -277,7 +389,10 @@ class MainActivity : AppCompatActivity() {
                 if (tool != Tool.SELECT && tool != Tool.LASSO && tool != Tool.WAND) {
                     binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.NONE
                 }
-                if (tool == Tool.SELECT || tool == Tool.WAND) showSelectionActions()
+                // No modal selection menu anymore — the bottom palette provides
+                // all selection actions and is always visible when a selection
+                // exists. The palette refreshes via onSelectionStateChanged.
+                refreshSelectionPalette()
             }
             btn.setOnLongClickListener {
                 showHelpFor(helpKey)
@@ -1469,15 +1584,21 @@ class MainActivity : AppCompatActivity() {
      * makes it appear under the group header in the layers strip.
      */
     private fun showAssignGroupDialog(l: Layer) {
-        val existing = project.currentFrame.layers
-            .mapNotNull { it.groupName }.distinct()
+        // Gather group names from EVERY frame so a group created in frame 1 is
+        // visible when assigning a layer in frame 2 (e.g. "Vue de face" used
+        // across an entire walk cycle).
+        val existing = project.frames
+            .flatMap { it.layers }
+            .mapNotNull { it.groupName }
+            .distinct()
+            .sorted()
         val items = (existing + listOf("➕ Nouveau groupe…")).toTypedArray()
         AlertDialog.Builder(this)
             .setTitle("Mettre « ${l.name} » dans un groupe")
             .setItems(items) { _, which ->
                 if (which == existing.size) {
                     val input = EditText(this).apply {
-                        hint = "Nom du groupe (ex: corps, arme, fond)"
+                        hint = "Nom du groupe (ex: Vue face, Vue dos, Corps, Arme)"
                         setTextColor(0xFFE8E8F0.toInt())
                     }
                     AlertDialog.Builder(this)
@@ -1541,18 +1662,22 @@ class MainActivity : AppCompatActivity() {
     private fun mergeDown() {
         val f = project.currentFrame
         val active = f.activeLayer
-        if (active == 0) { toast("Pas de calque en dessous"); return }
+        if (f.layers.size < 2) { toast("Un seul calque, rien à fusionner"); return }
+        // Allow merging with the layer below; if active is the bottom (idx=0)
+        // we transparently merge with the layer ABOVE instead, so the action
+        // is never blocked when the user wants to combine layers.
+        val targetIdx = if (active == 0) 1 else active - 1
         pushUndo()
-        val top = f.layers[active]
-        val below = f.layers[active - 1]
-        // Composite top onto below
+        val top = f.layers[maxOf(active, targetIdx)]
+        val below = f.layers[minOf(active, targetIdx)]
         for (i in top.pixels.indices) {
             val src = top.pixels[i]
             if ((src ushr 24) and 0xFF >= 128) below.pixels[i] = src
         }
-        f.layers.removeAt(active)
-        f.activeLayer = active - 1
+        f.layers.remove(top)
+        f.activeLayer = f.layers.indexOf(below).coerceAtLeast(0)
         binding.canvas.syncFrameBitmap()
+        refreshLayersStrip()
         toast("Calques fusionnés")
     }
 
@@ -2010,6 +2135,13 @@ class MainActivity : AppCompatActivity() {
                 f.activeLayer = i
                 refreshLayersStrip()
                 binding.canvas.invalidate()
+            }
+            setOnLongClickListener {
+                // Quick: assign this layer to a group without going through
+                // Calques → Actions → Mettre dans un groupe.
+                f.activeLayer = i
+                showAssignGroupDialog(layer)
+                true
             }
         }
         row.addView(eye); row.addView(name)

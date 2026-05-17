@@ -148,6 +148,8 @@ class PixelCanvasView @JvmOverloads constructor(
     var onStrokeStart: (() -> Unit)? = null
     /** Fired after a SELECT-tool rectangle is finished and lifted to floating. */
     var onSelectionCreated: (() -> Unit)? = null
+    /** Fired whenever any selection state (active / floating / mask) changes. */
+    var onSelectionStateChanged: (() -> Unit)? = null
     var onStrokeEnd: (() -> Unit)? = null
 
     private val paint = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
@@ -972,6 +974,7 @@ class PixelCanvasView @JvmOverloads constructor(
         selection.floatX = selection.xMin
         selection.floatY = selection.yMin
         syncFrameBitmap()
+        onSelectionStateChanged?.invoke()
     }
 
     fun commitFloatingSelection() {
@@ -986,6 +989,7 @@ class PixelCanvasView @JvmOverloads constructor(
         selection.clear()
         syncFrameBitmap()
         invalidate()
+        onSelectionStateChanged?.invoke()
     }
 
     fun cutSelectionToClipboard(): IntArray? {

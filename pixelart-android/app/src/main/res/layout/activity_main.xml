@@ -86,7 +86,24 @@
         app:layout_constraintTop_toBottomOf="@id/topBar"
         app:layout_constraintStart_toEndOf="@id/leftBar"
         app:layout_constraintEnd_toStartOf="@id/rightPanel"
-        app:layout_constraintBottom_toTopOf="@id/timeline" />
+        app:layout_constraintBottom_toTopOf="@id/selectionPalette" />
+
+    <!-- SELECTION PALETTE (visible only when a selection exists) -->
+    <HorizontalScrollView
+        android:id="@+id/selectionPalette"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/bg_panel"
+        android:visibility="gone"
+        app:layout_constraintStart_toEndOf="@id/leftBar"
+        app:layout_constraintEnd_toStartOf="@id/rightPanel"
+        app:layout_constraintBottom_toTopOf="@id/timeline">
+        <LinearLayout android:id="@+id/selectionPaletteRow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="4dp"/>
+    </HorizontalScrollView>
 
     <!-- TIMELINE SCRUBBER -->
     <com.pixelhero.app.TimelineView
