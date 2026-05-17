@@ -632,6 +632,11 @@ class PixelCanvasView @JvmOverloads constructor(
                         val coords = clientToPixel(event.x, event.y)
                         continueStroke(coords[0], coords[1])
                         hoverPx = coords[0]; hoverPy = coords[1]
+                    } else if (selectionRefineMode != SelectionRefineMode.NONE && selection.active) {
+                        // Drag-paint in refine mode (beginStroke returned early without
+                        // setting isDrawing, so we route MOVE events here directly).
+                        val coords = clientToPixel(event.x, event.y)
+                        refineMaskAt(coords[0], coords[1])
                     }
                 }
             }
@@ -674,6 +679,12 @@ class PixelCanvasView @JvmOverloads constructor(
     // -- Drawing --
     private fun beginStroke(px: Int, py: Int) {
         val p = project ?: return
+        // Refine mode short-circuits all tool behavior — touching a pixel only
+        // adds/removes it from the selection mask.
+        if (selectionRefineMode != SelectionRefineMode.NONE && selection.active) {
+            refineMaskAt(px, py)
+            return
+        }
         isDrawing = true
         startPx = px; startPy = py
         lastPx = px; lastPy = py
@@ -719,14 +730,13 @@ class PixelCanvasView @JvmOverloads constructor(
             }
             else -> {}
         }
-        // Selection refine: a touch in ADD/SUB mode flips the mask at this
-        // pixel and re-lifts so the canvas reflects it.
-        if (selectionRefineMode != SelectionRefineMode.NONE && selection.active) {
-            refineMaskAt(px, py)
-        }
     }
 
     private fun continueStroke(px: Int, py: Int) {
+        if (selectionRefineMode != SelectionRefineMode.NONE && selection.active) {
+            refineMaskAt(px, py)
+            return
+        }
         if (px == lastPx && py == lastPy) return
         val p = project ?: return
         when (tool) {
@@ -767,9 +777,6 @@ class PixelCanvasView @JvmOverloads constructor(
                 }
             }
             else -> {}
-        }
-        if (selectionRefineMode != SelectionRefineMode.NONE && selection.active) {
-            refineMaskAt(px, py)
         }
         lastPx = px; lastPy = py
     }
@@ -1163,33 +1170,48 @@ class PixelCanvasView @JvmOverloads constructor(
     /** Toggle a single mask cell at the given canvas pixel — used by the ADD/SUB refine modes. */
     private fun refineMaskAt(px: Int, py: Int) {
         if (!selection.active) return
-        // Re-commit any floating first so we mutate the source frame, not the floating copy.
-        val hadFloating = selection.floating != null
-        if (hadFloating) commitFloatingSelection()
-        val w = selection.width
-        val h = selection.height
-        var mask = selection.mask
-        // Expand bbox if the new pixel falls outside
-        val newXMin = minOf(selection.xMin, px).coerceAtLeast(0)
-        val newYMin = minOf(selection.yMin, py).coerceAtLeast(0)
         val p = project ?: return
-        val newXMax = maxOf(selection.xMax, px).coerceAtMost(p.width - 1)
-        val newYMax = maxOf(selection.yMax, py).coerceAtMost(p.height - 1)
+        // Snapshot current state BEFORE commit (commit calls selection.clear()
+        // which wipes bbox + mask).
+        val oldXMin = selection.xMin
+        val oldYMin = selection.yMin
+        val oldW = selection.width
+        val oldH = selection.height
+        val oldMask = selection.mask?.copyOf()
+        val hadMask = oldMask != null
+
+        // If currently floating, put pixels back onto the frame so we can
+        // re-lift cleanly. commitFloatingSelection() runs selection.clear()
+        // — that's why we snapshot first.
+        if (selection.floating != null) commitFloatingSelection()
+
+        // Compute the new bbox, expanding only when ADDING outside it.
+        val isAdd = (selectionRefineMode == SelectionRefineMode.ADD)
+        val newXMin = (if (isAdd) minOf(oldXMin, px) else oldXMin).coerceAtLeast(0)
+        val newYMin = (if (isAdd) minOf(oldYMin, py) else oldYMin).coerceAtLeast(0)
+        val newXMax = (if (isAdd) maxOf(oldXMin + oldW - 1, px) else oldXMin + oldW - 1)
+            .coerceAtMost(p.width - 1)
+        val newYMax = (if (isAdd) maxOf(oldYMin + oldH - 1, py) else oldYMin + oldH - 1)
+            .coerceAtMost(p.height - 1)
         val nw = newXMax - newXMin + 1
         val nh = newYMax - newYMin + 1
+        if (nw <= 0 || nh <= 0) return
         val newMask = BooleanArray(nw * nh)
-        // Copy old mask into new bbox space (default true if old mask was null)
-        for (y in 0 until h) for (x in 0 until w) {
-            val cellOld = mask?.getOrNull(y * w + x) ?: true
-            val sx = (selection.xMin + x) - newXMin
-            val sy = (selection.yMin + y) - newYMin
-            newMask[sy * nw + sx] = cellOld
+
+        // Copy old mask into new bbox space. If the old selection had no mask,
+        // treat the whole old bbox as selected.
+        for (y in 0 until oldH) for (x in 0 until oldW) {
+            val cellOld = if (hadMask) oldMask!![y * oldW + x] else true
+            val sx = (oldXMin + x) - newXMin
+            val sy = (oldYMin + y) - newYMin
+            if (sx in 0 until nw && sy in 0 until nh) newMask[sy * nw + sx] = cellOld
         }
         // Apply ADD or SUB at (px, py)
         val lx = px - newXMin; val ly = py - newYMin
-        if (lx in 0 until nw && ly in 0 until nh) {
-            newMask[ly * nw + lx] = (selectionRefineMode == SelectionRefineMode.ADD)
-        }
+        if (lx in 0 until nw && ly in 0 until nh) newMask[ly * nw + lx] = isAdd
+
+        // Restore selection state with the new bbox + mask
+        selection.active = true
         selection.x0 = newXMin; selection.y0 = newYMin
         selection.x1 = newXMax; selection.y1 = newYMax
         selection.mask = newMask
