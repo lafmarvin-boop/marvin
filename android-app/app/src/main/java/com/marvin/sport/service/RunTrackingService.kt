@@ -28,6 +28,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class RunTrackingService : Service() {
@@ -36,16 +38,22 @@ class RunTrackingService : Service() {
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
     private var milestoneJob: Job? = null
+    private var blockEndJob: Job? = null
+    private var tickJob: Job? = null
 
     private val callback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             result.locations.forEach { loc ->
-                RunRepository.addPoint(
-                    lat = loc.latitude,
-                    lng = loc.longitude,
-                    altitude = loc.altitude,
-                    accuracyM = loc.accuracy,
-                )
+                // Précision réelle disponible : on filtre avant même d'envoyer au repo
+                // (le repo a aussi son propre filtre, double sécurité).
+                if (loc.accuracy <= 20f) {
+                    RunRepository.addPoint(
+                        lat = loc.latitude,
+                        lng = loc.longitude,
+                        altitude = loc.altitude,
+                        accuracyM = loc.accuracy,
+                    )
+                }
             }
         }
     }
@@ -62,14 +70,15 @@ class RunTrackingService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 val target = intent.getDoubleExtra(EXTRA_TARGET_M, -1.0).takeIf { it > 0.0 }
-                startTracking(targetM = target)
+                val hasProgram = intent.getBooleanExtra(EXTRA_HAS_PROGRAM, false)
+                startTracking(targetM = target, hasProgram = hasProgram)
             }
             ACTION_STOP -> stopTracking()
         }
         return START_STICKY
     }
 
-    private fun startTracking(targetM: Double?) {
+    private fun startTracking(targetM: Double?, hasProgram: Boolean) {
         startInForeground(targetM)
         val hasFine = ContextCompat.checkSelfPermission(
             this, Manifest.permission.ACCESS_FINE_LOCATION
@@ -78,19 +87,40 @@ class RunTrackingService : Service() {
             stopSelf()
             return
         }
-        RunRepository.startRun(targetM)
+        // Si une séance programme a été pré-configurée dans le repo, on l'attache à la course
+        val programBlocks = if (hasProgram) RunRepository.consumeNextProgram() else null
+        RunRepository.startRun(targetM = targetM, programBlocks = programBlocks)
 
-        // Bip à chaque palier reçu de la repo.
+        // Bips paliers (free run target OU paliers internes des blocs programme)
         milestoneJob?.cancel()
         milestoneJob = serviceScope.launch {
             RunRepository.milestoneEvents.collect { pct ->
                 AlertSound.milestoneAlert(applicationContext, pct)
             }
         }
+        // Bip long aux transitions de bloc
+        blockEndJob?.cancel()
+        blockEndJob = serviceScope.launch {
+            RunRepository.blockEndEvents.collect { _ ->
+                AlertSound.blockEndAlert(applicationContext)
+            }
+        }
+        // Tick périodique pour les blocs en temps (le GPS ne suffit pas, le temps avance même à l'arrêt)
+        tickJob?.cancel()
+        if (programBlocks != null) {
+            tickJob = serviceScope.launch {
+                while (isActive) {
+                    delay(500)
+                    RunRepository.tick(System.currentTimeMillis())
+                }
+            }
+        }
 
-        val req = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1500L)
-            .setMinUpdateIntervalMillis(1000L)
-            .setMinUpdateDistanceMeters(2f)
+        // GPS — précision haute, intervalle court, distance min réaliste
+        val req = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000L)
+            .setMinUpdateIntervalMillis(500L)
+            .setMinUpdateDistanceMeters(1.5f)
+            .setWaitForAccurateLocation(true)
             .build()
         runCatching {
             fused.requestLocationUpdates(req, callback, Looper.getMainLooper())
@@ -99,7 +129,11 @@ class RunTrackingService : Service() {
 
     private fun stopTracking() {
         milestoneJob?.cancel()
+        blockEndJob?.cancel()
+        tickJob?.cancel()
         milestoneJob = null
+        blockEndJob = null
+        tickJob = null
         fused.removeLocationUpdates(callback)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -116,9 +150,7 @@ class RunTrackingService : Service() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val targetText = if (targetM != null) {
-            " — objectif ${"%.1f".format(targetM / 1000.0)} km"
-        } else ""
+        val targetText = if (targetM != null) " — objectif ${"%.1f".format(targetM / 1000.0)} km" else ""
         val notif = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Course en cours$targetText")
             .setContentText("Tracking GPS actif — appuie pour revenir à l'app")
@@ -150,6 +182,7 @@ class RunTrackingService : Service() {
         const val ACTION_START = "com.marvin.sport.START_RUN"
         const val ACTION_STOP = "com.marvin.sport.STOP_RUN"
         const val EXTRA_TARGET_M = "target_m"
+        const val EXTRA_HAS_PROGRAM = "has_program"
         private const val CHANNEL_ID = "run_tracking"
         private const val NOTIF_ID = 4242
     }

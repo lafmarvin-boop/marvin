@@ -76,7 +76,11 @@ fun RunLiveScreen(onBack: () -> Unit) {
             hasNotification
         permissionsAsked = true
         if (hasFineLocation && live == null) {
-            startTrackingService(context, RunRepository.consumeNextTarget())
+            startTrackingService(
+    context = context,
+    targetM = RunRepository.consumeNextTarget(),
+    hasProgram = nextProgramAvailable(),
+)
         }
     }
 
@@ -92,7 +96,11 @@ fun RunLiveScreen(onBack: () -> Unit) {
                 }
                 permissionLauncher.launch(perms.toTypedArray())
             } else {
-                startTrackingService(context, RunRepository.consumeNextTarget())
+                startTrackingService(
+    context = context,
+    targetM = RunRepository.consumeNextTarget(),
+    hasProgram = nextProgramAvailable(),
+)
             }
         }
     }
@@ -142,6 +150,10 @@ fun RunLiveScreen(onBack: () -> Unit) {
             val l = live
             val durationMs = if (l != null) (nowMs - l.startedAt).coerceAtLeast(0L) else 0L
             val distance = l?.distanceM ?: 0.0
+
+            if (l?.programBlocks != null) {
+                ProgramBlockBanner(l, nowMs)
+            }
 
             StatsBlock(
                 distanceM = distance,
@@ -206,6 +218,102 @@ fun RunLiveScreen(onBack: () -> Unit) {
                     Spacer(Modifier.width(8.dp))
                     Text("Enregistrer", fontWeight = FontWeight.Bold)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProgramBlockBanner(live: com.marvin.sport.data.LiveRun, nowMs: Long) {
+    val blocks = live.programBlocks ?: return
+    if (live.currentBlockIndex >= blocks.size) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = com.marvin.sport.ui.theme.SuccessGreen.copy(alpha = 0.15f)),
+        ) {
+            Text(
+                "✓ Séance terminée — bravo",
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = com.marvin.sport.ui.theme.SuccessGreen,
+            )
+        }
+        return
+    }
+    val accent = com.marvin.sport.ui.theme.ProgramAccent.Running
+    val block = blocks[live.currentBlockIndex]
+    val isDistance = block.isDistanceBased
+    val progress = if (isDistance) {
+        val target = block.trackingDistanceM.toDouble()
+        if (target > 0) {
+            ((live.distanceM - live.currentBlockStartDistanceM) / target).coerceIn(0.0, 1.0)
+        } else 0.0
+    } else {
+        val target = block.trackingDurationSec.toDouble()
+        if (target > 0) {
+            ((nowMs - live.currentBlockStartMs) / 1000.0 / target).coerceIn(0.0, 1.0)
+        } else 0.0
+    }
+    val pct = (progress * 100).toInt()
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(accent.copy(alpha = 0.16f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "${live.currentBlockIndex + 1}",
+                        color = accent,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "PARTIE ${live.currentBlockIndex + 1} / ${blocks.size}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accent,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(block.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        block.intensity,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    "$pct %",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = accent,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            LinearProgressIndicator(
+                progress = { progress.toFloat() },
+                modifier = Modifier.fillMaxWidth().height(8.dp),
+                color = accent,
+                trackColor = accent.copy(alpha = 0.18f),
+                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round,
+            )
+            // Aperçu du bloc suivant
+            val next = blocks.getOrNull(live.currentBlockIndex + 1)
+            if (next != null) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Ensuite : ${next.label} · ${next.intensity}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.outline,
+                )
             }
         }
     }
@@ -323,15 +431,29 @@ private fun Stat(label: String, value: String) {
     }
 }
 
-private fun startTrackingService(context: Context, targetM: Double?) {
+private fun startTrackingService(context: Context, targetM: Double?, hasProgram: Boolean) {
     val intent = Intent(context, RunTrackingService::class.java).apply {
         action = RunTrackingService.ACTION_START
         if (targetM != null) putExtra(RunTrackingService.EXTRA_TARGET_M, targetM)
+        if (hasProgram) putExtra(RunTrackingService.EXTRA_HAS_PROGRAM, true)
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         context.startForegroundService(intent)
     } else {
         context.startService(intent)
+    }
+}
+
+/** Indique si une séance programme a été pré-configurée dans le repo. */
+private fun nextProgramAvailable(): Boolean {
+    // On lit sans consommer : c'est le service qui appelle consumeNextProgram().
+    // Petit hack via reflection-free path : on tente une lecture en mode read-only
+    // via la fonction du repo. Simpler : on regarde si quelqu'un a mis quelque chose.
+    return RunRepository.run {
+        // On ne peut pas peek sans consommer ; on consomme et on re-set.
+        val b = consumeNextProgram()
+        if (b != null) setNextProgram(b)
+        b != null
     }
 }
 

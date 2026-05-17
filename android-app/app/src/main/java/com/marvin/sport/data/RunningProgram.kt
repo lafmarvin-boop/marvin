@@ -17,7 +17,19 @@ data class RunBlock(
     val distanceM: Int? = null,
     val intensity: String,
     val repeat: Int = 1,
-)
+) {
+    /** Durée totale du bloc en secondes pour le suivi temps réel. */
+    val trackingDurationSec: Int
+        get() = when {
+            durationMin != null -> durationMin * 60 * repeat.coerceAtLeast(1)
+            distanceM != null -> 0
+            else -> repeat * 60
+        }
+
+    val trackingDistanceM: Int get() = distanceM ?: 0
+
+    val isDistanceBased: Boolean get() = distanceM != null
+}
 
 data class RunSession(
     val id: String,

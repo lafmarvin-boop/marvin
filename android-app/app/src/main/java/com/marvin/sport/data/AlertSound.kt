@@ -80,4 +80,10 @@ object AlertSound {
             }
         }
     }
+
+    /** Fin de bloc / partie d'une séance running : un bip long + vibration nette. */
+    fun blockEndAlert(context: Context) {
+        beepStrong(700)
+        vibrate(context, strong = true)
+    }
 }

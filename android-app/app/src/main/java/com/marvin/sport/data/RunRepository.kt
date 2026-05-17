@@ -38,12 +38,16 @@ object RunRepository {
     private val _savedRuns = MutableStateFlow<List<Run>>(emptyList())
     val savedRuns: StateFlow<List<Run>> = _savedRuns.asStateFlow()
 
+    /** 25 / 50 / 75 / 100 — paliers franchis (free run target ou bloc programme). */
     private val _milestoneEvents = MutableSharedFlow<Int>(extraBufferCapacity = 8)
-    /** Émet 25 / 50 / 75 / 100 dès qu'un palier de la course en cours est franchi. */
     val milestoneEvents: SharedFlow<Int> = _milestoneEvents.asSharedFlow()
 
-    /** Cible passée par la home / programme avant la navigation vers l'écran live. */
+    /** Émis à chaque transition de bloc d'une séance programme (index du bloc qui se termine). */
+    private val _blockEndEvents = MutableSharedFlow<Int>(extraBufferCapacity = 8)
+    val blockEndEvents: SharedFlow<Int> = _blockEndEvents.asSharedFlow()
+
     @Volatile private var nextTargetM: Double? = null
+    @Volatile private var nextProgramBlocks: List<RunBlock>? = null
 
     fun init(context: Context) {
         if (initialized) return
@@ -68,47 +72,82 @@ object RunRepository {
         appContext.runDataStore.edit { it[SAVED_RUNS_KEY] = serialized }
     }
 
-    fun setNextTarget(targetM: Double?) {
-        nextTargetM = targetM
-    }
+    fun setNextTarget(targetM: Double?) { nextTargetM = targetM }
+    fun consumeNextTarget(): Double? { val t = nextTargetM; nextTargetM = null; return t }
 
-    fun consumeNextTarget(): Double? {
-        val t = nextTargetM
-        nextTargetM = null
-        return t
-    }
+    fun setNextProgram(blocks: List<RunBlock>?) { nextProgramBlocks = blocks }
+    fun consumeNextProgram(): List<RunBlock>? { val b = nextProgramBlocks; nextProgramBlocks = null; return b }
 
-    fun startRun(targetM: Double? = null) {
+    fun startRun(targetM: Double? = null, programBlocks: List<RunBlock>? = null) {
         val now = System.currentTimeMillis()
-        _currentRun.value = LiveRun(startedAt = now, lastUpdateMs = now, targetM = targetM)
+        _currentRun.value = LiveRun(
+            startedAt = now,
+            lastUpdateMs = now,
+            targetM = targetM,
+            programBlocks = programBlocks?.takeIf { it.isNotEmpty() },
+            currentBlockStartMs = now,
+            currentBlockStartDistanceM = 0.0,
+        )
     }
 
-    /** Ajoute un point GPS et déclenche les paliers de distance s'il y a un objectif. */
+    /** Filtre GPS : précis, sans saut + min déplacement. */
     fun addPoint(lat: Double, lng: Double, altitude: Double, accuracyM: Float) {
         val live = _currentRun.value ?: return
-        if (accuracyM > 30f) return
+        // Précision : on serre à 20 m pour éviter les points imprécis.
+        if (accuracyM > 20f) return
 
         val now = System.currentTimeMillis()
-        val point = RunPoint(lat = lat, lng = lng, altitude = altitude, timestampMs = now)
-
         val previous = live.points.lastOrNull()
         val delta = if (previous != null) {
             val d = RunStats.haversineM(previous.lat, previous.lng, lat, lng)
-            val dtMs = now - previous.timestampMs
-            if (d > 80 && dtMs < 5_000) 0.0 else d
+            val dtMs = (now - previous.timestampMs).coerceAtLeast(1L)
+            val speedMs = d / (dtMs / 1000.0)
+            // Anti-saut : vitesse > 8 m/s (~28 km/h) sur un point → rejet
+            if (speedMs > 8.0) 0.0
+            // Anti-jitter : < 1.5 m sur un intervalle court → on ignore le micro-mouvement
+            else if (d < 1.5 && dtMs < 4_000) 0.0
+            else d
         } else 0.0
 
+        val point = RunPoint(lat = lat, lng = lng, altitude = altitude, timestampMs = now)
         val newDistance = live.distanceM + delta
 
-        // Détection des paliers : on ne déclenche un palier qu'une seule fois.
-        val newlyReached = mutableListOf<Int>()
+        // -------- Mode "course libre avec objectif" --------
         val updatedMilestones = live.milestonesReached.toMutableSet()
-        if (live.targetM != null && live.targetM > 0) {
+        if (live.programBlocks == null && live.targetM != null && live.targetM > 0) {
             val pct = (newDistance / live.targetM * 100).toInt()
             MILESTONES.forEach { milestone ->
                 if (pct >= milestone && milestone !in updatedMilestones) {
                     updatedMilestones += milestone
-                    newlyReached += milestone
+                    _milestoneEvents.tryEmit(milestone)
+                }
+            }
+        }
+
+        // -------- Mode "séance programme" : suivi bloc courant --------
+        var updatedBlockIndex = live.currentBlockIndex
+        var updatedBlockStartMs = live.currentBlockStartMs
+        var updatedBlockStartDist = live.currentBlockStartDistanceM
+        var updatedBlockMilestones = live.currentBlockMilestonesReached
+        val blocks = live.programBlocks
+        if (blocks != null && updatedBlockIndex < blocks.size) {
+            val block = blocks[updatedBlockIndex]
+            if (block.isDistanceBased && block.trackingDistanceM > 0) {
+                val elapsed = newDistance - updatedBlockStartDist
+                val target = block.trackingDistanceM.toDouble()
+                val (newSet, newIdx, newStartMs, newStartDist, transitionEnded) = advanceBlock(
+                    elapsed = elapsed, target = target,
+                    reached = updatedBlockMilestones,
+                    currentIndex = updatedBlockIndex, totalBlocks = blocks.size,
+                    nowMs = now, currentDistance = newDistance,
+                )
+                updatedBlockMilestones = newSet
+                if (newIdx != updatedBlockIndex) {
+                    _blockEndEvents.tryEmit(updatedBlockIndex)
+                    updatedBlockIndex = newIdx
+                    updatedBlockStartMs = newStartMs
+                    updatedBlockStartDist = newStartDist
+                    updatedBlockMilestones = emptySet()
                 }
             }
         }
@@ -118,10 +157,93 @@ object RunRepository {
             distanceM = newDistance,
             lastUpdateMs = now,
             milestonesReached = updatedMilestones,
+            currentBlockIndex = updatedBlockIndex,
+            currentBlockStartMs = updatedBlockStartMs,
+            currentBlockStartDistanceM = updatedBlockStartDist,
+            currentBlockMilestonesReached = updatedBlockMilestones,
         )
-
-        newlyReached.forEach { milestone -> _milestoneEvents.tryEmit(milestone) }
     }
+
+    /** Avance temps-based des blocs : appelé périodiquement depuis le service. */
+    fun tick(nowMs: Long) {
+        val live = _currentRun.value ?: return
+        val blocks = live.programBlocks ?: return
+        if (live.currentBlockIndex >= blocks.size) return
+        val block = blocks[live.currentBlockIndex]
+        if (block.isDistanceBased) return  // géré par addPoint
+
+        val durationSec = block.trackingDurationSec
+        if (durationSec <= 0) return
+        val elapsedSec = (nowMs - live.currentBlockStartMs) / 1000.0
+
+        var updatedBlockMilestones = live.currentBlockMilestonesReached
+        var updatedIndex = live.currentBlockIndex
+        var updatedStartMs = live.currentBlockStartMs
+        var updatedStartDist = live.currentBlockStartDistanceM
+
+        val (newSet, newIdx, newStartMs, newStartDist, _) = advanceBlock(
+            elapsed = elapsedSec, target = durationSec.toDouble(),
+            reached = updatedBlockMilestones,
+            currentIndex = updatedIndex, totalBlocks = blocks.size,
+            nowMs = nowMs, currentDistance = live.distanceM,
+        )
+        updatedBlockMilestones = newSet
+        if (newIdx != updatedIndex) {
+            _blockEndEvents.tryEmit(updatedIndex)
+            updatedIndex = newIdx
+            updatedStartMs = newStartMs
+            updatedStartDist = newStartDist
+            updatedBlockMilestones = emptySet()
+        }
+
+        _currentRun.value = live.copy(
+            lastUpdateMs = nowMs,
+            currentBlockIndex = updatedIndex,
+            currentBlockStartMs = updatedStartMs,
+            currentBlockStartDistanceM = updatedStartDist,
+            currentBlockMilestonesReached = updatedBlockMilestones,
+        )
+    }
+
+    /**
+     * Calcule les paliers franchis dans le bloc en cours et déclenche la transition
+     * si 100 % atteint. Renvoie un tuple (paliersMisAJour, nextIndex, nextStartMs,
+     * nextStartDistance, ended).
+     */
+    private fun advanceBlock(
+        elapsed: Double,
+        target: Double,
+        reached: Set<Int>,
+        currentIndex: Int,
+        totalBlocks: Int,
+        nowMs: Long,
+        currentDistance: Double,
+    ): MileResult {
+        val pct = (elapsed / target * 100).toInt()
+        val newReached = reached.toMutableSet()
+        // Paliers internes 25/50/75
+        listOf(25, 50, 75).forEach { m ->
+            if (pct >= m && m !in newReached) {
+                newReached += m
+                _milestoneEvents.tryEmit(m)
+            }
+        }
+        return if (pct >= 100) {
+            // Bloc terminé : on avance
+            val nextIdx = (currentIndex + 1).coerceAtMost(totalBlocks)
+            MileResult(emptySet(), nextIdx, nowMs, currentDistance, ended = true)
+        } else {
+            MileResult(newReached, currentIndex, 0L, 0.0, ended = false)
+        }
+    }
+
+    private data class MileResult(
+        val milestones: Set<Int>,
+        val nextIndex: Int,
+        val nextStartMs: Long,
+        val nextStartDist: Double,
+        val ended: Boolean,
+    )
 
     suspend fun stopAndSave(keep: Boolean): Run? {
         val live = _currentRun.value ?: return null

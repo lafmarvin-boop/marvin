@@ -33,6 +33,7 @@ import com.marvin.sport.data.CustomLoadStore
 import com.marvin.sport.data.OneRepMaxStore
 import com.marvin.sport.data.ProgressionStore
 import com.marvin.sport.data.Programs
+import com.marvin.sport.ui.screens.GuidedSessionScreen
 import com.marvin.sport.ui.screens.OneRepMaxScreen
 import com.marvin.sport.ui.screens.PhaseScreen
 import com.marvin.sport.ui.screens.ProgrammesScreen
@@ -114,6 +115,24 @@ private fun AppNavigation(
             val s = entry.arguments?.getString("s")?.toInt() ?: 0
             val program = Programs.byId(prog)
             SessionScreen(
+                program = program,
+                phase = program.phases[p],
+                week = program.phases[p].weeks[w],
+                session = program.phases[p].weeks[w].sessions[s],
+                store = store,
+                oneRm = oneRm,
+                customLoads = customLoads,
+                onStartGuided = { nav.navigate("guided/$prog/$p/$w/$s") },
+                onBack = { nav.popBackStack() },
+            )
+        }
+        composable("guided/{prog}/{p}/{w}/{s}") { entry ->
+            val prog = entry.arguments?.getString("prog").orEmpty()
+            val p = entry.arguments?.getString("p")?.toInt() ?: 0
+            val w = entry.arguments?.getString("w")?.toInt() ?: 0
+            val s = entry.arguments?.getString("s")?.toInt() ?: 0
+            val program = Programs.byId(prog)
+            GuidedSessionScreen(
                 program = program,
                 phase = program.phases[p],
                 week = program.phases[p].weeks[w],

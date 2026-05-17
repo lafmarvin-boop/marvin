@@ -57,6 +57,7 @@ fun RunningProgramScreen(onStartRun: () -> Unit) {
                         accent = accent,
                         onStart = {
                             RunRepository.setNextTarget(session.targetKm * 1000.0)
+                            RunRepository.setNextProgram(session.blocks)
                             onStartRun()
                         },
                     )

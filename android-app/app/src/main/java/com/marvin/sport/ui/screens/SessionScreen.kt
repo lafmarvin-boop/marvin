@@ -48,6 +48,7 @@ fun SessionScreen(
     store: ProgressionStore,
     oneRm: OneRepMaxStore,
     customLoads: CustomLoadStore,
+    onStartGuided: () -> Unit,
     onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -86,8 +87,22 @@ fun SessionScreen(
         },
         bottomBar = {
             Surface(color = MaterialTheme.colorScheme.background, tonalElevation = 0.dp) {
-                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     Button(
+                        onClick = onStartGuided,
+                        modifier = Modifier.weight(1.4f).height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White),
+                        enabled = !done,
+                    ) {
+                        Text("Lancer en mode guidé", fontWeight = FontWeight.Bold)
+                    }
+                    OutlinedButton(
                         onClick = {
                             scope.launch {
                                 if (done) {
@@ -100,21 +115,18 @@ fun SessionScreen(
                                 }
                             }
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
+                        modifier = Modifier.weight(1f).height(56.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (done) SuccessGreen else accent,
-                            contentColor = Color.White,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (done) SuccessGreen else accent,
                         ),
                     ) {
                         if (done) {
                             Icon(Icons.Filled.CheckCircle, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Séance terminée — Annuler", fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Annuler", fontWeight = FontWeight.Bold)
                         } else {
-                            Text("Terminer la séance", fontWeight = FontWeight.Bold)
+                            Text("Cocher", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
