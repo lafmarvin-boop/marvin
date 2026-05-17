@@ -22,6 +22,15 @@ object Filters {
         DESATURATE("Désaturer −"),
         AUTO_OUTLINE("Auto-contour"),
         DROP_SHADOW("Ombre portée"),
+        OUTER_GLOW("Lueur extérieure"),
+        INNER_SHADOW("Ombre interne"),
+        EMBOSS("Relief / bevel"),
+        SCANLINES("Lignes de balayage CRT"),
+        NOISE("Bruit / grain"),
+        GLITCH("Glitch (lignes décalées)"),
+        VIGNETTE("Vignette (coins assombris)"),
+        PIXELATE_2X("Pixeliser 2×2"),
+        PIXELATE_4X("Pixeliser 4×4"),
         BLUR("Flou léger (anti-jaggies)"),
         POSTERIZE("Postériser (réduire couleurs)"),
         TEMP_WARM("Tons chauds +"),
@@ -45,6 +54,15 @@ object Filters {
             Filter.DESATURATE -> saturate(pixels, w, h, 0.5f)
             Filter.AUTO_OUTLINE -> autoOutline(pixels, w, h, outlineColor)
             Filter.DROP_SHADOW -> dropShadow(pixels, w, h)
+            Filter.OUTER_GLOW -> outerGlow(pixels, w, h, 0xFFFFD66B.toInt())
+            Filter.INNER_SHADOW -> innerShadow(pixels, w, h)
+            Filter.EMBOSS -> emboss(pixels, w, h)
+            Filter.SCANLINES -> scanlines(pixels, w, h)
+            Filter.NOISE -> noise(pixels, w, h, 18)
+            Filter.GLITCH -> glitch(pixels, w, h)
+            Filter.VIGNETTE -> vignette(pixels, w, h)
+            Filter.PIXELATE_2X -> pixelate(pixels, w, h, 2)
+            Filter.PIXELATE_4X -> pixelate(pixels, w, h, 4)
             Filter.BLUR -> blur(pixels, w, h)
             Filter.POSTERIZE -> posterize(pixels, w, h, 4)
             Filter.TEMP_WARM -> colorTemperature(pixels, w, h, +20)
@@ -53,6 +71,175 @@ object Filters {
             Filter.CB_DEUTERANOPIA -> colorBlindness(pixels, w, h, CB_DEUTAN)
             Filter.CB_TRITANOPIA -> colorBlindness(pixels, w, h, CB_TRITAN)
         }
+    }
+
+    /** Soft halo around opaque pixels. Color tint chosen by caller. */
+    private fun outerGlow(pixels: IntArray, w: Int, h: Int, tint: Int): IntArray {
+        val out = pixels.copyOf()
+        val r = 2
+        for (y in 0 until h) for (x in 0 until w) {
+            val srcIdx = y * w + x
+            if ((pixels[srcIdx] ushr 24) and 0xFF >= 128) continue
+            // For each transparent pixel, look at neighbours within radius r.
+            // Tint based on inverse distance to any opaque neighbour.
+            var minD2 = Int.MAX_VALUE
+            for (dy in -r..r) for (dx in -r..r) {
+                val nx = x + dx; val ny = y + dy
+                if (nx !in 0 until w || ny !in 0 until h) continue
+                if ((pixels[ny * w + nx] ushr 24) and 0xFF >= 128) {
+                    val d2 = dx * dx + dy * dy
+                    if (d2 in 1..minD2) minD2 = d2
+                }
+            }
+            if (minD2 != Int.MAX_VALUE) {
+                val alpha = (180 - 60 * minD2).coerceIn(0, 220)
+                out[srcIdx] = (alpha shl 24) or (tint and 0x00FFFFFF)
+            }
+        }
+        return out
+    }
+
+    /** Darken pixels close to a transparent edge from the inside of the silhouette. */
+    private fun innerShadow(pixels: IntArray, w: Int, h: Int): IntArray {
+        return IntArray(pixels.size) { i ->
+            val c = pixels[i]
+            if ((c ushr 24) and 0xFF < 128) return@IntArray c
+            val x = i % w; val y = i / w
+            // Distance to nearest transparent neighbour (max 3)
+            var minD = 4
+            for (dy in -3..3) for (dx in -3..3) {
+                val nx = x + dx; val ny = y + dy
+                val transparent = nx !in 0 until w || ny !in 0 until h ||
+                    (pixels[ny * w + nx] ushr 24) and 0xFF < 128
+                if (transparent) {
+                    val d = maxOf(kotlin.math.abs(dx), kotlin.math.abs(dy))
+                    if (d < minD) minD = d
+                }
+            }
+            if (minD >= 3) return@IntArray c
+            val factor = 1f - (3 - minD) * 0.18f  // up to ~46% darkening at edge
+            val r = (((c shr 16) and 0xFF) * factor).toInt().coerceIn(0, 255)
+            val g = (((c shr 8) and 0xFF) * factor).toInt().coerceIn(0, 255)
+            val b = ((c and 0xFF) * factor).toInt().coerceIn(0, 255)
+            (c and 0xFF000000.toInt()) or (r shl 16) or (g shl 8) or b
+        }
+    }
+
+    /** Sobel-style edge enhancement to give a chiseled / bevel look. */
+    private fun emboss(pixels: IntArray, w: Int, h: Int): IntArray {
+        val out = IntArray(pixels.size)
+        for (y in 0 until h) for (x in 0 until w) {
+            val c = pixels[y * w + x]
+            if ((c ushr 24) and 0xFF < 128) { out[y * w + x] = c; continue }
+            val left = if (x > 0) pixels[y * w + (x - 1)] else c
+            val top = if (y > 0) pixels[(y - 1) * w + x] else c
+            val lum = ((c shr 16) and 0xFF) + ((c shr 8) and 0xFF) + (c and 0xFF)
+            val lumL = ((left shr 16) and 0xFF) + ((left shr 8) and 0xFF) + (left and 0xFF)
+            val lumT = ((top shr 16) and 0xFF) + ((top shr 8) and 0xFF) + (top and 0xFF)
+            val delta = ((lum - lumL) + (lum - lumT)) / 6
+            val r = (((c shr 16) and 0xFF) + delta).coerceIn(0, 255)
+            val g = (((c shr 8) and 0xFF) + delta).coerceIn(0, 255)
+            val b = ((c and 0xFF) + delta).coerceIn(0, 255)
+            out[y * w + x] = (c and 0xFF000000.toInt()) or (r shl 16) or (g shl 8) or b
+        }
+        return out
+    }
+
+    /** Darken every other row to suggest a CRT scanline look. */
+    private fun scanlines(pixels: IntArray, w: Int, h: Int): IntArray {
+        return IntArray(pixels.size) { i ->
+            val c = pixels[i]
+            if ((c ushr 24) and 0xFF < 128) return@IntArray c
+            val y = i / w
+            if (y and 1 == 0) c
+            else {
+                val r = (((c shr 16) and 0xFF) * 0.7f).toInt()
+                val g = (((c shr 8) and 0xFF) * 0.7f).toInt()
+                val b = ((c and 0xFF) * 0.7f).toInt()
+                (c and 0xFF000000.toInt()) or (r shl 16) or (g shl 8) or b
+            }
+        }
+    }
+
+    /** Add salt-and-pepper-ish noise: ±[amount] per channel, random per pixel. */
+    private fun noise(pixels: IntArray, w: Int, h: Int, amount: Int): IntArray {
+        val rng = java.util.Random()
+        return IntArray(pixels.size) { i ->
+            val c = pixels[i]
+            if ((c ushr 24) and 0xFF < 128) return@IntArray c
+            val n = rng.nextInt(amount * 2 + 1) - amount
+            val r = (((c shr 16) and 0xFF) + n).coerceIn(0, 255)
+            val g = (((c shr 8) and 0xFF) + n).coerceIn(0, 255)
+            val b = ((c and 0xFF) + n).coerceIn(0, 255)
+            (c and 0xFF000000.toInt()) or (r shl 16) or (g shl 8) or b
+        }
+    }
+
+    /** Shift a few rows horizontally to suggest a digital glitch. */
+    private fun glitch(pixels: IntArray, w: Int, h: Int): IntArray {
+        val out = pixels.copyOf()
+        val rng = java.util.Random()
+        val rowsAffected = (h / 6).coerceAtLeast(1)
+        repeat(rowsAffected) {
+            val y = rng.nextInt(h)
+            val shift = rng.nextInt(11) - 5  // -5..+5 px
+            if (shift == 0) return@repeat
+            val rowCopy = IntArray(w) { x -> pixels[y * w + x] }
+            for (x in 0 until w) {
+                val srcX = (x - shift).coerceIn(0, w - 1)
+                out[y * w + x] = rowCopy[srcX]
+            }
+        }
+        return out
+    }
+
+    /** Darken corners with a circular falloff (classic vignette). */
+    private fun vignette(pixels: IntArray, w: Int, h: Int): IntArray {
+        val cx = w / 2f; val cy = h / 2f
+        val maxR = kotlin.math.sqrt((cx * cx + cy * cy).toDouble()).toFloat()
+        return IntArray(pixels.size) { i ->
+            val c = pixels[i]
+            if ((c ushr 24) and 0xFF < 128) return@IntArray c
+            val x = i % w; val y = i / w
+            val dx = x - cx; val dy = y - cy
+            val r = kotlin.math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+            val t = (r / maxR).coerceIn(0f, 1f)
+            val falloff = 1f - t * t * 0.55f  // strongest in corners
+            val rr = (((c shr 16) and 0xFF) * falloff).toInt().coerceIn(0, 255)
+            val gg = (((c shr 8) and 0xFF) * falloff).toInt().coerceIn(0, 255)
+            val bb = ((c and 0xFF) * falloff).toInt().coerceIn(0, 255)
+            (c and 0xFF000000.toInt()) or (rr shl 16) or (gg shl 8) or bb
+        }
+    }
+
+    /** Block-average every n×n cell. Useful for adding a chunkier look. */
+    private fun pixelate(pixels: IntArray, w: Int, h: Int, block: Int): IntArray {
+        val out = IntArray(pixels.size)
+        var by = 0
+        while (by < h) {
+            var bx = 0
+            while (bx < w) {
+                var rs = 0L; var gs = 0L; var bs = 0L; var asum = 0L; var n = 0
+                for (yy in by until minOf(by + block, h)) for (xx in bx until minOf(bx + block, w)) {
+                    val c = pixels[yy * w + xx]
+                    if ((c ushr 24) and 0xFF < 128) continue
+                    asum += (c ushr 24) and 0xFF
+                    rs += (c shr 16) and 0xFF
+                    gs += (c shr 8) and 0xFF
+                    bs += c and 0xFF
+                    n++
+                }
+                val avg = if (n == 0) 0 else
+                    (((asum / n).toInt() shl 24) or ((rs / n).toInt() shl 16) or
+                     ((gs / n).toInt() shl 8) or (bs / n).toInt())
+                for (yy in by until minOf(by + block, h)) for (xx in bx until minOf(bx + block, w)) {
+                    out[yy * w + xx] = avg
+                }
+                bx += block
+            }
+            by += block
+        }
+        return out
     }
 
     /** Shift color temperature: positive=warmer (red+, blue-), negative=cooler. */

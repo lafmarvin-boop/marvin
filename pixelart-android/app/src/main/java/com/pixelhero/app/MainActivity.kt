@@ -638,8 +638,12 @@ class MainActivity : AppCompatActivity() {
         binding.btnRedo.setOnClickListener { doRedo() }
         binding.btnPlay.setOnClickListener { togglePlay() }
         binding.btnMenu.setOnClickListener { showMenu() }
+        binding.btnQuickSave.setOnClickListener { quickSaveProject() }
         binding.btnSymmetry.setOnClickListener { showSymmetryMenu() }
+        binding.btnDecor.setOnClickListener { showDecorGenerator() }
+        binding.btnEffects.setOnClickListener { showEffectsMenu() }
         binding.btnMagic.setOnClickListener { showSmartGenerator() }
+        binding.btnTween.setOnClickListener { showTweenDialog() }
         binding.btnUndo.attachHelp("undo")
         binding.btnRedo.attachHelp("redo")
         binding.btnPlay.attachHelp("play")
@@ -1738,15 +1742,21 @@ class MainActivity : AppCompatActivity() {
     private fun applyFilterRange(filter: Filters.Filter, fromIdx: Int, toIdx: Int) {
         pushUndo()
         val outlineColor = project.primaryColor
+        // Apply to EVERY layer of each frame in the range — pushUndo() snapshots
+        // the full project, so a single undo removes the effect from all layers
+        // and all frames at once.
         for (i in fromIdx..toIdx) {
             val f = project.frames.getOrNull(i) ?: continue
-            val out = Filters.apply(f.pixels, f.width, f.height, filter, outlineColor)
-            out.copyInto(f.pixels)
+            for (layer in f.layers) {
+                val out = Filters.apply(layer.pixels, f.width, f.height, filter, outlineColor)
+                out.copyInto(layer.pixels)
+            }
         }
         binding.canvas.syncFrameBitmap()
         framesAdapter.notifyDataSetChanged()
         binding.timeline.invalidate()
-        toast("Filtre appliqué sur ${toIdx - fromIdx + 1} frame(s)")
+        val nLayers = project.frames.getOrNull(fromIdx)?.layers?.size ?: 1
+        toast("Filtre appliqué : ${toIdx - fromIdx + 1} frame(s) × $nLayers calque(s)")
     }
 
     private fun showColorLockMenu() {
@@ -2577,10 +2587,19 @@ class MainActivity : AppCompatActivity() {
                 project.name = input.text.toString().ifBlank { "Sans titre" }
                 ProjectStorage.save(this, project)
                 isDirty = false; updateTitleDirty()
+                // Expose the quick-save disk button now that the project has a name.
+                binding.btnQuickSave.visibility = View.VISIBLE
                 toast(getString(R.string.saved))
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    /** One-tap save reusing the existing project name (no dialog). */
+    private fun quickSaveProject() {
+        ProjectStorage.save(this, project)
+        isDirty = false; updateTitleDirty()
+        toast("Sauvegardé : ${project.name}")
     }
 
     private fun showLoadDialog() {
@@ -2610,6 +2629,7 @@ class MainActivity : AppCompatActivity() {
             ProjectStorage.load(this, items[which].id)?.let {
                 project = it
                 applyProject()
+                binding.btnQuickSave.visibility = View.VISIBLE
                 toast("Chargé")
             }
             dlg.dismiss()

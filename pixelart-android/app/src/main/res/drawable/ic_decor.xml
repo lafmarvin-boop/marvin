@@ -1,0 +1,12 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Mountain triangles -->
+    <path android:strokeColor="@android:color/white" android:strokeWidth="1.6"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M3,18 L9,8 L13,14 L17,6 L21,18 Z"/>
+    <!-- Sun -->
+    <path android:strokeColor="@android:color/white" android:strokeWidth="1.4"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M5,7 m -1.5,0 a 1.5,1.5 0 1,0 3,0 a 1.5,1.5 0 1,0 -3,0"/>
+</vector>

@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Big spark -->
+    <path android:strokeColor="@android:color/white" android:strokeWidth="1.8"
+        android:pathData="M12,3 V9 M12,15 V21 M3,12 H9 M15,12 H21 M5.6,5.6 L8.8,8.8 M15.2,15.2 L18.4,18.4 M5.6,18.4 L8.8,15.2 M15.2,8.8 L18.4,5.6"/>
+    <!-- Small dot center -->
+    <path android:fillColor="@android:color/white"
+        android:pathData="M12,11 m -1,0 a 1,1 0 1,0 2,0 a 1,1 0 1,0 -2,0"/>
+</vector>

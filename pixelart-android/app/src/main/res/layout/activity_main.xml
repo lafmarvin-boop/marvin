@@ -22,6 +22,12 @@
         <ImageButton android:id="@+id/btnMenu" style="@style/TopBarButton"
             android:src="@drawable/ic_menu" android:contentDescription="@string/menu"/>
 
+        <!-- Quick save: visible only after the project has been saved once. -->
+        <ImageButton android:id="@+id/btnQuickSave" style="@style/TopBarButton"
+            android:src="@drawable/ic_save"
+            android:contentDescription="Sauvegarder"
+            android:visibility="gone"/>
+
         <TextView android:layout_width="0dp" android:layout_height="wrap_content"
             android:layout_weight="1" android:text="@string/app_name"
             android:textColor="@color/accent_light" android:textSize="@dimen/title_text_size"
@@ -29,6 +35,10 @@
 
         <ImageButton android:id="@+id/btnSymmetry" style="@style/TopBarButton"
             android:src="@drawable/ic_symmetry" android:contentDescription="@string/symmetry"/>
+        <ImageButton android:id="@+id/btnDecor" style="@style/TopBarButton"
+            android:src="@drawable/ic_decor" android:contentDescription="Décor &amp; scène"/>
+        <ImageButton android:id="@+id/btnEffects" style="@style/TopBarButton"
+            android:src="@drawable/ic_effects" android:contentDescription="Effets / filtres"/>
         <ImageButton android:id="@+id/btnMagic" style="@style/TopBarButton"
             android:src="@drawable/ic_magic" android:contentDescription="@string/generate_animation"/>
         <ImageButton android:id="@+id/btnUndo" style="@style/TopBarButton"
@@ -311,6 +321,9 @@
                         android:scaleType="fitCenter"/>
                     <Button android:id="@+id/btnPreviewToggle" style="@style/SmallButton"
                         android:text="Stop" android:layout_marginStart="8dp"/>
+                    <!-- Quick tween between current frame and a chosen target -->
+                    <Button android:id="@+id/btnTween" style="@style/SmallButton"
+                        android:text="🔀" android:layout_marginStart="6dp"/>
                 </LinearLayout>
 
                 <Button android:id="@+id/btnLayers" style="@style/SmallButton"
