@@ -49,6 +49,10 @@ object RunRepository {
     @Volatile private var nextTargetM: Double? = null
     @Volatile private var nextProgramBlocks: List<RunBlock>? = null
 
+    // --- État interne du filtre GPS ---
+    @Volatile private var warmupCount: Int = 0
+    @Volatile private var lastAcceptedAccuracy: Float? = null
+
     fun init(context: Context) {
         if (initialized) return
         appContext = context.applicationContext
@@ -80,6 +84,8 @@ object RunRepository {
 
     fun startRun(targetM: Double? = null, programBlocks: List<RunBlock>? = null) {
         val now = System.currentTimeMillis()
+        warmupCount = 0
+        lastAcceptedAccuracy = null
         _currentRun.value = LiveRun(
             startedAt = now,
             lastUpdateMs = now,
@@ -90,26 +96,58 @@ object RunRepository {
         )
     }
 
-    /** Filtre GPS : précis, sans saut + min déplacement. */
+    /**
+     * Pipeline GPS multi-couche :
+     *   1) Warm-up : on ignore les 2 premiers fixes (souvent imprécis à froid)
+     *   2) Seuil de précision adaptatif (18 m strict / 30 m après 10 s sans fix)
+     *   3) Lissage EMA pondéré par la précision
+     *   4) Filtres vitesse (> 8 m/s) et anti-jitter (< 1.5 m sous 4 s)
+     */
     fun addPoint(lat: Double, lng: Double, altitude: Double, accuracyM: Float) {
         val live = _currentRun.value ?: return
-        // Précision : on serre à 20 m pour éviter les points imprécis.
-        if (accuracyM > 20f) return
-
         val now = System.currentTimeMillis()
+
+        // Rafraîchir la précision affichée même si on rejette ce point
+        _currentRun.value = live.copy(currentAccuracyM = accuracyM, lastFixAtMs = now)
+
+        // 1) Warm-up : on ignore les premiers fixes pour éviter le bruit de démarrage.
+        if (warmupCount < 2) {
+            warmupCount += 1
+            return
+        }
+
+        // 2) Seuil adaptatif : strict par défaut, on s'élargit s'il y a un trou de signal.
+        val sinceLast = live.lastFixAtMs?.let { now - it } ?: Long.MAX_VALUE
+        val maxAcceptable: Float = if (sinceLast > 10_000) 30f else 18f
+        if (accuracyM > maxAcceptable) return
+
+        // 3) Lissage EMA pondéré par la précision relative.
         val previous = live.points.lastOrNull()
+        val (smoothedLat, smoothedLng, smoothedAlt) = if (previous != null) {
+            val alpha = (10f / accuracyM).coerceIn(0.3f, 0.85f).toDouble()
+            Triple(
+                alpha * lat + (1 - alpha) * previous.lat,
+                alpha * lng + (1 - alpha) * previous.lng,
+                alpha * altitude + (1 - alpha) * previous.altitude,
+            )
+        } else {
+            Triple(lat, lng, altitude)
+        }
+
+        // 4) Distance + filtres temporels
         val delta = if (previous != null) {
-            val d = RunStats.haversineM(previous.lat, previous.lng, lat, lng)
+            val d = RunStats.haversineM(previous.lat, previous.lng, smoothedLat, smoothedLng)
             val dtMs = (now - previous.timestampMs).coerceAtLeast(1L)
             val speedMs = d / (dtMs / 1000.0)
-            // Anti-saut : vitesse > 8 m/s (~28 km/h) sur un point → rejet
-            if (speedMs > 8.0) 0.0
-            // Anti-jitter : < 1.5 m sur un intervalle court → on ignore le micro-mouvement
-            else if (d < 1.5 && dtMs < 4_000) 0.0
-            else d
+            when {
+                speedMs > 8.0 -> 0.0                 // anti-saut (>28 km/h)
+                d < 1.5 && dtMs < 4_000 -> 0.0       // anti-jitter sur intervalle court
+                else -> d
+            }
         } else 0.0
 
-        val point = RunPoint(lat = lat, lng = lng, altitude = altitude, timestampMs = now)
+        lastAcceptedAccuracy = accuracyM
+        val point = RunPoint(lat = smoothedLat, lng = smoothedLng, altitude = smoothedAlt, timestampMs = now)
         val newDistance = live.distanceM + delta
 
         // -------- Mode "course libre avec objectif" --------
@@ -161,6 +199,8 @@ object RunRepository {
             currentBlockStartMs = updatedBlockStartMs,
             currentBlockStartDistanceM = updatedBlockStartDist,
             currentBlockMilestonesReached = updatedBlockMilestones,
+            currentAccuracyM = accuracyM,
+            lastFixAtMs = now,
         )
     }
 

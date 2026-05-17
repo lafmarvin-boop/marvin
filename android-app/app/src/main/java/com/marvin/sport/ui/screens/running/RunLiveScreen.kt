@@ -172,13 +172,7 @@ fun RunLiveScreen(onBack: () -> Unit) {
                 }
             }
 
-            if (l != null && l.points.isEmpty()) {
-                Text(
-                    "Recherche du signal GPS…",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
-                )
-            }
+            GpsQualityRow(accuracyM = l?.currentAccuracyM, hasPoints = (l?.points?.isNotEmpty() == true))
 
             Spacer(Modifier.weight(1f))
 
@@ -219,6 +213,31 @@ fun RunLiveScreen(onBack: () -> Unit) {
                     Text("Enregistrer", fontWeight = FontWeight.Bold)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun GpsQualityRow(accuracyM: Float?, hasPoints: Boolean) {
+    val (label, color) = when {
+        accuracyM == null -> "Recherche du signal GPS…" to MaterialTheme.colorScheme.outline
+        accuracyM <= 8f -> "GPS excellent · ±${accuracyM.toInt()} m" to com.marvin.sport.ui.theme.SuccessGreen
+        accuracyM <= 15f -> "GPS bon · ±${accuracyM.toInt()} m" to com.marvin.sport.ui.theme.ProgramAccent.Running
+        accuracyM <= 25f -> "GPS faible · ±${accuracyM.toInt()} m" to MaterialTheme.colorScheme.tertiary
+        else -> "GPS très faible · ±${accuracyM.toInt()} m" to MaterialTheme.colorScheme.error
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(color),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium, color = color, fontWeight = FontWeight.SemiBold)
+        if (!hasPoints && accuracyM != null) {
+            Spacer(Modifier.width(8.dp))
+            Text("(calibration en cours)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
         }
     }
 }

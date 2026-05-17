@@ -44,9 +44,9 @@ class RunTrackingService : Service() {
     private val callback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             result.locations.forEach { loc ->
-                // Précision réelle disponible : on filtre avant même d'envoyer au repo
-                // (le repo a aussi son propre filtre, double sécurité).
-                if (loc.accuracy <= 20f) {
+                // Sanity check très permissif (40 m) — le repo a son filtre adaptatif
+                // qui décide d'accepter ou non en fonction du temps depuis le dernier fix.
+                if (loc.accuracy <= 40f) {
                     RunRepository.addPoint(
                         lat = loc.latitude,
                         lng = loc.longitude,
@@ -116,11 +116,13 @@ class RunTrackingService : Service() {
             }
         }
 
-        // GPS — précision haute, intervalle court, distance min réaliste
+        // GPS — précision haute, fréquence soutenue, on laisse le filtrage app gérer
+        // le min-distance pour permettre au lissage EMA de mieux corriger.
         val req = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000L)
             .setMinUpdateIntervalMillis(500L)
-            .setMinUpdateDistanceMeters(1.5f)
+            .setMinUpdateDistanceMeters(0f)
             .setWaitForAccurateLocation(true)
+            .setGranularity(com.google.android.gms.location.Granularity.GRANULARITY_FINE)
             .build()
         runCatching {
             fused.requestLocationUpdates(req, callback, Looper.getMainLooper())

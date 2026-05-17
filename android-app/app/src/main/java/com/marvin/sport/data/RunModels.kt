@@ -41,4 +41,7 @@ data class LiveRun(
     val currentBlockStartMs: Long = startedAt,
     val currentBlockStartDistanceM: Double = 0.0,
     val currentBlockMilestonesReached: Set<Int> = emptySet(),
+    // --- Qualité GPS (rafraîchi à chaque fix, accepté ou non) ---
+    val currentAccuracyM: Float? = null,
+    val lastFixAtMs: Long? = null,
 )
