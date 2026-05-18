@@ -36,11 +36,11 @@ import kotlin.math.min
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityMainBinding
-    private lateinit var project: Project
-    private lateinit var paletteAdapter: SwatchAdapter
+    internal lateinit var binding: ActivityMainBinding
+    internal lateinit var project: Project
+    internal lateinit var paletteAdapter: SwatchAdapter
     private lateinit var recentAdapter: SwatchAdapter
-    private lateinit var framesAdapter: FramesAdapter
+    internal lateinit var framesAdapter: FramesAdapter
 
     private val undoStack = ArrayDeque<UndoSnapshot>()
     private val redoStack = ArrayDeque<UndoSnapshot>()
@@ -358,7 +358,7 @@ class MainActivity : AppCompatActivity() {
         binding.canvas.tool = tool
     }
 
-    private fun pushUndo() {
+    internal fun pushUndo() {
         // Default: just the active layer of the current frame — cheap, fits
         // the common case (pencil, eraser, fill, line, rect).
         val f = project.currentFrame
@@ -1555,27 +1555,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun sharePng() {
-        val bmp = frameToBitmap(project.currentFrame, 8)
-        val bytes = ByteArrayOutputStream().apply { bmp.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
-        savePublicImage(bytes, "${project.name}_frame${project.currentIndex + 1}.png", "image/png", share = true)
-        bmp.recycle()
-    }
-
-    private fun shareGif() {
-        toast(getString(R.string.generating_gif))
-        lifecycleScope.launch {
-            val bytes = withContext(Dispatchers.Default) {
-                val encoder = GifEncoder(project.width, project.height)
-                project.frames.forEachIndexed { i, f ->
-                    val comp = if (f.layers.size > 1) f.composited() else f.pixels
-                    encoder.addFrame(comp, project.delayForFrame(i))
-                }
-                encoder.encodeToBytes()
-            }
-            savePublicImage(bytes, "${project.name}.gif", "image/gif", share = true)
-        }
-    }
 
     private fun openTileMap() {
         // Save project first (the tile activity loads from storage)
@@ -1583,216 +1562,6 @@ class MainActivity : AppCompatActivity() {
         TileMapActivity.start(this, project.id)
     }
 
-    private fun showLayersDialog() {
-        val f = project.currentFrame
-        val scroll = ScrollView(this)
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(24, 24, 24, 24)
-        }
-        scroll.addView(container)
-
-        // Build / rebuild rows. Calling rebuild() refreshes the eye icon and the
-        // active-layer indicator after any change.
-        fun rebuild() {
-            container.removeAllViews()
-            f.layers.forEachIndexed { i, l ->
-                val row = LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    setPadding(8, 12, 8, 12)
-                    gravity = android.view.Gravity.CENTER_VERTICAL
-                }
-                // Eye toggle on the left — one click to show/hide that layer.
-                val eye = TextView(this).apply {
-                    text = if (l.visible) "👁" else "🚫"
-                    textSize = 22f
-                    setPadding(16, 8, 24, 8)
-                    isClickable = true; isFocusable = true
-                    setOnClickListener {
-                        l.visible = !l.visible
-                        text = if (l.visible) "👁" else "🚫"
-                        binding.canvas.syncFrameBitmap()
-                        framesAdapter.notifyItemChanged(project.currentIndex)
-                    }
-                }
-                row.addView(eye)
-                val activeDot = if (i == f.activeLayer) "● " else "  "
-                val label = TextView(this).apply {
-                    text = "$activeDot${l.name}   (op ${(l.opacity * 100).toInt()}%)"
-                    setTextColor(0xFFE8E8F0.toInt())
-                    textSize = 16f
-                    setPadding(16, 8, 16, 8)
-                    layoutParams = LinearLayout.LayoutParams(
-                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-                    )
-                    isClickable = true; isFocusable = true
-                    setOnClickListener {
-                        f.activeLayer = i
-                        rebuild()
-                    }
-                }
-                row.addView(label)
-                container.addView(row)
-            }
-        }
-        rebuild()
-
-        AlertDialog.Builder(this)
-            .setTitle("Calques (frame #${project.currentIndex + 1})")
-            .setView(scroll)
-            .setPositiveButton("Fermer", null)
-            .setNeutralButton("+ Ajouter") { _, _ ->
-                pushUndo()
-                f.addLayer()
-                binding.canvas.syncFrameBitmap()
-                framesAdapter.notifyItemChanged(project.currentIndex)
-                refreshLayersStrip()
-                toast("Couche ajoutée")
-                showLayersDialog()
-            }
-            .setNegativeButton("Actions…") { _, _ -> showLayerActions() }
-            .show()
-    }
-
-    private fun showLayerActions() {
-        val f = project.currentFrame
-        val l = f.layers[f.activeLayer]
-        val groupAction = if (l.groupName == null) "📁 Mettre dans un groupe…" else "📁 Sortir du groupe « ${l.groupName} »"
-        val items = arrayOf(
-            if (l.visible) "Masquer" else "Afficher",
-            "Renommer…",
-            "Opacité…",
-            groupAction,
-            "Supprimer",
-            "Monter (au-dessus)",
-            "Descendre (en dessous)",
-            "Fusionner avec la couche du dessous"
-        )
-        AlertDialog.Builder(this)
-            .setTitle("« ${l.name} »")
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> { l.visible = !l.visible; binding.canvas.syncFrameBitmap() }
-                    1 -> renameLayer(l)
-                    2 -> showLayerOpacity(l)
-                    3 -> if (l.groupName == null) showAssignGroupDialog(l) else { l.groupName = null; toast("Sorti du groupe") }
-                    4 -> {
-                        pushUndo()
-                        if (!f.removeLayer(f.activeLayer)) toast("Au moins 1 calque requis")
-                        else binding.canvas.syncFrameBitmap()
-                    }
-                    5 -> moveLayer(+1)
-                    6 -> moveLayer(-1)
-                    7 -> mergeDown()
-                }
-                framesAdapter.notifyItemChanged(project.currentIndex)
-                refreshLayersStrip()
-            }
-            .show()
-    }
-
-    /**
-     * Pick an existing group name from this frame's layers, or create a new
-     * one. Assigning a group keeps the layer where it is in the stack but
-     * makes it appear under the group header in the layers strip.
-     */
-    private fun showAssignGroupDialog(l: Layer) {
-        // Gather group names from EVERY frame so a group created in frame 1 is
-        // visible when assigning a layer in frame 2 (e.g. "Vue de face" used
-        // across an entire walk cycle).
-        val existing = project.frames
-            .flatMap { it.layers }
-            .mapNotNull { it.groupName }
-            .distinct()
-            .sorted()
-        val items = (existing + listOf("➕ Nouveau groupe…")).toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Mettre « ${l.name} » dans un groupe")
-            .setItems(items) { _, which ->
-                if (which == existing.size) {
-                    val input = EditText(this).apply {
-                        hint = "Nom du groupe (ex: Vue face, Vue dos, Corps, Arme)"
-                        setTextColor(0xFFE8E8F0.toInt())
-                    }
-                    AlertDialog.Builder(this)
-                        .setTitle("Nouveau groupe")
-                        .setView(input)
-                        .setPositiveButton("OK") { _, _ ->
-                            val name = input.text.toString().trim()
-                            if (name.isNotBlank()) {
-                                l.groupName = name
-                                refreshLayersStrip()
-                                toast("Ajouté au groupe « $name »")
-                            }
-                        }
-                        .setNegativeButton(R.string.cancel, null)
-                        .show()
-                } else {
-                    l.groupName = existing[which]
-                    refreshLayersStrip()
-                    toast("Ajouté au groupe « ${existing[which]} »")
-                }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun renameLayer(l: Layer) {
-        val input = EditText(this).apply { setText(l.name); setTextColor(0xFFE8E8F0.toInt()) }
-        AlertDialog.Builder(this)
-            .setTitle("Nom du calque")
-            .setView(input)
-            .setPositiveButton("OK") { _, _ -> l.name = input.text.toString().ifBlank { "Couche" } }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun showLayerOpacity(l: Layer) {
-        val seek = SeekBar(this).apply { max = 100; progress = (l.opacity * 100).toInt() }
-        AlertDialog.Builder(this)
-            .setTitle("Opacité")
-            .setView(seek)
-            .setPositiveButton("OK") { _, _ ->
-                l.opacity = seek.progress / 100f
-                binding.canvas.syncFrameBitmap()
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun moveLayer(direction: Int) {
-        val f = project.currentFrame
-        val from = f.activeLayer
-        val to = (from + direction).coerceIn(0, f.layers.size - 1)
-        if (from == to) return
-        pushUndo()
-        val item = f.layers.removeAt(from)
-        f.layers.add(to, item)
-        f.activeLayer = to
-        binding.canvas.syncFrameBitmap()
-    }
-
-    private fun mergeDown() {
-        val f = project.currentFrame
-        val active = f.activeLayer
-        if (f.layers.size < 2) { toast("Un seul calque, rien à fusionner"); return }
-        // Allow merging with the layer below; if active is the bottom (idx=0)
-        // we transparently merge with the layer ABOVE instead, so the action
-        // is never blocked when the user wants to combine layers.
-        val targetIdx = if (active == 0) 1 else active - 1
-        pushUndo()
-        val top = f.layers[maxOf(active, targetIdx)]
-        val below = f.layers[minOf(active, targetIdx)]
-        for (i in top.pixels.indices) {
-            val src = top.pixels[i]
-            if ((src ushr 24) and 0xFF >= 128) below.pixels[i] = src
-        }
-        f.layers.remove(top)
-        f.activeLayer = f.layers.indexOf(below).coerceAtLeast(0)
-        binding.canvas.syncFrameBitmap()
-        refreshLayersStrip()
-        toast("Calques fusionnés")
-    }
 
     private fun showFiltersMenu() {
         val filters = Filters.Filter.values()
@@ -2172,143 +1941,6 @@ class MainActivity : AppCompatActivity() {
      * Tap eye = show/hide layer (or whole group on a header).
      * Tap name = make that layer active.
      */
-    private fun refreshLayersStrip() {
-        val strip = binding.layersStrip
-        strip.removeAllViews()
-        val f = project.currentFrame
-        // Walk top-down (highest index first) so the painter sees the same
-        // stacking as the canvas. Within each step we either add a single row,
-        // or a group header followed by its members.
-        var i = f.layers.size - 1
-        val seenGroups = HashSet<String>()
-        while (i >= 0) {
-            val layer = f.layers[i]
-            val grp = layer.groupName
-            if (grp != null && grp !in seenGroups) {
-                seenGroups.add(grp)
-                addGroupHeader(strip, f, grp)
-                // Render every layer with this group, top-down
-                f.layers.indices.reversed()
-                    .filter { f.layers[it].groupName == grp }
-                    .forEach { addLayerRow(strip, f, it, indented = true) }
-                // Skip ahead past contiguous group members that were just rendered
-                while (i >= 0 && f.layers[i].groupName == grp) i--
-            } else if (grp != null) {
-                // Already rendered as part of an earlier group section
-                i--
-            } else {
-                addLayerRow(strip, f, i, indented = false)
-                i--
-            }
-        }
-    }
-
-    private fun addGroupHeader(strip: LinearLayout, f: Frame, groupName: String) {
-        val members = f.layers.filter { it.groupName == groupName }
-        val anyVisible = members.any { it.visible }
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(4, 6, 4, 6)
-            setBackgroundColor(0x22FFFFFF)
-            gravity = android.view.Gravity.CENTER_VERTICAL
-        }
-        val eye = TextView(this).apply {
-            text = if (anyVisible) "👁" else "🚫"
-            textSize = 16f
-            setPadding(8, 4, 12, 4)
-            isClickable = true; isFocusable = true
-            setOnClickListener {
-                val turnOn = !anyVisible
-                members.forEach { it.visible = turnOn }
-                binding.canvas.syncFrameBitmap()
-                framesAdapter.notifyItemChanged(project.currentIndex)
-                refreshLayersStrip()
-            }
-        }
-        val name = TextView(this).apply {
-            text = "📁 $groupName"
-            setTextColor(0xFFA5B4FF.toInt())
-            textSize = 13f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-        }
-        row.addView(eye); row.addView(name)
-        strip.addView(row)
-    }
-
-    private fun addLayerRow(strip: LinearLayout, f: Frame, i: Int, indented: Boolean) {
-        val layer = f.layers[i]
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(if (indented) 28 else 4, 4, 4, 4)
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            if (i == f.activeLayer) setBackgroundColor(0x33A5B4FF)
-        }
-        val eye = TextView(this).apply {
-            text = if (layer.visible) "👁" else "🚫"
-            textSize = 16f
-            setPadding(8, 4, 12, 4)
-            isClickable = true; isFocusable = true
-            setOnClickListener {
-                layer.visible = !layer.visible
-                text = if (layer.visible) "👁" else "🚫"
-                binding.canvas.syncFrameBitmap()
-                framesAdapter.notifyItemChanged(project.currentIndex)
-            }
-        }
-        val name = TextView(this).apply {
-            text = layer.name
-            setTextColor(0xFFE8E8F0.toInt())
-            textSize = 13f
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            layoutParams = LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-            )
-            isClickable = true; isFocusable = true
-            setOnClickListener {
-                f.activeLayer = i
-                refreshLayersStrip()
-                binding.canvas.invalidate()
-            }
-            setOnLongClickListener {
-                // Quick: assign this layer to a group without going through
-                // Calques → Actions → Mettre dans un groupe.
-                f.activeLayer = i
-                showAssignGroupDialog(layer)
-                true
-            }
-        }
-        // ▲ / ▼ reorder buttons: ▲ moves the row toward the top of the strip
-        // (higher z-index), ▼ toward the bottom.
-        val upBtn = TextView(this).apply {
-            text = "▲"
-            setTextColor(if (i < f.layers.size - 1) 0xFFE8E8F0.toInt() else 0x44888888)
-            textSize = 14f
-            setPadding(8, 4, 8, 4)
-            isClickable = true; isFocusable = true
-            setOnClickListener {
-                if (i >= f.layers.size - 1) return@setOnClickListener
-                f.activeLayer = i
-                moveLayer(+1)
-                refreshLayersStrip()
-            }
-        }
-        val downBtn = TextView(this).apply {
-            text = "▼"
-            setTextColor(if (i > 0) 0xFFE8E8F0.toInt() else 0x44888888)
-            textSize = 14f
-            setPadding(8, 4, 8, 4)
-            isClickable = true; isFocusable = true
-            setOnClickListener {
-                if (i <= 0) return@setOnClickListener
-                f.activeLayer = i
-                moveLayer(-1)
-                refreshLayersStrip()
-            }
-        }
-        row.addView(eye); row.addView(name); row.addView(upBtn); row.addView(downBtn)
-        strip.addView(row)
-    }
 
     // ---- Color ----
     private fun setColor(c: Int) {
@@ -2495,16 +2127,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun exportAllFrames() {
-        val scale = 8
-        project.frames.forEachIndexed { i, f ->
-            val bmp = frameToBitmap(f, scale)
-            val bytes = ByteArrayOutputStream().apply { bmp.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
-            savePublicImage(bytes, "${project.name}_frame${i + 1}.png", "image/png")
-            bmp.recycle()
-        }
-        toast("${project.frames.size} frames exportées")
-    }
 
     private val pickSpriteSheet = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) processSpriteSheet(uri)
@@ -3250,108 +2872,6 @@ class MainActivity : AppCompatActivity() {
         toast("${pal.size} couleurs extraites")
     }
 
-    // ---- Export ----
-    private fun frameToBitmap(frame: Frame, scale: Int = 1): Bitmap {
-        val composite = if (frame.layers.size > 1) frame.composited() else frame.pixels
-        val bmp = Bitmap.createBitmap(frame.width * scale, frame.height * scale, Bitmap.Config.ARGB_8888)
-        if (scale == 1) {
-            bmp.setPixels(composite, 0, frame.width, 0, 0, frame.width, frame.height)
-        } else {
-            val small = Bitmap.createBitmap(frame.width, frame.height, Bitmap.Config.ARGB_8888)
-            small.setPixels(composite, 0, frame.width, 0, 0, frame.width, frame.height)
-            val c = android.graphics.Canvas(bmp)
-            val p = android.graphics.Paint().apply { isFilterBitmap = false; isAntiAlias = false }
-            c.drawBitmap(small, null, android.graphics.Rect(0, 0, bmp.width, bmp.height), p)
-            small.recycle()
-        }
-        return bmp
-    }
-
-    private fun exportPng() {
-        val bmp = frameToBitmap(project.currentFrame, 8)
-        val bytes = ByteArrayOutputStream().apply { bmp.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
-        savePublicImage(bytes, "${project.name}_frame${project.currentIndex + 1}.png", "image/png")
-        bmp.recycle()
-    }
-
-    private fun exportSpriteSheet() {
-        val scale = 4
-        val cols = Math.ceil(Math.sqrt(project.frames.size.toDouble())).toInt().coerceAtLeast(1)
-        val rows = (project.frames.size + cols - 1) / cols
-        val fw = project.width * scale
-        val fh = project.height * scale
-        val sheet = Bitmap.createBitmap(cols * fw, rows * fh, Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(sheet)
-        val paint = android.graphics.Paint().apply { isFilterBitmap = false }
-        project.frames.forEachIndexed { i, frame ->
-            val b = frameToBitmap(frame, scale)
-            canvas.drawBitmap(b, (i % cols * fw).toFloat(), (i / cols * fh).toFloat(), paint)
-            b.recycle()
-        }
-        val bytes = ByteArrayOutputStream().apply { sheet.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
-        savePublicImage(bytes, "${project.name}_sheet.png", "image/png")
-        sheet.recycle()
-    }
-
-    private fun exportGif() {
-        toast(getString(R.string.generating_gif))
-        lifecycleScope.launch {
-            val bytes = withContext(Dispatchers.Default) {
-                val encoder = GifEncoder(project.width, project.height)
-                project.frames.forEachIndexed { i, f ->
-                    val comp = if (f.layers.size > 1) f.composited() else f.pixels
-                    encoder.addFrame(comp, project.delayForFrame(i))
-                }
-                encoder.encodeToBytes()
-            }
-            savePublicImage(bytes, "${project.name}.gif", "image/gif")
-            toast(getString(R.string.gif_done))
-        }
-    }
-
-    private fun savePublicImage(bytes: ByteArray, filename: String, mime: String, share: Boolean = false): Uri? {
-        return try {
-            val uri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
-                    put(MediaStore.MediaColumns.MIME_TYPE, mime)
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/PixelHero")
-                }
-                val u = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                u?.let { contentResolver.openOutputStream(it)?.use { o -> o.write(bytes) } }
-                u
-            } else {
-                @Suppress("DEPRECATION")
-                val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "PixelHero")
-                dir.mkdirs()
-                val f = File(dir, filename)
-                FileOutputStream(f).use { it.write(bytes) }
-                sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(f)))
-                Uri.fromFile(f)
-            }
-            if (uri == null) { toast("Échec d'enregistrement"); return null }
-            if (share) shareUri(uri, mime, filename)
-            else toast("Enregistré dans Pictures/PixelHero/$filename")
-            uri
-        } catch (e: Exception) {
-            toast("Erreur: ${e.message}")
-            null
-        }
-    }
-
-    private fun shareUri(uri: Uri, mime: String, filename: String) {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = mime
-            putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, filename)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        try {
-            startActivity(Intent.createChooser(intent, "Partager $filename"))
-        } catch (e: Exception) {
-            toast("Aucune application pour partager")
-        }
-    }
 
     // ---- Animation playback ----
     private fun togglePlay() {
@@ -3412,7 +2932,7 @@ class MainActivity : AppCompatActivity() {
         binding.canvas.syncOnionBitmap()
     }
 
-    private fun toast(msg: String) {
+    internal fun toast(msg: String) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 
