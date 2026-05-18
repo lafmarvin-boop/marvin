@@ -142,6 +142,7 @@ internal fun MainActivity.saveProject() {
             ProjectStorage.save(this, project)
             isDirty = false; updateTitleDirty()
             binding.btnQuickSave.visibility = View.VISIBLE
+            rememberLastProject(project.id)
             toast(getString(R.string.saved))
         }
         .setNegativeButton(R.string.cancel, null)
@@ -152,6 +153,7 @@ internal fun MainActivity.saveProject() {
 internal fun MainActivity.quickSaveProject() {
     ProjectStorage.save(this, project)
     isDirty = false; updateTitleDirty()
+    rememberLastProject(project.id)
     toast("Sauvegardé : ${project.name}")
 }
 
@@ -178,15 +180,50 @@ internal fun MainActivity.showLoadDialog() {
         .setNegativeButton(R.string.cancel, null)
         .create()
     listView.setOnItemClickListener { _, _, which, _ ->
-        ProjectStorage.load(this, items[which].id)?.let {
-            project = it
-            applyProject()
-            binding.btnQuickSave.visibility = View.VISIBLE
-            toast("Chargé")
-        }
+        loadProjectById(items[which].id)
         dlg.dismiss()
     }
     dlg.show()
+}
+
+/** Load a project by id and apply it, also remembering it as last-opened. */
+internal fun MainActivity.loadProjectById(id: String) {
+    ProjectStorage.load(this, id)?.let {
+        project = it
+        applyProject()
+        binding.btnQuickSave.visibility = View.VISIBLE
+        rememberLastProject(id)
+        toast("Chargé : ${it.name}")
+    }
+}
+
+/** Store the most recently opened project id so we can offer to resume. */
+internal fun MainActivity.rememberLastProject(id: String) {
+    getSharedPreferences("settings", MODE_PRIVATE).edit()
+        .putString("lastProjectId", id).apply()
+}
+
+internal fun MainActivity.lastProjectId(): String? =
+    getSharedPreferences("settings", MODE_PRIVATE).getString("lastProjectId", null)
+
+/**
+ * On startup, if a previous project was open, show a non-intrusive prompt
+ * to resume. The user can dismiss it (default new project stays loaded)
+ * or accept (the saved project replaces the default).
+ */
+internal fun MainActivity.maybeOfferResumeLastProject() {
+    val id = lastProjectId() ?: return
+    val list = ProjectStorage.list(this)
+    val entry = list.firstOrNull { it.optString("id") == id } ?: return
+    val name = entry.optString("name", "?")
+    val dateStr = java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.FRENCH)
+        .format(java.util.Date(entry.optLong("updatedAt", 0)))
+    AlertDialog.Builder(this)
+        .setTitle("Continuer ?")
+        .setMessage("Dernier projet ouvert :\n\n« $name » — $dateStr\n\nLe rouvrir maintenant ?")
+        .setPositiveButton("Continuer") { _, _ -> loadProjectById(id) }
+        .setNegativeButton("Nouveau projet", null)
+        .show()
 }
 
 internal fun MainActivity.showDeleteDialog(list: List<org.json.JSONObject>) {

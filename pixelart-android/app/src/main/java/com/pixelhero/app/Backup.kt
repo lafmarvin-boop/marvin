@@ -101,6 +101,8 @@ object CrashRecovery {
     fun endSession(context: Context) {
         File(context.filesDir, FLAG_FILE).delete()
         File(context.filesDir, RECOVERY_FILE).delete()
+        context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit()
+            .remove("crashRestoredId").apply()
     }
 
     fun snapshot(context: Context, project: Project) {
@@ -119,7 +121,15 @@ object CrashRecovery {
         val f = File(context.filesDir, RECOVERY_FILE)
         if (!f.exists()) return null
         return runCatching {
-            ProjectStorage.deserializeJson(JSONObject(f.readText()))
+            val p = ProjectStorage.deserializeJson(JSONObject(f.readText()))
+            context.getSharedPreferences("settings", Context.MODE_PRIVATE).edit()
+                .putString("crashRestoredId", p.id).apply()
+            p
         }.getOrNull()
     }
+
+    /** Project id of the most recent crash-recovery restore (cleared on endSession). */
+    fun lastRestoredId(context: Context): String? =
+        context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+            .getString("crashRestoredId", null)
 }

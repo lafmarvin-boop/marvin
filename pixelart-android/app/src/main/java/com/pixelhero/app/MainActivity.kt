@@ -155,6 +155,10 @@ class MainActivity : AppCompatActivity() {
             showNewProjectDialog()
         } else {
             applyProject()
+            // Skip the resume prompt if crash recovery already loaded something.
+            if (CrashRecovery.lastRestoredId(this) == null) {
+                maybeOfferResumeLastProject()
+            }
         }
         scheduleAutosave()
         startMiniPreview()
@@ -271,9 +275,21 @@ class MainActivity : AppCompatActivity() {
     internal var isDirty = false
 
     internal fun updateTitleDirty() {
-        // We don't have a dedicated title TextView - use the topbar text
-        val v = (binding.topBar.getChildAt(1) as? TextView)
-        v?.text = if (isDirty) "PixelHero •" else "PixelHero"
+        // Find the title TextView in the topbar (first TextView child).
+        for (i in 0 until binding.topBar.childCount) {
+            val child = binding.topBar.getChildAt(i)
+            if (child is TextView && child.id != R.id.statusBadges) {
+                child.text = if (isDirty) "PixelHero •" else "PixelHero"
+                break
+            }
+        }
+        // Tint the quick-save disquette: amber when dirty, normal when saved.
+        if (binding.btnQuickSave.visibility == View.VISIBLE) {
+            binding.btnQuickSave.setColorFilter(
+                if (isDirty) 0xFFFFAA33.toInt() else 0xFF66CC66.toInt(),
+                android.graphics.PorterDuff.Mode.SRC_IN
+            )
+        }
     }
 
     // ---- Tools ----

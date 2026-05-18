@@ -260,6 +260,30 @@ class PixelCanvasView @JvmOverloads constructor(
     private var stylusLongPressY = 0f
     private val stylusLongPressDelayMs = 400L
     private val stylusLongPressMoveTolerance = 8f  // px before we cancel arming
+    /**
+     * Finger long-press = momentary eyedropper: hold a finger still on a
+     * pixel for ~550 ms and the colour under it is picked + the user
+     * stays on their current tool. Speeds up "draw → resample → keep
+     * drawing" by 2 taps. Stylus long-press takes the pan path instead.
+     */
+    private var fingerEyedropperArmed = false
+    private var fingerEyedropperX = 0f
+    private var fingerEyedropperY = 0f
+    private val fingerEyedropperDelayMs = 550L
+    private val fingerEyedropperRunnable = Runnable {
+        if (!fingerEyedropperArmed) return@Runnable
+        fingerEyedropperArmed = false
+        val coords = clientToPixel(fingerEyedropperX, fingerEyedropperY)
+        val p = project ?: return@Runnable
+        val c = p.currentFrame.get(coords[0], coords[1])
+        if (Color.alpha(c) > 0) {
+            // Undo the in-progress stroke (any pixel painted on ACTION_DOWN).
+            cancelStroke()
+            onColorPicked?.invoke(c)
+            performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        }
+    }
+
     private val stylusLongPressRunnable = Runnable {
         if (stylusLongPressArmed) {
             stylusLongPressActive = true
@@ -669,6 +693,16 @@ class PixelCanvasView @JvmOverloads constructor(
                     stylusLongPressY = event.y
                     postDelayed(stylusLongPressRunnable, stylusLongPressDelayMs)
                 }
+                // Finger long-press = momentary eyedropper (skip for stylus,
+                // skip for tools that already do something specific with hold).
+                if (!primaryIsStylus && activePointers.size == 1 &&
+                    tool != Tool.PICKER && tool != Tool.MOVE && tool != Tool.SELECT &&
+                    tool != Tool.LASSO && tool != Tool.WAND) {
+                    fingerEyedropperArmed = true
+                    fingerEyedropperX = event.x
+                    fingerEyedropperY = event.y
+                    postDelayed(fingerEyedropperRunnable, fingerEyedropperDelayMs)
+                }
                 if (activePointers.size == 1) {
                     val coords = clientToPixel(event.x, event.y)
                     // Intercept for one-shot tap handler if registered
@@ -713,6 +747,14 @@ class PixelCanvasView @JvmOverloads constructor(
                     if (dx * dx + dy * dy > stylusLongPressMoveTolerance * stylusLongPressMoveTolerance) {
                         stylusLongPressArmed = false
                         removeCallbacks(stylusLongPressRunnable)
+                    }
+                }
+                if (fingerEyedropperArmed) {
+                    val dx = event.x - fingerEyedropperX
+                    val dy = event.y - fingerEyedropperY
+                    if (dx * dx + dy * dy > 8f * 8f) {  // 8 px tolerance
+                        fingerEyedropperArmed = false
+                        removeCallbacks(fingerEyedropperRunnable)
                     }
                 }
                 // Stylus long-press is ACTIVE → behave like pan.
@@ -766,6 +808,8 @@ class PixelCanvasView @JvmOverloads constructor(
                     stylusLongPressArmed = false
                     stylusLongPressActive = false
                     removeCallbacks(stylusLongPressRunnable)
+                    fingerEyedropperArmed = false
+                    removeCallbacks(fingerEyedropperRunnable)
                 }
             }
         }
