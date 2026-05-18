@@ -413,6 +413,9 @@ class MainActivity : AppCompatActivity() {
         binding.btnSmartInbetween.setOnClickListener { insertSmartInbetween() }
         binding.btnPrevFrame.setOnClickListener { gotoFrameDelta(-1) }
         binding.btnNextFrame.setOnClickListener { gotoFrameDelta(+1) }
+        binding.btnSetA.setOnClickListener { setAbMarker(true) }
+        binding.btnSetB.setOnClickListener { setAbMarker(false) }
+        binding.btnPlayAB.setOnClickListener { playAbLoop() }
         binding.btnUndo.attachHelp("undo")
         binding.btnRedo.attachHelp("redo")
         binding.btnPlay.attachHelp("play")
@@ -1364,6 +1367,45 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    // A↔B test playback: a transient loop range used to compare 2 frames
+    // without modifying project.loopStart/loopEnd. Cleared when the user
+    // stops Play. Distinct from the timeline sub-range loop so users can
+    // A/B test without losing their main loop selection.
+    internal var abFrameA: Int = -1
+    internal var abFrameB: Int = -1
+
+    internal fun setAbMarker(isA: Boolean) {
+        if (isA) abFrameA = project.currentIndex else abFrameB = project.currentIndex
+        binding.labelAB.text = "A:${if (abFrameA < 0) "—" else (abFrameA + 1).toString()}—B:${if (abFrameB < 0) "—" else (abFrameB + 1).toString()}"
+    }
+
+    internal fun playAbLoop() {
+        if (abFrameA < 0 || abFrameB < 0) { toast("Marque A et B d'abord"); return }
+        if (abFrameA == abFrameB) { toast("A et B sont la même frame"); return }
+        val lo = minOf(abFrameA, abFrameB)
+        val hi = maxOf(abFrameA, abFrameB)
+        // Backup existing loop range, install A↔B range, start play.
+        val backupStart = project.loopStart
+        val backupEnd = project.loopEnd
+        project.loopStart = lo; project.loopEnd = hi
+        binding.timeline.invalidate()
+        startPlay()
+        // Stamp the backup so stopPlay can restore — uses a tiny shared field.
+        abBackupStart = backupStart; abBackupEnd = backupEnd; abLoopActive = true
+    }
+
+    internal var abLoopActive = false
+    internal var abBackupStart = -1
+    internal var abBackupEnd = -1
+
+    internal fun maybeRestoreAfterAbLoop() {
+        if (!abLoopActive) return
+        project.loopStart = abBackupStart
+        project.loopEnd = abBackupEnd
+        abLoopActive = false
+        binding.timeline.invalidate()
     }
 
     /** Move the active frame by +1 / -1 with bounds clamping. */

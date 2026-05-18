@@ -229,13 +229,48 @@ class PixelCanvasView @JvmOverloads constructor(
         color = 0xFFFFFFFF.toInt(); style = Paint.Style.STROKE; strokeWidth = 0.18f
     }
     private val selSymPaint = Paint().apply {
-        color = 0x6655AAFF.toInt(); style = Paint.Style.STROKE; strokeWidth = 0f
+        color = 0xCCFFB85B.toInt()  // amber dashed axis, always visible on any art
+        style = Paint.Style.STROKE; strokeWidth = 0.3f
+        pathEffect = DashPathEffect(floatArrayOf(2f, 2f), 0f)
     }
 
     init { isFocusable = true; isClickable = true }
 
+    private var selectionScaleAccum: Float = 1f
     private val scaleGD = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScaleBegin(d: ScaleGestureDetector): Boolean {
+            // If the user is pinching INSIDE a floating selection, redirect
+            // the pinch to scale the selection (nearest-neighbor) instead
+            // of zooming the canvas.
+            val sel = selection
+            if (sel.floating != null) {
+                val coords = clientToPixel(d.focusX, d.focusY)
+                val px = coords[0]; val py = coords[1]
+                if (px in sel.floatX until sel.floatX + sel.floatW &&
+                    py in sel.floatY until sel.floatY + sel.floatH) {
+                    selectionScaleAccum = 1f
+                    return true
+                }
+            }
+            return true
+        }
         override fun onScale(d: ScaleGestureDetector): Boolean {
+            val sel = selection
+            val floating = sel.floating
+            if (floating != null && selectionScaleAccum > 0f) {
+                selectionScaleAccum *= d.scaleFactor
+                // Apply the accumulated scale to the floating buffer when it
+                // crosses a threshold worth re-rasterizing (avoid wasted work
+                // on micro-zoom).
+                if (selectionScaleAccum > 1.12f || selectionScaleAccum < 0.9f) {
+                    resizeFloatingSelection(selectionScaleAccum)
+                    selectionScaleAccum = 1f
+                    invalidate()
+                    return true
+                }
+                return true
+            }
+            // Canvas zoom path (no floating selection under pinch focus).
             val factor = d.scaleFactor
             val fx = d.focusX; val fy = d.focusY
             val newScale = (scale * factor).coerceIn(0.25f, 32f)
@@ -247,6 +282,36 @@ class PixelCanvasView @JvmOverloads constructor(
             return true
         }
     })
+
+    /** Resize the floating selection in place using nearest-neighbor. */
+    private fun resizeFloatingSelection(ratio: Float) {
+        val floating = selection.floating ?: return
+        val oldW = selection.floatW; val oldH = selection.floatH
+        val newW = (oldW * ratio).toInt().coerceIn(1, 4096)
+        val newH = (oldH * ratio).toInt().coerceIn(1, 4096)
+        if (newW == oldW && newH == oldH) return
+        val out = IntArray(newW * newH)
+        for (y in 0 until newH) for (x in 0 until newW) {
+            val sx = (x.toFloat() / newW * oldW).toInt().coerceIn(0, oldW - 1)
+            val sy = (y.toFloat() / newH * oldH).toInt().coerceIn(0, oldH - 1)
+            out[y * newW + x] = floating[sy * oldW + sx]
+        }
+        // Keep the visual center fixed when growing/shrinking.
+        val centerX = selection.floatX + oldW / 2
+        val centerY = selection.floatY + oldH / 2
+        selection.floating = out
+        selection.floatW = newW
+        selection.floatH = newH
+        selection.floatX = centerX - newW / 2
+        selection.floatY = centerY - newH / 2
+        // Also expand the bbox so the marching ants outline reflects the new size.
+        selection.x0 = selection.floatX; selection.y0 = selection.floatY
+        selection.x1 = selection.floatX + newW - 1
+        selection.y1 = selection.floatY + newH - 1
+        // Mask is no longer applicable after resize — drop it.
+        selection.mask = null
+        onSelectionStateChanged?.invoke()
+    }
 
     /**
      * Stylus long-press detector: when the stylus is held still for ~400 ms
@@ -309,27 +374,24 @@ class PixelCanvasView @JvmOverloads constructor(
 
     fun rebuildOnionBitmaps() {
         val p = project ?: return
-        // Recycle existing bitmaps to free memory
-        onionBmps.forEach {
-            try { if (!it.first.isRecycled) it.first.recycle() } catch (_: Exception) {}
-        }
+        // Return existing onion bitmaps to the pool so the next rebuild
+        // doesn't re-allocate. The pool caps reuse per (w, h) bucket.
+        onionBmps.forEach { BitmapPool.release(it.first) }
         onionBmps.clear()
         if (p.onionRange <= 0) return
-        // Previous frames (blue tint) - always shown
         for (off in 1..p.onionRange) {
             val idx = p.currentIndex - off
             if (idx < 0) break
-            val bmp = Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888)
+            val bmp = BitmapPool.acquire(p.width, p.height)
             bmp.setPixels(frameComposite(p.frames[idx]), 0, p.width, 0, 0, p.width, p.height)
             val tint = 0x4400AAFF.toInt()
             onionBmps.add(Triple(bmp, -off, tint))
         }
-        // Next frames (red tint) - skipped in trail mode
         if (!p.onionTrailOnly) {
             for (off in 1..p.onionRange) {
                 val idx = p.currentIndex + off
                 if (idx >= p.frames.size) break
-                val bmp = Bitmap.createBitmap(p.width, p.height, Bitmap.Config.ARGB_8888)
+                val bmp = BitmapPool.acquire(p.width, p.height)
                 bmp.setPixels(frameComposite(p.frames[idx]), 0, p.width, 0, 0, p.width, p.height)
                 val tint = 0x44FF4477.toInt()
                 onionBmps.add(Triple(bmp, off, tint))
@@ -530,13 +592,16 @@ class PixelCanvasView @JvmOverloads constructor(
             canvas.drawPath(path, lassoPaint)
         }
 
-        // Symmetry axis indicator
+        // Symmetry axis indicator — dashed amber lines so the user always
+        // sees where the mirror happens, on any underlying art.
         if (p.symmetry != SymmetryAxis.NONE) {
-            if (p.symmetry == SymmetryAxis.HORIZONTAL || p.symmetry == SymmetryAxis.BOTH) {
+            if (p.symmetry == SymmetryAxis.HORIZONTAL || p.symmetry == SymmetryAxis.BOTH ||
+                p.symmetry == SymmetryAxis.ROTATE_4) {
                 val cx = w / 2f
                 canvas.drawLine(cx, 0f, cx, h.toFloat(), selSymPaint)
             }
-            if (p.symmetry == SymmetryAxis.VERTICAL || p.symmetry == SymmetryAxis.BOTH) {
+            if (p.symmetry == SymmetryAxis.VERTICAL || p.symmetry == SymmetryAxis.BOTH ||
+                p.symmetry == SymmetryAxis.ROTATE_4) {
                 val cy = h / 2f
                 canvas.drawLine(0f, cy, w.toFloat(), cy, selSymPaint)
             }

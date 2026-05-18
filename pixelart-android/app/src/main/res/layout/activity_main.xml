@@ -426,6 +426,24 @@
                         android:text="▶" android:minWidth="48dp"/>
                 </LinearLayout>
 
+                <!-- A ↔ B loop test -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginTop="4dp"
+                    android:gravity="center_vertical">
+                    <Button android:id="@+id/btnSetA" style="@style/SmallButton"
+                        android:text="Set A" android:layout_weight="1"/>
+                    <TextView android:id="@+id/labelAB"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="6dp"
+                        android:text="A—B : —"
+                        android:textColor="@color/text_dim" android:textSize="11sp"/>
+                    <Button android:id="@+id/btnSetB" style="@style/SmallButton"
+                        android:text="Set B" android:layout_weight="1"/>
+                </LinearLayout>
+                <Button android:id="@+id/btnPlayAB" style="@style/SmallButton"
+                    android:text="▶ A↔B" android:layout_width="match_parent"
+                    android:layout_marginTop="2dp"/>
+
                 <Button android:id="@+id/btnLayers" style="@style/SmallButton"
                     android:text="Calques…"
                     android:layout_width="match_parent" android:layout_marginTop="6dp"/>

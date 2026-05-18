@@ -97,12 +97,12 @@ class TimelineView @JvmOverloads constructor(
             val ry = margin
             val rw = cellW - margin * 2
             val rh = cellH - margin
-            // Draw thumbnail
+            // Draw thumbnail — uses BitmapPool to avoid per-frame allocation.
             val src = if (frame.layers.size > 1) frame.composited() else frame.pixels
-            val bmp = Bitmap.createBitmap(frame.width, frame.height, Bitmap.Config.ARGB_8888)
+            val bmp = BitmapPool.acquire(frame.width, frame.height)
             bmp.setPixels(src, 0, frame.width, 0, 0, frame.width, frame.height)
             canvas.drawBitmap(bmp, null, RectF(rx, ry, rx + rw, ry + rh), framePaint)
-            bmp.recycle()
+            BitmapPool.release(bmp)
             // Border
             if (i == p.currentIndex) {
                 canvas.drawRect(rx, ry, rx + rw, ry + rh, currentBorderPaint)

@@ -70,6 +70,9 @@ internal fun MainActivity.stopPlay() {
     project.currentIndex = savedFrameIdx
     binding.canvas.syncFrameBitmap()
     binding.canvas.syncOnionBitmap()
+    // If an A↔B test loop was running, put the user's original loop range
+    // back so their main playback selection isn't lost.
+    maybeRestoreAfterAbLoop()
 }
 
 internal fun MainActivity.nextPlayIndex(current: Int, size: Int, mode: PlayMode): Int {
