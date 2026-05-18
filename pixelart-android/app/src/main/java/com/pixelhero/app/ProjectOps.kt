@@ -110,8 +110,10 @@ internal fun MainActivity.applyProject() {
         onLongPress = { idx -> showFrameEditDialog(idx) }
     )
     binding.framesList.adapter = framesAdapter
-    paletteAdapter = SwatchAdapter(project.palette, { setColor(it) }, { it == binding.canvas.color })
-    recentAdapter = SwatchAdapter(project.recentColors, { setColor(it) }, { it == binding.canvas.color })
+    paletteAdapter = SwatchAdapter(project.palette, { setColor(it) }, { it == binding.canvas.color },
+        onLongClick = { _, anchor -> showQuickRecentsPopup(anchor) })
+    recentAdapter = SwatchAdapter(project.recentColors, { setColor(it) }, { it == binding.canvas.color },
+        onLongClick = { _, anchor -> showQuickRecentsPopup(anchor) })
     binding.paletteList.adapter = paletteAdapter
     binding.recentList.adapter = recentAdapter
     binding.fpsInput.setText(project.fps.toString())

@@ -9,7 +9,8 @@ import androidx.recyclerview.widget.RecyclerView
 class SwatchAdapter(
     private val colors: List<Int>,
     private val onClick: (Int) -> Unit,
-    private val isSelected: (Int) -> Boolean
+    private val isSelected: (Int) -> Boolean,
+    private val onLongClick: ((Int, View) -> Unit)? = null
 ) : RecyclerView.Adapter<SwatchAdapter.VH>() {
 
     class VH(view: View) : RecyclerView.ViewHolder(view) {
@@ -25,6 +26,10 @@ class SwatchAdapter(
         val c = colors[position]
         holder.swatch.setBackgroundColor(c)
         holder.itemView.setOnClickListener { onClick(c) }
+        holder.itemView.setOnLongClickListener {
+            onLongClick?.invoke(c, holder.swatch)
+            onLongClick != null
+        }
         holder.swatch.alpha = if (isSelected(c)) 1f else 0.85f
         holder.swatch.scaleX = if (isSelected(c)) 1.1f else 1f
         holder.swatch.scaleY = if (isSelected(c)) 1.1f else 1f

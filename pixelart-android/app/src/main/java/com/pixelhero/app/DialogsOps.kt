@@ -329,6 +329,39 @@ internal fun MainActivity.showReferenceLayerDialog() {
     builder.show()
 }
 
+/**
+ * Quick-recents popup: long-press any palette swatch opens a small floating
+ * horizontal row of the 8 most-recent colors right at the touch position.
+ * Tap one to instantly switch the active color — no menu / dialog detour.
+ */
+internal fun MainActivity.showQuickRecentsPopup(anchor: View) {
+    val recents = project.recentColors.take(8)
+    if (recents.isEmpty()) { toast("Aucune couleur récente"); return }
+    val row = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        setPadding(8, 8, 8, 8)
+        setBackgroundColor(0xFF1A1A22.toInt())
+    }
+    val swatchSize = (resources.displayMetrics.density * 32).toInt()
+    val popup = android.widget.PopupWindow(
+        row,
+        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+        true
+    )
+    recents.forEach { c ->
+        val tile = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(swatchSize, swatchSize).apply {
+                setMargins(4, 0, 4, 0)
+            }
+            setBackgroundColor(c)
+            setOnClickListener { setColor(c); popup.dismiss() }
+        }
+        row.addView(tile)
+    }
+    popup.showAsDropDown(anchor, 0, -swatchSize * 2 - 16)
+}
+
 internal fun MainActivity.showCheatsheet() {
     val text = """
         ✋ GESTES SUR LE CANVAS

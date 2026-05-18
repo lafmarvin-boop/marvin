@@ -60,36 +60,62 @@ internal fun MainActivity.exportAllFrames() {
 }
 
 internal fun MainActivity.exportSpriteSheet() {
-    val scale = 4
-    val cols = Math.ceil(Math.sqrt(project.frames.size.toDouble())).toInt().coerceAtLeast(1)
-    val rows = (project.frames.size + cols - 1) / cols
-    val fw = project.width * scale
-    val fh = project.height * scale
-    val sheet = Bitmap.createBitmap(cols * fw, rows * fh, Bitmap.Config.ARGB_8888)
-    val canvas = android.graphics.Canvas(sheet)
-    val paint = android.graphics.Paint().apply { isFilterBitmap = false }
-    project.frames.forEachIndexed { i, frame ->
-        val b = frameToBitmap(frame, scale)
-        canvas.drawBitmap(b, (i % cols * fw).toFloat(), (i / cols * fh).toFloat(), paint)
-        b.recycle()
+    val total = project.frames.size
+    val progress = androidx.appcompat.app.AlertDialog.Builder(this)
+        .setTitle("Sprite sheet")
+        .setMessage("Préparation…")
+        .setCancelable(false)
+        .show()
+    lifecycleScope.launch {
+        val scale = 4
+        val cols = Math.ceil(Math.sqrt(total.toDouble())).toInt().coerceAtLeast(1)
+        val rows = (total + cols - 1) / cols
+        val fw = project.width * scale
+        val fh = project.height * scale
+        val bytes = withContext(Dispatchers.Default) {
+            val sheet = Bitmap.createBitmap(cols * fw, rows * fh, Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(sheet)
+            val paint = android.graphics.Paint().apply { isFilterBitmap = false }
+            project.frames.forEachIndexed { i, frame ->
+                val b = frameToBitmap(frame, scale)
+                canvas.drawBitmap(b, (i % cols * fw).toFloat(), (i / cols * fh).toFloat(), paint)
+                b.recycle()
+                withContext(Dispatchers.Main) {
+                    progress.setMessage("Frame ${i + 1} / $total")
+                }
+            }
+            val b = ByteArrayOutputStream().apply { sheet.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
+            sheet.recycle()
+            b
+        }
+        progress.dismiss()
+        savePublicImage(bytes, "${project.name}_sheet.png", "image/png")
     }
-    val bytes = ByteArrayOutputStream().apply { sheet.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
-    savePublicImage(bytes, "${project.name}_sheet.png", "image/png")
-    sheet.recycle()
 }
 
 internal fun MainActivity.exportGif() {
-    toast(getString(R.string.generating_gif))
+    // Progress dialog so the user sees frame-by-frame progress on long
+    // animations (200 frames × 600×600 used to look frozen).
+    val progress = androidx.appcompat.app.AlertDialog.Builder(this)
+        .setTitle(getString(R.string.generating_gif))
+        .setMessage("Préparation…")
+        .setCancelable(false)
+        .show()
     lifecycleScope.launch {
+        val total = project.frames.size
         val bytes = withContext(Dispatchers.Default) {
             val encoder = GifEncoder(project.width, project.height)
             project.frames.forEachIndexed { i, f ->
                 val comp = if (f.layers.size > 1) f.composited() else f.pixels
                 encoder.addFrame(comp, project.delayForFrame(i))
+                withContext(Dispatchers.Main) {
+                    progress.setMessage("Frame ${i + 1} / $total")
+                }
             }
             encoder.encodeToBytes()
         }
         savePublicImage(bytes, "${project.name}.gif", "image/gif")
+        progress.dismiss()
         toast(getString(R.string.gif_done))
     }
 }
@@ -102,16 +128,25 @@ internal fun MainActivity.sharePng() {
 }
 
 internal fun MainActivity.shareGif() {
-    toast(getString(R.string.generating_gif))
+    val progress = androidx.appcompat.app.AlertDialog.Builder(this)
+        .setTitle(getString(R.string.generating_gif))
+        .setMessage("Préparation…")
+        .setCancelable(false)
+        .show()
     lifecycleScope.launch {
+        val total = project.frames.size
         val bytes = withContext(Dispatchers.Default) {
             val encoder = GifEncoder(project.width, project.height)
             project.frames.forEachIndexed { i, f ->
                 val comp = if (f.layers.size > 1) f.composited() else f.pixels
                 encoder.addFrame(comp, project.delayForFrame(i))
+                withContext(Dispatchers.Main) {
+                    progress.setMessage("Frame ${i + 1} / $total")
+                }
             }
             encoder.encodeToBytes()
         }
+        progress.dismiss()
         savePublicImage(bytes, "${project.name}.gif", "image/gif", share = true)
     }
 }
