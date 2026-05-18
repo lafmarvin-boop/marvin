@@ -187,8 +187,12 @@ class MainActivity : AppCompatActivity() {
         autosaveRunnable?.let { autosaveHandler.removeCallbacks(it) }
         val r = object : Runnable {
             override fun run() {
-                ProjectStorage.save(this@MainActivity, project)
-                runOnUiThread { isDirty = false; updateTitleDirty() }
+                // Only save if the user has actually done work since last save.
+                // Avoids creating "Sans titre" entries on every fresh boot.
+                if (isDirty) {
+                    ProjectStorage.save(this@MainActivity, project)
+                    runOnUiThread { isDirty = false; updateTitleDirty() }
+                }
                 autosaveHandler.postDelayed(this, 30_000L)
             }
         }
@@ -199,6 +203,8 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         if (isPlaying) stopPlay()
+        // Always save on pause — losing work after a phone call / Home press is
+        // worse than an extra "Sans titre" entry.
         ProjectStorage.save(this, project)
         autosaveRunnable?.let { autosaveHandler.removeCallbacks(it) }
         stopMiniPreview()
@@ -342,7 +348,36 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun pushUndo() {
-        undoStack.addLast(UndoSnapshot(project.currentIndex, project.currentFrame.pixels.copyOf()))
+        // Default: just the active layer of the current frame — cheap, fits
+        // the common case (pencil, eraser, fill, line, rect).
+        val f = project.currentFrame
+        undoStack.addLast(UndoSnapshot.SingleLayer(
+            project.currentIndex,
+            f.activeLayer,
+            f.layers[f.activeLayer].pixels.copyOf()
+        ))
+        afterPushUndo()
+    }
+
+    /** Snapshot every layer of the current frame — for operations that touch all layers. */
+    private fun pushUndoFullFrame() {
+        val f = project.currentFrame
+        undoStack.addLast(UndoSnapshot.FullFrame(
+            project.currentIndex,
+            f.layers.map { it.pixels.copyOf() }
+        ))
+        afterPushUndo()
+    }
+
+    /** Snapshot every layer of every frame — for bulk operations (filters on all frames). */
+    private fun pushUndoAllFrames() {
+        undoStack.addLast(UndoSnapshot.AllFrames(
+            project.frames.map { fr -> fr.layers.map { it.pixels.copyOf() } }
+        ))
+        afterPushUndo()
+    }
+
+    private fun afterPushUndo() {
         while (undoStack.size > maxUndo) undoStack.removeFirst()
         redoStack.clear()
         isDirty = true
@@ -659,21 +694,63 @@ class MainActivity : AppCompatActivity() {
     private fun doUndo() {
         if (undoStack.isEmpty()) return
         val snap = undoStack.removeLast()
-        val f = project.frames.getOrNull(snap.frameIndex) ?: return
-        redoStack.addLast(UndoSnapshot(snap.frameIndex, f.pixels.copyOf()))
-        snap.pixels.copyInto(f.pixels)
-        project.currentIndex = snap.frameIndex
+        redoStack.addLast(captureRedoFor(snap))
+        applySnapshot(snap)
         refreshAfterFrameChange()
+        refreshLayersStrip()
     }
 
     private fun doRedo() {
         if (redoStack.isEmpty()) return
         val snap = redoStack.removeLast()
-        val f = project.frames.getOrNull(snap.frameIndex) ?: return
-        undoStack.addLast(UndoSnapshot(snap.frameIndex, f.pixels.copyOf()))
-        snap.pixels.copyInto(f.pixels)
-        project.currentIndex = snap.frameIndex
+        undoStack.addLast(captureRedoFor(snap))
+        applySnapshot(snap)
         refreshAfterFrameChange()
+        refreshLayersStrip()
+    }
+
+    /** Build a snapshot of the CURRENT state matching the shape of [match] (for redo). */
+    private fun captureRedoFor(match: UndoSnapshot): UndoSnapshot = when (match) {
+        is UndoSnapshot.SingleLayer -> {
+            val f = project.frames.getOrNull(match.frameIndex)
+            val layer = f?.layers?.getOrNull(match.layerIndex)
+            UndoSnapshot.SingleLayer(match.frameIndex, match.layerIndex,
+                layer?.pixels?.copyOf() ?: IntArray(0))
+        }
+        is UndoSnapshot.FullFrame -> {
+            val f = project.frames.getOrNull(match.frameIndex)
+            UndoSnapshot.FullFrame(match.frameIndex,
+                f?.layers?.map { it.pixels.copyOf() } ?: emptyList())
+        }
+        is UndoSnapshot.AllFrames -> UndoSnapshot.AllFrames(
+            project.frames.map { fr -> fr.layers.map { it.pixels.copyOf() } }
+        )
+    }
+
+    private fun applySnapshot(snap: UndoSnapshot) {
+        when (snap) {
+            is UndoSnapshot.SingleLayer -> {
+                val f = project.frames.getOrNull(snap.frameIndex) ?: return
+                f.layers.getOrNull(snap.layerIndex)?.let { snap.pixels.copyInto(it.pixels) }
+                project.currentIndex = snap.frameIndex
+                f.activeLayer = snap.layerIndex.coerceIn(0, f.layers.size - 1)
+            }
+            is UndoSnapshot.FullFrame -> {
+                val f = project.frames.getOrNull(snap.frameIndex) ?: return
+                snap.layers.forEachIndexed { i, src ->
+                    f.layers.getOrNull(i)?.let { src.copyInto(it.pixels) }
+                }
+                project.currentIndex = snap.frameIndex
+            }
+            is UndoSnapshot.AllFrames -> {
+                snap.frames.forEachIndexed { fi, layerPx ->
+                    val fr = project.frames.getOrNull(fi) ?: return@forEachIndexed
+                    layerPx.forEachIndexed { li, src ->
+                        fr.layers.getOrNull(li)?.let { src.copyInto(it.pixels) }
+                    }
+                }
+            }
+        }
     }
 
     private fun showSymmetryMenu() {
@@ -1755,7 +1832,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyFilterRange(filter: Filters.Filter, fromIdx: Int, toIdx: Int) {
-        pushUndo()
+        // Bulk operation: snapshot every layer of every frame so a single
+        // undo wipes the filter everywhere it was applied.
+        if (fromIdx == toIdx) pushUndoFullFrame() else pushUndoAllFrames()
         val outlineColor = project.primaryColor
         // Apply to EVERY layer of each frame in the range — pushUndo() snapshots
         // the full project, so a single undo removes the effect from all layers
@@ -2169,7 +2248,35 @@ class MainActivity : AppCompatActivity() {
                 true
             }
         }
-        row.addView(eye); row.addView(name)
+        // ▲ / ▼ reorder buttons: ▲ moves the row toward the top of the strip
+        // (higher z-index), ▼ toward the bottom.
+        val upBtn = TextView(this).apply {
+            text = "▲"
+            setTextColor(if (i < f.layers.size - 1) 0xFFE8E8F0.toInt() else 0x44888888)
+            textSize = 14f
+            setPadding(8, 4, 8, 4)
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                if (i >= f.layers.size - 1) return@setOnClickListener
+                f.activeLayer = i
+                moveLayer(+1)
+                refreshLayersStrip()
+            }
+        }
+        val downBtn = TextView(this).apply {
+            text = "▼"
+            setTextColor(if (i > 0) 0xFFE8E8F0.toInt() else 0x44888888)
+            textSize = 14f
+            setPadding(8, 4, 8, 4)
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                if (i <= 0) return@setOnClickListener
+                f.activeLayer = i
+                moveLayer(-1)
+                refreshLayersStrip()
+            }
+        }
+        row.addView(eye); row.addView(name); row.addView(upBtn); row.addView(downBtn)
         strip.addView(row)
     }
 

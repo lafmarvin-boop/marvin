@@ -224,14 +224,28 @@ class Project(
     }
 }
 
-/** Snapshot for undo/redo. */
-data class UndoSnapshot(val frameIndex: Int, val pixels: IntArray) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is UndoSnapshot) return false
-        return frameIndex == other.frameIndex && pixels.contentEquals(other.pixels)
-    }
-    override fun hashCode(): Int = frameIndex * 31 + pixels.contentHashCode()
+/**
+ * Snapshot for undo/redo. Two flavours so multi-layer / multi-frame operations
+ * can restore properly without paying the snapshot cost on every pencil stroke:
+ *  - single-layer snapshots store one IntArray for the active layer of one frame
+ *  - full-frame snapshots store every layer of one frame
+ *  - all-frames snapshots store every layer of every frame (filters, etc.)
+ */
+sealed class UndoSnapshot {
+    data class SingleLayer(
+        val frameIndex: Int,
+        val layerIndex: Int,
+        val pixels: IntArray
+    ) : UndoSnapshot()
+
+    data class FullFrame(
+        val frameIndex: Int,
+        val layers: List<IntArray>
+    ) : UndoSnapshot()
+
+    data class AllFrames(
+        val frames: List<List<IntArray>>
+    ) : UndoSnapshot()
 }
 
 /** Rectangular selection with optional floating clipboard content. */
