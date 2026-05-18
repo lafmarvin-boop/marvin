@@ -234,6 +234,17 @@ class MainActivity : AppCompatActivity() {
         // the actions menu so they can pick Move / Copy / Cut / Paste etc.
         binding.canvas.onSelectionCreated = { refreshSelectionPalette() }
         binding.canvas.onSelectionStateChanged = { refreshSelectionPalette() }
+        // 2-finger horizontal swipe on the canvas changes the active frame.
+        binding.canvas.onFrameSwipe = { delta ->
+            val n = project.frames.size
+            if (n > 1) {
+                val next = (project.currentIndex + delta).coerceIn(0, n - 1)
+                if (next != project.currentIndex) {
+                    project.currentIndex = next
+                    refreshAfterFrameChange()
+                }
+            }
+        }
     }
 
     /**
@@ -676,6 +687,12 @@ class MainActivity : AppCompatActivity() {
         binding.btnUndo.setOnClickListener { doUndo() }
         binding.btnRedo.setOnClickListener { doRedo() }
         binding.btnPlay.setOnClickListener { togglePlay() }
+        // Right panel tabs: which group is visible. Default: Animation (frames + layers).
+        binding.tabColors.setOnClickListener { switchRightTab(0) }
+        binding.tabLayers.setOnClickListener { switchRightTab(1) }
+        binding.tabAnim.setOnClickListener { switchRightTab(2) }
+        switchRightTab(2)
+
         binding.btnMenu.setOnClickListener { showMenu() }
         binding.btnQuickSave.setOnClickListener { quickSaveProject() }
         binding.btnSymmetry.setOnClickListener { showSymmetryMenu() }
@@ -1832,25 +1849,38 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyFilterRange(filter: Filters.Filter, fromIdx: Int, toIdx: Int) {
-        // Bulk operation: snapshot every layer of every frame so a single
-        // undo wipes the filter everywhere it was applied.
         if (fromIdx == toIdx) pushUndoFullFrame() else pushUndoAllFrames()
         val outlineColor = project.primaryColor
-        // Apply to EVERY layer of each frame in the range — pushUndo() snapshots
-        // the full project, so a single undo removes the effect from all layers
-        // and all frames at once.
-        for (i in fromIdx..toIdx) {
-            val f = project.frames.getOrNull(i) ?: continue
-            for (layer in f.layers) {
-                val out = Filters.apply(layer.pixels, f.width, f.height, filter, outlineColor)
-                out.copyInto(layer.pixels)
+        val totalFrames = toIdx - fromIdx + 1
+        val progress = AlertDialog.Builder(this)
+            .setTitle("Filtre « ${filter.displayName} »")
+            .setMessage("Préparation…")
+            .setCancelable(false)
+            .show()
+        // Run on Default dispatcher so the UI stays responsive even on a
+        // 600×600 canvas × N frames × M layers.
+        lifecycleScope.launch {
+            var nLayers = 0
+            withContext(Dispatchers.Default) {
+                for (i in fromIdx..toIdx) {
+                    val f = project.frames.getOrNull(i) ?: continue
+                    nLayers = f.layers.size
+                    for (layer in f.layers) {
+                        val out = Filters.apply(layer.pixels, f.width, f.height, filter, outlineColor)
+                        out.copyInto(layer.pixels)
+                    }
+                    val done = i - fromIdx + 1
+                    withContext(Dispatchers.Main) {
+                        progress.setMessage("Frame $done / $totalFrames…")
+                    }
+                }
             }
+            progress.dismiss()
+            binding.canvas.syncFrameBitmap()
+            framesAdapter.notifyDataSetChanged()
+            binding.timeline.invalidate()
+            toast("Filtre appliqué : $totalFrames frame(s) × $nLayers calque(s)")
         }
-        binding.canvas.syncFrameBitmap()
-        framesAdapter.notifyDataSetChanged()
-        binding.timeline.invalidate()
-        val nLayers = project.frames.getOrNull(fromIdx)?.layers?.size ?: 1
-        toast("Filtre appliqué : ${toIdx - fromIdx + 1} frame(s) × $nLayers calque(s)")
     }
 
     private fun showColorLockMenu() {
@@ -2554,14 +2584,17 @@ class MainActivity : AppCompatActivity() {
         val prefs = getPreferences(MODE_PRIVATE)
         if (!force && prefs.getBoolean(seenKey, false)) return
         val pages = listOf(
-            "Bienvenue dans PixelHero ! 👋\n\nMenu (☰) → Nouveau projet pour démarrer avec une taille, ou utilisez une taille préréglée (16, 32, 64…).",
-            "✏️ Outils (barre gauche)\n\nCrayon, gomme, pot de peinture, pipette, ligne, rectangle, sélection, déplacer. Touchez longuement pour glisser.\n\n💡 2 doigts = zoom + pan.",
-            "🎨 Couleur (panneau droit)\n\nTouchez une couleur de la palette. Le bouton 🎨 ouvre un sélecteur RGB. Auto-shading ajoute des nuances.",
-            "🖼️ Image de fond\n\nChargez une photo et l'app vous propose : pixeliser → frame courante avec dithering, extraire palette, etc.",
-            "🎬 Frames (panneau droit)\n\nAjouter / dupliquer / supprimer. Glissez longuement pour réordonner. Aperçu auto en boucle.",
-            "🪄 Baguette magique\n\nGénérateur intelligent : animations (marche, attaque…), décors (forêt, donjon…), éléments animés (flambeaux, feu de camp…), templates de pose.",
-            "💾 Sauvegarde\n\nAuto-save toutes les 30s. Menu → Sauvegarder pour nommer. Menu → Charger pour récupérer un projet.",
-            "📤 Export\n\nPNG (frame seule, ×8), sprite sheet, GIF animé, chaque frame en PNG séparé. Vers Pictures/PixelHero/."
+            "Bienvenue dans PixelHero ! 👋\n\nApp pixel-art frame-by-frame, optimisée tablette + stylet. Par défaut canvas 64×64, max 600×600. Menu (☰) → Nouveau projet pour choisir une taille.",
+            "✏️ Outils (barre gauche)\n\nCrayon, gomme, pot de peinture, pot inverse (efface zone), pipette, ligne, rectangle, sélection rectangle, lasso main levée, baguette magique, déplacer.",
+            "✋ Gestes canvas\n• 2 doigts = pan + zoom\n• 2 doigts swipe horizontal = frame suivante/précédente\n• Double-tap = adapter (zoom fit)\n• Triple-tap = zoom 100%\n• Stylet appui long 0,4 s = pan",
+            "🪢 Sélection avancée\nRectangle, lasso main levée, ou baguette magique. Quand une sélection est active, une palette apparaît en bas du canvas : déplacer, copier, couper, coller (dans un autre calque !), ajouter/retirer des pixels au pinceau, miroir, valider.\n\nLe contour 'marching ants' noir/blanc reste visible sur tout fond.",
+            "🧱 Calques (onglet 🧱 + onglet 🎬 du panneau droit)\nChaque frame a ses calques. Bande latérale : 👁/🚫 pour masquer, ▲/▼ pour réorganiser, tap sur nom = actif, long-tap = mettre dans un groupe.\n\nGroupes (Vue face / Vue dos / Corps / Arme…) persistent entre toutes les frames.",
+            "🎬 Animation\nOnglet 🎬 du panneau droit : timeline en bas, FPS, curseur de vitesse 0,25×–4×, ⏱ délai par frame (zones lente/rapide), bouton ▶ pour lecture taille canvas.\n\n🔀 Tween : crée des frames intermédiaires entre 2 frames clés avec courbes d'easing.",
+            "🎨 Couleurs (onglet 🎨)\nPalette projet + Récentes. Auto-shading génère 4 nuances. Bibliothèque palettes étendue (NES, GameBoy, PICO-8…). Verrou couleur, Remplacer couleur.",
+            "🏞️ Décor & ✨ Effets (boutons barre du haut)\nDécor procédural en image de fond ou en animation 4/8 frames (ciel, eau, neige, forêt…). 29 effets / filtres dont feu, glace, électrique, arc-en-ciel — appliqués à tous les calques.",
+            "🖼️ Charger image\nMenu → Outils → Charger. Choisis l'intensité de suppression du fond, puis 🎯 Pixeliser à une résolution choisie (32 / 48 / 64…). Style ⭐ Pro avec downscale par moyenne d'aire = rendu propre.",
+            "💾 Sauvegarde\nAuto-save toutes les 30 s dès que tu modifies quelque chose. Première sauvegarde → nommer. Disquette dans la barre du haut apparaît = sauve sans dialogue. Menu → Sauvegarde .zip = backup complet.",
+            "📤 Export\nPNG frame seule (×8), chaque frame séparée, sprite sheet en grille, GIF animé, package Unity/Godot prêt à intégrer.\n\nTous dans Pictures/PixelHero/."
         )
         showTutorialPage(pages, 0, seenKey)
     }
@@ -2786,6 +2819,23 @@ class MainActivity : AppCompatActivity() {
         ))
     }
 
+    /**
+     * Show one tab section of the right panel and hide the others.
+     *  0 = 🎨 Couleurs    → palette + recent
+     *  1 = 🧱 Outils      → BG / opacity / onion / brush / dither / sketch
+     *  2 = 🎬 Animation   → zoom + frames + layers strip + speed + preview
+     */
+    private fun switchRightTab(idx: Int) {
+        binding.groupColors.visibility = if (idx == 0) View.VISIBLE else View.GONE
+        binding.groupBg.visibility     = if (idx == 1) View.VISIBLE else View.GONE
+        binding.groupZoom.visibility   = if (idx == 2) View.VISIBLE else View.GONE
+        binding.groupFrames.visibility = if (idx == 2) View.VISIBLE else View.GONE
+        // Visually mark the active tab
+        binding.tabColors.isSelected = idx == 0
+        binding.tabLayers.isSelected = idx == 1
+        binding.tabAnim.isSelected   = idx == 2
+    }
+
     /** One-tap save reusing the existing project name (no dialog). */
     private fun quickSaveProject() {
         ProjectStorage.save(this, project)
@@ -2920,14 +2970,26 @@ class MainActivity : AppCompatActivity() {
     private fun loadBgImage(uri: Uri) {
         runCatching {
             contentResolver.openInputStream(uri)?.use { input ->
-                val raw = BitmapFactory.decodeStream(input)
-                if (raw != null) {
-                    binding.canvas.bgBitmap = raw
-                    project.bgFit = BgFitMode.FIT
-                    binding.canvas.invalidate()
-                    updateBgFitButtonLabel()
-                    askBackgroundRemovalIntensity(raw)
-                }
+                val raw = BitmapFactory.decodeStream(input) ?: return@use
+                // Cap the working bitmap to canvas × 4 so a huge photo doesn't
+                // sit in memory forever — keeps a generous resolution for the
+                // pixelize pipeline without burning ~10 MB on a 4000×3000 phone
+                // photo.
+                val capW = (project.width * 4).coerceAtLeast(512)
+                val capH = (project.height * 4).coerceAtLeast(512)
+                val scaled = if (raw.width > capW || raw.height > capH) {
+                    val ratio = minOf(capW.toFloat() / raw.width, capH.toFloat() / raw.height)
+                    val tw = (raw.width * ratio).toInt().coerceAtLeast(1)
+                    val th = (raw.height * ratio).toInt().coerceAtLeast(1)
+                    val s = Bitmap.createScaledBitmap(raw, tw, th, true)
+                    if (s !== raw) raw.recycle()
+                    s
+                } else raw
+                binding.canvas.bgBitmap = scaled
+                project.bgFit = BgFitMode.FIT
+                binding.canvas.invalidate()
+                updateBgFitButtonLabel()
+                askBackgroundRemovalIntensity(scaled)
             }
         }
     }

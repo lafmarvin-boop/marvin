@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.GestureDetector
 import android.view.ScaleGestureDetector
 import android.view.View
 import kotlin.math.*
@@ -150,6 +151,36 @@ class PixelCanvasView @JvmOverloads constructor(
     var onSelectionCreated: (() -> Unit)? = null
     /** Fired whenever any selection state (active / floating / mask) changes. */
     var onSelectionStateChanged: (() -> Unit)? = null
+    /** Fired when the user requests a frame navigation (delta = ±1 typically). */
+    var onFrameSwipe: ((delta: Int) -> Unit)? = null
+
+    private var tapCount = 0
+    private var lastTapTime = 0L
+    private val tapClusterMs = 280L
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        // Custom multi-tap counter so we can distinguish double / triple tap
+        // without waiting through onSingleTapConfirmed delay every time.
+        override fun onDown(e: MotionEvent): Boolean = true
+        override fun onSingleTapUp(e: MotionEvent): Boolean {
+            val now = System.currentTimeMillis()
+            tapCount = if (now - lastTapTime < tapClusterMs) tapCount + 1 else 1
+            lastTapTime = now
+            postDelayed({
+                if (System.currentTimeMillis() - lastTapTime >= tapClusterMs) {
+                    when (tapCount) {
+                        2 -> zoomReset()             // double-tap → fit
+                        3 -> setZoom(1f)             // triple-tap → 1:1
+                    }
+                    tapCount = 0
+                }
+            }, tapClusterMs + 10)
+            return false
+        }
+    })
+
+    private var swipeStartCx = 0f
+    private var swipeStartCy = 0f
+    private var swipeDispatched = false
     var onStrokeEnd: (() -> Unit)? = null
 
     private val paint = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
@@ -159,6 +190,20 @@ class PixelCanvasView @JvmOverloads constructor(
     private val checkerPaint2 = Paint().apply { color = 0xFFCCCCD5.toInt() }
     private val borderPaint = Paint().apply { color = 0xFF6677AA.toInt(); style = Paint.Style.STROKE; strokeWidth = 2f }
     private val previewPaint = Paint().apply { style = Paint.Style.FILL }
+    /**
+     * "Marching ants" selection outline: alternating black & white dashes that
+     * scroll along the boundary so the selection stays visible against any
+     * underlying art color. Two paints; we render them with offset dash phases.
+     */
+    private val antsBlack = Paint().apply {
+        color = 0xFF000000.toInt(); style = Paint.Style.STROKE; strokeWidth = 0f
+        pathEffect = DashPathEffect(floatArrayOf(2.0f, 2.0f), 0f)
+    }
+    private val antsWhite = Paint().apply {
+        color = 0xFFFFFFFF.toInt(); style = Paint.Style.STROKE; strokeWidth = 0f
+        pathEffect = DashPathEffect(floatArrayOf(2.0f, 2.0f), 2.0f)  // phase offset
+    }
+    private var antsPhase = 0f
     private val selDashPaint = Paint().apply {
         color = 0xFFFFFFFF.toInt(); style = Paint.Style.STROKE; strokeWidth = 0f
         pathEffect = DashPathEffect(floatArrayOf(2f, 2f), 0f)
@@ -456,15 +501,12 @@ class PixelCanvasView @JvmOverloads constructor(
         }
 
         // Selection — render the exact shape (mask) when present, otherwise the bbox.
-        // While the selection is floating (lifted), anchor the overlay to the
-        // current floating position so dragging stays visually correct.
+        // Outline uses alternating black/white "marching ants" dashes so the
+        // selection stays visible against any underlying art color.
         if (selection.active) {
             val mask = selection.mask
             val floating = selection.floating
-            val ox: Float
-            val oy: Float
-            val rectW: Float
-            val rectH: Float
+            val ox: Float; val oy: Float; val rectW: Float; val rectH: Float
             if (floating != null) {
                 ox = selection.floatX.toFloat(); oy = selection.floatY.toFloat()
                 rectW = selection.floatW.toFloat(); rectH = selection.floatH.toFloat()
@@ -472,25 +514,20 @@ class PixelCanvasView @JvmOverloads constructor(
                 ox = selection.xMin.toFloat(); oy = selection.yMin.toFloat()
                 rectW = selection.width.toFloat(); rectH = selection.height.toFloat()
             }
+            // Animate the dash phase so the ants march. Adjusting phase needs
+            // a new DashPathEffect instance because phase isn't a settable prop.
+            antsBlack.pathEffect = DashPathEffect(floatArrayOf(2f, 2f), antsPhase)
+            antsWhite.pathEffect = DashPathEffect(floatArrayOf(2f, 2f), antsPhase + 2f)
+            antsPhase = (antsPhase + 0.2f) % 4f
             if (mask == null) {
-                // Simple rectangle: fill + dashed outline.
                 val r = RectF(ox, oy, ox + rectW, oy + rectH)
-                canvas.drawRect(r, selFillPaint)
-                canvas.drawRect(r, selDashPaint)
+                canvas.drawRect(r, antsBlack)
+                canvas.drawRect(r, antsWhite)
             } else {
                 val mw = selection.width
                 val mh = selection.height
-                // Fill every selected cell with a soft cyan overlay.
-                for (yy in 0 until mh) for (xx in 0 until mw) {
-                    if (!mask[yy * mw + xx]) continue
-                    canvas.drawRect(
-                        ox + xx, oy + yy,
-                        ox + xx + 1f, oy + yy + 1f,
-                        selFillPaint
-                    )
-                }
-                // Crisp boundary: for each selected cell, draw the edges that
-                // border a non-selected (or out-of-mask) neighbor.
+                // Build an outline Path along the boundary edges
+                val path = android.graphics.Path()
                 for (yy in 0 until mh) for (xx in 0 until mw) {
                     if (!mask[yy * mw + xx]) continue
                     val left = xx == 0 || !mask[yy * mw + (xx - 1)]
@@ -498,12 +535,16 @@ class PixelCanvasView @JvmOverloads constructor(
                     val top = yy == 0 || !mask[(yy - 1) * mw + xx]
                     val bottom = yy == mh - 1 || !mask[(yy + 1) * mw + xx]
                     val cx0 = ox + xx; val cy0 = oy + yy
-                    if (top)    canvas.drawLine(cx0, cy0, cx0 + 1f, cy0, selOutlinePaint)
-                    if (bottom) canvas.drawLine(cx0, cy0 + 1f, cx0 + 1f, cy0 + 1f, selOutlinePaint)
-                    if (left)   canvas.drawLine(cx0, cy0, cx0, cy0 + 1f, selOutlinePaint)
-                    if (right)  canvas.drawLine(cx0 + 1f, cy0, cx0 + 1f, cy0 + 1f, selOutlinePaint)
+                    if (top)    { path.moveTo(cx0, cy0); path.lineTo(cx0 + 1f, cy0) }
+                    if (bottom) { path.moveTo(cx0, cy0 + 1f); path.lineTo(cx0 + 1f, cy0 + 1f) }
+                    if (left)   { path.moveTo(cx0, cy0); path.lineTo(cx0, cy0 + 1f) }
+                    if (right)  { path.moveTo(cx0 + 1f, cy0); path.lineTo(cx0 + 1f, cy0 + 1f) }
                 }
+                canvas.drawPath(path, antsBlack)
+                canvas.drawPath(path, antsWhite)
             }
+            // Keep animating while a selection is on screen.
+            postInvalidateOnAnimation()
         }
 
         // Brush hover outline (around last touched pixel, sized to brush)
@@ -551,6 +592,7 @@ class PixelCanvasView @JvmOverloads constructor(
             }
         }
         scaleGD.onTouchEvent(event)
+        gestureDetector.onTouchEvent(event)
         val action = event.actionMasked
         val idx = event.actionIndex
         val primaryIsStylus = run {
@@ -593,6 +635,10 @@ class PixelCanvasView @JvmOverloads constructor(
                     panStartY = (pts[0].y + pts[1].y) / 2f
                     translateStartX = translateX; translateStartY = translateY
                     pinching = true
+                    // Track swipe centroid so a horizontal 2-finger drag flips frames.
+                    swipeStartCx = panStartX
+                    swipeStartCy = panStartY
+                    swipeDispatched = false
                 }
             }
             MotionEvent.ACTION_MOVE -> {
@@ -625,6 +671,19 @@ class PixelCanvasView @JvmOverloads constructor(
                     translateX = translateStartX + (cx - panStartX)
                     translateY = translateStartY + (cy - panStartY)
                     invalidate()
+                    // 2-finger horizontal swipe → frame navigation. Fires once
+                    // per gesture (resets on UP). Requires mostly horizontal
+                    // motion so a pan or pinch doesn't accidentally trigger.
+                    if (!swipeDispatched) {
+                        val dx = cx - swipeStartCx
+                        val dy = cy - swipeStartCy
+                        val swipeThreshold = 160f
+                        if (kotlin.math.abs(dx) > swipeThreshold && kotlin.math.abs(dx) > kotlin.math.abs(dy) * 2) {
+                            swipeDispatched = true
+                            onFrameSwipe?.invoke(if (dx < 0) +1 else -1)
+                            performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                        }
+                    }
                 } else if (activePointers.size == 1) {
                     if (tool == Tool.MOVE) {
                         translateX = translateStartX + (event.x - panStartX)
