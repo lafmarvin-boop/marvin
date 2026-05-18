@@ -16,7 +16,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import com.marvin.sport.data.RunBlock
+import com.marvin.sport.data.RunFitnessEstimator
+import com.marvin.sport.data.FitnessProfile
 import com.marvin.sport.data.RunRepository
 import com.marvin.sport.data.RunSession
 import com.marvin.sport.data.RunningProgramBuilder
@@ -27,6 +32,8 @@ import com.marvin.sport.ui.theme.ProgramAccent
 fun RunningProgramScreen(onStartRun: () -> Unit) {
     val accent = ProgramAccent.Running
     val program = RunningProgramBuilder.program
+    val savedRuns by RunRepository.savedRuns.collectAsState()
+    val profile = remember(savedRuns) { RunFitnessEstimator.estimate(savedRuns) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -40,6 +47,9 @@ fun RunningProgramScreen(onStartRun: () -> Unit) {
                 subtitle = program.description,
                 accent = accent,
             )
+        }
+        if (profile.isAdapted) {
+            item { AdaptationBanner(profile = profile, accent = accent) }
         }
         program.weeks.forEach { week ->
             item {
@@ -55,9 +65,23 @@ fun RunningProgramScreen(onStartRun: () -> Unit) {
                     RunSessionCard(
                         session = session,
                         accent = accent,
+                        profile = profile,
                         onStart = {
-                            RunRepository.setNextTarget(session.targetKm * 1000.0)
-                            RunRepository.setNextProgram(session.blocks)
+                            val adaptedKm = profile.adaptedKm(session.targetKm)
+                            RunRepository.setNextTarget(adaptedKm * 1000.0)
+                            RunRepository.setNextProgram(
+                                session.blocks.map { b ->
+                                    when {
+                                        b.distanceM != null -> b.copy(
+                                            distanceM = (b.distanceM * profile.factor).toInt().coerceAtLeast(50)
+                                        )
+                                        b.durationMin != null -> b.copy(
+                                            durationMin = profile.adaptedDurationMin(b.durationMin)
+                                        )
+                                        else -> b
+                                    }
+                                }
+                            )
                             onStartRun()
                         },
                     )
@@ -69,7 +93,35 @@ fun RunningProgramScreen(onStartRun: () -> Unit) {
 }
 
 @Composable
-private fun RunSessionCard(session: RunSession, accent: Color, onStart: () -> Unit) {
+private fun AdaptationBanner(profile: FitnessProfile, accent: Color) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = 0.10f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                "PROGRAMME ADAPTÉ",
+                style = MaterialTheme.typography.labelMedium,
+                color = accent,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(2.dp))
+            val avg = profile.recentAvgKm ?: 0.0
+            val factorPct = ((profile.factor - 1.0) * 100).toInt()
+            val sign = if (factorPct >= 0) "+" else ""
+            Text(
+                "Basé sur tes 5 dernières sorties (moy. ${"%.1f".format(avg)} km). " +
+                    "Distances ajustées de $sign$factorPct %.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RunSessionCard(session: RunSession, accent: Color, profile: FitnessProfile, onStart: () -> Unit) {
+    val adaptedKm = profile.adaptedKm(session.targetKm)
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -103,12 +155,21 @@ private fun RunSessionCard(session: RunSession, accent: Color, onStart: () -> Un
                         .background(accent.copy(alpha = 0.14f))
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
-                    Text(
-                        "%.1f km".format(session.targetKm),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = accent,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            "%.1f km".format(adaptedKm),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = accent,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        if (profile.isAdapted && kotlin.math.abs(adaptedKm - session.targetKm) >= 0.2) {
+                            Text(
+                                "base ${"%.1f".format(session.targetKm)} km",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -134,7 +195,7 @@ private fun RunSessionCard(session: RunSession, accent: Color, onStart: () -> Un
             ) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
-                Text("Démarrer (%.1f km)".format(session.targetKm), fontWeight = FontWeight.Bold)
+                Text("Démarrer (%.1f km)".format(adaptedKm), fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -97,34 +97,45 @@ object RunRepository {
     }
 
     /**
-     * Pipeline GPS multi-couche :
-     *   1) Warm-up : on ignore les 2 premiers fixes (souvent imprécis à froid)
-     *   2) Seuil de précision adaptatif (18 m strict / 30 m après 10 s sans fix)
-     *   3) Lissage EMA pondéré par la précision
-     *   4) Filtres vitesse (> 8 m/s) et anti-jitter (< 1.5 m sous 4 s)
+     * Pipeline GPS multi-couche pour éviter la sur-estimation de distance :
+     *   1) Warm-up (3 premiers fixes ignorés à froid)
+     *   2) Seuil de précision adaptatif (15 m strict / 25 m après 10 s sans fix)
+     *   3) Lissage EMA pondéré par la précision relative
+     *   4) Gating "déplacement vs incertitude" : on n'accumule pas si delta
+     *      est de l'ordre de l'incertitude combinée (le mouvement est noyé
+     *      dans le bruit)
+     *   5) Si le GPS expose une vitesse Doppler < 0.5 m/s → utilisateur
+     *      stationnaire → on n'accumule pas (les jitters disparaissent)
+     *   6) Anti-saut > 8 m/s
      */
-    fun addPoint(lat: Double, lng: Double, altitude: Double, accuracyM: Float) {
+    fun addPoint(
+        lat: Double,
+        lng: Double,
+        altitude: Double,
+        accuracyM: Float,
+        gpsSpeedMs: Float? = null,
+    ) {
         val live = _currentRun.value ?: return
         val now = System.currentTimeMillis()
 
         // Rafraîchir la précision affichée même si on rejette ce point
         _currentRun.value = live.copy(currentAccuracyM = accuracyM, lastFixAtMs = now)
 
-        // 1) Warm-up : on ignore les premiers fixes pour éviter le bruit de démarrage.
-        if (warmupCount < 2) {
+        // 1) Warm-up : on ignore les premiers fixes (cold start dérive)
+        if (warmupCount < 3) {
             warmupCount += 1
             return
         }
 
-        // 2) Seuil adaptatif : strict par défaut, on s'élargit s'il y a un trou de signal.
+        // 2) Seuil adaptatif
         val sinceLast = live.lastFixAtMs?.let { now - it } ?: Long.MAX_VALUE
-        val maxAcceptable: Float = if (sinceLast > 10_000) 30f else 18f
+        val maxAcceptable: Float = if (sinceLast > 10_000) 25f else 15f
         if (accuracyM > maxAcceptable) return
 
-        // 3) Lissage EMA pondéré par la précision relative.
+        // 3) Lissage EMA pondéré par la précision
         val previous = live.points.lastOrNull()
         val (smoothedLat, smoothedLng, smoothedAlt) = if (previous != null) {
-            val alpha = (10f / accuracyM).coerceIn(0.3f, 0.85f).toDouble()
+            val alpha = (8f / accuracyM).coerceIn(0.25f, 0.8f).toDouble()
             Triple(
                 alpha * lat + (1 - alpha) * previous.lat,
                 alpha * lng + (1 - alpha) * previous.lng,
@@ -134,14 +145,22 @@ object RunRepository {
             Triple(lat, lng, altitude)
         }
 
-        // 4) Distance + filtres temporels
+        // 4-5-6) Filtres de distance
         val delta = if (previous != null) {
             val d = RunStats.haversineM(previous.lat, previous.lng, smoothedLat, smoothedLng)
             val dtMs = (now - previous.timestampMs).coerceAtLeast(1L)
             val speedMs = d / (dtMs / 1000.0)
+            // Seuil de bruit combiné : moyenne des deux précisions, on coupe sous 60 % de cette valeur
+            val noiseThresholdM = ((lastAcceptedAccuracy ?: accuracyM) + accuracyM) / 2f * 0.6f
             when {
-                speedMs > 8.0 -> 0.0                 // anti-saut (>28 km/h)
-                d < 1.5 && dtMs < 4_000 -> 0.0       // anti-jitter sur intervalle court
+                // GPS dit qu'on est à l'arrêt → ignore la dérive
+                gpsSpeedMs != null && gpsSpeedMs < 0.5f && d < 5.0 -> 0.0
+                // Saut irréaliste pour de la course (> 28 km/h)
+                speedMs > 8.0 -> 0.0
+                // Le déplacement est noyé dans le bruit du GPS
+                d < noiseThresholdM -> 0.0
+                // Garde-fou anti-jitter court intervalle
+                d < 2.0 && dtMs < 3_000 -> 0.0
                 else -> d
             }
         } else 0.0

@@ -8,7 +8,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,9 +25,11 @@ import androidx.compose.ui.unit.sp
 import com.marvin.sport.data.AlertSound
 import com.marvin.sport.data.CustomLoadStore
 import com.marvin.sport.data.Exercise
+import com.marvin.sport.data.ExerciseInfoBank
 import com.marvin.sport.data.OneRepMaxStore
 import com.marvin.sport.data.Phase
 import com.marvin.sport.data.ProgressionStore
+import com.marvin.sport.data.RepsParser
 import com.marvin.sport.data.RestParser
 import com.marvin.sport.data.Session
 import com.marvin.sport.data.TrainingProgram
@@ -204,6 +208,7 @@ private fun ActiveExerciseView(
         .collectAsState(initial = 0.0)
     val customLoad by customLoads.valueFlow(exercise.name).collectAsState(initial = null)
     val effectiveLoad: Double? = customLoad ?: rmKey?.let { rmKg * exercise.percentage }
+    val timedDurationSec = RepsParser.toSeconds(exercise.reps)
 
     Card(
         modifier = Modifier.fillMaxSize(),
@@ -215,19 +220,22 @@ private fun ActiveExerciseView(
             modifier = Modifier.fillMaxSize().padding(20.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column {
-                Text(
-                    "EXERCICE",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = accent,
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    exercise.name,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                )
+            Row(verticalAlignment = Alignment.Top) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "EXERCICE",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = accent,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        exercise.name,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                }
+                YouTubeButton(exercise = exercise, accent = accent)
             }
 
             Row(
@@ -260,17 +268,114 @@ private fun ActiveExerciseView(
                 }
             }
 
+            // Soit un timer pour exos en temps, soit un bouton de validation classique
+            if (timedDurationSec != null) {
+                androidx.compose.runtime.key(exercise.name, currentSet) {
+                    TimedExerciseControls(
+                        durationSec = timedDurationSec,
+                        accent = accent,
+                        onComplete = onValidate,
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onValidate,
+                    modifier = Modifier.fillMaxWidth().height(72.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White),
+                ) {
+                    Icon(Icons.Filled.Check, contentDescription = null)
+                    Spacer(Modifier.width(10.dp))
+                    Text("VALIDER LA SÉRIE", fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleLarge)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimedExerciseControls(
+    durationSec: Int,
+    accent: Color,
+    onComplete: () -> Unit,
+) {
+    val context = LocalContext.current
+    var running by remember { mutableStateOf(false) }
+    var secondsLeft by remember { mutableStateOf(durationSec) }
+
+    LaunchedEffect(running) {
+        if (!running) return@LaunchedEffect
+        while (secondsLeft > 0 && running) {
+            delay(1000)
+            secondsLeft -= 1
+        }
+        if (running && secondsLeft <= 0) {
+            running = false
+            AlertSound.beepStrong(450)
+            AlertSound.vibrate(context, strong = true)
+            onComplete()
+        }
+    }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        val mm = secondsLeft / 60
+        val ss = secondsLeft % 60
+        Text(
+            text = "%02d:%02d".format(mm, ss),
+            fontSize = 72.sp,
+            fontWeight = FontWeight.Black,
+            color = if (running) accent else MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(8.dp))
+        if (!running) {
             Button(
-                onClick = onValidate,
+                onClick = {
+                    secondsLeft = durationSec
+                    running = true
+                },
                 modifier = Modifier.fillMaxWidth().height(72.dp),
                 shape = RoundedCornerShape(20.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White),
             ) {
-                Icon(Icons.Filled.Check, contentDescription = null)
+                Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(10.dp))
-                Text("VALIDER LA SÉRIE", fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleLarge)
+                Text("START ($durationSec s)", fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleLarge)
+            }
+        } else {
+            OutlinedButton(
+                onClick = {
+                    running = false
+                    onComplete()
+                },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(20.dp),
+            ) {
+                Text("Passer", fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+@Composable
+private fun YouTubeButton(exercise: Exercise, accent: Color) {
+    val context = LocalContext.current
+    IconButton(
+        onClick = {
+            val info = ExerciseInfoBank.lookup(exercise.name)
+            val query = java.net.URLEncoder.encode(info.searchQuery, "UTF-8")
+            val uri = android.net.Uri.parse("https://www.youtube.com/results?search_query=$query")
+            runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri)) }
+        },
+        modifier = Modifier
+            .size(44.dp)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(accent.copy(alpha = 0.14f)),
+    ) {
+        Icon(
+            Icons.Outlined.PlayCircle,
+            contentDescription = "Vidéo YouTube",
+            tint = accent,
+        )
     }
 }
 

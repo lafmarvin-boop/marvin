@@ -40,18 +40,18 @@ class RunTrackingService : Service() {
     private var milestoneJob: Job? = null
     private var blockEndJob: Job? = null
     private var tickJob: Job? = null
+    private var announcer: SpeechAnnouncer? = null
 
     private val callback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             result.locations.forEach { loc ->
-                // Sanity check très permissif (40 m) — le repo a son filtre adaptatif
-                // qui décide d'accepter ou non en fonction du temps depuis le dernier fix.
                 if (loc.accuracy <= 40f) {
                     RunRepository.addPoint(
                         lat = loc.latitude,
                         lng = loc.longitude,
                         altitude = loc.altitude,
                         accuracyM = loc.accuracy,
+                        gpsSpeedMs = if (loc.hasSpeed()) loc.speed else null,
                     )
                 }
             }
@@ -64,6 +64,7 @@ class RunTrackingService : Service() {
         super.onCreate()
         fused = LocationServices.getFusedLocationProviderClient(this)
         createNotificationChannel()
+        announcer = SpeechAnnouncer(applicationContext)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -98,11 +99,22 @@ class RunTrackingService : Service() {
                 AlertSound.milestoneAlert(applicationContext, pct)
             }
         }
-        // Bip long aux transitions de bloc
+        // Annonce vocale aux transitions de bloc (sinon fallback bip long)
         blockEndJob?.cancel()
         blockEndJob = serviceScope.launch {
-            RunRepository.blockEndEvents.collect { _ ->
-                AlertSound.blockEndAlert(applicationContext)
+            RunRepository.blockEndEvents.collect { endedIdx ->
+                val live = RunRepository.currentRun.value
+                val blocks = live?.programBlocks
+                val nextIdx = endedIdx + 1
+                if (blocks != null && nextIdx < blocks.size) {
+                    val next = blocks[nextIdx]
+                    AlertSound.beep(120) // petit "ding" pour attirer l'attention
+                    AlertSound.vibrate(applicationContext, strong = false)
+                    announcer?.speak("Partie ${nextIdx + 1} sur ${blocks.size} : ${next.label}")
+                } else {
+                    AlertSound.blockEndAlert(applicationContext)
+                    announcer?.speak("Séance terminée. Bravo.")
+                }
             }
         }
         // Tick périodique pour les blocs en temps (le GPS ne suffit pas, le temps avance même à l'arrêt)
@@ -142,6 +154,8 @@ class RunTrackingService : Service() {
     }
 
     override fun onDestroy() {
+        announcer?.shutdown()
+        announcer = null
         serviceScope.cancel()
         super.onDestroy()
     }
