@@ -47,6 +47,19 @@
             android:src="@drawable/ic_redo" android:contentDescription="@string/redo"/>
         <ImageButton android:id="@+id/btnPlay" style="@style/TopBarButton"
             android:src="@drawable/ic_play" android:contentDescription="@string/play"/>
+
+        <!-- Live status badges: PP / SKETCH / SYM / STAB. Hidden when nothing
+             is on so the bar stays tidy. -->
+        <TextView android:id="@+id/statusBadges"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="@color/accent_light"
+            android:textSize="11sp" android:textStyle="bold"
+            android:layout_marginStart="6dp" android:layout_marginEnd="6dp"
+            android:padding="6dp"
+            android:background="@color/bg_panel"
+            android:visibility="gone"/>
+
         <Button android:id="@+id/btnHelp"
             android:layout_width="40dp" android:layout_height="40dp"
             android:text="?" android:textSize="18sp"
@@ -371,6 +384,10 @@
                     <!-- Quick tween between current frame and a chosen target -->
                     <Button android:id="@+id/btnTween" style="@style/SmallButton"
                         android:text="🔀" android:layout_marginStart="6dp"/>
+                    <!-- Quick: duplicate current frame as next -->
+                    <Button android:id="@+id/btnDuplicateFrame" style="@style/SmallButton"
+                        android:text="+f" android:layout_marginStart="6dp"
+                        android:contentDescription="Dupliquer la frame courante"/>
                 </LinearLayout>
 
                 <!-- Animation speed multiplier (applied to both Play and miniPreview) -->

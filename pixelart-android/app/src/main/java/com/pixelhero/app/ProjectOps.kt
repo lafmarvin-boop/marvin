@@ -125,6 +125,7 @@ internal fun MainActivity.applyProject() {
     binding.timeline.invalidate()
     undoStack.clear(); redoStack.clear()
     refreshLayersStrip()
+    refreshStatusBadges()
 }
 
 internal fun MainActivity.saveProject() {

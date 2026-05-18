@@ -32,10 +32,11 @@ internal fun MainActivity.showColorLockMenu() {
             val color = palette[which]
             if (isChecked) project.lockedColors.add(color) else project.lockedColors.remove(color)
         }
-        .setPositiveButton("OK", null)
+        .setPositiveButton("OK") { _, _ -> refreshStatusBadges() }
         .setNeutralButton("Tout déverrouiller") { _, _ ->
             project.lockedColors.clear()
             toast("Toutes les couleurs déverrouillées")
+            refreshStatusBadges()
         }
         .show()
 }
@@ -86,6 +87,7 @@ internal fun MainActivity.showStabilizerDialog() {
         .setSingleChoiceItems(items, currentIdx) { dlg, which ->
             binding.canvas.stabilizerStrength = values[which]
             toast("Stabilisateur: ${items[which]}")
+            refreshStatusBadges()
             dlg.dismiss()
         }
         .show()
@@ -246,6 +248,7 @@ internal fun MainActivity.showReferenceLayerDialog() {
             .setNeutralButton("Retirer") { _, _ ->
                 binding.canvas.referenceBitmap = null
                 toast("Référence retirée")
+                refreshStatusBadges()
             }
     }
     builder.show()

@@ -99,6 +99,7 @@ class MainActivity : AppCompatActivity() {
                 } else raw
                 binding.canvas.referenceBitmap = scaled
                 toast("Référence chargée")
+                refreshStatusBadges()
             }
         }
     }
@@ -389,6 +390,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnEffects.setOnClickListener { openEffectsPalette() }
         binding.btnMagic.setOnClickListener { openMagicPalette() }
         binding.btnTween.setOnClickListener { showTweenDialog() }
+        binding.btnDuplicateFrame.setOnClickListener { duplicateCurrentFrame() }
         binding.btnUndo.attachHelp("undo")
         binding.btnRedo.attachHelp("redo")
         binding.btnPlay.attachHelp("play")
@@ -485,6 +487,7 @@ class MainActivity : AppCompatActivity() {
                     else -> SymmetryAxis.NONE
                 }
                 binding.btnSymmetry.isSelected = project.symmetry != SymmetryAxis.NONE
+                refreshStatusBadges()
                 binding.canvas.invalidate()
                 dlg.dismiss()
             }
@@ -869,6 +872,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.cbPixelPerfect.setOnCheckedChangeListener { _, checked ->
             project.pixelPerfect = checked
+            refreshStatusBadges()
         }
 
         // Brush size mapping: SeekBar 0-9 -> sizes [1, 2, 3, 4, 5, 6, 8, 10, 12, 16]
@@ -907,6 +911,7 @@ class MainActivity : AppCompatActivity() {
         // Sketch mode
         binding.cbSketchMode.setOnCheckedChangeListener { _, checked ->
             binding.canvas.sketchMode = checked
+            refreshStatusBadges()
         }
         binding.btnSketchBake.setOnClickListener {
             pushUndo()
@@ -1327,12 +1332,49 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    /** Duplicate the current frame as the next one — common animation move. */
+    internal fun duplicateCurrentFrame() {
+        pushUndo()
+        val src = project.currentFrame
+        val copy = src.copy()
+        project.frames.add(project.currentIndex + 1, copy)
+        project.currentIndex += 1
+        framesAdapter.notifyDataSetChanged()
+        refreshAfterFrameChange()
+        toast("Frame dupliquée (#${project.currentIndex + 1})")
+    }
+
+    /**
+     * Live status badges in the top bar. Combine into one TextView so the
+     * row stays compact. Visible only when at least one mode is active.
+     */
+    internal fun refreshStatusBadges() {
+        val parts = mutableListOf<String>()
+        if (project.pixelPerfect) parts.add("PP")
+        if (binding.canvas.sketchMode) parts.add("CROQUIS")
+        when (project.symmetry) {
+            SymmetryAxis.HORIZONTAL -> parts.add("SYM-H")
+            SymmetryAxis.VERTICAL -> parts.add("SYM-V")
+            SymmetryAxis.BOTH -> parts.add("SYM-✚")
+            SymmetryAxis.ROTATE_4 -> parts.add("SYM-✱")
+            SymmetryAxis.NONE -> {}
+        }
+        val stab = binding.canvas.stabilizerStrength
+        if (stab > 0) parts.add("STAB-$stab")
+        if (project.lockedColors.isNotEmpty()) parts.add("🔒${project.lockedColors.size}")
+        if (binding.canvas.referenceBitmap != null) parts.add("🖼️")
+        if (binding.canvas.palmRejection) parts.add("✋")
+        binding.statusBadges.text = parts.joinToString(" · ")
+        binding.statusBadges.visibility = if (parts.isEmpty()) View.GONE else View.VISIBLE
+    }
+
     internal fun togglePalmRejection() {
         binding.canvas.palmRejection = !binding.canvas.palmRejection
         getSharedPreferences("settings", MODE_PRIVATE).edit()
             .putBoolean("palmRejection", binding.canvas.palmRejection).apply()
         val state = if (binding.canvas.palmRejection) "activé" else "désactivé"
         toast("Rejet de la paume $state")
+        refreshStatusBadges()
     }
 
 

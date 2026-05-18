@@ -49,6 +49,8 @@ class PixelCanvasView @JvmOverloads constructor(
     // Brush hover preview: pixel position of last move, drawn as outlined cursor
     private var hoverPx = -1
     private var hoverPy = -1
+    /** True while a stylus is hovering over the screen without touching. */
+    private var stylusHovering = false
 
     /** Last reported pressure from the pointer (S-Pen / stylus). 0..1, default 1. */
     private var currentPressure: Float = 1f
@@ -574,8 +576,9 @@ class PixelCanvasView @JvmOverloads constructor(
             postInvalidateOnAnimation()
         }
 
-        // Brush hover outline (around last touched pixel, sized to brush)
-        if (isDrawing && hoverPx >= 0 && hoverPy >= 0 && (tool == Tool.PENCIL || tool == Tool.ERASER)) {
+        // Brush hover outline (drawing OR stylus hover-without-touch)
+        if ((isDrawing || stylusHovering) && hoverPx >= 0 && hoverPy >= 0 &&
+            (tool == Tool.PENCIL || tool == Tool.ERASER)) {
             val size = p.brushSize.coerceAtLeast(1)
             val half = size / 2
             val rx = (hoverPx - half).toFloat()
@@ -594,6 +597,31 @@ class PixelCanvasView @JvmOverloads constructor(
     }
 
     // -- Touch handling --
+    /**
+     * Stylus hover: when a stylus is in proximity without touching, Android
+     * sends ACTION_HOVER_* events. We update [hoverPx]/[hoverPy] and flip
+     * [stylusHovering] so the brush outline tracks the cursor BEFORE the
+     * user actually puts the pen down — gives precise visual feedback.
+     */
+    override fun onHoverEvent(event: MotionEvent): Boolean {
+        val tt = event.getToolType(0)
+        if (tt != MotionEvent.TOOL_TYPE_STYLUS && tt != MotionEvent.TOOL_TYPE_ERASER)
+            return super.onHoverEvent(event)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE -> {
+                val coords = clientToPixel(event.x, event.y)
+                hoverPx = coords[0]; hoverPy = coords[1]
+                stylusHovering = true
+                invalidate()
+            }
+            MotionEvent.ACTION_HOVER_EXIT -> {
+                stylusHovering = false
+                invalidate()
+            }
+        }
+        return true
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         // Palm rejection: if any pointer in this batch is a stylus, mark the
         // stylus active. While the stylus is recently active, finger pointers
