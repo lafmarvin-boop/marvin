@@ -12,6 +12,18 @@ enum class BgFitMode(val label: String) {
     STRETCH("Étirer")     // distorts to fit exactly
 }
 
+/**
+ * Animation role of a frame — visualized as a colored top bar in the timeline.
+ * KEY = pose principale (jaune), INBETWEEN = entre 2 keys (blanc), HOLD = pose
+ * tenue / copie statique (gris), NONE = pas de rôle assigné.
+ */
+enum class FrameKind(val tint: Int) {
+    NONE(0),
+    KEY(0xFFFFD66B.toInt()),
+    INBETWEEN(0xFFE8E8F0.toInt()),
+    HOLD(0xFF888888.toInt())
+}
+
 enum class PlayMode(val label: String) {
     LOOP("Boucle"),        // 1, 2, 3, 1, 2, 3...
     PING_PONG("Ping-pong"),// 1, 2, 3, 2, 1, 2, 3...
@@ -48,6 +60,10 @@ class Frame(val width: Int, val height: Int) {
         set(value) { field = value.coerceIn(0, layers.size - 1); invalidateComposite() }
     var tag: String = ""
     var delayMs: Int = 0  // 0 means use project FPS
+
+    /** Animation role: KEY = pose principale, INBETWEEN = entre 2 keys,
+     *  HOLD = répétition statique d'une key, NONE = non typée. */
+    var kind: FrameKind = FrameKind.NONE
 
     /**
      * Cached result of [composited]. Invalidated whenever a known pixel
@@ -124,6 +140,7 @@ class Frame(val width: Int, val height: Int) {
         f.activeLayer = activeLayer
         f.tag = tag
         f.delayMs = delayMs
+        f.kind = kind
         return f
     }
 

@@ -99,6 +99,7 @@ object ProjectStorage {
                 obj.put("activeLayer", f.activeLayer)
                 obj.put("tag", f.tag)
                 obj.put("delayMs", f.delayMs)
+                if (f.kind != FrameKind.NONE) obj.put("kind", f.kind.name)
                 // Legacy: also store flat composite for backward compat with old loaders
                 framesArr.put(obj)
             }
@@ -150,6 +151,7 @@ object ProjectStorage {
                         }
                         f.activeLayer = entry.optInt("activeLayer", 0).coerceIn(0, f.layers.size - 1)
                         f.tag = tag; f.delayMs = delay
+                        f.kind = runCatching { FrameKind.valueOf(entry.optString("kind", "NONE")) }.getOrDefault(FrameKind.NONE)
                         f
                     } else {
                         // Legacy format: single flat pixels array

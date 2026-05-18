@@ -773,17 +773,34 @@ class PixelCanvasView @JvmOverloads constructor(
     }
 
     private fun clientToPixel(x: Float, y: Float): IntArray {
-        // Apply stroke stabilizer if enabled
+        // Adaptive stroke stabilizer: when ON, smoothing strength scales DOWN
+        // as input speed increases. Slow strokes get full smoothing (clean
+        // curves), fast strokes get little (no lag, no soggy lines).
         if (stabilizerStrength > 0) {
             recentInputs.addLast(floatArrayOf(x, y))
+            // Cap buffer to max possible smoothing window
             while (recentInputs.size > stabilizerStrength + 1) recentInputs.removeFirst()
-            // Weighted average: newer inputs weighted higher
+            // Measure recent input speed: distance covered by the last 2 samples.
+            val speed = if (recentInputs.size >= 2) {
+                val a = recentInputs[recentInputs.size - 2]
+                val b = recentInputs[recentInputs.size - 1]
+                val dx = b[0] - a[0]; val dy = b[1] - a[1]
+                kotlin.math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+            } else 0f
+            // Fast = speed > 30 px/event → barely any smoothing.
+            // Slow = speed < 4 px → full smoothing.
+            val speedFactor = (1f - ((speed - 4f) / 26f)).coerceIn(0f, 1f)
+            val effective = (stabilizerStrength * speedFactor).toInt().coerceAtLeast(0)
+            // Weighted average over the most recent (effective+1) samples.
+            val window = (effective + 1).coerceAtMost(recentInputs.size)
             var sumX = 0f; var sumY = 0f; var sumW = 0f
-            for ((i, p) in recentInputs.withIndex()) {
+            for (i in 0 until window) {
+                val p = recentInputs[recentInputs.size - window + i]
                 val w = (i + 1).toFloat()
                 sumX += p[0] * w; sumY += p[1] * w; sumW += w
             }
-            val sx = sumX / sumW; val sy = sumY / sumW
+            val sx = if (sumW > 0) sumX / sumW else x
+            val sy = if (sumW > 0) sumY / sumW else y
             val px = floor((sx - translateX) / scale).toInt()
             val py = floor((sy - translateY) / scale).toInt()
             return intArrayOf(px, py)

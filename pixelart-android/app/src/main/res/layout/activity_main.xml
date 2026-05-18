@@ -388,6 +388,10 @@
                     <Button android:id="@+id/btnDuplicateFrame" style="@style/SmallButton"
                         android:text="+f" android:layout_marginStart="6dp"
                         android:contentDescription="Dupliquer la frame courante"/>
+                    <!-- Smart in-between: insert empty frame with onion auto -->
+                    <Button android:id="@+id/btnSmartInbetween" style="@style/SmallButton"
+                        android:text="↹" android:layout_marginStart="6dp"
+                        android:contentDescription="Insérer une in-between"/>
                 </LinearLayout>
 
                 <!-- Animation speed multiplier (applied to both Play and miniPreview) -->

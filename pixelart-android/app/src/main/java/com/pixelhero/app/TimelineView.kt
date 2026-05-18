@@ -109,6 +109,11 @@ class TimelineView @JvmOverloads constructor(
             } else {
                 canvas.drawRect(rx, ry, rx + rw, ry + rh, normalBorderPaint)
             }
+            // Frame-kind color bar (top edge) — key/inbetween/hold tag
+            if (frame.kind != FrameKind.NONE) {
+                val kindPaint = Paint().apply { color = frame.kind.tint }
+                canvas.drawRect(rx, ry, rx + rw, ry + 4f, kindPaint)
+            }
             // Frame number (only if cell is wide enough)
             if (cellW >= 30f) {
                 canvas.drawText("${i + 1}", rx + rw / 2, height - 4f, indexPaint)

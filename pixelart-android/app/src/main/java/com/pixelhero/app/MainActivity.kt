@@ -394,6 +394,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnMagic.setOnClickListener { openMagicPalette() }
         binding.btnTween.setOnClickListener { showTweenDialog() }
         binding.btnDuplicateFrame.setOnClickListener { duplicateCurrentFrame() }
+        binding.btnSmartInbetween.setOnClickListener { insertSmartInbetween() }
         binding.btnPrevFrame.setOnClickListener { gotoFrameDelta(-1) }
         binding.btnNextFrame.setOnClickListener { gotoFrameDelta(+1) }
         binding.btnUndo.attachHelp("undo")
@@ -1369,6 +1370,26 @@ class MainActivity : AppCompatActivity() {
         framesAdapter.notifyDataSetChanged()
         refreshAfterFrameChange()
         toast("Frame dupliquée (#${project.currentIndex + 1})")
+    }
+
+    /**
+     * Smart in-between: insert an empty frame between the current and the
+     * next, tag it INBETWEEN, jump to it, and make sure onion skin shows
+     * the neighbouring frames so the artist has visual guides.
+     */
+    internal fun insertSmartInbetween() {
+        pushUndo()
+        val newFrame = Frame(project.width, project.height)
+        newFrame.kind = FrameKind.INBETWEEN
+        project.frames.add(project.currentIndex + 1, newFrame)
+        project.currentIndex += 1
+        if (project.onionRange < 1) {
+            project.onionRange = 1
+            binding.onionRange.progress = 1
+        }
+        framesAdapter.notifyDataSetChanged()
+        refreshAfterFrameChange()
+        toast("In-between vide insérée (#${project.currentIndex + 1}) — onion skin activé")
     }
 
     /**

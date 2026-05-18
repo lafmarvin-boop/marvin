@@ -237,6 +237,33 @@ internal fun MainActivity.showFrameEditDialog(idx: Int) {
     ops.addView(btnCopy); ops.addView(btnCut); ops.addView(btnPaste)
     outer.addView(ops)
 
+    // Frame role: key / inbetween / hold / none — shown as colored top bar
+    // in the timeline so the animator can see structure at a glance.
+    outer.addView(TextView(this).apply {
+        text = "Type de frame"
+        setTextColor(0xFFA5B4FF.toInt()); textSize = 12f
+        setPadding(24, 8, 24, 4)
+    })
+    val kinds = FrameKind.values()
+    val kindLabels = arrayOf("(aucun)", "🟡 KEY (pose)", "⚪ INBETWEEN", "⬛ HOLD")
+    val kindRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL; setPadding(24, 0, 24, 8)
+    }
+    kinds.forEachIndexed { i, kind ->
+        kindRow.addView(android.widget.Button(this).apply {
+            text = kindLabels[i].take(2)
+            textSize = 14f; isAllCaps = false
+            isSelected = (f.kind == kind)
+            setOnClickListener {
+                f.kind = kind
+                framesAdapter.notifyItemChanged(idx)
+                binding.timeline.invalidate()
+                toast(kindLabels[i])
+            }
+        })
+    }
+    outer.addView(kindRow)
+
     AlertDialog.Builder(this)
         .setTitle("Frame #${idx + 1}")
         .setView(outer)
