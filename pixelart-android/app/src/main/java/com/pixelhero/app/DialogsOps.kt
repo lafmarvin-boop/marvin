@@ -189,9 +189,57 @@ internal fun MainActivity.showFrameEditDialog(idx: Int) {
     val delayEt = view.findViewById<EditText>(R.id.frameDelay)
     tagEt.setText(f.tag)
     delayEt.setText(f.delayMs.toString())
+
+    // Add a horizontal row of Copy / Cut / Paste-after frame actions so the
+    // user doesn't have to dig through other menus to reorganize frames.
+    val outer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+    outer.addView(view)
+    val ops = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        setPadding(24, 8, 24, 8)
+    }
+    val btnCopy = android.widget.Button(this).apply {
+        text = "📋"; textSize = 14f; isAllCaps = false
+        setOnClickListener {
+            frameClipboard = f.copy()
+            toast("Frame #${idx + 1} copiée")
+        }
+    }
+    val btnCut = android.widget.Button(this).apply {
+        text = "✂"; textSize = 14f; isAllCaps = false
+        setOnClickListener {
+            if (project.frames.size <= 1) { toast("Au moins 1 frame requise"); return@setOnClickListener }
+            pushUndo()
+            frameClipboard = f.copy()
+            project.frames.removeAt(idx)
+            if (project.currentIndex >= project.frames.size) project.currentIndex = project.frames.size - 1
+            framesAdapter.notifyDataSetChanged()
+            refreshAfterFrameChange()
+            toast("Frame coupée")
+        }
+    }
+    val btnPaste = android.widget.Button(this).apply {
+        text = "📌 après"; textSize = 14f; isAllCaps = false
+        setOnClickListener {
+            val src = frameClipboard ?: run { toast("Aucune frame copiée"); return@setOnClickListener }
+            if (src.width != project.width || src.height != project.height) {
+                toast("Taille incompatible — copie depuis un projet ${src.width}×${src.height}")
+                return@setOnClickListener
+            }
+            pushUndo()
+            project.frames.add(idx + 1, src.copy())
+            project.currentIndex = idx + 1
+            framesAdapter.notifyDataSetChanged()
+            refreshAfterFrameChange()
+            toast("Collée après frame #${idx + 1}")
+        }
+    }
+    ops.addView(btnCopy); ops.addView(btnCut); ops.addView(btnPaste)
+    outer.addView(ops)
+
     AlertDialog.Builder(this)
         .setTitle("Frame #${idx + 1}")
-        .setView(view)
+        .setView(outer)
         .setPositiveButton("OK") { _, _ ->
             f.tag = tagEt.text.toString()
             f.delayMs = delayEt.text.toString().toIntOrNull()?.coerceIn(0, 10_000) ?: 0

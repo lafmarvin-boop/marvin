@@ -76,6 +76,9 @@ class MainActivity : AppCompatActivity() {
     internal var clipboardW = 0
     internal var clipboardPixels: IntArray? = null
 
+    /** Clipboard slot for a full frame (copy/cut from the frame edit dialog). */
+    internal var frameClipboard: Frame? = null
+
     private val pickBg = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) loadBgImage(uri)
     }
@@ -391,6 +394,8 @@ class MainActivity : AppCompatActivity() {
         binding.btnMagic.setOnClickListener { openMagicPalette() }
         binding.btnTween.setOnClickListener { showTweenDialog() }
         binding.btnDuplicateFrame.setOnClickListener { duplicateCurrentFrame() }
+        binding.btnPrevFrame.setOnClickListener { gotoFrameDelta(-1) }
+        binding.btnNextFrame.setOnClickListener { gotoFrameDelta(+1) }
         binding.btnUndo.attachHelp("undo")
         binding.btnRedo.attachHelp("redo")
         binding.btnPlay.attachHelp("play")
@@ -1191,6 +1196,17 @@ class MainActivity : AppCompatActivity() {
             project.currentIndex = idx
             refreshAfterFrameChange()
         }
+        binding.timeline.onLoopRangeSet = { start, end ->
+            toast("Boucle frames ${start + 1}–${end + 1} (tap simple sur 1 frame pour annuler)")
+        }
+    }
+
+    /** Clear any sub-range loop so playback runs over the whole project. */
+    internal fun clearLoopRange() {
+        project.loopStart = -1
+        project.loopEnd = -1
+        binding.timeline.invalidate()
+        toast("Boucle complète restaurée")
     }
 
     // ---- Frames ----
@@ -1277,6 +1293,7 @@ class MainActivity : AppCompatActivity() {
         framesAdapter.notifyDataSetChanged()
         binding.timeline.invalidate()
         refreshLayersStrip()
+        binding.frameIndexLabel.text = "Frame ${project.currentIndex + 1}/${project.frames.size}"
     }
 
 
@@ -1330,6 +1347,16 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
+    }
+
+    /** Move the active frame by +1 / -1 with bounds clamping. */
+    internal fun gotoFrameDelta(delta: Int) {
+        val n = project.frames.size
+        if (n <= 1) return
+        val next = (project.currentIndex + delta).coerceIn(0, n - 1)
+        if (next == project.currentIndex) return
+        project.currentIndex = next
+        refreshAfterFrameChange()
     }
 
     /** Duplicate the current frame as the next one — common animation move. */

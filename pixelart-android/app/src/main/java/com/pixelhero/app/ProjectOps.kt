@@ -126,6 +126,7 @@ internal fun MainActivity.applyProject() {
     undoStack.clear(); redoStack.clear()
     refreshLayersStrip()
     refreshStatusBadges()
+    binding.frameIndexLabel.text = "Frame ${project.currentIndex + 1}/${project.frames.size}"
 }
 
 internal fun MainActivity.saveProject() {

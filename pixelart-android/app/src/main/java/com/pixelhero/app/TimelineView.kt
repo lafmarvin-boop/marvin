@@ -33,16 +33,52 @@ class TimelineView @JvmOverloads constructor(
     private val indexPaint = Paint().apply {
         color = 0xFFB4B4C8.toInt(); textSize = 18f; textAlign = Paint.Align.CENTER
     }
+    private val loopOverlayPaint = Paint().apply { color = 0x44FFB85B.toInt() }
+    private val loopBorderPaint = Paint().apply {
+        color = 0xFFFFB85B.toInt(); style = Paint.Style.STROKE; strokeWidth = 2f
+    }
+
+    /** Fired when the user long-press-drags a sub-range to loop on. */
+    var onLoopRangeSet: ((start: Int, end: Int) -> Unit)? = null
+
+    private var longPressTriggered = false
+    private var rangeStartIdx = -1
+    private val longPressRunnable = Runnable {
+        longPressTriggered = true
+        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+    }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val p = project ?: return false
-        when (event.action) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                val cellW = (width.toFloat() / p.frames.size.coerceAtLeast(1))
-                val idx = (event.x / cellW).toInt().coerceIn(0, p.frames.size - 1)
-                if (idx != p.currentIndex) {
+        val cellW = (width.toFloat() / p.frames.size.coerceAtLeast(1))
+        val idx = (event.x / cellW).toInt().coerceIn(0, p.frames.size - 1)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                rangeStartIdx = idx
+                longPressTriggered = false
+                postDelayed(longPressRunnable, 450L)
+                if (idx != p.currentIndex) onFrameSelected?.invoke(idx)
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (longPressTriggered) {
+                    // Range selection: highlight live but only commit on UP.
+                    val lo = minOf(rangeStartIdx, idx)
+                    val hi = maxOf(rangeStartIdx, idx)
+                    p.loopStart = lo; p.loopEnd = hi
+                    invalidate()
+                } else if (idx != p.currentIndex) {
                     onFrameSelected?.invoke(idx)
                 }
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                removeCallbacks(longPressRunnable)
+                if (longPressTriggered && p.loopStart >= 0 && p.loopEnd >= 0 && p.loopEnd > p.loopStart) {
+                    onLoopRangeSet?.invoke(p.loopStart, p.loopEnd)
+                }
+                longPressTriggered = false
+                rangeStartIdx = -1
                 return true
             }
         }
@@ -77,6 +113,13 @@ class TimelineView @JvmOverloads constructor(
             if (cellW >= 30f) {
                 canvas.drawText("${i + 1}", rx + rw / 2, height - 4f, indexPaint)
             }
+        }
+        // Loop sub-range overlay (orange) on top of any frames in [loopStart..loopEnd]
+        if (p.loopStart in 0 until p.frames.size && p.loopEnd in p.loopStart until p.frames.size) {
+            val rx = p.loopStart * cellW
+            val rw = (p.loopEnd - p.loopStart + 1) * cellW
+            canvas.drawRect(rx, 0f, rx + rw, height.toFloat(), loopOverlayPaint)
+            canvas.drawRect(rx + 1f, 1f, rx + rw - 1f, height - 1f, loopBorderPaint)
         }
     }
 }

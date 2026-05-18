@@ -407,6 +407,21 @@
                     android:text="⏱ Délai frame courante…"
                     android:layout_width="match_parent" android:layout_marginTop="4dp"/>
 
+                <!-- Frame navigation steppers + label -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:layout_marginTop="4dp"
+                    android:gravity="center_vertical">
+                    <Button android:id="@+id/btnPrevFrame" style="@style/SmallButton"
+                        android:text="◀" android:minWidth="48dp"/>
+                    <TextView android:id="@+id/frameIndexLabel"
+                        android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:gravity="center"
+                        android:text="Frame 1/1" android:textColor="@color/text"
+                        android:textSize="12sp"/>
+                    <Button android:id="@+id/btnNextFrame" style="@style/SmallButton"
+                        android:text="▶" android:minWidth="48dp"/>
+                </LinearLayout>
+
                 <Button android:id="@+id/btnLayers" style="@style/SmallButton"
                     android:text="Calques…"
                     android:layout_width="match_parent" android:layout_marginTop="6dp"/>

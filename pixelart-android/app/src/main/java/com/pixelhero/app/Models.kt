@@ -215,6 +215,9 @@ class Project(
     var ditherPattern: Int = 0,  // 0=none, 1=checker, 2=v.lines, 3=h.lines, 4=sparse, 5=primary+secondary mix, 6=custom
     var customDither: Array<BooleanArray> = Array(4) { BooleanArray(4) },  // 4x4 pattern for ditherPattern=6
     var playMode: PlayMode = PlayMode.LOOP,
+    /** Optional sub-range used by Play / miniPreview when set. -1 = full range. */
+    var loopStart: Int = -1,
+    var loopEnd: Int = -1,
     val lockedColors: MutableSet<Int> = mutableSetOf(),
     var pressureSensitive: Boolean = true,
     var onionColorPrev: Int = 0xFF00AAFF.toInt(),
@@ -240,6 +243,14 @@ class Project(
         val f = frames.getOrNull(idx) ?: return (1000 / fps.coerceAtLeast(1))
         return if (f.delayMs > 0) f.delayMs else (1000 / fps.coerceAtLeast(1))
     }
+
+    /** Effective playback start index, honoring the optional sub-range loop. */
+    fun playStartIdx(): Int =
+        if (loopStart in 0 until frames.size) loopStart else 0
+
+    /** Effective playback end index (inclusive). */
+    fun playEndIdx(): Int =
+        if (loopEnd in 0 until frames.size && loopEnd >= playStartIdx()) loopEnd else frames.size - 1
 
     companion object {
         val DEFAULT_PALETTE = listOf(

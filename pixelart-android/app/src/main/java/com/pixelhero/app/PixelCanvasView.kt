@@ -427,10 +427,11 @@ class PixelCanvasView @JvmOverloads constructor(
             paint.alpha = 255
         }
 
-        // Onion skin layers (further frames more transparent)
+        // Onion skin layers — alpha decays linearly with distance from the
+        // current frame so a clear "depth" is visible (closest = most opaque).
         for ((bmp, off, _) in onionBmps) {
             val absOff = abs(off)
-            val alpha = (90 / absOff).coerceAtLeast(30)
+            val alpha = (130 - 28 * absOff).coerceIn(18, 130)
             paint.alpha = alpha
             val tint = if (off < 0) p.onionColorPrev else p.onionColorNext
             paint.colorFilter = PorterDuffColorFilter(tint, PorterDuff.Mode.SRC_ATOP)
