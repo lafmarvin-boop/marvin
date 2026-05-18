@@ -110,6 +110,16 @@ class PixelCanvasView @JvmOverloads constructor(
     private var translateStartY = 0f
 
     /**
+     * Optional reference image drawn ON TOP of the current frame (faded)
+     * for rotoscoping. Unlike [bgBitmap] which sits UNDER the drawing,
+     * this one is a ghost overlay the artist redraws under.
+     */
+    var referenceBitmap: Bitmap? = null
+        set(value) { field = value; invalidate() }
+    var referenceOpacity: Float = 0.4f
+        set(value) { field = value.coerceIn(0f, 1f); invalidate() }
+
+    /**
      * Palm rejection: when ON, finger touches are ignored if a stylus was
      * active within the last [palmRejectionWindowMs] ms. When you put the
      * stylus down, your palm resting on the screen is silently dropped.
@@ -429,6 +439,23 @@ class PixelCanvasView @JvmOverloads constructor(
 
         // Current frame
         frameBmp?.let { canvas.drawBitmap(it, 0f, 0f, paint) }
+
+        // Reference image: drawn ABOVE the frame at user-controlled opacity
+        // so the artist can decalque under it (rotoscoping).
+        referenceBitmap?.let { ref ->
+            paint.alpha = (referenceOpacity * 255).toInt().coerceIn(0, 255)
+            canvas.save()
+            canvas.clipRect(0, 0, w, h)
+            // Fit into canvas (preserve aspect ratio)
+            val ratio = min(w.toFloat() / ref.width, h.toFloat() / ref.height)
+            val dw = ref.width * ratio
+            val dh = ref.height * ratio
+            val dx = (w - dw) / 2f
+            val dy = (h - dh) / 2f
+            canvas.drawBitmap(ref, null, RectF(dx, dy, dx + dw, dy + dh), paint)
+            canvas.restore()
+            paint.alpha = 255
+        }
 
         // Sketch layer (rendered above frame at reduced opacity)
         if (sketchLayers.isNotEmpty()) {

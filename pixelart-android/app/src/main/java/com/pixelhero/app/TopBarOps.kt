@@ -104,11 +104,13 @@ internal fun MainActivity.showColorAndPaletteMenu() {
 
 internal fun MainActivity.showToolsMenu() {
     val palmOn = binding.canvas.palmRejection
+    val hasRef = binding.canvas.referenceBitmap != null
     val items = arrayOf(
         "Ajouter du texte (5×7 pixel font)…",
         "Stabilisateur de trait…",
         "Personnaliser couleurs onion skin…",
         "Fond global (partagé entre toutes les frames)…",
+        "🖼️ Calque référence (rotoscoping)" + if (hasRef) " — ACTIF" else "",
         "✋ Rejet de la paume (stylet) : " + if (palmOn) "ON" else "OFF"
     )
     AlertDialog.Builder(this).setTitle("🔧 Outils")
@@ -118,7 +120,8 @@ internal fun MainActivity.showToolsMenu() {
                 1 -> showStabilizerDialog()
                 2 -> showOnionColorPicker()
                 3 -> showGlobalBackgroundDialog()
-                4 -> togglePalmRejection()
+                4 -> showReferenceLayerDialog()
+                5 -> togglePalmRejection()
             }
         }.show()
 }

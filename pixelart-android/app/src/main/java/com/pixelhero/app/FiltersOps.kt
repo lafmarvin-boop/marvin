@@ -87,6 +87,7 @@ internal fun MainActivity.applyFilterRange(filter: Filters.Filter, fromIdx: Int,
                     val out = Filters.apply(layer.pixels, f.width, f.height, filter, outlineColor)
                     out.copyInto(layer.pixels)
                 }
+                f.invalidateComposite()
                 val done = i - fromIdx + 1
                 withContext(Dispatchers.Main) {
                     progress.setMessage("Frame $done / $totalFrames…")

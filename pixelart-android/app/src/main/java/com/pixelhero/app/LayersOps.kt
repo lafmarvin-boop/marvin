@@ -40,6 +40,7 @@ internal fun MainActivity.showLayersDialog() {
                 isClickable = true; isFocusable = true
                 setOnClickListener {
                     l.visible = !l.visible
+                    f.invalidateComposite()
                     text = if (l.visible) "👁" else "🚫"
                     binding.canvas.syncFrameBitmap()
                     framesAdapter.notifyItemChanged(project.currentIndex)
@@ -101,7 +102,7 @@ internal fun MainActivity.showLayerActions() {
         .setTitle("« ${l.name} »")
         .setItems(items) { _, which ->
             when (which) {
-                0 -> { l.visible = !l.visible; binding.canvas.syncFrameBitmap() }
+                0 -> { l.visible = !l.visible; f.invalidateComposite(); binding.canvas.syncFrameBitmap() }
                 1 -> renameLayer(l)
                 2 -> showLayerOpacity(l)
                 3 -> if (l.groupName == null) showAssignGroupDialog(l) else { l.groupName = null; toast("Sorti du groupe") }
@@ -175,6 +176,7 @@ internal fun MainActivity.showLayerOpacity(l: Layer) {
         .setView(seek)
         .setPositiveButton("OK") { _, _ ->
             l.opacity = seek.progress / 100f
+            project.currentFrame.invalidateComposite()
             binding.canvas.syncFrameBitmap()
         }
         .setNegativeButton(R.string.cancel, null)
@@ -208,6 +210,7 @@ internal fun MainActivity.mergeDown() {
     }
     f.layers.remove(top)
     f.activeLayer = f.layers.indexOf(below).coerceAtLeast(0)
+    f.invalidateComposite()
     binding.canvas.syncFrameBitmap()
     refreshLayersStrip()
     toast("Calques fusionnés")
@@ -259,6 +262,7 @@ private fun MainActivity.addGroupHeader(strip: LinearLayout, f: Frame, groupName
         setOnClickListener {
             val turnOn = !anyVisible
             members.forEach { it.visible = turnOn }
+            f.invalidateComposite()
             binding.canvas.syncFrameBitmap()
             framesAdapter.notifyItemChanged(project.currentIndex)
             refreshLayersStrip()
@@ -289,6 +293,7 @@ private fun MainActivity.addLayerRow(strip: LinearLayout, f: Frame, i: Int, inde
         isClickable = true; isFocusable = true
         setOnClickListener {
             layer.visible = !layer.visible
+            f.invalidateComposite()
             text = if (layer.visible) "👁" else "🚫"
             binding.canvas.syncFrameBitmap()
             framesAdapter.notifyItemChanged(project.currentIndex)

@@ -80,6 +80,33 @@ class MainActivity : AppCompatActivity() {
         if (uri != null) loadBgImage(uri)
     }
 
+    /** Image picker for the reference-layer overlay (rotoscoping). */
+    private val pickReference = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                val raw = BitmapFactory.decodeStream(input) ?: return@use
+                // Cap to canvas×4 like bgBitmap for memory.
+                val capW = (project.width * 4).coerceAtLeast(512)
+                val capH = (project.height * 4).coerceAtLeast(512)
+                val scaled = if (raw.width > capW || raw.height > capH) {
+                    val ratio = minOf(capW.toFloat() / raw.width, capH.toFloat() / raw.height)
+                    val tw = (raw.width * ratio).toInt().coerceAtLeast(1)
+                    val th = (raw.height * ratio).toInt().coerceAtLeast(1)
+                    val s = Bitmap.createScaledBitmap(raw, tw, th, true)
+                    if (s !== raw) raw.recycle()
+                    s
+                } else raw
+                binding.canvas.referenceBitmap = scaled
+                toast("Référence chargée")
+            }
+        }
+    }
+
+    internal fun pickReferenceImage() {
+        pickReference.launch(arrayOf("image/*"))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Splash screen API (animated fade-out). Auto on Android 12+, fallback theme below.
         installSplashScreen()
@@ -356,6 +383,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnMenu.setOnClickListener { showMenu() }
         binding.btnQuickSave.setOnClickListener { quickSaveProject() }
+        binding.btnHelp.setOnClickListener { showCheatsheet() }
         binding.btnSymmetry.setOnClickListener { showSymmetryMenu() }
         binding.btnDecor.setOnClickListener { openDecorPalette() }
         binding.btnEffects.setOnClickListener { openEffectsPalette() }

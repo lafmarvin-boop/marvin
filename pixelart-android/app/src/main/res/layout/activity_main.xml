@@ -47,6 +47,14 @@
             android:src="@drawable/ic_redo" android:contentDescription="@string/redo"/>
         <ImageButton android:id="@+id/btnPlay" style="@style/TopBarButton"
             android:src="@drawable/ic_play" android:contentDescription="@string/play"/>
+        <Button android:id="@+id/btnHelp"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:text="?" android:textSize="18sp"
+            android:textStyle="bold"
+            android:background="@color/bg_panel"
+            android:textColor="@color/accent_light"
+            android:contentDescription="Aide / raccourcis"
+            android:minWidth="0dp" android:minHeight="0dp"/>
     </LinearLayout>
 
     <!-- LEFT TOOLBAR -->

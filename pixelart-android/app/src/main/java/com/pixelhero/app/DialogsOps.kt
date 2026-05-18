@@ -199,6 +199,144 @@ internal fun MainActivity.showFrameEditDialog(idx: Int) {
         .show()
 }
 
+/**
+ * Persistent reference card opened via the ? button in the top bar.
+ * Lists every gesture, hidden feature, and shortcut so users don't have
+ * to re-discover them. Scrollable single dialog.
+ */
+/**
+ * Reference-layer manager: pick an image to overlay ABOVE the current frame
+ * at adjustable opacity (rotoscoping), or clear the existing one. The
+ * image picker uses the existing system file chooser via a one-shot
+ * activity result registered separately.
+ */
+internal fun MainActivity.showReferenceLayerDialog() {
+    val current = binding.canvas.referenceBitmap
+    val container = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24)
+    }
+    container.addView(TextView(this).apply {
+        text = "Charge une image qui s'affiche en transparence AU-DESSUS de ton dessin. " +
+            "Utile pour décalquer un modèle (photo, vidéo capturée, croquis) frame par frame."
+        setTextColor(0xFFE8E8F0.toInt()); textSize = 13f
+        setPadding(0, 0, 0, 12)
+    })
+    container.addView(TextView(this).apply {
+        text = "Opacité : ${(binding.canvas.referenceOpacity * 100).toInt()}%"
+        setTextColor(0xFFA5B4FF.toInt()); textSize = 13f
+    })
+    val opacitySeek = SeekBar(this).apply {
+        max = 100
+        progress = (binding.canvas.referenceOpacity * 100).toInt()
+    }
+    opacitySeek.setOnSeekBarChangeListener(simpleSeekListener { v ->
+        binding.canvas.referenceOpacity = v / 100f
+    })
+    container.addView(opacitySeek)
+
+    val builder = AlertDialog.Builder(this)
+        .setTitle("🖼️ Calque référence")
+        .setView(container)
+        .setNegativeButton(R.string.cancel, null)
+    if (current == null) {
+        builder.setPositiveButton("Charger image…") { _, _ -> pickReferenceImage() }
+    } else {
+        builder
+            .setPositiveButton("Remplacer…") { _, _ -> pickReferenceImage() }
+            .setNeutralButton("Retirer") { _, _ ->
+                binding.canvas.referenceBitmap = null
+                toast("Référence retirée")
+            }
+    }
+    builder.show()
+}
+
+internal fun MainActivity.showCheatsheet() {
+    val text = """
+        ✋ GESTES SUR LE CANVAS
+        • 2 doigts = zoom + pan
+        • 2 doigts swipe horizontal = frame suivante / précédente
+        • Double-tap = adapter (zoom fit)
+        • Triple-tap = zoom 100%
+        • Stylet immobile 0,4 s = pan tant que le stylet est posé
+        • Paume rejetée automatiquement quand le stylet est actif
+
+        ✏️ OUTILS (barre gauche, long-press = aide détaillée)
+        • Crayon, Gomme : symétrie + pression stylet
+        • Pot : remplit zone connectée
+        • Pot inverse : rend transparente une zone connectée
+        • Pipette : prend la couleur sous le doigt
+        • Ligne / Rectangle plein ou vide / Cercle
+        • Sélection rectangle : trace, puis glisse pour déplacer
+        • Lasso : trace contour main levée, n'importe quelle forme
+        • Baguette : sélection par couleur
+
+        🪢 PALETTE SÉLECTION (apparaît en bas dès qu'une sélection existe)
+        • ▭ 🪢 🪄 : change de mode de sélection
+        • ➕ ➖ : ajoute / retire des pixels au pinceau
+        • 📋 ✂ : copier / couper
+        • 📌 : coller à la même position
+        • 📌→ : coller dans un AUTRE calque (au choix ou nouveau)
+        • ↔ ↕ : miroir horizontal / vertical
+        • ✓ : valider et désélectionner
+
+        🧱 CALQUES (onglet 🧱 du panneau droit)
+        • Bande latérale : 👁/🚫 pour masquer, ▲/▼ pour réorganiser
+        • Tap nom = activer ce calque
+        • Long-tap nom = mettre dans un groupe
+        • Groupes (Vue face / Vue dos / Corps / Arme…) persistent entre frames
+        • Œil du groupe = bascule TOUS les calques du groupe
+
+        🎬 ANIMATION (onglet 🎬 du panneau droit)
+        • Bouton ▶ canvas = lecture taille réelle, modes LOOP/PING-PONG/REVERSE/ONCE
+        • Curseur vitesse 0,25× → 4× (multiplie tous les délais)
+        • ⏱ Délai par frame = zones lentes/rapides (acceleration)
+        • 🔀 Tween entre 2 frames = N frames intermédiaires avec courbes d'easing
+        • Onion skin = frames précédentes (bleu) + suivantes (rouge)
+
+        🎨 COULEURS (onglet 🎨 du panneau droit)
+        • Palette projet + Récentes (auto)
+        • Auto-shading = 4 nuances depuis la couleur active
+        • Bibliothèque palettes (NES, GameBoy, PICO-8, …)
+        • Verrou couleur, Remplacer couleur (global ou frame seule)
+
+        🏞️ DÉCOR & ✨ EFFETS (boutons barre du haut)
+        • Décor procédural : statique frame/fond ou animé 4/8 frames
+        • 29 filtres dont feu, glace, électrique, arc-en-ciel
+        • S'appliquent à TOUS les calques, undo unique annule tout
+
+        🖼️ IMPORT IMAGE
+        • Menu → 🔧 Outils n'importe quoi : choisis intensité suppression de fond
+        • 🎯 Pixeliser à résolution choisie : 16/24/32/48/64/96/128/192
+        • Style ⭐ Pro avec downscale par moyenne d'aire
+
+        💾 SAUVEGARDE
+        • Auto-save 30 s dès qu'une modif a lieu
+        • Première sauvegarde nomme le projet
+        • Disquette 💾 dans barre du haut = save sans dialogue
+        • Menu → Sauvegarde .zip = backup complet hors app
+
+        📤 EXPORT
+        • PNG frame seule (×8), PNG séquence, Sprite sheet, GIF animé
+        • Unity/Godot package = JSON + atlas
+        • Tous dans Pictures/PixelHero/
+    """.trimIndent()
+    val scroll = android.widget.ScrollView(this)
+    scroll.addView(TextView(this).apply {
+        this.text = text
+        setTextColor(0xFFE8E8F0.toInt())
+        textSize = 13f
+        setPadding(48, 24, 48, 24)
+        setLineSpacing(0f, 1.15f)
+    })
+    AlertDialog.Builder(this)
+        .setTitle("❔ Raccourcis & gestes")
+        .setView(scroll)
+        .setPositiveButton("Fermer", null)
+        .setNeutralButton("Revoir le tutoriel") { _, _ -> showTutorial(force = true) }
+        .show()
+}
+
 internal fun MainActivity.showTutorial(force: Boolean = false) {
     val seenKey = "tutorialSeen"
     val prefs = getPreferences(MODE_PRIVATE)

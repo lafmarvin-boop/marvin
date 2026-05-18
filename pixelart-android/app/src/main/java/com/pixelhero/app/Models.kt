@@ -45,9 +45,21 @@ class Layer(val width: Int, val height: Int, var name: String = "Couche", var vi
 class Frame(val width: Int, val height: Int) {
     val layers: MutableList<Layer> = mutableListOf(Layer(width, height, "Couche 1"))
     var activeLayer: Int = 0
-        set(value) { field = value.coerceIn(0, layers.size - 1) }
+        set(value) { field = value.coerceIn(0, layers.size - 1); invalidateComposite() }
     var tag: String = ""
     var delayMs: Int = 0  // 0 means use project FPS
+
+    /**
+     * Cached result of [composited]. Invalidated whenever a known pixel
+     * write happens via [set] / [clear] / [pixels] getter, or a layer is
+     * added/removed. External code that mutates layer pixels directly must
+     * call [invalidateComposite] for the cache to stay correct.
+     *
+     * The cache is the main perf win for animation Play/miniPreview loops:
+     * frames that aren't being drawn return their stored composite array
+     * instead of re-running the O(layers × w × h) alpha blend on every tick.
+     */
+    @Transient private var compositedCache: IntArray? = null
 
     constructor(width: Int, height: Int, source: IntArray) : this(width, height) {
         require(source.size == width * height) { "Pixel array size mismatch" }
@@ -55,41 +67,53 @@ class Frame(val width: Int, val height: Int) {
     }
 
     /** Active layer's pixel buffer (for backward-compat: most code paints here). */
-    val pixels: IntArray get() = layers[activeLayer.coerceIn(0, layers.size - 1)].pixels
+    val pixels: IntArray get() {
+        // .pixels readers typically modify in-place right after, so we
+        // invalidate the cache defensively.
+        invalidateComposite()
+        return layers[activeLayer.coerceIn(0, layers.size - 1)].pixels
+    }
+
+    fun invalidateComposite() { compositedCache = null }
 
     /** Composited view of all visible layers, bottom-to-top, with alpha blending. */
     fun composited(): IntArray {
-        if (layers.size == 1) return pixels
-        val out = IntArray(width * height)
-        for (layer in layers) {
-            if (!layer.visible) continue
-            val layerOpacity = (layer.opacity * 255).toInt().coerceIn(0, 255)
-            for (i in out.indices) {
-                val src = layer.pixels[i]
-                val srcA = ((src ushr 24) and 0xFF) * layerOpacity / 255
-                if (srcA == 0) continue
-                val dst = out[i]
-                val dstA = (dst ushr 24) and 0xFF
-                if (dstA == 0 || srcA == 255) {
-                    out[i] = (srcA shl 24) or (src and 0xFFFFFF)
-                } else {
-                    // Alpha blend src over dst
-                    val sa = srcA / 255f
-                    val da = dstA / 255f * (1f - sa)
-                    val outA = (sa + da).coerceIn(0f, 1f)
-                    val sr = ((src shr 16) and 0xFF) * sa
-                    val sg = ((src shr 8) and 0xFF) * sa
-                    val sb = (src and 0xFF) * sa
-                    val dr = ((dst shr 16) and 0xFF) * da
-                    val dg = ((dst shr 8) and 0xFF) * da
-                    val db = (dst and 0xFF) * da
-                    val r = ((sr + dr) / outA).toInt().coerceIn(0, 255)
-                    val g = ((sg + dg) / outA).toInt().coerceIn(0, 255)
-                    val b = ((sb + db) / outA).toInt().coerceIn(0, 255)
-                    out[i] = ((outA * 255).toInt() shl 24) or (r shl 16) or (g shl 8) or b
+        compositedCache?.let { return it }
+        val out = if (layers.size == 1 && layers[0].visible) {
+            layers[0].pixels.copyOf()
+        } else {
+            val r = IntArray(width * height)
+            for (layer in layers) {
+                if (!layer.visible) continue
+                val layerOpacity = (layer.opacity * 255).toInt().coerceIn(0, 255)
+                for (i in r.indices) {
+                    val src = layer.pixels[i]
+                    val srcA = ((src ushr 24) and 0xFF) * layerOpacity / 255
+                    if (srcA == 0) continue
+                    val dst = r[i]
+                    val dstA = (dst ushr 24) and 0xFF
+                    if (dstA == 0 || srcA == 255) {
+                        r[i] = (srcA shl 24) or (src and 0xFFFFFF)
+                    } else {
+                        val sa = srcA / 255f
+                        val da = dstA / 255f * (1f - sa)
+                        val outA = (sa + da).coerceIn(0f, 1f)
+                        val sr = ((src shr 16) and 0xFF) * sa
+                        val sg = ((src shr 8) and 0xFF) * sa
+                        val sb = (src and 0xFF) * sa
+                        val dr = ((dst shr 16) and 0xFF) * da
+                        val dg = ((dst shr 8) and 0xFF) * da
+                        val db = (dst and 0xFF) * da
+                        val rr = ((sr + dr) / outA).toInt().coerceIn(0, 255)
+                        val gg = ((sg + dg) / outA).toInt().coerceIn(0, 255)
+                        val bb = ((sb + db) / outA).toInt().coerceIn(0, 255)
+                        r[i] = ((outA * 255).toInt() shl 24) or (rr shl 16) or (gg shl 8) or bb
+                    }
                 }
             }
+            r
         }
+        compositedCache = out
         return out
     }
 
@@ -107,15 +131,19 @@ class Frame(val width: Int, val height: Int) {
         if (x in 0 until width && y in 0 until height) pixels[y * width + x] else 0
 
     fun set(x: Int, y: Int, color: Int) {
-        if (x in 0 until width && y in 0 until height) pixels[y * width + x] = color
+        if (x in 0 until width && y in 0 until height) {
+            pixels[y * width + x] = color
+            invalidateComposite()
+        }
     }
 
-    fun clear() = pixels.fill(0)
+    fun clear() { pixels.fill(0); invalidateComposite() }
 
     fun addLayer(name: String = "Couche ${layers.size + 1}"): Layer {
         val l = Layer(width, height, name)
         layers.add(l)
         activeLayer = layers.size - 1
+        invalidateComposite()
         return l
     }
 
@@ -124,6 +152,7 @@ class Frame(val width: Int, val height: Int) {
         if (idx !in layers.indices) return false
         layers.removeAt(idx)
         activeLayer = activeLayer.coerceAtMost(layers.size - 1)
+        invalidateComposite()
         return true
     }
 
