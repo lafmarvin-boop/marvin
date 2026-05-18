@@ -53,23 +53,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     // Animation playback
-    private var animTimer: Runnable? = null
-    private val animHandler = Handler(Looper.getMainLooper())
-    private var isPlaying = false
+    internal var animTimer: Runnable? = null
+    internal val animHandler = Handler(Looper.getMainLooper())
+    internal var isPlaying = false
     /** Speed multiplier applied to both Play and miniPreview (0.25× to 4×). */
-    private var previewSpeed: Float = 1f
-    private var savedFrameIdx = 0
-    private var playIdx = 0
+    internal var previewSpeed: Float = 1f
+    internal var savedFrameIdx = 0
+    internal var playIdx = 0
+    internal var pingPongForward = true
 
     // Autosave
     private val autosaveHandler = Handler(Looper.getMainLooper())
     private var autosaveRunnable: Runnable? = null
 
     // Mini preview loop
-    private val miniPreviewHandler = Handler(Looper.getMainLooper())
-    private var miniPreviewTask: Runnable? = null
-    private var miniPreviewIdx = 0
-    private var miniPreviewEnabled = true
+    internal val miniPreviewHandler = Handler(Looper.getMainLooper())
+    internal var miniPreviewTask: Runnable? = null
+    internal var miniPreviewIdx = 0
+    internal var miniPreviewEnabled = true
 
     // Clipboard for selection paste (across tool resets)
     internal var clipboardW = 0
@@ -128,60 +129,9 @@ class MainActivity : AppCompatActivity() {
         startMiniPreview()
     }
 
-    private var miniPingPongForward = true
-    private var miniPreviewBmp: Bitmap? = null
+    internal var miniPingPongForward = true
+    internal var miniPreviewBmp: Bitmap? = null
 
-    private fun startMiniPreview() {
-        stopMiniPreview()
-        val task = object : Runnable {
-            override fun run() {
-                if (!miniPreviewEnabled || isPlaying) {
-                    miniPreviewHandler.postDelayed(this, 500L)
-                    return
-                }
-                if (project.frames.isNotEmpty()) {
-                    miniPreviewIdx = miniPreviewIdx.coerceIn(0, project.frames.size - 1)
-                    val f = project.frames[miniPreviewIdx]
-                    val src = if (f.layers.size > 1) f.composited() else f.pixels
-                    val bmp = miniPreviewBmp.takeIf { it != null && it.width == f.width && it.height == f.height && !it.isRecycled }
-                        ?: Bitmap.createBitmap(f.width, f.height, Bitmap.Config.ARGB_8888).also { miniPreviewBmp = it }
-                    bmp.setPixels(src, 0, f.width, 0, 0, f.width, f.height)
-                    val drawable = android.graphics.drawable.BitmapDrawable(resources, bmp)
-                    drawable.isFilterBitmap = false
-                    binding.miniPreview.setImageDrawable(drawable)
-                    miniPreviewIdx = miniNextIndex(miniPreviewIdx, project.frames.size, project.playMode)
-                    if (miniPreviewIdx < 0) miniPreviewIdx = 0
-                }
-                // Respect per-frame delay if set; otherwise project FPS. Scaled by speed multiplier.
-                val baseDelay = project.delayForFrame(miniPreviewIdx).toLong()
-                val delay = (baseDelay / previewSpeed).toLong().coerceAtLeast(30L)
-                miniPreviewHandler.postDelayed(this, delay)
-            }
-        }
-        miniPreviewTask = task
-        miniPreviewHandler.post(task)
-    }
-
-    private fun miniNextIndex(current: Int, size: Int, mode: PlayMode): Int {
-        return when (mode) {
-            PlayMode.LOOP, PlayMode.ONCE -> (current + 1) % size
-            PlayMode.REVERSE -> if (current - 1 < 0) size - 1 else current - 1
-            PlayMode.PING_PONG -> {
-                if (miniPingPongForward) {
-                    if (current + 1 >= size) { miniPingPongForward = false; (current - 1).coerceAtLeast(0) }
-                    else current + 1
-                } else {
-                    if (current - 1 < 0) { miniPingPongForward = true; (current + 1).coerceAtMost(size - 1) }
-                    else current - 1
-                }
-            }
-        }
-    }
-
-    private fun stopMiniPreview() {
-        miniPreviewTask?.let { miniPreviewHandler.removeCallbacks(it) }
-        miniPreviewTask = null
-    }
 
     private fun scheduleAutosave() {
         autosaveRunnable?.let { autosaveHandler.removeCallbacks(it) }
@@ -2576,63 +2526,6 @@ class MainActivity : AppCompatActivity() {
 
 
     // ---- Animation playback ----
-    private fun togglePlay() {
-        if (isPlaying) stopPlay() else startPlay()
-    }
-
-    private var pingPongForward = true
-
-    private fun startPlay() {
-        if (project.frames.size < 2) { toast("Ajoutez au moins 2 frames"); return }
-        isPlaying = true
-        savedFrameIdx = project.currentIndex
-        playIdx = when (project.playMode) {
-            PlayMode.REVERSE -> project.frames.size - 1
-            else -> 0
-        }
-        pingPongForward = true
-        binding.btnPlay.setImageResource(R.drawable.ic_stop)
-        val r = object : Runnable {
-            override fun run() {
-                if (!isPlaying) return
-                project.currentIndex = playIdx
-                binding.canvas.syncFrameBitmap()
-                val delay = (project.delayForFrame(playIdx) / previewSpeed).toLong().coerceAtLeast(20L)
-                playIdx = nextPlayIndex(playIdx, project.frames.size, project.playMode)
-                if (playIdx < 0) { stopPlay(); return }
-                animHandler.postDelayed(this, delay)
-            }
-        }
-        animTimer = r
-        animHandler.post(r)
-    }
-
-    private fun nextPlayIndex(current: Int, size: Int, mode: PlayMode): Int {
-        return when (mode) {
-            PlayMode.LOOP -> (current + 1) % size
-            PlayMode.REVERSE -> if (current - 1 < 0) size - 1 else current - 1
-            PlayMode.ONCE -> if (current + 1 >= size) -1 else current + 1
-            PlayMode.PING_PONG -> {
-                if (pingPongForward) {
-                    if (current + 1 >= size) { pingPongForward = false; (current - 1).coerceAtLeast(0) }
-                    else current + 1
-                } else {
-                    if (current - 1 < 0) { pingPongForward = true; (current + 1).coerceAtMost(size - 1) }
-                    else current - 1
-                }
-            }
-        }
-    }
-
-    private fun stopPlay() {
-        isPlaying = false
-        animTimer?.let { animHandler.removeCallbacks(it) }
-        animTimer = null
-        binding.btnPlay.setImageResource(R.drawable.ic_play)
-        project.currentIndex = savedFrameIdx
-        binding.canvas.syncFrameBitmap()
-        binding.canvas.syncOnionBitmap()
-    }
 
     internal fun toast(msg: String) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
