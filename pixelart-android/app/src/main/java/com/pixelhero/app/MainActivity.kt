@@ -211,7 +211,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Snapshot every layer of the current frame — for operations that touch all layers. */
-    private fun pushUndoFullFrame() {
+    internal fun pushUndoFullFrame() {
         val f = project.currentFrame
         undoStack.addLast(UndoSnapshot.FullFrame(
             project.currentIndex,
@@ -221,7 +221,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Snapshot every layer of every frame — for bulk operations (filters on all frames). */
-    private fun pushUndoAllFrames() {
+    internal fun pushUndoAllFrames() {
         undoStack.addLast(UndoSnapshot.AllFrames(
             project.frames.map { fr -> fr.layers.map { it.pixels.copyOf() } }
         ))
@@ -800,105 +800,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showDecorGenerator() {
-        val items = arrayOf(
-            "Décor statique → frame courante",
-            "Décor statique → image de fond",
-            "🎬 Décor animé → 4 nouvelles frames",
-            "🎬 Décor animé → 8 nouvelles frames"
-        )
-        AlertDialog.Builder(this)
-            .setTitle("Générer un décor")
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> pickAndGenerateStaticDecor(replaceFrame = true)
-                    1 -> pickAndGenerateStaticDecor(replaceFrame = false)
-                    2 -> pickAndGenerateAnimatedDecor(frameCount = 4)
-                    3 -> pickAndGenerateAnimatedDecor(frameCount = 8)
-                }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun pickAndGenerateStaticDecor(replaceFrame: Boolean) {
-        val decors = DecorGenerator.Decor.values()
-        val labels = decors.map { it.displayName }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle(if (replaceFrame) "Décor → frame courante" else "Décor → image de fond")
-            .setItems(labels) { _, which -> generateDecor(decors[which], replaceFrame) }
-            .show()
-    }
-
-    private fun pickAndGenerateAnimatedDecor(frameCount: Int) {
-        val decors = DecorGenerator.Decor.values()
-        val labels = decors.map {
-            val animated = it in listOf(
-                DecorGenerator.Decor.SKY, DecorGenerator.Decor.WATER, DecorGenerator.Decor.SNOW,
-                DecorGenerator.Decor.STARS, DecorGenerator.Decor.FOREST, DecorGenerator.Decor.CAVE,
-                DecorGenerator.Decor.GRASS, DecorGenerator.Decor.DESERT
-            )
-            it.displayName + if (animated) " 🎬" else " (statique)"
-        }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Décor animé $frameCount frames")
-            .setItems(labels) { _, which -> generateAnimatedDecor(decors[which], frameCount) }
-            .show()
-    }
-
-    private fun generateAnimatedDecor(decor: DecorGenerator.Decor, frameCount: Int) {
-        pushUndo()
-        val seed = System.currentTimeMillis()
-        val frames = DecorGenerator.generateFrames(project.width, project.height, decor, frameCount, seed)
-        val tag = "decor_${decor.name.lowercase()}"
-        // Insert generated frames AFTER current frame
-        var insertAt = project.currentIndex + 1
-        frames.forEachIndexed { _, pixels ->
-            val nf = Frame(project.width, project.height, pixels)
-            nf.tag = tag
-            project.frames.add(insertAt++, nf)
-        }
-        framesAdapter.notifyDataSetChanged()
-        toast("${frames.size} frames « ${decor.displayName} » générées")
-        // Offer re-roll
-        AlertDialog.Builder(this)
-            .setTitle("Décor animé « ${decor.displayName} »")
-            .setMessage("${frames.size} frames ajoutées. Régénérer avec une nouvelle variation ?")
-            .setPositiveButton("Régénérer") { _, _ ->
-                // Remove the just-added frames and regenerate
-                val removeStart = project.currentIndex + 1
-                for (i in 0 until frames.size) {
-                    if (removeStart < project.frames.size) project.frames.removeAt(removeStart)
-                }
-                framesAdapter.notifyDataSetChanged()
-                generateAnimatedDecor(decor, frameCount)
-            }
-            .setNegativeButton("Garder", null)
-            .show()
-    }
-
-    private fun generateDecor(decor: DecorGenerator.Decor, replaceFrame: Boolean) {
-        if (replaceFrame) {
-            pushUndo()
-            val pixels = DecorGenerator.generate(project.width, project.height, decor)
-            pixels.copyInto(project.currentFrame.pixels)
-            binding.canvas.syncFrameBitmap()
-            framesAdapter.notifyItemChanged(project.currentIndex)
-        } else {
-            // Generate at canvas resolution, set as bg reference
-            val pixels = DecorGenerator.generate(project.width, project.height, decor)
-            val bmp = Bitmap.createBitmap(project.width, project.height, Bitmap.Config.ARGB_8888)
-            bmp.setPixels(pixels, 0, project.width, 0, 0, project.width, project.height)
-            binding.canvas.bgBitmap = bmp
-        }
-        // Offer re-roll
-        AlertDialog.Builder(this)
-            .setTitle("Décor « ${decor.displayName} »")
-            .setMessage(if (replaceFrame) "Frame remplacée. Voulez-vous une autre variante ?" else "Image de fond définie. Voulez-vous une autre variante ?")
-            .setPositiveButton("Régénérer") { _, _ -> generateDecor(decor, replaceFrame) }
-            .setNegativeButton("Garder", null)
-            .show()
-    }
 
 
     // ---- Right panel ----
@@ -1224,94 +1125,6 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun showFiltersMenu() {
-        val filters = Filters.Filter.values()
-        val labels = filters.map { it.displayName }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Filtre à appliquer")
-            .setItems(labels) { _, which ->
-                askFilterScope(filters[which])
-            }
-            .show()
-    }
-
-    private fun askFilterScope(filter: Filters.Filter) {
-        AlertDialog.Builder(this)
-            .setTitle("Appliquer « ${filter.displayName} » sur :")
-            .setItems(arrayOf("Frame courante", "Toutes les frames", "Plage de frames…")) { _, scope ->
-                when (scope) {
-                    0 -> applyFilterRange(filter, project.currentIndex, project.currentIndex)
-                    1 -> applyFilterRange(filter, 0, project.frames.size - 1)
-                    2 -> askFilterRange(filter)
-                }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun askFilterRange(filter: Filters.Filter) {
-        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 24, 48, 24) }
-        container.addView(TextView(this).apply {
-            text = "Plage de frames (1 à ${project.frames.size})"
-            setTextColor(0xFFE8E8F0.toInt())
-        })
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val etFrom = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER; setText("1"); setTextColor(0xFFE8E8F0.toInt())
-        }
-        val etTo = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER; setText("${project.frames.size}"); setTextColor(0xFFE8E8F0.toInt())
-        }
-        val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        etFrom.layoutParams = lp; etTo.layoutParams = lp
-        row.addView(etFrom); row.addView(etTo)
-        container.addView(row)
-        AlertDialog.Builder(this)
-            .setTitle("Plage pour « ${filter.displayName} »")
-            .setView(container)
-            .setPositiveButton("Appliquer") { _, _ ->
-                val from = (etFrom.text.toString().toIntOrNull() ?: 1).coerceIn(1, project.frames.size) - 1
-                val to = (etTo.text.toString().toIntOrNull() ?: project.frames.size).coerceIn(1, project.frames.size) - 1
-                applyFilterRange(filter, minOf(from, to), maxOf(from, to))
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun applyFilterRange(filter: Filters.Filter, fromIdx: Int, toIdx: Int) {
-        if (fromIdx == toIdx) pushUndoFullFrame() else pushUndoAllFrames()
-        val outlineColor = project.primaryColor
-        val totalFrames = toIdx - fromIdx + 1
-        val progress = AlertDialog.Builder(this)
-            .setTitle("Filtre « ${filter.displayName} »")
-            .setMessage("Préparation…")
-            .setCancelable(false)
-            .show()
-        // Run on Default dispatcher so the UI stays responsive even on a
-        // 600×600 canvas × N frames × M layers.
-        lifecycleScope.launch {
-            var nLayers = 0
-            withContext(Dispatchers.Default) {
-                for (i in fromIdx..toIdx) {
-                    val f = project.frames.getOrNull(i) ?: continue
-                    nLayers = f.layers.size
-                    for (layer in f.layers) {
-                        val out = Filters.apply(layer.pixels, f.width, f.height, filter, outlineColor)
-                        out.copyInto(layer.pixels)
-                    }
-                    val done = i - fromIdx + 1
-                    withContext(Dispatchers.Main) {
-                        progress.setMessage("Frame $done / $totalFrames…")
-                    }
-                }
-            }
-            progress.dismiss()
-            binding.canvas.syncFrameBitmap()
-            framesAdapter.notifyDataSetChanged()
-            binding.timeline.invalidate()
-            toast("Filtre appliqué : $totalFrames frame(s) × $nLayers calque(s)")
-        }
-    }
 
     private fun showColorLockMenu() {
         val palette = project.palette + project.recentColors
