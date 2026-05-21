@@ -1471,12 +1471,16 @@
     window.isOnline=(status==='online');
     if(typeof updateAvailUI==='function') updateAvailUI();
   };
-  // Démarre le timer automatiquement au 1er message de l'agent
-  Tawk_API.onChatMessageAgent=function(){
-    if(typeof agentConnected==='function' && sessionTimer===null && waitTimer!==null){
+  // Démarre le timer au 1er signe de l'agent — trois callbacks en filet de sécurité
+  window.parlonsWaiting=false;
+  function _tryStartSession(){
+    if(window.parlonsWaiting && typeof agentConnected==='function'){
       agentConnected();
     }
-  };
+  }
+  Tawk_API.onChatMessageAgent = _tryStartSession;
+  Tawk_API.onAgentJoinChat    = _tryStartSession;
+  Tawk_API.onChatStarted      = _tryStartSession;
   function openTawk(){
     try {
       if(typeof Tawk_API!=='undefined'){
@@ -1577,6 +1581,7 @@ function startWaitTimer(){
   waitSeconds=0;reportShown=false;clearInterval(waitTimer);
   document.getElementById('waiting-zone').style.display='block';
   document.getElementById('session-zone').style.display='none';
+  window.parlonsWaiting=true;
   waitTimer=setInterval(()=>{
     waitSeconds++;
     const m=Math.floor(waitSeconds/60),s=waitSeconds%60;
@@ -1605,7 +1610,8 @@ function startWaitTimer(){
 
 // ── AGENT CONNECTED ──
 function agentConnected(){
-  if(sessionTimer!==null) return; // déjà démarré
+  if(sessionTimer!==null) return;
+  window.parlonsWaiting=false;
   clearInterval(waitTimer); waitTimer=null;
   openTawk();
   document.getElementById('waiting-zone').style.display='none';
