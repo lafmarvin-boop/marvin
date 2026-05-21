@@ -1361,8 +1361,12 @@
           <p>Le temps d'attente ne vous est pas facturé.</p>
           <div id="wait-counter">0:00</div>
           <p style="font-size:.7rem;color:#B09070;margin-top:.3rem;">temps d'attente</p>
-          <div id="report-zone">
-            <p>⚠️ L'écoutant n'a pas encore répondu depuis 2 minutes.</p>
+          <div style="margin-top:.9rem;">
+            <button onclick="agentConnected()" style="background:#2d7a2d;color:white;border:none;border-radius:50px;padding:.6rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;width:100%;">✅ Mon écoutant a répondu · Démarrer le chrono</button>
+            <p style="font-size:.68rem;color:#B09070;margin-top:.4rem;text-align:center;">Appuyez sur ce bouton dès que votre écoutant envoie son premier message</p>
+          </div>
+          <div id="report-zone" style="display:none;margin-top:.9rem;">
+            <p>⚠️ L'écoutant n'a pas encore répondu depuis 3 minutes.</p>
             <button class="btn-report" onclick="reportSlowAgent()">🚨 Signaler et demander un remboursement</button>
           </div>
         </div>
@@ -1372,7 +1376,7 @@
             <div id="session-timer">--:--</div>
           </div>
           <div id="end-warning">⏰ <strong>Il vous reste 2 minutes.</strong> <button onclick="closeModal();openModal()" style="background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.35rem .9rem;font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;margin-left:.5rem;">Prolonger →</button></div>
-          <div id="session-ended">🙏 <strong>Session de 30 min écoulée.</strong><br><small style="font-weight:300">Votre écoutant va décider de la suite dans quelques instants…</small></div>
+          <div id="session-ended" style="display:none;"></div>
           <!-- NOTATION FIN DE SESSION -->
           <div class="rating-zone" id="rating-zone">
             <p>Comment s'est passée votre session ? Notez votre écoutant :</p>
@@ -1560,9 +1564,21 @@ function startWaitTimer(){
     waitSeconds++;
     const m=Math.floor(waitSeconds/60),s=waitSeconds%60;
     const el=document.getElementById('wait-counter');if(el)el.textContent=`${m}:${String(s).padStart(2,'0')}`;
-    if(waitSeconds>=120&&!reportShown){reportShown=true;const rz=document.getElementById('report-zone');if(rz)rz.style.display='block';}
+    if(waitSeconds>=180&&!reportShown){reportShown=true;const rz=document.getElementById('report-zone');if(rz)rz.style.display='block';}
+    if(waitSeconds>=600){
+      clearInterval(waitTimer);
+      if(typeof Tawk_API!=='undefined'){try{Tawk_API.minimize();}catch(e){}}
+      if(!reportShown) reportSlowAgent();
+      const wz=document.getElementById('waiting-zone');
+      if(wz) wz.innerHTML=`
+        <strong style="color:#a02020;">⏰ 10 minutes d'attente dépassées</strong>
+        <p style="color:#a02020;font-size:.82rem;">Aucun écoutant disponible. Un remboursement a été initié automatiquement.</p>
+        <div style="display:flex;flex-direction:column;gap:.6rem;margin-top:.8rem;">
+          <button onclick="retrySession()" style="background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.6rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;width:100%;">🔄 Réessayer une nouvelle session</button>
+          <button onclick="closeModal()" style="background:none;border:1.5px solid #888;color:#666;border-radius:50px;padding:.55rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;cursor:pointer;width:100%;">✕ Quitter</button>
+        </div>`;
+    }
   },1000);
-  setTimeout(()=>agentConnected(),8000); // simulation démo
 }
 
 // ── AGENT CONNECTED ──
@@ -1571,15 +1587,25 @@ function agentConnected(){
   document.getElementById('waiting-zone').style.display='none';
   document.getElementById('session-zone').style.display='block';
   sessionSeconds=sessionDurationSec;updateSessionUI();
+  const mbar=document.getElementById('mobile-session-bar');
+  if(mbar){mbar.style.display='flex';}
   sessionTimer=setInterval(()=>{
     sessionSeconds--;updateSessionUI();
     if(sessionSeconds===120)document.getElementById('end-warning').style.display='block';
     if(sessionSeconds<=0){
       clearInterval(sessionTimer);
       document.getElementById('end-warning').style.display='none';
-      document.getElementById('session-ended').style.display='block';
       document.getElementById('session-timer').textContent='0:00';
-      // Pass mensuel → choix écoutant ; sinon fin normale + notation
+      const mbar2=document.getElementById('mobile-session-bar');
+      if(mbar2){mbar2.style.display='none';}
+      if(typeof Tawk_API!=='undefined'){
+        try{Tawk_API.sendMessage('⏰ Session de '+selectedLabel+' terminée. Merci pour cet échange !');}catch(e){}
+      }
+      const se=document.getElementById('session-ended');
+      if(se){
+        se.style.display='block';
+        se.innerHTML=`<strong style="color:var(--dark);font-size:.88rem;">⏰ Session de ${selectedLabel} écoulée</strong><br><span style="font-size:.78rem;color:var(--mid);font-weight:300;">Merci pour cet échange.</span>`;
+      }
       if(selectedAmount==='sub'){
         showEndOfSubSessionChoice();
       } else {
@@ -1590,8 +1616,16 @@ function agentConnected(){
 }
 function updateSessionUI(){
   const m=Math.floor(sessionSeconds/60),s=sessionSeconds%60;
+  const timeStr=`${m}:${String(s).padStart(2,'0')}`;
   const el=document.getElementById('session-timer');
-  if(el){el.textContent=`${m}:${String(s).padStart(2,'0')}`;if(sessionSeconds<=120)el.style.color='#e74c3c';}
+  if(el){el.textContent=timeStr;if(sessionSeconds<=120)el.style.color='#e74c3c';}
+  const mel=document.getElementById('mobile-timer-display');
+  if(mel){mel.textContent=timeStr;if(sessionSeconds<=120)mel.style.color='#e74c3c';}
+}
+function retrySession(){
+  sessionStorage.removeItem('parlons_payment_id');
+  closeModal();
+  setTimeout(()=>openModal(),300);
 }
 
 // ── SIGNALEMENT ──
@@ -1841,7 +1875,7 @@ function showEndOfSubSessionChoice() {
   const se = document.getElementById('session-ended');
   if (se) {
     se.innerHTML = `
-      <strong style="color:var(--dark);font-size:.88rem;">⏰ Session de 30 min écoulée</strong><br>
+      <strong style="color:var(--dark);font-size:.88rem;">⏰ Session de ${selectedLabel} écoulée</strong><br>
       <span style="font-size:.78rem;color:var(--mid);font-weight:300;">
         Votre écoutant est en train de décider de la suite…<br>
         <em style="font-size:.72rem;color:var(--light);">Vous serez informé(e) directement dans le chat.</em>
@@ -2352,5 +2386,12 @@ window.addEventListener('resize', stackBanners);
 // Relancer après les fonts Google
 document.fonts && document.fonts.ready.then(stackBanners);
 </script>
+
+<!-- BARRE SESSION MOBILE (fixe, toujours visible pendant la session) -->
+<div id="mobile-session-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#e8f8e8;border-top:2px solid #5CB85C;padding:.55rem 1rem;flex-direction:row;justify-content:space-between;align-items:center;font-family:'DM Sans',sans-serif;box-shadow:0 -2px 8px rgba(0,0,0,.08);">
+  <div style="font-size:.74rem;color:#2d7a2d;font-weight:600;">✅ Session en cours</div>
+  <div id="mobile-timer-display" style="font-size:1.05rem;font-family:'Playfair Display',serif;color:#C1440E;font-weight:700;">--:--</div>
+  <button onclick="openModal()" style="background:#C1440E;color:white;border:none;border-radius:50px;padding:.3rem .75rem;font-size:.72rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;">Voir →</button>
+</div>
 </body>
 </html>
