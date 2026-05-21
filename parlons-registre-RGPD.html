@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Parlons — Registre RGPD</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:#FAF7F2;color:#2C1F14;padding:2rem 1.5rem 4rem;font-size:.9rem;line-height:1.7;}
+    .container{max-width:900px;margin:0 auto;background:white;border-radius:20px;padding:3rem;box-shadow:0 8px 40px rgba(44,31,20,.08);}
+    .logo{font-family:'Playfair Display',serif;font-size:1.4rem;color:#C4714A;margin-bottom:.3rem;}
+    .logo span{font-style:italic;color:#A8502E;}
+    .meta{font-size:.72rem;color:#B09070;margin-bottom:2rem;padding-bottom:1rem;border-bottom:2px solid #F0E8D8;}
+    h1{font-family:'Playfair Display',serif;font-size:1.7rem;color:#2C1F14;margin-bottom:.5rem;}
+    h2{font-family:'Playfair Display',serif;font-size:1.1rem;color:#C4714A;margin:2rem 0 .7rem;padding-bottom:.3rem;border-bottom:1px solid #F0E8D8;}
+    p{color:#4A3828;font-weight:300;margin-bottom:.7rem;font-size:.85rem;}
+    table{width:100%;border-collapse:collapse;margin:1rem 0;}
+    th{background:#C4714A;color:white;padding:.7rem 1rem;text-align:left;font-size:.75rem;font-weight:600;}
+    td{padding:.65rem 1rem;font-size:.8rem;border-bottom:1px solid #F0E8D8;color:#4A3828;vertical-align:top;}
+    tr:nth-child(even) td{background:#FAF7F2;}
+    .info{background:#FFF8E1;border-left:4px solid #C4714A;border-radius:0 9px 9px 0;padding:.8rem 1rem;margin:1rem 0;font-size:.8rem;color:#7a5000;}
+    .footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid #F0E8D8;font-size:.72rem;color:#B09070;text-align:center;}
+    @media print{body{background:white;}.container{box-shadow:none;}}
+    @media(max-width:600px){.container{padding:1.5rem;}table{font-size:.72rem;}th,td{padding:.5rem .6rem;}}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">Par<span>lons</span></div>
+  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 1.0 · Avril 2026 · Document interne confidentiel</div>
+
+  <h1>Registre des Activités de Traitement</h1>
+  <p>Conformément à l'article 30 du Règlement Général sur la Protection des Données (RGPD — UE 2016/679), tout responsable de traitement doit tenir un registre documentant l'ensemble des traitements de données personnelles réalisés. Ce document constitue ce registre pour la micro-entreprise Parlons.</p>
+
+  <div class="info">
+    <strong>Responsable du traitement :</strong> Parlons — Micro-entrepreneur individuel<br>
+    <strong>Adresse :</strong> 112 route Bois de Lion, 33240 Peujard<br>
+    <strong>Email :</strong> contact.parlons.ecoute@gmail.com<br>
+    <strong>SIRET :</strong> ________________________________
+  </div>
+
+  <h2>Traitement n°1 — Gestion des sessions d'écoute</h2>
+  <table>
+    <tr><th>Élément</th><th>Détail</th></tr>
+    <tr><td><strong>Finalité</strong></td><td>Mise en relation entre utilisateurs et écoutants pour des sessions d'écoute en ligne</td></tr>
+    <tr><td><strong>Base légale</strong></td><td>Exécution d'un contrat (Art. 6.1.b RGPD)</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Pseudonyme, horodatage de session, durée, formule choisie</td></tr>
+    <tr><td><strong>Personnes concernées</strong></td><td>Utilisateurs de la plateforme (clients)</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Écoutants (pseudonyme uniquement), administrateur de la plateforme</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>48h pour l'historique de chat, 5 ans pour les données comptables</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Tawk.to (hébergement USA) — clauses contractuelles types en place</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Chiffrement HTTPS, accès restreint, pseudonymisation des utilisateurs</td></tr>
+  </table>
+
+  <h2>Traitement n°2 — Gestion des paiements</h2>
+  <table>
+    <tr><th>Élément</th><th>Détail</th></tr>
+    <tr><td><strong>Finalité</strong></td><td>Traitement des paiements en ligne pour les sessions et abonnements</td></tr>
+    <tr><td><strong>Base légale</strong></td><td>Exécution d'un contrat (Art. 6.1.b) + Obligation légale comptable (Art. 6.1.c)</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Données de paiement anonymisées (traitées par Stripe), montant, date, référence transaction</td></tr>
+    <tr><td><strong>Personnes concernées</strong></td><td>Clients ayant effectué un paiement</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Stripe (sous-traitant) — aucune donnée bancaire stockée par Parlons</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>5 ans (obligation légale comptable)</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Stripe Inc. (USA) — Privacy Shield + clauses contractuelles types</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Stripe PCI-DSS niveau 1, aucune donnée bancaire stockée côté Parlons</td></tr>
+  </table>
+
+  <h2>Traitement n°3 — Alertes disponibilité (emails)</h2>
+  <table>
+    <tr><th>Élément</th><th>Détail</th></tr>
+    <tr><td><strong>Finalité</strong></td><td>Notifier les utilisateurs de la disponibilité des écoutants</td></tr>
+    <tr><td><strong>Base légale</strong></td><td>Consentement explicite (Art. 6.1.a RGPD)</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Adresse email, date d'inscription à l'alerte</td></tr>
+    <tr><td><strong>Personnes concernées</strong></td><td>Utilisateurs ayant demandé une alerte disponibilité</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme uniquement</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>Jusqu'à désinscription demandée par l'utilisateur</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Aucun</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Stockage local chiffré, accès administrateur uniquement</td></tr>
+  </table>
+
+  <h2>Traitement n°4 — Candidatures écoutants</h2>
+  <table>
+    <tr><th>Élément</th><th>Détail</th></tr>
+    <tr><td><strong>Finalité</strong></td><td>Traitement des candidatures pour devenir écoutant</td></tr>
+    <tr><td><strong>Base légale</strong></td><td>Consentement (Art. 6.1.a) + Intérêt légitime pré-contractuel (Art. 6.1.b)</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Nom, prénom, email, pseudo, disponibilités, motivation, expérience</td></tr>
+    <tr><td><strong>Personnes concernées</strong></td><td>Candidats au poste d'écoutant</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme uniquement</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>2 ans après la candidature, ou jusqu'à demande de suppression</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Aucun</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Accès restreint à l'administrateur, stockage local sécurisé</td></tr>
+  </table>
+
+  <h2>Traitement n°5 — Gestion des agents (écoutants)</h2>
+  <table>
+    <tr><th>Élément</th><th>Détail</th></tr>
+    <tr><td><strong>Finalité</strong></td><td>Gestion de la relation contractuelle avec les écoutants indépendants</td></tr>
+    <tr><td><strong>Base légale</strong></td><td>Exécution d'un contrat (Art. 6.1.b) + Obligation légale (Art. 6.1.c)</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Nom, prénom, email, pseudo, SIRET, données de rémunération, statistiques de sessions</td></tr>
+    <tr><td><strong>Personnes concernées</strong></td><td>Écoutants ayant signé un contrat de prestation</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme, URSSAF (si requis)</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>5 ans après fin du contrat (obligation légale)</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Aucun</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Accès restreint par mot de passe, stockage sécurisé</td></tr>
+  </table>
+
+  <h2>Droits des personnes concernées</h2>
+  <p>Toute personne dont les données sont traitées peut exercer ses droits (accès, rectification, suppression, limitation, portabilité, opposition) en contactant :</p>
+  <p><strong>contact.parlons.ecoute@gmail.com</strong> — Réponse sous 30 jours maximum.</p>
+  <p>En cas de réclamation non résolue : <strong>CNIL</strong> — cnil.fr · 3 Place de Fontenoy, 75007 Paris.</p>
+
+  <h2>Violations de données</h2>
+  <p>En cas de violation de données susceptible d'engendrer un risque pour les personnes concernées, la CNIL doit être notifiée dans les <strong>72 heures</strong> via le portail notifications.cnil.fr. Les personnes concernées doivent également être informées si le risque est élevé.</p>
+
+  <h2>Sous-traitants</h2>
+  <table>
+    <tr><th>Sous-traitant</th><th>Pays</th><th>Finalité</th><th>Garanties</th></tr>
+    <tr><td><strong>Stripe</strong></td><td>USA</td><td>Paiements en ligne</td><td>PCI-DSS, Clauses contractuelles types UE</td></tr>
+    <tr><td><strong>Tawk.to</strong></td><td>USA</td><td>Chat en direct</td><td>Politique de confidentialité RGPD conforme</td></tr>
+    <tr><td><strong>Netlify</strong></td><td>USA</td><td>Hébergement du site</td><td>DPA RGPD disponible</td></tr>
+  </table>
+
+  <h2>Historique des mises à jour</h2>
+  <table>
+    <tr><th>Date</th><th>Version</th><th>Modification</th></tr>
+    <tr><td>Avril 2026</td><td>1.0</td><td>Création du registre</td></tr>
+    <tr><td>________________</td><td>1.1</td><td>À compléter</td></tr>
+  </table>
+
+  <div class="footer">
+    Parlons · Registre RGPD v1.0 · Avril 2026 · Document interne confidentiel<br>
+    Ce registre doit être mis à jour à chaque nouveau traitement de données ou modification significative.
+  </div>
+</div>
+</body>
+</html>

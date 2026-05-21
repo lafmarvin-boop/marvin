@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Parlons — Administration</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:#F4F4F8;color:#1A1A2E;font-size:.9rem;}
+
+    /* ── LOGIN SCREEN ── */
+    .login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1A1A2E 0%,#2C1F14 100%);}
+    .login-box{background:white;border-radius:20px;padding:2.5rem;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+    .login-logo{font-family:'Playfair Display',serif;font-size:2rem;color:#C4714A;margin-bottom:.3rem;}
+    .login-logo span{font-style:italic;color:#A8502E;}
+    .login-subtitle{font-size:.78rem;color:#9A9AB0;margin-bottom:2rem;}
+    .login-box h2{font-family:'Playfair Display',serif;font-size:1.2rem;color:#1A1A2E;margin-bottom:.4rem;}
+    .login-box p{font-size:.78rem;color:#9A9AB0;margin-bottom:1.5rem;}
+    .login-input{width:100%;padding:.85rem 1rem;border:1.5px solid #E8E8F0;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:1rem;text-align:center;letter-spacing:.3rem;outline:none;transition:border-color .2s;margin-bottom:.9rem;}
+    .login-input:focus{border-color:#C4714A;}
+    .login-btn{width:100%;background:#C4714A;color:white;border:none;border-radius:50px;padding:.85rem;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:background .2s;}
+    .login-btn:hover{background:#A8502E;}
+    .login-error{color:#e74c3c;font-size:.78rem;margin-top:.5rem;display:none;}
+    .login-hint{font-size:.7rem;color:#CCCCCC;margin-top:1rem;}
+
+    /* ── APP (caché jusqu'au login) ── */
+    .app{display:none;}
+
+    /* ── LAYOUT ── */
+    .sidebar{position:fixed;top:0;left:0;bottom:0;width:220px;background:#1A1A2E;padding:1.5rem 1.2rem;display:flex;flex-direction:column;gap:.4rem;z-index:100;}
+    .sidebar .logo{font-family:'Playfair Display',serif;font-size:1.3rem;color:#C4714A;margin-bottom:1.2rem;}
+    .sidebar .logo span{font-style:italic;color:#A8502E;}
+    .nav-item{display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;border-radius:9px;cursor:pointer;font-size:.82rem;font-weight:500;color:rgba(255,255,255,.55);transition:all .2s;border:none;background:none;width:100%;text-align:left;}
+    .nav-item:hover{background:rgba(255,255,255,.08);color:white;}
+    .nav-item.active{background:#C4714A;color:white;}
+    .nav-sep{height:1px;background:rgba(255,255,255,.08);margin:.4rem 0;}
+
+    .main{margin-left:220px;padding:2rem;min-height:100vh;}
+    .page{display:none;}
+    .page.active{display:block;}
+
+    /* ── HEADER ── */
+    .page-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.8rem;}
+    .page-header h1{font-family:'Playfair Display',serif;font-size:1.5rem;color:#1A1A2E;}
+    .page-header p{font-size:.78rem;color:#9A9AB0;margin-top:.2rem;}
+
+    /* ── STATS ── */
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.8rem;}
+    .stat{background:white;border-radius:14px;padding:1.2rem 1.4rem;box-shadow:0 2px 12px rgba(0,0,0,.05);}
+    .stat .val{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:700;color:#C4714A;}
+    .stat .lab{font-size:.68rem;color:#9A9AB0;margin-top:.2rem;font-weight:500;text-transform:uppercase;letter-spacing:.5px;}
+
+    /* ── CARDS ── */
+    .card{background:white;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.05);margin-bottom:1.5rem;overflow:hidden;}
+    .card-header{padding:1.1rem 1.5rem;border-bottom:1px solid #F0F0F8;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.7rem;}
+    .card-header h2{font-family:'Playfair Display',serif;font-size:1rem;color:#1A1A2E;}
+    .card-body{padding:1.5rem;}
+
+    /* ── FORM ── */
+    .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.7rem;align-items:end;}
+    .fg{display:flex;flex-direction:column;gap:.3rem;}
+    .fg label{font-size:.65rem;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;}
+    .fg input,.fg select{padding:.6rem .85rem;border:1.5px solid #E8E8F0;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:.82rem;color:#1A1A2E;outline:none;transition:border-color .2s;}
+    .fg input:focus,.fg select:focus{border-color:#C4714A;}
+    .btn{border:none;border-radius:9px;padding:.6rem 1.2rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
+    .btn-primary{background:#C4714A;color:white;}
+    .btn-primary:hover{background:#A8502E;}
+    .btn-ghost{background:#F4F4F8;color:#3A3A5A;border:1.5px solid #E8E8F0;}
+    .btn-ghost:hover{border-color:#C4714A;color:#C4714A;}
+    .btn-danger{background:#FFF0F0;color:#e74c3c;border:1.5px solid #FFD0D0;}
+    .btn-danger:hover{background:#e74c3c;color:white;}
+    .btn-sm{padding:.35rem .75rem;font-size:.72rem;}
+
+    /* ── TABLE ── */
+    table{width:100%;border-collapse:collapse;}
+    th{background:#F8F8FC;padding:.65rem 1rem;text-align:left;font-size:.65rem;font-weight:700;color:#9A9AB0;text-transform:uppercase;letter-spacing:.5px;}
+    td{padding:.72rem 1rem;font-size:.82rem;border-top:1px solid #F8F8FC;color:#3A3A5A;vertical-align:middle;}
+    tr:hover td{background:#FAFAFE;}
+    .empty{text-align:center;padding:2.5rem;color:#9A9AB0;font-style:italic;font-size:.82rem;}
+
+    /* ── BADGES ── */
+    .badge{display:inline-block;padding:.18rem .6rem;border-radius:50px;font-size:.68rem;font-weight:600;}
+    .b-10{background:#FFF0E8;color:#C4714A;}
+    .b-30{background:#E8F0FF;color:#3A6ACA;}
+    .b-60{background:#F0E8FF;color:#7A3ACA;}
+    .b-sub{background:#E8F8E8;color:#2D7A2D;}
+    .b-grp{background:#FFF8E0;color:#C49A2A;}
+
+    /* ── AGENTS TABLE ── */
+    .agent-row{cursor:pointer;}
+    .agent-row:hover td{background:#FFF8F4!important;}
+    .agent-name{font-weight:600;color:#C4714A;display:flex;align-items:center;gap:.5rem;}
+    .agent-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#C4714A,#A8502E);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.85rem;flex-shrink:0;}
+    .amount-pos{color:#2D7A2D;font-weight:600;}
+    .amount-neg{color:#e74c3c;font-weight:600;}
+
+    /* ── MODAL AGENT DETAIL ── */
+    .modal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(26,26,46,.6);backdrop-filter:blur(6px);align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;}
+    .modal-overlay.active{display:flex;}
+    .modal-box{background:white;border-radius:20px;width:100%;max-width:780px;margin:auto;overflow:hidden;}
+    .modal-top{background:linear-gradient(135deg,#1A1A2E,#2C1F14);padding:1.8rem 2rem;display:flex;align-items:center;gap:1.2rem;}
+    .modal-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#C4714A,#A8502E);display:flex;align-items:center;justify-content:center;color:white;font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;}
+    .modal-top h2{font-family:'Playfair Display',serif;font-size:1.3rem;color:white;}
+    .modal-top p{font-size:.78rem;color:rgba(255,255,255,.55);margin-top:.2rem;}
+    .modal-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#F0F0F8;}
+    .modal-stat{background:white;padding:1rem 1.2rem;text-align:center;}
+    .modal-stat .v{font-family:'Playfair Display',serif;font-size:1.3rem;color:#C4714A;font-weight:700;}
+    .modal-stat .l{font-size:.65rem;color:#9A9AB0;text-transform:uppercase;font-weight:600;}
+    .modal-body{padding:1.5rem;}
+    .modal-close-btn{margin-left:auto;background:rgba(255,255,255,.12);border:none;color:white;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;}
+
+    /* ── FILTERS ── */
+    .filter-row{display:flex;gap:.5rem;flex-wrap:wrap;}
+    .fb{background:#F4F4F8;border:1.5px solid transparent;border-radius:50px;padding:.3rem .8rem;font-family:'DM Sans',sans-serif;font-size:.7rem;font-weight:500;cursor:pointer;color:#6B6B8A;transition:all .2s;}
+    .fb.active{background:#C4714A;color:white;}
+
+    /* ── EXPORT ── */
+    .export-row{display:flex;gap:.5rem;flex-wrap:wrap;}
+
+    /* ── MONTHLY ── */
+    .monthly-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:1rem;}
+    .month-card{background:#F8F8FC;border-radius:12px;padding:1rem 1.2rem;border:1.5px solid #EEEEFC;}
+    .month-card .mn{font-size:.72rem;font-weight:700;color:#6B6B8A;margin-bottom:.3rem;text-transform:capitalize;}
+    .month-card .mv{font-family:'Playfair Display',serif;font-size:1.3rem;color:#C4714A;font-weight:700;}
+    .month-card .ms{font-size:.65rem;color:#9A9AB0;margin-top:.2rem;}
+
+    @media(max-width:700px){
+      .sidebar{width:60px;padding:.8rem .5rem;}
+      .sidebar .logo,.nav-item span,.nav-sep{display:none;}
+      .main{margin-left:60px;padding:1rem;}
+      .stats{grid-template-columns:1fr 1fr;}
+      .modal-stats{grid-template-columns:1fr 1fr;}
+    }
+    @media print{.sidebar,.btn,.export-row,.filter-row,.form-grid{display:none!important;}.main{margin-left:0;}}
+  </style>
+</head>
+<body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Par<span>lons</span></div>
+    <div class="login-subtitle">Espace Administration</div>
+    <h2>🔐 Accès sécurisé</h2>
+    <p>Entrez votre mot de passe pour accéder au tableau de bord.</p>
+    <input class="login-input" type="password" id="pwd-input" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')checkPassword()"/>
+    <button class="login-btn" onclick="checkPassword()">Accéder →</button>
+    <div class="login-error" id="login-error">❌ Mot de passe incorrect. Réessayez.</div>
+    <div class="login-hint">En cas d'oubli : contact.parlons.ecoute@gmail.com</div>
+  </div>
+</div>
+
+<!-- ══ APPLICATION (visible après login) ══ -->
+<div class="app" id="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo">Par<span>lons</span></div>
+  <div style="font-size:.62rem;color:rgba(255,255,255,.3);margin-bottom:.8rem;padding-bottom:.8rem;border-bottom:1px solid rgba(255,255,255,.08);">Administration</div>
+  <button class="nav-item active" onclick="showPage('recettes',this)">📒 <span>Livre de recettes</span></button>
+  <button class="nav-item" onclick="showPage('agents',this)">👥 <span>Mes agents</span></button>
+  <button class="nav-item" onclick="showPage('clients',this)">🎯 <span>Clients & Fidélité</span></button>
+  <button class="nav-item" onclick="showPage('mensuel',this)">📅 <span>Bilan mensuel</span></button>
+  <div class="nav-sep"></div>
+  <button class="nav-item" onclick="window.print()">🖨️ <span>Imprimer</span></button>
+  <button class="nav-item" onclick="logout()" style="margin-top:auto;color:rgba(255,0,0,.5);">🔓 <span>Déconnexion</span></button>
+  <div class="nav-sep"></div>
+  <a href="parlons.html" target="_blank" style="display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;border-radius:9px;font-size:.82rem;font-weight:500;color:rgba(255,255,255,.4);text-decoration:none;transition:all .2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.4)'">🌐 <span>Voir le site</span></a>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ══ PAGE RECETTES ══ -->
+  <div class="page active" id="page-recettes">
+    <div class="page-header">
+      <div>
+        <h1>Livre de Recettes</h1>
+        <p>Obligation légale micro-entrepreneur · Saisie manuelle · Exportable CSV</p>
+      </div>
+      <div class="export-row">
+        <button class="btn btn-ghost" onclick="exportCSV('all')">📥 Exporter CSV</button>
+        <button class="btn btn-ghost" onclick="window.print()">🖨️ Imprimer</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat"><div class="val" id="s-total">0,00 €</div><div class="lab">CA Total</div></div>
+      <div class="stat"><div class="val" id="s-month">0,00 €</div><div class="lab">Ce mois</div></div>
+      <div class="stat"><div class="val" id="s-nb">0</div><div class="lab">Encaissements</div></div>
+      <div class="stat"><div class="val" id="s-cotis">0,00 €</div><div class="lab">Cotisations URSSAF (22%)</div></div>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="card">
+      <div class="card-header"><h2>➕ Ajouter un encaissement</h2></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="fg"><label>Date</label><input type="date" id="f-date"/></div>
+          <div class="fg"><label>Formule</label>
+            <select id="f-type">
+              <option value="Session 10 min" data-price="2">Session 10 min — 2 €</option>
+              <option value="Session 30 min" data-price="5">Session 30 min — 5 €</option>
+              <option value="Session 1 heure" data-price="9">Session 1 heure — 9 €</option>
+              <option value="Pass mensuel" data-price="15">Pass mensuel — 15 €</option>
+              <option value="Chat de groupe" data-price="1.5">Chat de groupe — 1,50 €</option>
+            </select>
+          </div>
+          <div class="fg"><label>Montant (€)</label><input type="number" id="f-amount" placeholder="2.00" step="0.01" min="0"/></div>
+          <div class="fg"><label>Agent concerné</label>
+            <select id="f-agent"><option value="">— Aucun (groupes/abos) —</option></select>
+          </div>
+          <div class="fg"><label>Mode paiement</label>
+            <select id="f-mode"><option value="Stripe">Stripe</option><option value="Virement">Virement</option><option value="Autre">Autre</option></select>
+          </div>
+          <div class="fg"><label>Type</label>
+            <select id="f-nature"><option value="encaissement">💰 Encaissement</option><option value="remboursement">↩️ Remboursement</option></select>
+          </div>
+          <div class="fg" style="align-self:end;"><button class="btn btn-primary" onclick="addEntry()">Ajouter</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Historique</h2>
+        <div class="filter-row">
+          <button class="fb active" onclick="setFilter('all',this)">Tout</button>
+          <button class="fb" onclick="setFilter('Session 10 min',this)">10 min</button>
+          <button class="fb" onclick="setFilter('Session 30 min',this)">30 min</button>
+          <button class="fb" onclick="setFilter('Session 1 heure',this)">1h</button>
+          <button class="fb" onclick="setFilter('Pass mensuel',this)">Pass</button>
+          <button class="fb" onclick="setFilter('Chat de groupe',this)">Groupe</button>
+          <button class="fb" onclick="setFilter('remboursement',this)">Remboursements</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>Date</th><th>Formule</th><th>Agent</th><th>Mode</th><th>Montant</th><th>Cotisations</th><th>Net</th><th></th></tr></thead>
+        <tbody id="entries-body"><tr><td colspan="9" class="empty">Aucun encaissement. Ajoutez votre première recette.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ PAGE AGENTS ══ -->
+  <div class="page" id="page-agents">
+    <div class="page-header">
+      <div><h1>Mes Agents</h1><p>Cliquez sur un agent pour voir le détail de ses sessions</p></div>
+      <button class="btn btn-primary" onclick="openAddAgent()">➕ Ajouter un agent</button>
+    </div>
+
+    <!-- Formulaire ajout agent (caché) -->
+    <div class="card" id="add-agent-form" style="display:none;">
+      <div class="card-header"><h2>Nouvel agent</h2></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="fg"><label>Pseudo affiché</label><input type="text" id="ag-pseudo" placeholder="Ex : Sophie"/></div>
+          <div class="fg"><label>Nom complet</label><input type="text" id="ag-name" placeholder="Nom réel (confidentiel)"/></div>
+          <div class="fg"><label>Email</label><input type="email" id="ag-email" placeholder="email@exemple.com"/></div>
+          <div class="fg"><label>Date début</label><input type="date" id="ag-start"/></div>
+          <div class="fg" style="align-self:end;display:flex;gap:.5rem;">
+            <button class="btn btn-primary" onclick="addAgent()">Créer</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('add-agent-form').style.display='none'">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats agents -->
+    <div class="stats">
+      <div class="stat"><div class="val" id="ag-total-agents">0</div><div class="lab">Agents actifs</div></div>
+      <div class="stat"><div class="val" id="ag-total-sessions">0</div><div class="lab">Sessions totales</div></div>
+      <div class="stat"><div class="val" id="ag-total-gains">0,00 €</div><div class="lab">Total versé agents</div></div>
+      <div class="stat"><div class="val" id="ag-total-moi">0,00 €</div><div class="lab">Ma part totale</div></div>
+    </div>
+
+    <!-- Tableau agents -->
+    <div class="card">
+      <div class="card-header"><h2>Liste des agents</h2></div>
+      <table>
+        <thead><tr><th>Agent</th><th>Depuis</th><th>Sessions</th><th>CA généré</th><th>Part agent</th><th>Ma part</th><th>Dernière session</th><th></th></tr></thead>
+        <tbody id="agents-body"><tr><td colspan="8" class="empty">Aucun agent. Cliquez sur "Ajouter un agent".</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ PAGE MENSUEL ══ -->
+  <div class="page" id="page-mensuel">
+    <div class="page-header">
+      <div><h1>Bilan mensuel</h1><p>Récapitulatif par mois de votre chiffre d'affaires</p></div>
+      <button class="btn btn-ghost" onclick="exportCSV('monthly')">📥 Exporter</button>
+    </div>
+    <div class="monthly-grid" id="monthly-grid">
+      <div class="empty" style="grid-column:1/-1;">Aucune donnée disponible.</div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE CLIENTS & FIDÉLITÉ ══ -->
+  <div class="page" id="page-clients">
+    <div class="page-header">
+      <div><h1>Clients & Fidélité</h1><p>Suivi des abonnés, compteur de sessions et réductions automatiques</p></div>
+      <button class="btn btn-primary" onclick="openAddClient()">➕ Ajouter un client</button>
+    </div>
+
+    <!-- Formulaire ajout client -->
+    <div class="card" id="add-client-form" style="display:none;">
+      <div class="card-header"><h2>Nouveau client</h2></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="fg"><label>Pseudonyme</label><input type="text" id="cl-pseudo" placeholder="Ex : Marie34"/></div>
+          <div class="fg"><label>Statut</label>
+            <select id="cl-status">
+              <option value="standard">Standard</option>
+              <option value="abonne">Abonné mensuel</option>
+            </select>
+          </div>
+          <div class="fg"><label>Sessions effectuées</label><input type="number" id="cl-sessions" value="0" min="0"/></div>
+          <div class="fg"><label>Date inscription</label><input type="date" id="cl-date"/></div>
+          <div class="fg" style="align-self:end;display:flex;gap:.5rem;">
+            <button class="btn btn-primary" onclick="addClient()">Créer</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('add-client-form').style.display='none'">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat"><div class="val" id="cl-total">0</div><div class="lab">Clients enregistrés</div></div>
+      <div class="stat"><div class="val" id="cl-abonnes">0</div><div class="lab">Abonnés actifs</div></div>
+      <div class="stat"><div class="val" id="cl-fideles">0</div><div class="lab">Clients fidélité</div></div>
+      <div class="stat"><div class="val" id="cl-revenus">0,00 €</div><div class="lab">Revenus abonnements</div></div>
+    </div>
+
+    <!-- Tableau clients -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Liste des clients</h2>
+        <div class="filter-row">
+          <button class="fb active" onclick="setClientFilter('all',this)">Tous</button>
+          <button class="fb" onclick="setClientFilter('abonne',this)">Abonnés</button>
+          <button class="fb" onclick="setClientFilter('vip',this)">VIP (-30%)</button>
+          <button class="fb" onclick="setClientFilter('fid2',this)">-20%</button>
+          <button class="fb" onclick="setClientFilter('fid1',this)">-10%</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Client</th><th>Statut</th><th>Sessions</th><th>Réduction</th><th>Depuis</th><th>Actions</th></tr></thead>
+        <tbody id="clients-body"><tr><td colspan="6" class="empty">Aucun client enregistré.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- fin .app -->
+  <div class="page" id="page-mensuel">
+    <div class="page-header">
+      <div><h1>Bilan mensuel</h1><p>Récapitulatif par mois de votre chiffre d'affaires</p></div>
+      <button class="btn btn-ghost" onclick="exportCSV('monthly')">📥 Exporter</button>
+    </div>
+    <div class="monthly-grid" id="monthly-grid">
+      <div class="empty" style="grid-column:1/-1;">Aucune donnée disponible.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ MODAL DÉTAIL AGENT ══ -->
+<div class="modal-overlay" id="agent-modal" onclick="if(event.target===this)closeAgentModal()">
+  <div class="modal-box">
+    <div class="modal-top">
+      <div class="modal-avatar" id="m-avatar">?</div>
+      <div>
+        <h2 id="m-pseudo">Agent</h2>
+        <p id="m-info">—</p>
+      </div>
+      <button class="modal-close-btn" onclick="closeAgentModal()">✕</button>
+    </div>
+    <div class="modal-stats">
+      <div class="modal-stat"><div class="v" id="m-sessions">0</div><div class="l">Sessions</div></div>
+      <div class="modal-stat"><div class="v" id="m-ca">0 €</div><div class="l">CA généré</div></div>
+      <div class="modal-stat"><div class="v" id="m-gain">0 €</div><div class="l">Part agent</div></div>
+      <div class="modal-stat"><div class="v" id="m-moi">0 €</div><div class="l">Ma part</div></div>
+    </div>
+    <div class="modal-body">
+      <h2 style="font-family:'Playfair Display',serif;font-size:1rem;color:#1A1A2E;margin-bottom:1rem;">Détail des sessions</h2>
+
+      <!-- Résumé par formule -->
+      <div id="m-breakdown" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.8rem;margin-bottom:1.5rem;"></div>
+
+      <!-- Tableau sessions -->
+      <table>
+        <thead><tr><th>#</th><th>Date</th><th>Formule</th><th>Montant</th><th>Part agent</th><th>Ma part</th></tr></thead>
+        <tbody id="m-entries"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ════════════════════════════════════
+  // DONNÉES
+  // ════════════════════════════════════
+  let entries = JSON.parse(localStorage.getItem('parlons_entries') || '[]');
+  let agents  = JSON.parse(localStorage.getItem('parlons_agents_list') || '[]');
+  let currentFilter = 'all';
+  let currentAgentId = null;
+
+  // Taux de rémunération agents par formule
+  const AGENT_RATES = {
+    'Session 10 min': 1.00,
+    'Session 30 min': 3.50,
+    'Session 1 heure': 7.50,
+    'Pass mensuel': 0,       // redistribué manuellement
+    'Chat de groupe': 0,     // tout pour moi
+  };
+
+  function save() {
+    localStorage.setItem('parlons_entries', JSON.stringify(entries));
+    localStorage.setItem('parlons_agents_list', JSON.stringify(agents));
+  }
+
+  // ── UTILITAIRES ──
+  const fmt  = n => (n||0).toFixed(2).replace('.',',') + ' €';
+  const fmtd = d => { const p=d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; };
+  const badgeClass = t => ({'Session 10 min':'b-10','Session 30 min':'b-30','Session 1 heure':'b-60','Pass mensuel':'b-sub','Chat de groupe':'b-grp'}[t]||'b-10');
+  const agentGain = (type, amount) => AGENT_RATES[type] !== undefined ? Math.min(AGENT_RATES[type], amount) : 0;
+  const myShare   = (type, amount) => amount - agentGain(type, amount);
+
+  // ── NAVIGATION ──
+  function showPage(id, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    if (btn) btn.classList.add('active');
+    render();
+  }
+
+  // ── AJOUT ENTRÉE ──
+  function addEntry() {
+    const date   = document.getElementById('f-date').value;
+    const type   = document.getElementById('f-type').value;
+    const amount = parseFloat(document.getElementById('f-amount').value);
+    const agentId= document.getElementById('f-agent').value;
+    const mode   = document.getElementById('f-mode').value;
+    const nature = document.getElementById('f-nature').value;
+    if (!date || !amount || amount <= 0) { alert('Date et montant obligatoires.'); return; }
+    const gain = agentId ? agentGain(type, amount) : 0;
+    const moi  = amount - gain;
+    entries.unshift({
+      id: Date.now(), date, type, amount: nature==='remboursement' ? -amount : amount,
+      agentId, agentName: agentId ? (agents.find(a=>a.id==agentId)||{}).pseudo || '' : '',
+      mode, nature, gain: nature==='remboursement' ? -gain : gain,
+      moi: nature==='remboursement' ? -moi : moi,
+      cotisations: Math.round(Math.abs(amount)*0.22*100)/100 * (nature==='remboursement'?-1:1)
+    });
+    if (agentId && nature==='encaissement') {
+      const ag = agents.find(a => a.id == agentId);
+      if (ag) { ag.sessions = (ag.sessions||0)+1; ag.lastSession = date; ag.totalCA = (ag.totalCA||0)+amount; }
+    }
+    save(); render();
+    document.getElementById('f-amount').value='';
+  }
+
+  function deleteEntry(id) {
+    if (!confirm('Supprimer cet encaissement ?')) return;
+    entries = entries.filter(e => e.id !== id);
+    save(); render();
+  }
+
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.fb').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderEntries();
+  }
+
+  // ── AJOUT AGENT ──
+  function openAddAgent() {
+    const f = document.getElementById('add-agent-form');
+    f.style.display = f.style.display==='none' ? 'block' : 'none';
+    document.getElementById('ag-start').value = new Date().toISOString().split('T')[0];
+  }
+
+  function addAgent() {
+    const pseudo = document.getElementById('ag-pseudo').value.trim();
+    const name   = document.getElementById('ag-name').value.trim();
+    const email  = document.getElementById('ag-email').value.trim();
+    const start  = document.getElementById('ag-start').value;
+    if (!pseudo || !name || !email) { alert('Pseudo, nom et email obligatoires.'); return; }
+    agents.push({ id: Date.now(), pseudo, name, email, start, sessions:0, totalCA:0, lastSession:null });
+    save(); render();
+    document.getElementById('add-agent-form').style.display='none';
+    document.getElementById('ag-pseudo').value='';
+    document.getElementById('ag-name').value='';
+    document.getElementById('ag-email').value='';
+  }
+
+  function deleteAgent(id) {
+    if (!confirm('Supprimer cet agent ? Ses données de sessions seront conservées.')) return;
+    agents = agents.filter(a => a.id != id);
+    save(); render();
+  }
+
+  // ── MODAL AGENT DETAIL ──
+  function openAgentModal(agentId) {
+    const ag = agents.find(a => a.id == agentId);
+    if (!ag) return;
+    const agEntries = entries.filter(e => e.agentId == agentId && e.nature==='encaissement');
+    const totalCA   = agEntries.reduce((s,e)=>s+e.amount,0);
+    const totalGain = agEntries.reduce((s,e)=>s+e.gain,0);
+    const totalMoi  = agEntries.reduce((s,e)=>s+e.moi,0);
+
+    document.getElementById('m-avatar').textContent  = ag.pseudo[0].toUpperCase();
+    document.getElementById('m-pseudo').textContent  = ag.pseudo;
+    document.getElementById('m-info').textContent    = `${ag.name} · ${ag.email} · Depuis le ${fmtd(ag.start)}`;
+    document.getElementById('m-sessions').textContent= agEntries.length;
+    document.getElementById('m-ca').textContent      = fmt(totalCA);
+    document.getElementById('m-gain').textContent    = fmt(totalGain);
+    document.getElementById('m-moi').textContent     = fmt(totalMoi);
+
+    // Breakdown par formule
+    const breakdown = {};
+    agEntries.forEach(e => {
+      if (!breakdown[e.type]) breakdown[e.type] = {nb:0,ca:0,gain:0};
+      breakdown[e.type].nb++;
+      breakdown[e.type].ca+=e.amount;
+      breakdown[e.type].gain+=e.gain;
+    });
+    document.getElementById('m-breakdown').innerHTML = Object.entries(breakdown).map(([t,v])=>`
+      <div style="background:#F8F8FC;border-radius:11px;padding:.9rem 1rem;border:1.5px solid #EEEEFC;">
+        <span class="badge ${badgeClass(t)}" style="margin-bottom:.4rem;display:inline-block;">${t}</span>
+        <div style="font-family:'Playfair Display',serif;font-size:1.1rem;color:#C4714A;font-weight:700;">${v.nb} session${v.nb>1?'s':''}</div>
+        <div style="font-size:.7rem;color:#9A9AB0;margin-top:.2rem;">CA : ${fmt(v.ca)} · Gain : ${fmt(v.gain)}</div>
+      </div>
+    `).join('') || '<p style="color:#9A9AB0;font-size:.82rem;">Aucune session enregistrée.</p>';
+
+    // Tableau sessions
+    document.getElementById('m-entries').innerHTML = agEntries.length===0
+      ? `<tr><td colspan="6" class="empty">Aucune session enregistrée.</td></tr>`
+      : agEntries.map((e,i)=>`
+        <tr>
+          <td style="color:#9A9AB0;font-size:.72rem;">${agEntries.length-i}</td>
+          <td>${fmtd(e.date)}</td>
+          <td><span class="badge ${badgeClass(e.type)}">${e.type}</span></td>
+          <td class="amount-pos">${fmt(e.amount)}</td>
+          <td style="color:#C4714A;font-weight:600;">${fmt(e.gain)}</td>
+          <td class="amount-pos">${fmt(e.moi)}</td>
+        </tr>`).join('');
+
+    document.getElementById('agent-modal').classList.add('active');
+    document.body.style.overflow='hidden';
+  }
+
+  function closeAgentModal() {
+    document.getElementById('agent-modal').classList.remove('active');
+    document.body.style.overflow='';
+  }
+
+  // ── RENDER ──
+  function renderEntries() {
+    let data = currentFilter==='all' ? entries
+      : currentFilter==='remboursement' ? entries.filter(e=>e.nature==='remboursement')
+      : entries.filter(e=>e.type===currentFilter && e.nature!=='remboursement');
+
+    const total   = entries.filter(e=>e.nature==='encaissement').reduce((s,e)=>s+e.amount,0);
+    const cotisAll= entries.filter(e=>e.nature==='encaissement').reduce((s,e)=>s+e.cotisations,0);
+    const now     = new Date();
+    const monthCA = entries.filter(e=>e.nature==='encaissement'&&new Date(e.date).getMonth()===now.getMonth()&&new Date(e.date).getFullYear()===now.getFullYear()).reduce((s,e)=>s+e.amount,0);
+    document.getElementById('s-total').textContent = fmt(total);
+    document.getElementById('s-month').textContent = fmt(monthCA);
+    document.getElementById('s-nb').textContent    = entries.filter(e=>e.nature==='encaissement').length;
+    document.getElementById('s-cotis').textContent = fmt(cotisAll);
+
+    const tbody = document.getElementById('entries-body');
+    if (!data.length) { tbody.innerHTML=`<tr><td colspan="9" class="empty">Aucun encaissement pour ce filtre.</td></tr>`; return; }
+    tbody.innerHTML = data.map((e,i)=>`
+      <tr>
+        <td style="color:#9A9AB0;font-size:.72rem;">${data.length-i}</td>
+        <td>${fmtd(e.date)}</td>
+        <td><span class="badge ${badgeClass(e.type)}">${e.type}</span>
+          ${e.nature==='remboursement'?'<span style="font-size:.65rem;color:#e74c3c;margin-left:.3rem;">↩ Remboursé</span>':''}</td>
+        <td style="color:#9A9AB0;">${e.agentName||'—'}</td>
+        <td style="color:#9A9AB0;">${e.mode}</td>
+        <td class="${e.amount<0?'amount-neg':'amount-pos'}">${fmt(Math.abs(e.amount))}</td>
+        <td style="color:#e74c3c;">${fmt(Math.abs(e.cotisations))}</td>
+        <td class="${e.moi<0?'amount-neg':'amount-pos'}">${fmt(Math.abs(e.moi))}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteEntry(${e.id})">🗑</button></td>
+      </tr>`).join('');
+  }
+
+  function renderAgents() {
+    // Populate agent select
+    const sel = document.getElementById('f-agent');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Aucun —</option>' + agents.map(a=>`<option value="${a.id}">${a.pseudo}</option>`).join('');
+    sel.value = current;
+
+    // Stats globales agents
+    const totalGains = agents.reduce((s,a)=>{
+      return s + entries.filter(e=>e.agentId==a.id&&e.nature==='encaissement').reduce((ss,e)=>ss+e.gain,0);
+    },0);
+    const totalMoi = entries.filter(e=>e.nature==='encaissement').reduce((s,e)=>s+e.moi,0);
+    document.getElementById('ag-total-agents').textContent = agents.length;
+    document.getElementById('ag-total-sessions').textContent = entries.filter(e=>e.nature==='encaissement'&&e.agentId).length;
+    document.getElementById('ag-total-gains').textContent = fmt(totalGains);
+    document.getElementById('ag-total-moi').textContent = fmt(totalMoi);
+
+    const tbody = document.getElementById('agents-body');
+    if (!agents.length) { tbody.innerHTML=`<tr><td colspan="8" class="empty">Aucun agent enregistré.</td></tr>`; return; }
+    tbody.innerHTML = agents.map(a => {
+      const agE = entries.filter(e=>e.agentId==a.id&&e.nature==='encaissement');
+      const ca   = agE.reduce((s,e)=>s+e.amount,0);
+      const gain = agE.reduce((s,e)=>s+e.gain,0);
+      const moi  = agE.reduce((s,e)=>s+e.moi,0);
+      const last = agE.length ? agE[0].date : null;
+      return `<tr class="agent-row" onclick="openAgentModal(${a.id})">
+        <td><div class="agent-name"><div class="agent-avatar">${a.pseudo[0]}</div>${a.pseudo}</div></td>
+        <td style="color:#9A9AB0;">${fmtd(a.start)}</td>
+        <td><strong>${agE.length}</strong></td>
+        <td class="amount-pos">${fmt(ca)}</td>
+        <td style="color:#C4714A;font-weight:600;">${fmt(gain)}</td>
+        <td class="amount-pos">${fmt(moi)}</td>
+        <td style="color:#9A9AB0;">${last?fmtd(last):'—'}</td>
+        <td onclick="event.stopPropagation()"><button class="btn btn-danger btn-sm" onclick="deleteAgent(${a.id})">🗑</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderMonthly() {
+    const byMonth = {};
+    entries.filter(e=>e.nature==='encaissement').forEach(e => {
+      const d = new Date(e.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const label = d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+      if (!byMonth[key]) byMonth[key]={label,ca:0,cotis:0,nb:0,gain:0,moi:0};
+      byMonth[key].ca+=e.amount; byMonth[key].cotis+=e.cotisations;
+      byMonth[key].nb++; byMonth[key].gain+=e.gain; byMonth[key].moi+=e.moi;
+    });
+    const months = Object.entries(byMonth).sort((a,b)=>b[0].localeCompare(a[0]));
+    const grid = document.getElementById('monthly-grid');
+    if (!months.length) { grid.innerHTML='<div class="empty" style="grid-column:1/-1;">Aucune donnée.</div>'; return; }
+    grid.innerHTML = months.map(([k,m])=>`
+      <div class="month-card">
+        <div class="mn">${m.label}</div>
+        <div class="mv">${fmt(m.ca)}</div>
+        <div class="ms">${m.nb} sessions · Cotis. : ${fmt(m.cotis)}</div>
+        <div class="ms" style="margin-top:.3rem;color:#C4714A;">Ma part nette : ${fmt(m.moi)}</div>
+        <div class="ms">Agents : ${fmt(m.gain)}</div>
+      </div>`).join('');
+  }
+
+  function render() {
+    renderEntries();
+    renderAgents();
+    renderMonthly();
+  }
+
+  // ── EXPORT CSV ──
+  function exportCSV(type) {
+    let content, filename;
+    if (type==='all') {
+      content = 'N°;Date;Formule;Agent;Mode;Nature;Montant;Cotisations;Ma part\n'
+        + [...entries].reverse().map((e,i)=>
+          `${i+1};${fmtd(e.date)};${e.type};${e.agentName||''};${e.mode};${e.nature};${e.amount.toFixed(2)};${e.cotisations.toFixed(2)};${e.moi.toFixed(2)}`
+        ).join('\n');
+      filename = `parlons-recettes-${new Date().toISOString().split('T')[0]}.csv`;
+    } else {
+      const byMonth = {};
+      entries.filter(e=>e.nature==='encaissement').forEach(e=>{
+        const d=new Date(e.date);
+        const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        if(!byMonth[k]){byMonth[k]={label:d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}),ca:0,cotis:0,nb:0,moi:0};}
+        byMonth[k].ca+=e.amount;byMonth[k].cotis+=e.cotisations;byMonth[k].nb++;byMonth[k].moi+=e.moi;
+      });
+      content='Mois;Sessions;CA;Cotisations;Ma part nette\n'+Object.entries(byMonth).sort((a,b)=>b[0].localeCompare(a[0])).map(([k,m])=>
+        `${m.label};${m.nb};${m.ca.toFixed(2)};${m.cotis.toFixed(2)};${m.moi.toFixed(2)}`).join('\n');
+      filename=`parlons-bilan-mensuel-${new Date().toISOString().split('T')[0]}.csv`;
+    }
+    const blob=new Blob(['\uFEFF'+content],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=filename;a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Init
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  document.addEventListener('keydown', e=>{if(e.key==='Escape')closeAgentModal();});
+  render();
+</script>
+
+<script>
+// ════════════════════════════════════
+// AUTHENTIFICATION
+// ════════════════════════════════════
+// ⚠️ CHANGEZ CE MOT DE PASSE AVANT UTILISATION
+const ADMIN_PASSWORD = 'Parlons2026!';
+const SESSION_KEY = 'parlons_admin_session';
+
+function checkPassword() {
+  const pwd = document.getElementById('pwd-input').value;
+  const err = document.getElementById('login-error');
+  if (pwd === ADMIN_PASSWORD) {
+    sessionStorage.setItem(SESSION_KEY, 'ok');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    err.style.display = 'none';
+    render(); renderClients();
+  } else {
+    err.style.display = 'block';
+    document.getElementById('pwd-input').value = '';
+    document.getElementById('pwd-input').focus();
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem(SESSION_KEY);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('pwd-input').value = '';
+}
+
+// Vérifier si déjà connecté
+window.addEventListener('load', () => {
+  if (sessionStorage.getItem(SESSION_KEY) === 'ok') {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    render(); renderClients();
+  }
+});
+
+// ════════════════════════════════════
+// CLIENTS & FIDÉLITÉ
+// ════════════════════════════════════
+let clients = JSON.parse(localStorage.getItem('parlons_clients') || '[]');
+let clientFilter = 'all';
+
+function saveClients() { localStorage.setItem('parlons_clients', JSON.stringify(clients)); }
+
+function getLoyaltyInfo(sessions) {
+  if (sessions >= 20) return { label: '⭐ VIP', reduction: '-30%', color: '#C49A2A', bg: '#FFF8E0' };
+  if (sessions >= 10) return { label: '🌳 Fidèle', reduction: '-20%', color: '#2D7A2D', bg: '#E8F8E8' };
+  if (sessions >=  5) return { label: '🌿 Régulier', reduction: '-10%', color: '#3A6ACA', bg: '#E8F0FF' };
+  return { label: '🌱 Nouveau', reduction: 'Aucune', color: '#9A9AB0', bg: '#F4F4F8' };
+}
+
+function openAddClient() {
+  const f = document.getElementById('add-client-form');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('cl-date').value = new Date().toISOString().split('T')[0];
+}
+
+function addClient() {
+  const pseudo   = document.getElementById('cl-pseudo').value.trim();
+  const status   = document.getElementById('cl-status').value;
+  const sessions = parseInt(document.getElementById('cl-sessions').value) || 0;
+  const date     = document.getElementById('cl-date').value;
+  if (!pseudo) { alert('Le pseudonyme est obligatoire.'); return; }
+  clients.push({ id: Date.now(), pseudo, status, sessions, date, abonneSince: status==='abonne' ? date : null });
+  saveClients(); renderClients();
+  document.getElementById('add-client-form').style.display = 'none';
+  document.getElementById('cl-pseudo').value = '';
+  document.getElementById('cl-sessions').value = '0';
+}
+
+function updateSessions(id, delta) {
+  const cl = clients.find(c => c.id == id);
+  if (!cl) return;
+  cl.sessions = Math.max(0, (cl.sessions||0) + delta);
+  saveClients(); renderClients();
+}
+
+function toggleAbonne(id) {
+  const cl = clients.find(c => c.id == id);
+  if (!cl) return;
+  cl.status = cl.status === 'abonne' ? 'standard' : 'abonne';
+  cl.abonneSince = cl.status === 'abonne' ? new Date().toISOString().split('T')[0] : null;
+  saveClients(); renderClients();
+}
+
+function deleteClient(id) {
+  if (!confirm('Supprimer ce client ?')) return;
+  clients = clients.filter(c => c.id != id);
+  saveClients(); renderClients();
+}
+
+function setClientFilter(f, btn) {
+  clientFilter = f;
+  document.querySelectorAll('#page-clients .fb').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderClients();
+}
+
+function renderClients() {
+  const abonnes  = clients.filter(c => c.status === 'abonne');
+  const vip      = clients.filter(c => (c.sessions||0) >= 20);
+  const fideles  = clients.filter(c => (c.sessions||0) >= 5);
+  const revAbo   = abonnes.length * 15;
+
+  document.getElementById('cl-total').textContent    = clients.length;
+  document.getElementById('cl-abonnes').textContent  = abonnes.length;
+  document.getElementById('cl-fideles').textContent  = fideles.length;
+  document.getElementById('cl-revenus').textContent  = fmt(revAbo);
+
+  let filtered = clients;
+  if (clientFilter === 'abonne') filtered = clients.filter(c => c.status==='abonne');
+  else if (clientFilter === 'vip')  filtered = clients.filter(c => (c.sessions||0)>=20);
+  else if (clientFilter === 'fid2') filtered = clients.filter(c => (c.sessions||0)>=10 && (c.sessions||0)<20);
+  else if (clientFilter === 'fid1') filtered = clients.filter(c => (c.sessions||0)>=5  && (c.sessions||0)<10);
+
+  const tbody = document.getElementById('clients-body');
+  if (!filtered.length) { tbody.innerHTML=`<tr><td colspan="6" class="empty">Aucun client pour ce filtre.</td></tr>`; return; }
+
+  tbody.innerHTML = filtered.map(c => {
+    const loy = getLoyaltyInfo(c.sessions||0);
+    return `<tr>
+      <td><strong style="color:#1A1A2E;">${c.pseudo}</strong>
+        ${c.status==='abonne'?'<span style="font-size:.65rem;background:#E8F8E8;color:#2D7A2D;padding:.1rem .4rem;border-radius:50px;margin-left:.3rem;font-weight:600;">♾ Abonné</span>':''}
+      </td>
+      <td><span style="background:${loy.bg};color:${loy.color};padding:.2rem .6rem;border-radius:50px;font-size:.72rem;font-weight:600;">${loy.label}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:.4rem;">
+          <button onclick="updateSessions(${c.id},-1)" style="background:#F4F4F8;border:none;border-radius:5px;width:24px;height:24px;cursor:pointer;font-size:.9rem;font-weight:700;color:#9A9AB0;">−</button>
+          <strong>${c.sessions||0}</strong>
+          <button onclick="updateSessions(${c.id},1)" style="background:#F4F4F8;border:none;border-radius:5px;width:24px;height:24px;cursor:pointer;font-size:.9rem;font-weight:700;color:#C4714A;">+</button>
+        </div>
+      </td>
+      <td style="color:${loy.color};font-weight:600;">${loy.reduction}</td>
+      <td style="color:#9A9AB0;font-size:.78rem;">${c.date ? fmtd(c.date) : '—'}</td>
+      <td style="display:flex;gap:.4rem;">
+        <button class="btn btn-ghost btn-sm" onclick="toggleAbonne(${c.id})">${c.status==='abonne'?'↩ Désabonner':'♾ Abonner'}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteClient(${c.id})">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+</script>
+</body>
+</html>

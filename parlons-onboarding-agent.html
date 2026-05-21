@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Parlons — Onboarding Écoutant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:#FAF7F2;color:#2C1F14;padding:2rem 1.5rem 4rem;font-size:.9rem;line-height:1.7;}
+    .container{max-width:800px;margin:0 auto;}
+    .doc{background:white;border-radius:20px;padding:2.5rem;box-shadow:0 8px 40px rgba(44,31,20,.08);margin-bottom:2rem;}
+    .logo{font-family:'Playfair Display',serif;font-size:1.4rem;color:#C4714A;margin-bottom:.3rem;}
+    .logo span{font-style:italic;color:#A8502E;}
+    .meta{font-size:.72rem;color:#B09070;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:2px solid #F0E8D8;}
+    h1{font-family:'Playfair Display',serif;font-size:1.6rem;color:#2C1F14;margin-bottom:.4rem;}
+    h2{font-family:'Playfair Display',serif;font-size:1.1rem;color:#C4714A;margin:1.8rem 0 .6rem;padding-bottom:.3rem;border-bottom:1px solid #F0E8D8;}
+    h3{font-size:.92rem;font-weight:600;color:#2C1F14;margin:1.2rem 0 .4rem;}
+    p{color:#4A3828;font-weight:300;margin-bottom:.7rem;font-size:.85rem;}
+    .email-box{background:#F0F4FF;border:1.5px solid #B0C0E8;border-radius:14px;padding:1.8rem;margin:1.2rem 0;}
+    .email-subject{font-size:.72rem;font-weight:700;color:#3A6ACA;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem;}
+    .email-body{font-size:.84rem;color:#2C2C4A;line-height:1.75;white-space:pre-wrap;}
+    .checklist-item{display:flex;align-items:flex-start;gap:.7rem;padding:.6rem 0;border-bottom:1px solid #F0E8D8;}
+    .checklist-item:last-child{border-bottom:none;}
+    .check-box{width:20px;height:20px;border:2px solid #C4714A;border-radius:5px;flex-shrink:0;margin-top:.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+    .check-box.checked{background:#C4714A;color:white;font-size:.8rem;}
+    .check-label{font-size:.83rem;color:#4A3828;font-weight:300;}
+    .check-label strong{color:#2C1F14;}
+    .tag{display:inline-block;padding:.15rem .55rem;border-radius:50px;font-size:.65rem;font-weight:700;margin-left:.4rem;}
+    .tag-urgent{background:#FFF0F0;color:#A02020;}
+    .tag-doc{background:#E8F0FF;color:#3A6ACA;}
+    .tag-tech{background:#FFF8E1;color:#7a6000;}
+    .info{background:#FFF8E1;border-left:4px solid #C4714A;border-radius:0 9px 9px 0;padding:.8rem 1rem;margin:1rem 0;font-size:.8rem;color:#7a5000;}
+    .green{background:#E8F8E8;border-left:4px solid #5CB85C;border-radius:0 9px 9px 0;padding:.8rem 1rem;margin:1rem 0;font-size:.8rem;color:#2D7A2D;}
+    .footer{text-align:center;font-size:.72rem;color:#B09070;margin-top:1.5rem;}
+    @media print{body{background:white;}.doc{box-shadow:none;}}
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- EMAIL DE BIENVENUE -->
+  <div class="doc">
+    <div class="logo">Par<span>lons</span></div>
+    <div class="meta">Email type de bienvenue · À envoyer à chaque nouvel écoutant accepté</div>
+    <h1>Email d'onboarding — Nouvel écoutant</h1>
+    <p>Copiez-collez ce modèle dans votre messagerie Gmail en remplaçant les champs entre crochets.</p>
+
+    <div class="email-box">
+      <div class="email-subject">OBJET : 🎉 Bienvenue dans l'équipe Parlons, [PSEUDO] !</div>
+      <div class="email-body">Bonjour [PRÉNOM],
+
+Excellente nouvelle : votre candidature a été retenue ! Bienvenue dans l'équipe Parlons. 🤍
+
+Vous êtes maintenant officiellement écoutant(e) chez Parlons. Voici tout ce dont vous avez besoin pour démarrer.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+🔐 VOS ACCÈS TAWK.TO
+━━━━━━━━━━━━━━━━━━━━━━━
+
+Plateforme : dashboard.tawk.to
+Email d'invitation : vous allez recevoir un email d'invitation Tawk.to séparément
+Votre pseudo affiché aux clients : [PSEUDO]
+
+Téléchargez l'app Tawk.to sur votre téléphone pour recevoir les notifications en temps réel.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+📋 DOCUMENTS À SIGNER
+━━━━━━━━━━━━━━━━━━━━━━━
+
+Merci de me retourner signés dans les 5 jours :
+
+1. Contrat de prestation de services (en pièce jointe)
+2. Charte de l'Écoutant (accessible sur le site, onglet "Devenir écoutant")
+
+Sans ces deux documents signés, vous ne pourrez pas prendre de sessions.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+💰 RÉMUNÉRATION
+━━━━━━━━━━━━━━━━━━━━━━━
+
+Rappel des tarifs :
+• Session 10 min : vous percevez 1,00 €
+• Session 30 min : vous percevez 3,50 €
+• Session 1 heure : vous percevez 7,50 €
+• Pass mensuel : part équitable entre agents actifs (10+ sessions/mois)
+• Chat de groupe : non rémunéré (vous pouvez y participer librement)
+
+Envoyez votre facture mensuelle avant le 5 de chaque mois.
+Je règle par virement sous 10 jours ouvrés.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+📖 À LIRE ABSOLUMENT
+━━━━━━━━━━━━━━━━━━━━━━━
+
+• Protocole interne Parlons (en pièce jointe) — à lire entièrement avant votre première session
+• Numéros d'urgence à mémoriser : 3114 (suicide) · 15 (SAMU) · 112 (urgences)
+
+━━━━━━━━━━━━━━━━━━━━━━━
+✅ RÈGLES ESSENTIELLES
+━━━━━━━━━━━━━━━━━━━━━━━
+
+• Répondez dans les 2 minutes après attribution
+• Ne jamais vous présenter comme professionnel de santé
+• Orientez vers le 3114 en cas de risque suicidaire
+• Signalez-moi immédiatement toute situation difficile
+
+━━━━━━━━━━━━━━━━━━━━━━━
+🗓️ PROCHAINES ÉTAPES
+━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Acceptez l'invitation Tawk.to (email séparé)
+2. Renvoyez les documents signés
+3. Communiquez vos premières plages de disponibilité
+4. Première session supervisée avec moi avant d'être en autonomie
+
+Des questions ? Répondez à cet email ou écrivez à :
+contact.parlons.ecoute@gmail.com
+
+Bienvenue à bord et merci de faire partie de l'aventure ! 🚀
+
+Cordialement,
+[VOTRE PRÉNOM]
+Fondateur(trice) — Parlons
+contact.parlons.ecoute@gmail.com
+
+—
+⚠️ Parlons est un service d'écoute conversationnelle. Ni Parlons ni ses écoutants ne sont des professionnels de santé.</div>
+    </div>
+  </div>
+
+  <!-- CHECKLIST ONBOARDING -->
+  <div class="doc">
+    <div class="logo">Par<span>lons</span></div>
+    <div class="meta">Checklist onboarding · À compléter pour chaque nouvel écoutant</div>
+    <h1>Checklist Nouvel Écoutant</h1>
+    <p>Complétez cette checklist pour chaque agent recruté. Cliquez sur les cases pour les cocher.</p>
+
+    <h2>📋 Avant l'envoi de l'email de bienvenue</h2>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Candidature validée</strong> — vérification de la motivation, de l'expérience et de la disponibilité<span class="tag tag-urgent">Urgent</span></div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Statut auto-entrepreneur vérifié</strong> — SIRET valide, code APE 8899B<span class="tag tag-doc">Document</span></div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Pseudo choisi et validé</strong> — unique, bienveillant, non médical</div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Invitation Tawk.to envoyée</strong> — depuis dashboard.tawk.to → Équipe → Inviter<span class="tag tag-tech">Technique</span></div></div>
+
+    <h2>📄 Documents à récupérer signés</h2>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Contrat de prestation</strong> signé en deux exemplaires<span class="tag tag-doc">Document</span><span class="tag tag-urgent">Urgent</span></div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Charte de l'Écoutant</strong> signée<span class="tag tag-doc">Document</span><span class="tag tag-urgent">Urgent</span></div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Accusé de réception du protocole interne</strong> — signature de l'annexe du protocole</div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Coordonnées bancaires</strong> — RIB pour les virements de rémunération</div></div>
+
+    <h2>⚙️ Configuration technique</h2>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Compte Tawk.to actif</strong> — accès au dashboard vérifié<span class="tag tag-tech">Technique</span></div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>App Tawk.to installée</strong> sur téléphone — notifications activées<span class="tag tag-tech">Technique</span></div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Pseudo configuré</strong> dans Tawk.to — nom affiché aux clients<span class="tag tag-tech">Technique</span></div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Réponses prédéfinies</strong> configurées — /accueil /fin /urgence /continuer /fileattente<span class="tag tag-tech">Technique</span></div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Limite de chats simultanés</strong> configurée — max 4 recommandé<span class="tag tag-tech">Technique</span></div></div>
+
+    <h2>🎓 Formation</h2>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Protocole interne lu et signé</strong> — notamment la section suicide et crises</div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Numéros d'urgence mémorisés</strong> — 3114 / 15 / 112 / 3919</div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Session test supervisée</strong> — première session avec vous présent pour valider la posture</div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Plages de disponibilité communiquées</strong> — calendrier des premières semaines</div></div>
+
+    <h2>💼 Administratif</h2>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Agent ajouté dans le livre de recettes</strong> — fiche créée avec pseudo, nom, email, date début</div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Première facture attendue</strong> — rappel du délai (avant le 5 du mois suivant)</div></div>
+    <div onclick="toggleCheck(this)" class="checklist-item"><div class="check-box">□</div><div class="check-label"><strong>Contact d'urgence</strong> — numéro personnel de l'agent en cas de crise</div></div>
+
+    <div class="green" style="margin-top:1.5rem;">✅ Une fois toutes les cases cochées, l'agent est opérationnel et peut prendre ses premières sessions en autonomie.</div>
+
+    <div class="footer">Parlons · Checklist Onboarding v1.0 · Avril 2026 · Confidentiel</div>
+  </div>
+
+</div>
+
+<script>
+function toggleCheck(item) {
+  const box = item.querySelector('.check-box');
+  const isChecked = box.classList.contains('checked');
+  box.classList.toggle('checked');
+  box.textContent = isChecked ? '□' : '✓';
+  // Sauvegarde locale
+  const items = document.querySelectorAll('.checklist-item');
+  const states = Array.from(items).map(i => i.querySelector('.check-box').classList.contains('checked'));
+  localStorage.setItem('parlons_onboarding_checklist', JSON.stringify(states));
+}
+// Restaurer l'état
+window.addEventListener('load', () => {
+  const saved = JSON.parse(localStorage.getItem('parlons_onboarding_checklist') || '[]');
+  const items = document.querySelectorAll('.checklist-item');
+  items.forEach((item, i) => {
+    if (saved[i]) {
+      const box = item.querySelector('.check-box');
+      box.classList.add('checked');
+      box.textContent = '✓';
+    }
+  });
+});
+</script>
+</body>
+</html>
