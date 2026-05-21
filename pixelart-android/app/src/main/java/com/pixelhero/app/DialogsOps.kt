@@ -1,5 +1,6 @@
 package com.pixelhero.app
 
+import android.content.Context
 import android.graphics.Color
 import android.view.View
 import android.widget.EditText
@@ -450,7 +451,7 @@ internal fun MainActivity.showCheatsheet() {
 
 internal fun MainActivity.showTutorial(force: Boolean = false) {
     val seenKey = "tutorialSeen"
-    val prefs = getPreferences(MODE_PRIVATE)
+    val prefs = getPreferences(Context.MODE_PRIVATE)
     if (!force && prefs.getBoolean(seenKey, false)) return
     val pages = listOf(
         "Bienvenue dans PixelHero ! 👋\n\nApp pixel-art frame-by-frame, optimisée tablette + stylet. Par défaut canvas 64×64, max 600×600. Menu (☰) → Nouveau projet pour choisir une taille.",
@@ -470,7 +471,7 @@ internal fun MainActivity.showTutorial(force: Boolean = false) {
 
 private fun MainActivity.showTutorialPage(pages: List<String>, idx: Int, seenKey: String) {
     if (idx >= pages.size) {
-        getPreferences(MODE_PRIVATE).edit().putBoolean(seenKey, true).apply()
+        getPreferences(Context.MODE_PRIVATE).edit().putBoolean(seenKey, true).apply()
         return
     }
     AlertDialog.Builder(this)
@@ -480,7 +481,7 @@ private fun MainActivity.showTutorialPage(pages: List<String>, idx: Int, seenKey
             showTutorialPage(pages, idx + 1, seenKey)
         }
         .setNeutralButton("Passer") { _, _ ->
-            getPreferences(MODE_PRIVATE).edit().putBoolean(seenKey, true).apply()
+            getPreferences(Context.MODE_PRIVATE).edit().putBoolean(seenKey, true).apply()
         }
         .show()
 }

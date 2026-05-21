@@ -48,7 +48,7 @@ internal fun MainActivity.nextPlayIndexInRange(current: Int, start: Int, end: In
     val nextRel = when (mode) {
         PlayMode.LOOP -> (rel + 1) % size
         PlayMode.REVERSE -> if (rel - 1 < 0) size - 1 else rel - 1
-        PlayMode.ONCE -> if (rel + 1 >= size) return -1 else rel + 1
+        PlayMode.ONCE -> { if (rel + 1 >= size) return -1; rel + 1 }
         PlayMode.PING_PONG -> {
             if (pingPongForward) {
                 if (rel + 1 >= size) { pingPongForward = false; (rel - 1).coerceAtLeast(0) }

@@ -1,5 +1,6 @@
 package com.pixelhero.app
 
+import android.content.Context
 import android.graphics.BitmapFactory
 import android.text.InputType
 import android.view.View
@@ -201,12 +202,12 @@ internal fun MainActivity.loadProjectById(id: String) {
 
 /** Store the most recently opened project id so we can offer to resume. */
 internal fun MainActivity.rememberLastProject(id: String) {
-    getSharedPreferences("settings", MODE_PRIVATE).edit()
+    getSharedPreferences("settings", Context.MODE_PRIVATE).edit()
         .putString("lastProjectId", id).apply()
 }
 
 internal fun MainActivity.lastProjectId(): String? =
-    getSharedPreferences("settings", MODE_PRIVATE).getString("lastProjectId", null)
+    getSharedPreferences("settings", Context.MODE_PRIVATE).getString("lastProjectId", null)
 
 /**
  * On startup, if a previous project was open, show a non-intrusive prompt

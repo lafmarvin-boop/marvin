@@ -546,7 +546,7 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun showParticlesDialog() {
+    internal fun showParticlesDialog() {
         val types = Particles.Type.values()
         val labels = types.map { it.displayName }.toTypedArray()
         AlertDialog.Builder(this)
@@ -582,7 +582,7 @@ class MainActivity : AppCompatActivity() {
         toast("Particules « ${type.displayName} » appliquées")
     }
 
-    private fun showGlobalBackgroundDialog() {
+    internal fun showGlobalBackgroundDialog() {
         val items = mutableListOf<String>()
         items.add("Capturer la frame actuelle comme fond global")
         if (project.globalBackground != null) {
@@ -620,7 +620,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun exportBackupZip() {
+    internal fun exportBackupZip() {
         lifecycleScope.launch {
             val bytes = withContext(Dispatchers.Default) { Backup.exportAll(this@MainActivity) }
             val name = "pixelhero_backup_${System.currentTimeMillis()}.zip"
@@ -640,11 +640,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun pickAndImportBackup() {
+    internal fun pickAndImportBackup() {
         pickBackupZip.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
     }
 
-    private fun exportGameDevPackage() {
+    internal fun exportGameDevPackage() {
         lifecycleScope.launch {
             withContext(Dispatchers.Default) {
                 // 1. Sprite sheet PNG (one row per tag, cells per frame)
@@ -708,7 +708,7 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    private fun showTweenDialog() {
+    internal fun showTweenDialog() {
         if (project.frames.size < 2) {
             toast("Il faut au moins 2 frames. Crée une frame d'arrivée d'abord.")
             return
@@ -1068,7 +1068,7 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    private fun openTileMap() {
+    internal fun openTileMap() {
         // Save project first (the tile activity loads from storage)
         ProjectStorage.save(this, project)
         TileMapActivity.start(this, project.id)
@@ -1489,7 +1489,7 @@ class MainActivity : AppCompatActivity() {
         if (uri != null) processSpriteSheet(uri)
     }
 
-    private fun importSpriteSheet() {
+    internal fun importSpriteSheet() {
         // Ask user for cols/rows
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
