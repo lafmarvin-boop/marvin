@@ -1696,6 +1696,8 @@ async function handlePayment(){
     label.style.display='inline';spinner.style.display='none';btn.disabled=false;
     document.getElementById('payment-form').style.display='none';
     document.getElementById('payment-success').style.display='block';
+    // Montre le widget minimisé : l'agent peut écrire et la bulle de notif s'affiche
+    if(typeof Tawk_API!=='undefined'){try{Tawk_API.showWidget();}catch(e){}}
     startWaitTimer();
 
   } catch(err){
