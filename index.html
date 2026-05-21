@@ -1459,6 +1459,7 @@
   // Cache le widget par défaut — ne s'ouvre qu'après paiement
   Tawk_API.onLoad=function(){
     Tawk_API.hideWidget();
+    try{Tawk_API.setLanguage('fr');}catch(e){}
   };
   function openTawk(){
     try {
@@ -1564,7 +1565,7 @@ function startWaitTimer(){
     waitSeconds++;
     const m=Math.floor(waitSeconds/60),s=waitSeconds%60;
     const el=document.getElementById('wait-counter');if(el)el.textContent=`${m}:${String(s).padStart(2,'0')}`;
-    if(waitSeconds>=180&&!reportShown){reportShown=true;const rz=document.getElementById('report-zone');if(rz)rz.style.display='block';}
+    if(waitSeconds>=140&&!reportShown){reportShown=true;const rz=document.getElementById('report-zone');if(rz)rz.style.display='block';}
     if(waitSeconds>=600){
       clearInterval(waitTimer);
       if(typeof Tawk_API!=='undefined'){try{Tawk_API.minimize();}catch(e){}}
@@ -1584,6 +1585,7 @@ function startWaitTimer(){
 // ── AGENT CONNECTED ──
 function agentConnected(){
   clearInterval(waitTimer);
+  openTawk();
   document.getElementById('waiting-zone').style.display='none';
   document.getElementById('session-zone').style.display='block';
   sessionSeconds=sessionDurationSec;updateSessionUI();
@@ -1598,9 +1600,7 @@ function agentConnected(){
       document.getElementById('session-timer').textContent='0:00';
       const mbar2=document.getElementById('mobile-session-bar');
       if(mbar2){mbar2.style.display='none';}
-      if(typeof Tawk_API!=='undefined'){
-        try{Tawk_API.sendMessage('⏰ Session de '+selectedLabel+' terminée. Merci pour cet échange !');}catch(e){}
-      }
+      if(typeof Tawk_API!=='undefined'){try{Tawk_API.minimize();}catch(e){}}
       const se=document.getElementById('session-ended');
       if(se){
         se.style.display='block';
@@ -1696,7 +1696,7 @@ async function handlePayment(){
     label.style.display='inline';spinner.style.display='none';btn.disabled=false;
     document.getElementById('payment-form').style.display='none';
     document.getElementById('payment-success').style.display='block';
-    openTawk();startWaitTimer();
+    startWaitTimer();
 
   } catch(err){
     document.getElementById('payment-error').textContent=err.message||'Erreur lors du paiement. Réessayez.';
