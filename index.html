@@ -1362,8 +1362,8 @@
           <div id="wait-counter">0:00</div>
           <p style="font-size:.7rem;color:#B09070;margin-top:.3rem;">temps d'attente</p>
           <div style="margin-top:.9rem;">
-            <button onclick="agentConnected()" style="background:#2d7a2d;color:white;border:none;border-radius:50px;padding:.6rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;width:100%;">✅ Mon écoutant a répondu · Démarrer le chrono</button>
-            <p style="font-size:.68rem;color:#B09070;margin-top:.4rem;text-align:center;">Appuyez sur ce bouton dès que votre écoutant envoie son premier message</p>
+            <button onclick="agentConnected()" style="background:#2d7a2d;color:white;border:none;border-radius:50px;padding:.6rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;width:100%;">✅ Démarrer le chrono manuellement</button>
+            <p style="font-size:.68rem;color:#B09070;margin-top:.4rem;text-align:center;">Le chrono démarre automatiquement dès que l'écoutant envoie son premier message</p>
           </div>
           <div id="report-zone" style="display:none;margin-top:.9rem;">
             <p>⚠️ L'écoutant n'a pas encore répondu depuis 3 minutes.</p>
@@ -1460,6 +1460,12 @@
   Tawk_API.onLoad=function(){
     Tawk_API.hideWidget();
     try{Tawk_API.setLanguage('fr');}catch(e){}
+  };
+  // Démarre le timer automatiquement au 1er message de l'agent
+  Tawk_API.onMessageReceived=function(){
+    if(typeof agentConnected==='function' && typeof waitTimer!=='undefined' && waitTimer!==null){
+      agentConnected();
+    }
   };
   function openTawk(){
     try {
@@ -1584,7 +1590,8 @@ function startWaitTimer(){
 
 // ── AGENT CONNECTED ──
 function agentConnected(){
-  clearInterval(waitTimer);
+  if(sessionTimer!==null) return; // déjà démarré
+  clearInterval(waitTimer); waitTimer=null;
   openTawk();
   document.getElementById('waiting-zone').style.display='none';
   document.getElementById('session-zone').style.display='block';
