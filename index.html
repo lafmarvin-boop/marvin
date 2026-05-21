@@ -1460,6 +1460,16 @@
   Tawk_API.onLoad=function(){
     Tawk_API.hideWidget();
     try{Tawk_API.setLanguage('fr');}catch(e){}
+    // Synchronise le bouton de disponibilité avec le vrai statut Tawk
+    try{
+      const s=Tawk_API.getStatus();
+      window.isOnline=(s==='online');
+      if(typeof updateAvailUI==='function') updateAvailUI();
+    }catch(e){}
+  };
+  Tawk_API.onStatusChange=function(status){
+    window.isOnline=(status==='online');
+    if(typeof updateAvailUI==='function') updateAvailUI();
   };
   // Démarre le timer automatiquement au 1er message de l'agent
   Tawk_API.onMessageReceived=function(){
@@ -1574,7 +1584,7 @@ function startWaitTimer(){
     if(waitSeconds>=140&&!reportShown){reportShown=true;const rz=document.getElementById('report-zone');if(rz)rz.style.display='block';}
     if(waitSeconds>=600){
       clearInterval(waitTimer);
-      if(typeof Tawk_API!=='undefined'){try{Tawk_API.minimize();}catch(e){}}
+      if(typeof Tawk_API!=='undefined'){try{Tawk_API.endChat();}catch(e){}try{Tawk_API.hideWidget();}catch(e){}}
       if(!reportShown) reportSlowAgent();
       const wz=document.getElementById('waiting-zone');
       if(wz) wz.innerHTML=`
@@ -1598,6 +1608,8 @@ function agentConnected(){
   sessionSeconds=sessionDurationSec;updateSessionUI();
   const mbar=document.getElementById('mobile-session-bar');
   if(mbar){mbar.style.display='flex';}
+  const tbadge=document.getElementById('tawk-timer-badge');
+  if(tbadge){tbadge.style.display='block';}
   sessionTimer=setInterval(()=>{
     sessionSeconds--;updateSessionUI();
     if(sessionSeconds===120)document.getElementById('end-warning').style.display='block';
@@ -1607,7 +1619,12 @@ function agentConnected(){
       document.getElementById('session-timer').textContent='0:00';
       const mbar2=document.getElementById('mobile-session-bar');
       if(mbar2){mbar2.style.display='none';}
-      if(typeof Tawk_API!=='undefined'){try{Tawk_API.minimize();}catch(e){}}
+      const tbadge=document.getElementById('tawk-timer-badge');
+      if(tbadge){tbadge.style.display='none';}
+      if(typeof Tawk_API!=='undefined'){
+        try{Tawk_API.endChat();}catch(e){}
+        try{Tawk_API.hideWidget();}catch(e){}
+      }
       const se=document.getElementById('session-ended');
       if(se){
         se.style.display='block';
@@ -1624,10 +1641,13 @@ function agentConnected(){
 function updateSessionUI(){
   const m=Math.floor(sessionSeconds/60),s=sessionSeconds%60;
   const timeStr=`${m}:${String(s).padStart(2,'0')}`;
+  const red=sessionSeconds<=120;
   const el=document.getElementById('session-timer');
-  if(el){el.textContent=timeStr;if(sessionSeconds<=120)el.style.color='#e74c3c';}
+  if(el){el.textContent=timeStr;if(red)el.style.color='#e74c3c';}
   const mel=document.getElementById('mobile-timer-display');
-  if(mel){mel.textContent=timeStr;if(sessionSeconds<=120)mel.style.color='#e74c3c';}
+  if(mel){mel.textContent=timeStr;if(red)mel.style.color='#e74c3c';}
+  const tbadge=document.getElementById('tawk-timer-badge');
+  if(tbadge){tbadge.textContent=timeStr;tbadge.style.background=red?'#e74c3c':'#C1440E';}
 }
 function retrySession(){
   sessionStorage.removeItem('parlons_payment_id');
@@ -2395,6 +2415,9 @@ window.addEventListener('resize', stackBanners);
 // Relancer après les fonts Google
 document.fonts && document.fonts.ready.then(stackBanners);
 </script>
+
+<!-- BADGE TIMER AU-DESSUS DE LA BULLE TAWK -->
+<div id="tawk-timer-badge" style="display:none;position:fixed;bottom:82px;right:12px;z-index:9998;background:#C1440E;color:white;border-radius:50px;padding:.28rem .65rem;font-size:.82rem;font-family:'Playfair Display',serif;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.25);pointer-events:none;">--:--</div>
 
 <!-- BARRE SESSION MOBILE (fixe, toujours visible pendant la session) -->
 <div id="mobile-session-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#e8f8e8;border-top:2px solid #5CB85C;padding:.55rem 1rem;flex-direction:row;justify-content:space-between;align-items:center;font-family:'DM Sans',sans-serif;box-shadow:0 -2px 8px rgba(0,0,0,.08);">
