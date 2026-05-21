@@ -40,7 +40,7 @@ internal fun MainActivity.startPlay() {
     animHandler.post(r)
 }
 
-/** Loop / ping-pong / reverse / once, but restricted to [start..end]. */
+/** Loop / ping-pong / reverse / once, but restricted to the start..end range. */
 internal fun MainActivity.nextPlayIndexInRange(current: Int, start: Int, end: Int, mode: PlayMode): Int {
     val size = end - start + 1
     if (size <= 0) return -1
