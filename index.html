@@ -1472,8 +1472,8 @@
     if(typeof updateAvailUI==='function') updateAvailUI();
   };
   // Démarre le timer automatiquement au 1er message de l'agent
-  Tawk_API.onMessageReceived=function(){
-    if(typeof agentConnected==='function' && typeof waitTimer!=='undefined' && waitTimer!==null){
+  Tawk_API.onChatMessageAgent=function(){
+    if(typeof agentConnected==='function' && sessionTimer===null && waitTimer!==null){
       agentConnected();
     }
   };
@@ -1586,14 +1586,15 @@ function startWaitTimer(){
       clearInterval(waitTimer);
       if(typeof Tawk_API!=='undefined'){try{Tawk_API.endChat();}catch(e){}try{Tawk_API.hideWidget();}catch(e){}}
       if(!reportShown) reportSlowAgent();
+      const wzName=document.getElementById('user-name')?document.getElementById('user-name').value.trim():'';
       const wz=document.getElementById('waiting-zone');
       if(wz) wz.innerHTML=`
-        <strong style="color:#a02020;">⏰ 10 minutes d'attente dépassées</strong>
-        <p style="color:#a02020;font-size:.82rem;">Aucun écoutant disponible. Un remboursement a été initié automatiquement.</p>
-        <div style="display:flex;flex-direction:column;gap:.6rem;margin-top:.8rem;">
-          <button onclick="retrySession()" style="background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.6rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;width:100%;">🔄 Réessayer une nouvelle session</button>
-          <button onclick="closeModal()" style="background:none;border:1.5px solid #888;color:#666;border-radius:50px;padding:.55rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;cursor:pointer;width:100%;">✕ Quitter</button>
-        </div>`;
+        <strong style="color:#7a6000;">⏰ Aucun écoutant disponible pour le moment</strong>
+        <p style="font-size:.8rem;color:#7a5a42;margin:.5rem 0 .9rem;line-height:1.5;">10 minutes se sont écoulées sans réponse. Laissez votre email et nous vous recontactons dès qu'un écoutant est disponible.</p>
+        <input type="email" id="recontact-email" placeholder="votre@email.com" style="width:100%;padding:.6rem .9rem;border:1.5px solid #D4B896;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.84rem;box-sizing:border-box;margin-bottom:.5rem;outline:none;" />
+        <textarea id="recontact-msg" placeholder="Un message pour nous aider à vous recontacter ? (optionnel)" style="width:100%;padding:.6rem .9rem;border:1.5px solid #D4B896;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;box-sizing:border-box;margin-bottom:.7rem;resize:none;height:60px;outline:none;"></textarea>
+        <button onclick="sendRecontactRequest('${wzName}')" style="background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.6rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;width:100%;margin-bottom:.4rem;">📧 Me faire recontacter</button>
+        <button onclick="closeModal()" style="background:none;border:1.5px solid #999;color:#666;border-radius:50px;padding:.5rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;cursor:pointer;width:100%;">✕ Quitter</button>`;
     }
   },1000);
 }
@@ -1784,6 +1785,22 @@ function submitNotify(){
   document.getElementById('notify-email').value='';
   document.getElementById('notify-success').textContent='✅ Parfait ! Vous serez notifié(e) dès qu\'un écoutant est disponible.';
   document.getElementById('notify-success').style.display='block';
+}
+
+// ── RECONTACT (après 10 min d'attente) ──
+function sendRecontactRequest(prenom){
+  const emailEl=document.getElementById('recontact-email');
+  const email=emailEl?emailEl.value.trim():'';
+  if(!email||!email.includes('@')){if(emailEl)emailEl.focus();return;}
+  const msg=document.getElementById('recontact-msg')?document.getElementById('recontact-msg').value.trim():'';
+  sendEmailAlert(EMAILJS_TEMPLATE_NOTIF,{
+    subject:'📩 Demande de recontact — attente dépassée — Parlons',
+    client_email:email,
+    date:new Date().toLocaleDateString('fr-FR'),
+    message:`Demande de recontact après 10 min d'attente sans réponse.\nPrénom : ${prenom||'non renseigné'}\nEmail : ${email}\nMessage : ${msg||'—'}`
+  });
+  const wz=document.getElementById('waiting-zone');
+  if(wz) wz.innerHTML=`<div style="background:#e8f8e8;border-radius:9px;padding:1rem;border:1px solid #5CB85C;text-align:center;font-size:.84rem;color:#2d7a2d;line-height:1.7;">✅ <strong>Demande enregistrée !</strong><br>Nous vous recontacterons à<br><strong>${email}</strong><br>dès qu'un écoutant est disponible.</div>`;
 }
 
 // ── AGENT PAGE ──
