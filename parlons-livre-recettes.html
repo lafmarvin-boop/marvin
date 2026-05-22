@@ -363,6 +363,14 @@
     </div>
   </div>
 
+  <!-- Section avis & commentaires -->
+  <div style="margin-top:2rem;">
+    <h2 style="font-size:1.1rem;margin-bottom:.8rem;">⭐ Avis & commentaires</h2>
+    <div id="ratings-list" style="display:flex;flex-direction:column;gap:.7rem;">
+      <div style="color:#9A9AB0;font-size:.85rem;">Chargement…</div>
+    </div>
+  </div>
+
 </div><!-- fin .app -->
   <div class="page" id="page-mensuel">
     <div class="page-header">
@@ -718,6 +726,26 @@ async function loadAvailability(){
     _renderAvailBtn();
   }catch(e){ document.getElementById('avail-status-text').textContent = 'Erreur de chargement. Réessayez.'; }
 }
+
+async function loadRatings(){
+  const el = document.getElementById('ratings-list');
+  if(!el) return;
+  const url = process.env?.SUPABASE_URL || '';
+  const key = process.env?.SUPABASE_SERVICE_KEY || '';
+  try{
+    const r = await fetch(`/.netlify/functions/get-ratings`);
+    const data = await r.json();
+    if(!Array.isArray(data)||data.length===0){el.innerHTML='<div style="color:#9A9AB0;font-size:.85rem;">Aucun avis pour le moment.</div>';return;}
+    el.innerHTML = data.map(d=>`
+      <div style="background:white;border:1px solid #E8DFD0;border-radius:10px;padding:.9rem 1rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;">
+          <span style="font-size:1rem;">${'★'.repeat(d.rating||0)}${'☆'.repeat(5-(d.rating||0))}</span>
+          <span style="font-size:.75rem;color:#9A9AB0;">${d.created_at?new Date(d.created_at).toLocaleDateString('fr-FR'):''} · ${d.session_label||''}</span>
+        </div>
+        ${d.rating_comment?`<p style="font-size:.83rem;color:#4A3728;margin:0;">"${d.rating_comment}"</p>`:'<p style="font-size:.78rem;color:#9A9AB0;margin:0;">Pas de commentaire</p>'}
+      </div>`).join('');
+  }catch(e){el.innerHTML='<div style="color:#e74c3c;font-size:.82rem;">Erreur chargement avis</div>';}
+}
 function _renderAvailBtn(){
   const btn = document.getElementById('avail-btn');
   const txt = document.getElementById('avail-status-text');
@@ -759,7 +787,7 @@ function checkPassword() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     err.style.display = 'none';
-    render(); renderClients(); loadAvailability();
+    render(); renderClients(); loadAvailability(); loadRatings();
   } else {
     err.style.display = 'block';
     document.getElementById('pwd-input').value = '';

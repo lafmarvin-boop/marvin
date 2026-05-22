@@ -1587,7 +1587,12 @@ function startWaitTimer(){
     waitSeconds++;
     const m=Math.floor(waitSeconds/60),s=waitSeconds%60;
     const el=document.getElementById('wait-counter');if(el)el.textContent=`${m}:${String(s).padStart(2,'0')}`;
-    if(waitSeconds>=140&&!reportShown){reportShown=true;const rz=document.getElementById('report-zone');if(rz)rz.style.display='block';}
+    if(waitSeconds>=140&&!reportShown){
+      reportShown=true;
+      const rz=document.getElementById('report-zone');if(rz)rz.style.display='block';
+      try{$crisp.push(["do","chat:show"]);$crisp.push(["do","chat:open"]);
+        $crisp.push(["do","message:send",["text","⚠️ Aucune réponse depuis 2min20. Fermez ce chat et cliquez sur 'Signaler' dans le modal pour demander un remboursement."]]);}catch(e){}
+    }
     if(waitSeconds>=600){
       clearInterval(waitTimer);
       try{$crisp.push(["do","chat:close"]);$crisp.push(["do","chat:hide"]);}catch(e){}
@@ -1633,7 +1638,10 @@ function agentConnected(){
       if(mbar2){mbar2.style.display='none';}
       const tbadge=document.getElementById('tawk-timer-badge');
       if(tbadge){tbadge.style.display='none';}
-      try{$crisp.push(["do","chat:close"]);$crisp.push(["do","chat:hide"]);}catch(e){}
+      try{
+        $crisp.push(["do","message:send",["text","⏰ Session terminée. Merci pour cet échange !"]]);
+        setTimeout(()=>{$crisp.push(["do","chat:close"]);$crisp.push(["do","chat:hide"]);},1500);
+      }catch(e){}
       const se=document.getElementById('session-ended');
       if(se){
         se.style.display='block';
@@ -1657,6 +1665,8 @@ function updateSessionUI(){
   if(mel){mel.textContent=timeStr;if(red)mel.style.color='#e74c3c';}
   const tbadge=document.getElementById('tawk-timer-badge');
   if(tbadge){tbadge.textContent=timeStr;tbadge.style.background=red?'#e74c3c':'#C1440E';}
+  // Minuteur visible dans le widget Crisp (utile sur mobile)
+  try{$crisp.push(["config","chatbox:description",["⏱ "+timeStr+" restantes"]]);}catch(e){}
 }
 function retrySession(){
   sessionStorage.removeItem('parlons_payment_id');
@@ -1700,7 +1710,9 @@ async function submitRating(){
   try {
     await fetch('/.netlify/functions/end-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paymentId,rating:ratingVal,comment})});
   } catch(e){}
-  document.getElementById('rating-zone').innerHTML='<p style="color:#2d7a2d;font-size:.86rem;text-align:center;">✅ Merci pour votre note !</p>';
+  document.getElementById('rating-zone').innerHTML=`
+    <p style="color:#2d7a2d;font-size:.86rem;text-align:center;">✅ Merci pour votre note !</p>
+    <button onclick="retrySession()" style="margin-top:.7rem;width:100%;background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.7rem 1.2rem;font-family:'DM Sans',sans-serif;font-size:.84rem;font-weight:600;cursor:pointer;">💬 Démarrer une nouvelle session →</button>`;
 }
 
 // ── PAYMENT ──
