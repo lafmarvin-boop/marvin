@@ -1458,20 +1458,16 @@
   $crisp.push(["safe", true]);
   $crisp.push(["config", "locale", "fr"]);
   $crisp.push(["do", "chat:hide"]);
-  // Statut de disponibilité — vérifie via Netlify Function toutes les 30s
-  function _checkCrispAvail(){
-    fetch('/.netlify/functions/availability')
-      .then(r=>r.json())
-      .then(d=>{
-        if(window.isOnline!==d.online){window.isOnline=d.online;if(typeof updateAvailUI==='function')updateAvailUI();}
-      }).catch(()=>{});
-  }
-  $crisp.push(["on","session:loaded",function(){
-    _checkCrispAvail();
-    setInterval(_checkCrispAvail, 30000);
+  // Disponibilité en temps réel via l'événement Crisp natif
+  $crisp.push(["on", "website:availability:changed", function(is_available){
+    window.isOnline = !!is_available;
+    if(typeof updateAvailUI==='function') updateAvailUI();
   }]);
-  // Premier check immédiat dès que la page est prête
-  window.addEventListener('load', function(){ setTimeout(_checkCrispAvail, 1000); });
+  // Vérification initiale après chargement complet du widget
+  $crisp.push(["on", "session:loaded", function(){
+    var avail = $crisp.is("website:available");
+    if(avail !== window.isOnline){ window.isOnline = avail; if(typeof updateAvailUI==='function') updateAvailUI(); }
+  }]);
   // Timer auto au 1er message de l'agent
   window.parlonsWaiting=false;
   $crisp.push(["on", "message:received", function(){
