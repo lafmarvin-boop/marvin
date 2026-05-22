@@ -1463,10 +1463,19 @@
     window.isOnline = !!is_available;
     if(typeof updateAvailUI==='function') updateAvailUI();
   }]);
-  // Vérification initiale après chargement complet du widget
+  // Vérification initiale + polling toutes les 10s (Crisp peut mettre du temps à répondre)
+  function _syncCrispAvail(){
+    try{
+      var avail = !!$crisp.is("website:available");
+      if(avail !== window.isOnline){ window.isOnline = avail; if(typeof updateAvailUI==='function') updateAvailUI(); }
+    }catch(e){}
+  }
   $crisp.push(["on", "session:loaded", function(){
-    var avail = $crisp.is("website:available");
-    if(avail !== window.isOnline){ window.isOnline = avail; if(typeof updateAvailUI==='function') updateAvailUI(); }
+    _syncCrispAvail();
+    setTimeout(_syncCrispAvail, 2000);
+    setTimeout(_syncCrispAvail, 5000);
+    setInterval(_syncCrispAvail, 10000);
+  }]);
   }]);
   // Timer auto au 1er message de l'agent
   window.parlonsWaiting=false;
