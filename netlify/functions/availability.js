@@ -39,39 +39,52 @@ exports.handler = async (event) => {
   // 1. Essai via l'API REST Crisp (si clés configurées)
   const crispId    = process.env.CRISP_API_IDENTIFIER;
   const crispToken = process.env.CRISP_API_TOKEN;
+  const isDebug    = event.queryStringParameters?.debug === '1';
 
   if (crispId && crispToken) {
-    try {
-      const auth = Buffer.from(`${crispId}:${crispToken}`).toString('base64');
-      const authHeaders = { 'Authorization': `Basic ${auth}`, 'X-Crisp-Tier': 'user' };
+    const auth = Buffer.from(`${crispId}:${crispToken}`).toString('base64');
+    const debugLog = [];
 
-      // Endpoint direct : disponibilité globale du site (vue visiteur)
-      const availResp = await fetch(
-        `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/availability`,
-        { headers: authHeaders }
-      );
-      if (availResp.ok) {
-        const availData = await availResp.json();
-        const avail = availData.data?.availability;
-        const online = avail === 'online';
-        return { statusCode: 200, headers, body: JSON.stringify({ online, source: 'crisp' }) };
-      }
+    for (const tier of ['user', 'plugin']) {
+      try {
+        const authHeaders = { 'Authorization': `Basic ${auth}`, 'X-Crisp-Tier': tier };
 
-      // Fallback : liste des opérateurs actifs
-      const opsResp = await fetch(
-        `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operators/active`,
-        { headers: authHeaders }
-      );
-      if (opsResp.ok) {
-        const opsData = await opsResp.json();
-        const operators = Array.isArray(opsData.data) ? opsData.data : [];
-        const online = operators.some(op => {
-          const a = op.availability;
-          return a === 'online' || a?.type === 'online' || a?.status === 'online';
-        });
-        return { statusCode: 200, headers, body: JSON.stringify({ online, source: 'crisp-ops' }) };
+        const availResp = await fetch(
+          `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/availability`,
+          { headers: authHeaders }
+        );
+        debugLog.push({ tier, endpoint: 'availability', status: availResp.status });
+
+        if (availResp.ok) {
+          const availData = await availResp.json();
+          const avail = availData.data?.availability;
+          const online = avail === 'online';
+          if (isDebug) return { statusCode: 200, headers, body: JSON.stringify({ online, source: `crisp-${tier}`, avail, raw: availData }) };
+          return { statusCode: 200, headers, body: JSON.stringify({ online, source: `crisp-${tier}` }) };
+        }
+
+        const opsResp = await fetch(
+          `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operators/active`,
+          { headers: authHeaders }
+        );
+        debugLog.push({ tier, endpoint: 'operators/active', status: opsResp.status });
+
+        if (opsResp.ok) {
+          const opsData = await opsResp.json();
+          const operators = Array.isArray(opsData.data) ? opsData.data : [];
+          const online = operators.some(op => {
+            const a = op.availability;
+            return a === 'online' || a?.type === 'online' || a?.status === 'online';
+          });
+          if (isDebug) return { statusCode: 200, headers, body: JSON.stringify({ online, source: `crisp-ops-${tier}`, operators, raw: opsData }) };
+          return { statusCode: 200, headers, body: JSON.stringify({ online, source: `crisp-ops-${tier}` }) };
+        }
+      } catch (e) {
+        debugLog.push({ tier, error: e.message });
       }
-    } catch (e) { /* tombe sur le fallback Supabase */ }
+    }
+
+    if (isDebug) return { statusCode: 200, headers, body: JSON.stringify({ online: false, source: 'debug-failed', log: debugLog }) };
   }
 
   // 2. Fallback : toggle manuel dans Supabase
