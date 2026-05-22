@@ -43,19 +43,35 @@ exports.handler = async (event) => {
   if (crispId && crispToken) {
     try {
       const auth = Buffer.from(`${crispId}:${crispToken}`).toString('base64');
-      const resp = await fetch(
-        `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operator/list/1`,
-        { headers: { 'Authorization': `Basic ${auth}`, 'X-Crisp-Tier': 'user' } }
+      const authHeaders = { 'Authorization': `Basic ${auth}`, 'X-Crisp-Tier': 'user' };
+
+      // Endpoint direct : disponibilité globale du site (vue visiteur)
+      const availResp = await fetch(
+        `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/availability`,
+        { headers: authHeaders }
       );
-      if (resp.ok) {
-        const data = await resp.json();
-        const operators = Array.isArray(data.data) ? data.data : [];
-        const online = operators.some(op =>
-          op.availability && (op.availability.type === 'online' || op.availability === 'online')
-        );
+      if (availResp.ok) {
+        const availData = await availResp.json();
+        const avail = availData.data?.availability;
+        const online = avail === 'online';
         return { statusCode: 200, headers, body: JSON.stringify({ online, source: 'crisp' }) };
       }
-    } catch (e) { /* tombe sur le fallback */ }
+
+      // Fallback : liste des opérateurs actifs
+      const opsResp = await fetch(
+        `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operators/active`,
+        { headers: authHeaders }
+      );
+      if (opsResp.ok) {
+        const opsData = await opsResp.json();
+        const operators = Array.isArray(opsData.data) ? opsData.data : [];
+        const online = operators.some(op => {
+          const a = op.availability;
+          return a === 'online' || a?.type === 'online' || a?.status === 'online';
+        });
+        return { statusCode: 200, headers, body: JSON.stringify({ online, source: 'crisp-ops' }) };
+      }
+    } catch (e) { /* tombe sur le fallback Supabase */ }
   }
 
   // 2. Fallback : toggle manuel dans Supabase
