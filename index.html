@@ -1458,9 +1458,16 @@
   $crisp.push(["safe", true]);
   $crisp.push(["config", "locale", "fr"]);
   $crisp.push(["do", "chat:hide"]);
-  // Statut de disponibilité au chargement
-  $crisp.push(["on", "session:loaded", function(){
-    try{window.isOnline=$crisp.is("website:available");if(typeof updateAvailUI==='function')updateAvailUI();}catch(e){}
+  // Statut de disponibilité — vérifie au chargement puis toutes les 5s
+  function _checkCrispAvail(){
+    try{
+      const avail=$crisp.is("website:available");
+      if(window.isOnline!==avail){window.isOnline=avail;if(typeof updateAvailUI==='function')updateAvailUI();}
+    }catch(e){}
+  }
+  $crisp.push(["on","session:loaded",function(){
+    _checkCrispAvail();
+    setInterval(_checkCrispAvail,5000);
   }]);
   // Timer auto au 1er message de l'agent
   window.parlonsWaiting=false;
