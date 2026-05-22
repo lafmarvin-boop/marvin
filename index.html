@@ -1085,7 +1085,7 @@
     <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Comment fonctionne le parrainage ?<span class="arrow">+</span></button><div class="faq-answer">Partagez votre code personnel. Quand votre filleul effectue sa première session, vous recevez 10 minutes gratuites créditées sur votre prochain tchat.</div></div>
     <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Comment me faire rembourser ?<span class="arrow">+</span></button><div class="faq-answer">Si l'écoutant n'a pas répondu dans les 2 minutes, cliquez sur le bouton de signalement qui apparaît automatiquement. Pour tout autre cas, contactez-nous via la rubrique "Remboursement" en bas de page. Réponse sous 48h.</div></div>
     <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Les chats de groupe sont-ils sécurisés ?<span class="arrow">+</span></button><div class="faq-answer">Oui. Les groupes sont chiffrés et anonymes. Vous pouvez utiliser un pseudonyme. Les échanges ne sont pas rendus publics et restent dans l'espace de discussion fermé.</div></div>
-    <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Puis-je transférer ma session à un autre écoutant ?<span class="arrow">+</span></button><div class="faq-answer">Oui, l'écoutant peut transférer votre conversation à un collègue disponible si nécessaire, via la plateforme Tawk.to. Vous en serez informé dans le chat.</div></div>
+    <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Puis-je transférer ma session à un autre écoutant ?<span class="arrow">+</span></button><div class="faq-answer">Oui, l'écoutant peut transférer votre conversation à un collègue disponible si nécessaire, via la plateforme de chat. Vous en serez informé dans le chat.</div></div>
   </div>
 </section>
 
@@ -1385,7 +1385,7 @@
             <button class="btn-rate" onclick="submitRating()">Envoyer ma note</button>
           </div>
         </div>
-        <p style="font-size:.72rem;color:#B09070;text-align:center;margin-top:1rem;">💬 Votre conversation s'ouvre dans la fenêtre Tawk.to</p>
+        <p style="font-size:.72rem;color:#B09070;text-align:center;margin-top:1rem;">💬 Votre conversation s'ouvre dans la fenêtre de chat</p>
       </div>
       <div id="payment-form">
         <div class="form-group"><label>Numéro de carte</label><div id="stripe-card-element"></div><div id="payment-error"></div></div>
@@ -1450,52 +1450,32 @@
 <!-- TAWK TRIGGER -->
 <button class="tawk-trigger" onclick="openModal()">💬 Discuter maintenant</button>
 
-<!-- TAWK.TO -->
+<!-- CRISP CHAT -->
 <script>
-  var Tawk_API=Tawk_API||{};var Tawk_LoadStart=new Date();
-  (function(){var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-  s1.async=true;s1.src='https://embed.tawk.to/6a0de18631de891c3487d93a/default';
-  s1.charset='UTF-8';s1.setAttribute('crossorigin','*');s0.parentNode.insertBefore(s1,s0);})();
-  // Cache le widget par défaut — ne s'ouvre qu'après paiement
-  Tawk_API.onLoad=function(){
-    Tawk_API.hideWidget();
-    try{Tawk_API.setLanguage('fr');}catch(e){}
-    // Synchronise le bouton de disponibilité avec le vrai statut Tawk
-    try{
-      const s=Tawk_API.getStatus();
-      window.isOnline=(s==='online');
-      if(typeof updateAvailUI==='function') updateAvailUI();
-    }catch(e){}
-  };
-  Tawk_API.onStatusChange=function(status){
-    window.isOnline=(status==='online');
-    if(typeof updateAvailUI==='function') updateAvailUI();
-  };
-  // Démarre le timer au 1er signe de l'agent — trois callbacks en filet de sécurité
+  window.$crisp=[];
+  window.CRISP_WEBSITE_ID="fd20e23d-059a-4552-9aae-6df05f653d02";
+  (function(){var d=document,s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();
+  $crisp.push(["safe", true]);
+  $crisp.push(["config", "locale", "fr"]);
+  $crisp.push(["do", "chat:hide"]);
+  // Statut de disponibilité au chargement
+  $crisp.push(["on", "session:loaded", function(){
+    try{window.isOnline=$crisp.is("website:available");if(typeof updateAvailUI==='function')updateAvailUI();}catch(e){}
+  }]);
+  // Timer auto au 1er message de l'agent
   window.parlonsWaiting=false;
-  function _tryStartSession(){
-    if(window.parlonsWaiting && typeof agentConnected==='function'){
-      agentConnected();
-    }
-  }
-  Tawk_API.onChatMessageAgent = _tryStartSession;
-  Tawk_API.onAgentJoinChat    = _tryStartSession;
-  Tawk_API.onChatStarted      = _tryStartSession;
-  function openTawk(){
-    try {
-      if(typeof Tawk_API!=='undefined'){
-        if(Tawk_API.maximize) { Tawk_API.maximize(); }
-        else if(Tawk_API.toggle) { Tawk_API.toggle(); }
-        Tawk_API.showWidget();
-      }
-    } catch(e){ console.warn('Tawk:', e); }
+  $crisp.push(["on", "message:received", function(){
+    if(window.parlonsWaiting && typeof agentConnected==='function') agentConnected();
+  }]);
+  function openCrisp(){
+    try{$crisp.push(["do","chat:show"]);$crisp.push(["do","chat:open"]);}catch(e){console.warn('Crisp:',e);}
   }
 </script>
 
 <script>
 const STRIPE_KEY='pk_test_51TZB64Cob93hyzLhaymOSUpdD8pRdk4ElsIH23IfXcuiSb6XN5hXxYPpBzDYkKMEnwB9l9d6vhhTxglCJwjR0KYb00NoZpwzJl';
 let stripe,cardElement,selectedAmount=500,selectedLabel='30 min',sessionDurationSec=1800;
-let isOnline=true,queueCount=0;
+let isOnline=false,queueCount=0;
 let waitTimer=null,sessionTimer=null,waitSeconds=0,sessionSeconds=0,reportShown=false;
 let ratingVal=0;
 
@@ -1562,7 +1542,7 @@ function goToPayment(){
     let theme=themeSelect?themeSelect.value:'Discussion libre';
     if(theme==='Autre (libre)'&&customInput&&customInput.value.trim()) theme=customInput.value.trim();
     closeModal();
-    openTawk();
+    openCrisp();
     startFreeGroupTimer(theme,name);
     return;
   }
@@ -1589,7 +1569,7 @@ function startWaitTimer(){
     if(waitSeconds>=140&&!reportShown){reportShown=true;const rz=document.getElementById('report-zone');if(rz)rz.style.display='block';}
     if(waitSeconds>=600){
       clearInterval(waitTimer);
-      if(typeof Tawk_API!=='undefined'){try{Tawk_API.endChat();}catch(e){}try{Tawk_API.hideWidget();}catch(e){}}
+      try{$crisp.push(["do","chat:close"]);$crisp.push(["do","chat:hide"]);}catch(e){}
       if(!reportShown) reportSlowAgent();
       const wzName=document.getElementById('user-name')?document.getElementById('user-name').value.trim():'';
       const wz=document.getElementById('waiting-zone');
@@ -1613,7 +1593,7 @@ function agentConnected(){
   if(sessionTimer!==null) return;
   window.parlonsWaiting=false;
   clearInterval(waitTimer); waitTimer=null;
-  openTawk();
+  openCrisp();
   document.getElementById('waiting-zone').style.display='none';
   document.getElementById('session-zone').style.display='block';
   sessionSeconds=sessionDurationSec;updateSessionUI();
@@ -1632,10 +1612,7 @@ function agentConnected(){
       if(mbar2){mbar2.style.display='none';}
       const tbadge=document.getElementById('tawk-timer-badge');
       if(tbadge){tbadge.style.display='none';}
-      if(typeof Tawk_API!=='undefined'){
-        try{Tawk_API.endChat();}catch(e){}
-        try{Tawk_API.hideWidget();}catch(e){}
-      }
+      try{$crisp.push(["do","chat:close"]);$crisp.push(["do","chat:hide"]);}catch(e){}
       const se=document.getElementById('session-ended');
       if(se){
         se.style.display='block';
@@ -1735,7 +1712,7 @@ async function handlePayment(){
     document.getElementById('payment-form').style.display='none';
     document.getElementById('payment-success').style.display='block';
     // Montre le widget minimisé : l'agent peut écrire et la bulle de notif s'affiche
-    if(typeof Tawk_API!=='undefined'){try{Tawk_API.showWidget();}catch(e){}}
+    try{$crisp.push(["do","chat:show"]);}catch(e){}
     startWaitTimer();
 
   } catch(err){
@@ -2032,7 +2009,7 @@ function submitCreateGroup(){
   closeCreateGroupModal();
   // Simulation : ouvre le chat Tawk avec le thème
   alert(`✅ Groupe "${title}" créé !\n\nVos 5 minutes gratuites démarrent maintenant. Partagez le lien du site pour inviter d'autres membres dans votre groupe.`);
-  openTawk();
+  openCrisp();
 }
 
 function joinGroup(){
@@ -2041,7 +2018,7 @@ function joinGroup(){
   closeGroupModal();
   // Démarre les 5 min gratuites, puis propose le paiement
   startFreeGroupTimer();
-  openTawk();
+  openCrisp();
 }
 
 // ── FREE GROUP TIMER (5 min) ──
@@ -2174,7 +2151,7 @@ function startFreeGroupTimer(theme,name){
      COOKIE BANNER
 ═══════════════════════════════════════ -->
 <div class="cookie-banner" id="cookie-banner">
-  <p>🍪 Nous utilisons des cookies essentiels (Stripe pour les paiements, Tawk.to pour le chat). En continuant, vous acceptez leur utilisation. <a href="#" onclick="openPrivacy();return false;">En savoir plus</a></p>
+  <p>🍪 Nous utilisons des cookies essentiels (Stripe pour les paiements, Crisp pour le chat). En continuant, vous acceptez leur utilisation. <a href="#" onclick="openPrivacy();return false;">En savoir plus</a></p>
   <div class="cookie-btns">
     <button class="cookie-accept" onclick="acceptCookies()">Accepter</button>
     <button class="cookie-refuse" onclick="refuseCookies()">Refuser</button>
@@ -2200,7 +2177,7 @@ function startFreeGroupTimer(theme,name){
       <li><strong>Email</strong> — uniquement si vous vous inscrivez à l'alerte disponibilité ou postulez comme écoutant</li>
       <li><strong>Données de paiement</strong> — traitées exclusivement par Stripe (nous ne stockons aucune donnée bancaire)</li>
       <li><strong>Horodatage des sessions</strong> — date et heure de connexion, durée</li>
-      <li><strong>Cookies techniques</strong> — Stripe (paiement), Tawk.to (chat), aucun cookie publicitaire</li>
+      <li><strong>Cookies techniques</strong> — Stripe (paiement), Crisp (chat), aucun cookie publicitaire</li>
     </ul>
 
     <h2>3. Finalités du traitement</h2>
@@ -2228,12 +2205,12 @@ function startFreeGroupTimer(theme,name){
     <h2>6. Cookies tiers</h2>
     <ul>
       <li><strong>Stripe</strong> — nécessaire au traitement des paiements. <a href="https://stripe.com/fr/privacy" target="_blank" style="color:var(--terracotta)">Politique Stripe</a></li>
-      <li><strong>Tawk.to</strong> — nécessaire au fonctionnement du chat. <a href="https://www.tawk.to/privacy-policy/" target="_blank" style="color:var(--terracotta)">Politique Tawk.to</a></li>
+      <li><strong>Crisp</strong> — nécessaire au fonctionnement du chat. <a href="https://crisp.chat/fr/privacy/" target="_blank" style="color:var(--terracotta)">Politique Crisp</a></li>
     </ul>
     <div class="lb-info">Aucun cookie publicitaire ou de tracking n'est utilisé sur Parlons.</div>
 
     <h2>7. Transferts hors UE</h2>
-    <p>Stripe et Tawk.to peuvent traiter des données hors de l'Union Européenne. Ces transferts sont encadrés par des clauses contractuelles types conformes au RGPD.</p>
+    <p>Stripe et Crisp peuvent traiter des données hors de l'Union Européenne. Ces transferts sont encadrés par des clauses contractuelles types conformes au RGPD.</p>
     <button class="legal-close-btn" onclick="closePrivacy()">Fermer ✕</button>
   </div>
 </div>
