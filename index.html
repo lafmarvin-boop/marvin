@@ -1461,16 +1461,15 @@
   $crisp.push(["do", "chat:hide"]);
   // Disponibilité en temps réel via l'événement Crisp natif
   $crisp.push(["on", "website:availability:changed", function(is_available){
-    window.isOnline = !!is_available;
-    if(typeof updateAvailUI==='function') updateAvailUI();
+    if(typeof window.setAvailability==='function') window.setAvailability(is_available);
   }]);
   // Vérification initiale + polling toutes les 10s (Crisp peut mettre du temps à répondre)
   function _syncCrispAvail(){
     try{
       var avail = !!$crisp.is("website:available");
       var dbg = document.getElementById('_crisp_debug');
-      if(dbg) dbg.textContent = 'Crisp: ' + (avail ? '✅ online' : '❌ offline') + ' | isOnline=' + window.isOnline;
-      if(avail !== window.isOnline){ window.isOnline = avail; if(typeof updateAvailUI==='function') updateAvailUI(); }
+      if(dbg) dbg.textContent = 'Crisp: ' + (avail ? '✅ online' : '❌ offline');
+      if(typeof window.setAvailability==='function') window.setAvailability(avail);
     }catch(e){ var dbg=document.getElementById('_crisp_debug'); if(dbg) dbg.textContent='erreur: '+e.message; }
   }
   $crisp.push(["on", "session:loaded", function(){ _syncCrispAvail(); }]);
@@ -1497,6 +1496,9 @@ let stripe,cardElement,selectedAmount=500,selectedLabel='30 min',sessionDuration
 let isOnline=false,queueCount=0;
 let waitTimer=null,sessionTimer=null,waitSeconds=0,sessionSeconds=0,reportShown=false;
 let ratingVal=0;
+
+// Setter global accessible depuis le bloc Crisp (scope différent)
+window.setAvailability = function(v){ isOnline=!!v; updateAvailUI(); };
 
 // ── AVAILABILITY ──
 function updateAvailUI(){
