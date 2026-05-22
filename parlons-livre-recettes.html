@@ -186,6 +186,15 @@
       </div>
     </div>
 
+    <!-- TOGGLE DISPONIBILITÉ -->
+    <div style="background:white;border-radius:16px;padding:1.2rem 1.5rem;margin-bottom:1.5rem;box-shadow:0 2px 12px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+      <div>
+        <div style="font-family:'Playfair Display',serif;font-size:1rem;color:#1A1A2E;margin-bottom:.2rem;">Mon statut sur le site</div>
+        <div id="avail-status-text" style="font-size:.8rem;color:#9A9AB0;">Chargement…</div>
+      </div>
+      <button id="avail-btn" onclick="toggleAvailability()" style="border:none;border-radius:50px;padding:.65rem 1.6rem;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;background:#eee;color:#999;">…</button>
+    </div>
+
     <!-- Stats -->
     <div class="stats">
       <div class="stat"><div class="val" id="s-total">0,00 €</div><div class="lab">CA Total</div></div>
@@ -698,6 +707,48 @@
 // ════════════════════════════════════
 // ⚠️ CHANGEZ CE MOT DE PASSE AVANT UTILISATION
 const ADMIN_PASSWORD = 'Parlons2026!';
+
+// ── DISPONIBILITÉ ──
+let _currentOnline = null;
+async function loadAvailability(){
+  try{
+    const r = await fetch('/.netlify/functions/availability');
+    const d = await r.json();
+    _currentOnline = d.online;
+    _renderAvailBtn();
+  }catch(e){ document.getElementById('avail-status-text').textContent = 'Indisponible (Supabase non configuré)'; }
+}
+function _renderAvailBtn(){
+  const btn = document.getElementById('avail-btn');
+  const txt = document.getElementById('avail-status-text');
+  if(!btn) return;
+  if(_currentOnline){
+    btn.textContent = '🟢 En ligne — Passer hors ligne';
+    btn.style.background = '#e8f8e8'; btn.style.color = '#2d7a2d';
+    txt.textContent = '✅ Vous êtes visible sur le site — les clients peuvent vous contacter.';
+    txt.style.color = '#2d7a2d';
+  } else {
+    btn.textContent = '🔴 Hors ligne — Passer en ligne';
+    btn.style.background = '#fff0f0'; btn.style.color = '#a02020';
+    txt.textContent = '⛔ Vous êtes invisible — le paiement est suspendu sur le site.';
+    txt.style.color = '#a02020';
+  }
+}
+async function toggleAvailability(){
+  const btn = document.getElementById('avail-btn');
+  btn.disabled = true; btn.textContent = '…';
+  try{
+    const r = await fetch('/.netlify/functions/availability', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ online: !_currentOnline, password: ADMIN_PASSWORD })
+    });
+    const d = await r.json();
+    _currentOnline = d.online;
+    _renderAvailBtn();
+  }catch(e){ alert('Erreur lors de la mise à jour.'); }
+  btn.disabled = false;
+}
 const SESSION_KEY = 'parlons_admin_session';
 
 function checkPassword() {
@@ -708,7 +759,7 @@ function checkPassword() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     err.style.display = 'none';
-    render(); renderClients();
+    render(); renderClients(); loadAvailability();
   } else {
     err.style.display = 'block';
     document.getElementById('pwd-input').value = '';
