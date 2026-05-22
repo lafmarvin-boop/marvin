@@ -37,22 +37,34 @@ exports.handler = async (event) => {
   if (crispId && crispToken) {
     try {
       const auth = Buffer.from(`${crispId}:${crispToken}`).toString('base64');
-      const resp = await fetch(
-        `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operators`,
-        { headers: { 'Authorization': `Basic ${auth}`, 'X-Crisp-Tier': 'website' } }
-      );
+      const authH = { 'Authorization': `Basic ${auth}`, 'X-Crisp-Tier': 'website' };
+
+      // Essai 1 : disponibilité globale du site
+      const r1 = await fetch(`https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/availability`, { headers: authH });
       if (isDebug) {
-        const raw = await resp.json();
-        return { statusCode: 200, headers, body: JSON.stringify({ crisp_status: resp.status, raw }) };
+        const raw1 = await r1.json();
+        // Essai 2 en debug aussi
+        const r2 = await fetch(`https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operator-availability`, { headers: authH });
+        const raw2 = await r2.json();
+        return { statusCode: 200, headers, body: JSON.stringify({ s1: r1.status, raw1, s2: r2.status, raw2 }) };
       }
-      if (resp.ok) {
-        const data = await resp.json();
-        const operators = Array.isArray(data.data) ? data.data : [];
-        const online = operators.some(op => {
+      if (r1.ok) {
+        const d1 = await r1.json();
+        const avail = d1.data?.availability ?? d1.data?.status;
+        if (avail !== undefined)
+          return { statusCode: 200, headers, body: JSON.stringify({ online: avail === 'online', source: 'crisp-avail' }) };
+      }
+
+      // Essai 2 : liste des disponibilités opérateurs
+      const r2 = await fetch(`https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operator-availability`, { headers: authH });
+      if (r2.ok) {
+        const d2 = await r2.json();
+        const ops = Array.isArray(d2.data) ? d2.data : [];
+        const online = ops.some(op => {
           const a = op.availability;
           return a === 'online' || a?.type === 'online';
         });
-        return { statusCode: 200, headers, body: JSON.stringify({ online, source: 'crisp' }) };
+        return { statusCode: 200, headers, body: JSON.stringify({ online, source: 'crisp-ops' }) };
       }
     } catch (e) {
       if (isDebug)
