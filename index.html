@@ -1473,12 +1473,14 @@
       if(avail !== window.isOnline){ window.isOnline = avail; if(typeof updateAvailUI==='function') updateAvailUI(); }
     }catch(e){ var dbg=document.getElementById('_crisp_debug'); if(dbg) dbg.textContent='erreur: '+e.message; }
   }
-  $crisp.push(["on", "session:loaded", function(){
-    _syncCrispAvail();
-    setTimeout(_syncCrispAvail, 2000);
-    setTimeout(_syncCrispAvail, 5000);
+  $crisp.push(["on", "session:loaded", function(){ _syncCrispAvail(); }]);
+  // Polling indépendant — démarre dès que la page est prête
+  window.addEventListener('load', function(){
+    setTimeout(_syncCrispAvail, 1000);
+    setTimeout(_syncCrispAvail, 3000);
+    setTimeout(_syncCrispAvail, 6000);
     setInterval(_syncCrispAvail, 10000);
-  }]);
+  });
   }]);
   // Timer auto au 1er message de l'agent
   window.parlonsWaiting=false;
