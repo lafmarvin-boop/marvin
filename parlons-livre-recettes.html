@@ -716,7 +716,7 @@ async function loadAvailability(){
     const d = await r.json();
     _currentOnline = d.online;
     _renderAvailBtn();
-  }catch(e){ document.getElementById('avail-status-text').textContent = 'Indisponible (Supabase non configuré)'; }
+  }catch(e){ document.getElementById('avail-status-text').textContent = 'Erreur de chargement. Réessayez.'; }
 }
 function _renderAvailBtn(){
   const btn = document.getElementById('avail-btn');
