@@ -4,6 +4,7 @@
   "private": true,
   "description": "Backend Netlify Functions pour Parlons",
   "dependencies": {
+    "@supabase/supabase-js": "^2.106.1",
     "stripe": "^15.0.0"
   },
   "engines": {
