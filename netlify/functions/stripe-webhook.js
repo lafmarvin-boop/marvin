@@ -21,8 +21,15 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: `Webhook Error: ${err.message}` };
   }
 
-  if (webhookEvent.type === 'payment_intent.succeeded') {
+  const type = webhookEvent.type;
+  console.log('Webhook reçu:', type);
+
+  // ── Paiement unique (sessions à la carte) ──
+  if (type === 'payment_intent.succeeded') {
     const pi = webhookEvent.data.object;
+    // Ignorer les PaymentIntents liés à des abonnements (ils sont gérés par invoice.payment_succeeded)
+    if (pi.invoice) return { statusCode: 200, body: JSON.stringify({ received: true }) };
+
     console.log('Paiement confirmé:', pi.id, pi.metadata);
 
     if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
@@ -37,27 +44,97 @@ exports.handler = async (event) => {
         started_at: now.toISOString(),
         ends_at: ends.toISOString(),
       });
-
-      // Si c'est un Pass mensuel avec un email : créer/renouveler l'abonné
-      if (pi.metadata.formule === 'Pass mensuel' && pi.metadata.email) {
-        const expires_at = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
-        await upsertSubscriber({
-          email: pi.metadata.email.toLowerCase().trim(),
-          pseudo: pi.metadata.pseudo || null,
-          stripe_payment_id: pi.id,
-          status: 'active',
-          expires_at,
-        });
-      }
     }
   }
 
-  if (webhookEvent.type === 'payment_intent.payment_failed') {
+  if (type === 'payment_intent.payment_failed') {
     const pi = webhookEvent.data.object;
-    console.log('Paiement échoué:', pi.id);
+    if (pi.invoice) return { statusCode: 200, body: JSON.stringify({ received: true }) };
 
     if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
       await patchSession(pi.id, { statut: 'failed' });
+    }
+  }
+
+  // ── Abonnement : paiement réussi (premier paiement ou renouvellement) ──
+  if (type === 'invoice.payment_succeeded') {
+    const invoice = webhookEvent.data.object;
+    if (!invoice.subscription) return { statusCode: 200, body: JSON.stringify({ received: true }) };
+
+    try {
+      const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+      const customer = await stripe.customers.retrieve(subscription.customer);
+      const email = customer.email || subscription.metadata?.email;
+      if (!email) return { statusCode: 200, body: JSON.stringify({ received: true }) };
+
+      const expires_at = new Date(subscription.current_period_end * 1000).toISOString();
+
+      await upsertSubscriber({
+        email: email.toLowerCase().trim(),
+        pseudo: subscription.metadata?.pseudo || customer.name || null,
+        stripe_customer_id: subscription.customer,
+        stripe_subscription_id: subscription.id,
+        status: 'active',
+        expires_at,
+        cancel_at_period_end: subscription.cancel_at_period_end || false,
+      });
+
+      console.log('Abonné activé/renouvelé:', email, 'jusqu\'au', expires_at);
+    } catch (err) {
+      console.error('invoice.payment_succeeded error:', err.message);
+    }
+  }
+
+  // ── Abonnement : paiement de renouvellement échoué ──
+  if (type === 'invoice.payment_failed') {
+    const invoice = webhookEvent.data.object;
+    if (!invoice.subscription) return { statusCode: 200, body: JSON.stringify({ received: true }) };
+
+    try {
+      const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+      const customer = await stripe.customers.retrieve(subscription.customer);
+      const email = customer.email || subscription.metadata?.email;
+      if (email) {
+        await patchSubscriberByEmail(email.toLowerCase().trim(), { status: 'payment_failed' });
+        console.log('Renouvellement échoué pour:', email);
+      }
+    } catch (err) {
+      console.error('invoice.payment_failed error:', err.message);
+    }
+  }
+
+  // ── Abonnement : résilié définitivement (après cancel_at_period_end) ──
+  if (type === 'customer.subscription.deleted') {
+    const subscription = webhookEvent.data.object;
+    try {
+      const customer = await stripe.customers.retrieve(subscription.customer);
+      const email = customer.email || subscription.metadata?.email;
+      if (email) {
+        await patchSubscriberByEmail(email.toLowerCase().trim(), {
+          status: 'cancelled',
+          cancel_at_period_end: false,
+        });
+        console.log('Abonnement résilié:', email);
+      }
+    } catch (err) {
+      console.error('subscription.deleted error:', err.message);
+    }
+  }
+
+  // ── Abonnement : mis à jour (ex: annulation programmée) ──
+  if (type === 'customer.subscription.updated') {
+    const subscription = webhookEvent.data.object;
+    try {
+      const customer = await stripe.customers.retrieve(subscription.customer);
+      const email = customer.email || subscription.metadata?.email;
+      if (email) {
+        await patchSubscriberByEmail(email.toLowerCase().trim(), {
+          cancel_at_period_end: subscription.cancel_at_period_end || false,
+          expires_at: new Date(subscription.current_period_end * 1000).toISOString(),
+        });
+      }
+    } catch (err) {
+      console.error('subscription.updated error:', err.message);
     }
   }
 
@@ -82,6 +159,23 @@ async function upsertSubscriber(data) {
   if (!res.ok) console.error('upsertSubscriber error:', await res.text());
 }
 
+async function patchSubscriberByEmail(email, patch) {
+  const res = await fetch(
+    `${process.env.SUPABASE_URL}/rest/v1/subscribers?email=eq.${encodeURIComponent(email)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: process.env.SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(patch),
+    }
+  );
+  if (!res.ok) console.error('patchSubscriber error:', await res.text());
+}
+
 async function patchSession(stripePaymentId, patch) {
   const res = await fetch(
     `${process.env.SUPABASE_URL}/rest/v1/sessions?stripe_payment_id=eq.${stripePaymentId}`,
@@ -96,8 +190,5 @@ async function patchSession(stripePaymentId, patch) {
       body: JSON.stringify(patch),
     }
   );
-  if (!res.ok) {
-    const text = await res.text();
-    console.error('Supabase patch error:', text);
-  }
+  if (!res.ok) console.error('Supabase patch error:', await res.text());
 }

@@ -117,7 +117,8 @@ exports.handler = async (event) => {
       role: 'subscriber',
       active,
       expires_at: sub.expires_at,
-      pseudo: sub.pseudo
+      pseudo: sub.pseudo,
+      cancel_at_period_end: sub.cancel_at_period_end || false
     })
   };
 };

@@ -145,6 +145,19 @@
       Un écoutant disponible vous rejoindra dans les prochaines minutes.<br>
       <a href="/">Vérifier la disponibilité →</a>
     </p>
+
+    <!-- Gestion résiliation -->
+    <div id="cancel-zone" style="margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--sand);">
+      <div id="cancel-pending" style="display:none;background:#fef9ec;border:1px solid #f0d060;border-radius:12px;padding:1rem 1.2rem;font-size:.82rem;color:#92630a;line-height:1.65;margin-bottom:1rem;">
+        ⏳ <strong>Résiliation programmée</strong> — votre accès reste actif jusqu'à la date indiquée ci-dessus. Aucun renouvellement ne sera prélevé.
+      </div>
+      <button id="cancel-btn" onclick="cancelSubscription()" style="background:none;border:1px solid #fca5a5;color:#dc2626;border-radius:50px;padding:.6rem 1.2rem;font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;width:100%;transition:background .2s;">
+        Résilier mon abonnement
+      </button>
+      <p style="font-size:.7rem;color:var(--light);text-align:center;margin-top:.5rem;line-height:1.5;">
+        Aucun remboursement. Votre accès reste ouvert jusqu'à la fin de la période payée.
+      </p>
+    </div>
   </div>
 </div>
 
@@ -254,7 +267,7 @@ async function login() {
       showScreen('admin-dash');
     } else if (data.role === 'subscriber') {
       subEmailStored = email;
-      renderSubDash(email, data.expires_at, data.active, data.pseudo);
+      renderSubDash(email, data.expires_at, data.active, data.pseudo, data.cancel_at_period_end);
       showScreen('sub-dash');
     } else {
       throw new Error('Rôle inconnu');
@@ -268,18 +281,35 @@ async function login() {
 }
 
 // ── SUBSCRIBER DASHBOARD ──
-function renderSubDash(email, expiresAt, active, pseudo) {
+function renderSubDash(email, expiresAt, active, pseudo, cancelAtPeriodEnd) {
   const badge = document.getElementById('sub-badge');
-  badge.textContent = active ? '✓ Abonnement actif' : 'Abonnement expiré';
-  badge.className = 'sub-badge ' + (active ? 'active' : 'expired');
+  if (!active) {
+    badge.textContent = 'Abonnement expiré';
+    badge.className = 'sub-badge expired';
+  } else if (cancelAtPeriodEnd) {
+    badge.textContent = '⏳ Résiliation en cours';
+    badge.className = 'sub-badge expired';
+  } else {
+    badge.textContent = '✓ Abonnement actif';
+    badge.className = 'sub-badge active';
+  }
   document.getElementById('sub-email-display').textContent = email;
   if (expiresAt) {
     const d = new Date(expiresAt);
-    document.getElementById('sub-expiry').textContent = 'Valable jusqu\'au ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const label = cancelAtPeriodEnd ? 'Accès jusqu\'au ' : 'Renouvellement le ';
+    document.getElementById('sub-expiry').textContent = label + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
   }
   if (pseudo) document.getElementById('sub-pseudo').value = pseudo;
-  const btn = document.getElementById('sub-start-btn');
-  if (!active) { btn.disabled = true; btn.textContent = 'Abonnement expiré'; }
+  const startBtn = document.getElementById('sub-start-btn');
+  if (!active) { startBtn.disabled = true; startBtn.textContent = 'Abonnement expiré'; }
+
+  // Zone résiliation
+  if (cancelAtPeriodEnd) {
+    const pending = document.getElementById('cancel-pending');
+    const cancelBtn = document.getElementById('cancel-btn');
+    if (pending) pending.style.display = 'block';
+    if (cancelBtn) { cancelBtn.disabled = true; cancelBtn.textContent = 'Résiliation déjà programmée'; cancelBtn.style.opacity = '.5'; }
+  }
 }
 
 async function startSubSession() {
@@ -300,6 +330,37 @@ async function startSubSession() {
     alert('Erreur : ' + e.message);
     btn.disabled = false;
     btn.innerHTML = '💬 Démarrer une session maintenant';
+  }
+}
+
+async function cancelSubscription() {
+  if (!confirm('Voulez-vous vraiment résilier votre abonnement ?\n\nAucun remboursement ne sera effectué. Votre accès reste actif jusqu\'à la date de renouvellement prévue.')) return;
+  const btn = document.getElementById('cancel-btn');
+  btn.disabled = true;
+  btn.textContent = 'Résiliation en cours…';
+  try {
+    const res = await fetch(`${API}/cancel-subscription`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: subEmailStored })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    document.getElementById('cancel-pending').style.display = 'block';
+    btn.textContent = 'Résiliation programmée';
+    btn.style.opacity = '.5';
+    // Mettre à jour le badge
+    const badge = document.getElementById('sub-badge');
+    badge.textContent = '⏳ Résiliation en cours';
+    badge.className = 'sub-badge expired';
+    const expiry = document.getElementById('sub-expiry');
+    if (expiry && data.cancel_at) {
+      expiry.textContent = 'Accès jusqu\'au ' + new Date(data.cancel_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    alert(data.message || 'Résiliation confirmée.');
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Résilier mon abonnement';
   }
 }
 

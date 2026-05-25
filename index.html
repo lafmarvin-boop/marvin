@@ -1358,6 +1358,18 @@
       <button onclick="backToStep1()" style="background:none;border:none;color:var(--mid);cursor:pointer;font-size:.82rem;margin-bottom:.9rem;padding:0;display:flex;align-items:center;gap:.3rem;">← Retour</button>
       <h3>Paiement sécurisé</h3>
       <p id="payment-summary" class="modal-desc"></p>
+      <!-- Confirmation abonnement mensuel -->
+      <div id="sub-success" style="display:none;text-align:center;padding:1.5rem 0;">
+        <div style="font-size:2.5rem;margin-bottom:.8rem;">✅</div>
+        <h3 style="font-family:'Playfair Display',serif;margin-bottom:.5rem;">Abonnement activé !</h3>
+        <p style="font-size:.84rem;color:var(--mid);line-height:1.7;margin-bottom:1.4rem;">
+          Votre Pass mensuel est actif pour <strong>30 jours</strong>.<br>
+          Connectez-vous à votre espace abonné pour démarrer vos sessions.
+        </p>
+        <a href="/espace.html" style="display:block;background:var(--terracotta);color:white;border-radius:50px;padding:.85rem;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;text-decoration:none;margin-bottom:.7rem;">Accéder à mon espace →</a>
+        <p style="font-size:.72rem;color:var(--light);line-height:1.6;">Renouvellement automatique chaque mois. Résiliable à tout moment depuis votre espace.</p>
+      </div>
+
       <div id="payment-success">
         <div class="wait-zone" id="waiting-zone">
           <strong>⏳ En attente d'un écoutant…</strong>
@@ -1728,28 +1740,57 @@ async function handlePayment(){
 
   try {
     const name=document.getElementById('user-name').value.trim();
+    const email=(document.getElementById('user-email')?.value||'').trim();
 
-    // 1. Créer le PaymentIntent côté serveur
+    // ── Pass mensuel : flow abonnement récurrent ──
+    if(selectedAmount==='sub'){
+      if(!email||!email.includes('@')) throw new Error('Veuillez entrer un email valide pour votre abonnement.');
+
+      // 1. Créer le PaymentMethod
+      const {paymentMethod,error:pmErr}=await stripe.createPaymentMethod({
+        type:'card',card:cardElement,
+        billing_details:{name,email}
+      });
+      if(pmErr) throw new Error(pmErr.message);
+
+      // 2. Créer l'abonnement Stripe
+      const resp=await fetch('/.netlify/functions/create-subscription',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({paymentMethodId:paymentMethod.id,email,pseudo:name})
+      });
+      const {clientSecret,error:serverErr}=await resp.json();
+      if(serverErr) throw new Error(serverErr);
+
+      // 3. Confirmer si 3D Secure nécessaire
+      if(clientSecret){
+        const {error:confirmErr}=await stripe.confirmCardPayment(clientSecret);
+        if(confirmErr) throw new Error(confirmErr.message);
+      }
+
+      // 4. Afficher l'écran de confirmation abonnement
+      label.style.display='inline';spinner.style.display='none';btn.disabled=false;
+      document.getElementById('payment-form').style.display='none';
+      document.getElementById('sub-success').style.display='block';
+      return;
+    }
+
+    // ── Sessions à la carte : flow paiement unique ──
     const resp = await fetch('/.netlify/functions/create-payment-intent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({montant:selectedAmount,formule:selectedLabel,pseudo:name,duree:sessionDurationSec,email:(document.getElementById('user-email')?.value||'').trim()||undefined})
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({montant:selectedAmount,formule:selectedLabel,pseudo:name,duree:sessionDurationSec,email:email||undefined})
     });
     const {clientSecret,error:serverErr}=await resp.json();
     if(serverErr) throw new Error(serverErr);
 
-    // 2. Confirmer le paiement avec Stripe.js
     const {error:stripeErr,paymentIntent}=await stripe.confirmCardPayment(clientSecret,{
       payment_method:{card:cardElement}
     });
     if(stripeErr) throw new Error(stripeErr.message);
 
-    // 3. Succès
     sessionStorage.setItem('parlons_payment_id', paymentIntent.id);
     label.style.display='inline';spinner.style.display='none';btn.disabled=false;
     document.getElementById('payment-form').style.display='none';
     document.getElementById('payment-success').style.display='block';
-    // Montre le widget minimisé : l'agent peut écrire et la bulle de notif s'affiche
     try{$crisp.push(["do","chat:show"]);}catch(e){}
     startWaitTimer();
 
