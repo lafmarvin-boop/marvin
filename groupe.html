@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Salons de groupe · Parlons</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    :root{--terracotta:#C4714A;--rust:#A84F2E;--dark:#2C1F14;--mid:#7A5C42;--light:#B09070;--sand:#E8D5B0;--cream:#FBF6EF;--warm:#F5EDE0;--green:#5CB85C;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--dark);min-height:100svh;}
+
+    /* ── NAV ── */
+    nav{background:white;border-bottom:1px solid var(--sand);padding:.8rem 1.5rem;display:flex;align-items:center;gap:.8rem;position:fixed;top:0;left:0;right:0;z-index:200;height:56px;}
+    .nav-logo{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--terracotta);font-weight:700;text-decoration:none;}
+    .nav-back{background:none;border:none;color:var(--mid);font-size:.83rem;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:.3rem;padding:.35rem .7rem;border-radius:8px;transition:background .2s;}
+    .nav-back:hover{background:var(--warm);}
+    .nav-sep{color:var(--sand);margin:0 .2rem;}
+    .nav-room{font-size:.83rem;color:var(--mid);font-weight:500;}
+
+    /* ── SCREENS ── */
+    .screen{display:none;padding-top:56px;min-height:100svh;}
+    .screen.active{display:block;}
+    #s-forum.active{display:flex;flex-direction:column;height:100svh;}
+
+    /* ── ROOMS SCREEN ── */
+    .rooms-hero{background:linear-gradient(135deg,var(--dark) 0%,#3d2a1a 100%);color:white;text-align:center;padding:3rem 1.5rem 2.5rem;}
+    .rooms-hero h1{font-family:'Playfair Display',serif;font-size:clamp(1.5rem,4vw,2.2rem);margin-bottom:.6rem;}
+    .rooms-hero p{color:rgba(255,255,255,.65);font-size:.88rem;font-weight:300;line-height:1.7;max-width:500px;margin:0 auto;}
+    .free-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(92,184,92,.15);border:1px solid rgba(92,184,92,.4);color:#90D890;border-radius:50px;padding:.35rem 1rem;font-size:.78rem;font-weight:600;margin-bottom:1.1rem;}
+    .pills{display:flex;justify-content:center;gap:.5rem;flex-wrap:wrap;margin-top:1.2rem;}
+    .pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.75);padding:.3rem .8rem;border-radius:50px;font-size:.72rem;}
+    .rooms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;max-width:900px;margin:0 auto;padding:2rem 1.5rem 3rem;}
+    @media(max-width:640px){.rooms-grid{grid-template-columns:1fr 1fr;}}
+    @media(max-width:380px){.rooms-grid{grid-template-columns:1fr;}}
+    .room-card{background:white;border-radius:18px;padding:1.6rem 1.2rem;border:1px solid var(--sand);cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;text-align:center;}
+    .room-card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(44,31,20,.1);border-color:var(--terracotta);}
+    .room-emoji{font-size:2.2rem;margin-bottom:.7rem;}
+    .room-label{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--dark);margin-bottom:.4rem;}
+    .room-desc{font-size:.74rem;color:var(--mid);line-height:1.6;font-weight:300;margin-bottom:1rem;}
+    .room-cta{display:inline-block;background:var(--terracotta);color:white;border-radius:50px;padding:.4rem 1rem;font-size:.75rem;font-weight:600;}
+
+    /* ── JOIN SCREEN ── */
+    .join-wrap{max-width:420px;margin:0 auto;padding:2rem 1.2rem;}
+    .join-card{background:white;border-radius:18px;padding:1.2rem 1.4rem;border:1px solid var(--sand);display:flex;align-items:center;gap:.9rem;margin-bottom:1.4rem;}
+    .join-emoji{font-size:2rem;}
+    .join-lbl{font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);}
+    .join-sub{font-size:.73rem;color:var(--mid);font-weight:300;}
+    .free-box{background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:.85rem 1rem;font-size:.8rem;color:#15803d;margin-bottom:1.2rem;line-height:1.65;}
+    .flabel{display:block;font-size:.78rem;font-weight:500;color:var(--mid);margin-bottom:.38rem;}
+    .finput{width:100%;padding:.75rem 1rem;border:1.5px solid var(--sand);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--dark);background:white;outline:none;transition:border-color .2s;margin-bottom:1.1rem;}
+    .finput:focus{border-color:var(--terracotta);}
+    .agent-box{border:1px solid var(--sand);border-radius:10px;padding:.9rem 1rem;margin-bottom:1.2rem;}
+    .agent-lbl{display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.85rem;color:var(--mid);}
+    .agent-lbl input{width:16px;height:16px;accent-color:var(--terracotta);}
+    .agent-pwd{margin-top:.75rem;display:none;}
+    .btn-primary{width:100%;background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.85rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
+    .btn-primary:hover{background:var(--rust);}
+    .btn-primary:disabled{opacity:.6;cursor:not-allowed;}
+    .join-legal{font-size:.7rem;color:var(--light);text-align:center;margin-top:.9rem;line-height:1.65;}
+    .join-legal a{color:var(--terracotta);text-decoration:none;}
+
+    /* ── FORUM ── */
+    .forum-header{background:white;border-bottom:1px solid var(--sand);padding:.7rem 1rem;display:flex;align-items:center;gap:.7rem;flex-shrink:0;}
+    .fh-info{flex:1;min-width:0;}
+    .fh-room{font-family:'Playfair Display',serif;font-size:.92rem;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .fh-members{font-size:.68rem;color:var(--mid);margin-top:.08rem;}
+    .timer-pill{background:var(--green);color:white;border-radius:50px;padding:.3rem .85rem;font-size:.82rem;font-weight:700;white-space:nowrap;transition:background .4s;font-variant-numeric:tabular-nums;}
+    .timer-pill.orange{background:#f59e0b;}
+    .timer-pill.red{background:#ef4444;animation:blink 1s infinite;}
+    @keyframes blink{0%,100%{opacity:1;}50%{opacity:.65;}}
+
+    /* Messages container */
+    .forum-msgs{flex:1;overflow-y:auto;padding:.8rem 1rem;display:flex;flex-direction:column;gap:.25rem;}
+
+    /* Message bubbles */
+    .msg-sys{text-align:center;font-size:.7rem;color:var(--light);margin:.6rem 0;font-style:italic;}
+    .msg-row{display:flex;flex-direction:column;max-width:78%;}
+    .msg-row.mine{align-self:flex-end;align-items:flex-end;}
+    .msg-row.other{align-self:flex-start;align-items:flex-start;}
+    .msg-author{font-size:.68rem;font-weight:700;color:var(--terracotta);margin-bottom:.18rem;cursor:pointer;}
+    .msg-author:hover{text-decoration:underline;}
+    .msg-author.agent-lbl-c{color:#7c3aed;}
+    .bubble{padding:.6rem .85rem;border-radius:14px;font-size:.85rem;line-height:1.6;word-break:break-word;}
+    .mine .bubble{background:var(--terracotta);color:white;border-radius:14px 4px 4px 14px;}
+    .other .bubble{background:white;border:1px solid var(--sand);border-left:3px solid var(--terracotta);border-radius:4px 14px 14px 4px;color:var(--dark);}
+    .msg-row.is-agent.other .bubble{border-left-color:#7c3aed;background:#f5f3ff;}
+    .msg-row.is-private.other .bubble{border-left-color:#3b82f6;background:#eff6ff;font-style:italic;}
+    .msg-row.is-private.mine .bubble{background:rgba(59,130,246,.18);color:var(--dark);}
+    .msg-row.is-question.other .bubble{border-left-color:#f59e0b;background:#fffbeb;}
+    .msg-meta{font-size:.62rem;color:var(--light);margin-top:.15rem;display:flex;align-items:center;gap:.4rem;}
+    .act-btn{background:none;border:none;cursor:pointer;font-size:.68rem;font-family:'DM Sans',sans-serif;padding:.05rem .2rem;border-radius:4px;}
+    .act-btn.pm{color:#3b82f6;}
+    .act-btn.reply{color:var(--terracotta);}
+    .act-btn:hover{background:var(--warm);}
+
+    /* Input area */
+    .forum-input{background:white;border-top:1px solid var(--sand);padding:.75rem 1rem;flex-shrink:0;}
+    .pm-bar{display:none;background:#eff6ff;border-radius:8px;padding:.4rem .75rem;font-size:.76rem;color:#1d4ed8;margin-bottom:.5rem;align-items:center;gap:.5rem;}
+    .pm-bar.on{display:flex;}
+    .pm-close{background:none;border:none;color:#1d4ed8;cursor:pointer;font-size:1rem;margin-left:auto;line-height:1;}
+    .input-opts{display:flex;align-items:center;margin-bottom:.4rem;}
+    .q-label{font-size:.74rem;color:var(--mid);display:flex;align-items:center;gap:.35rem;cursor:pointer;}
+    .q-label input{accent-color:#f59e0b;}
+    .input-row{display:flex;gap:.5rem;align-items:flex-end;}
+    .msg-ta{flex:1;padding:.65rem .9rem;border:1.5px solid var(--sand);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:.87rem;color:var(--dark);background:var(--cream);outline:none;resize:none;min-height:44px;max-height:120px;transition:border-color .2s;overflow-y:hidden;}
+    .msg-ta:focus{border-color:var(--terracotta);}
+    .send-btn{background:var(--terracotta);color:white;border:none;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;flex-shrink:0;transition:background .2s;}
+    .send-btn:hover{background:var(--rust);}
+    .send-btn:disabled{opacity:.5;cursor:not-allowed;}
+
+    /* ── PAYMENT OVERLAY ── */
+    .pay-overlay{display:none;position:fixed;inset:0;z-index:300;background:rgba(44,31,20,.7);backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;}
+    .pay-overlay.on{display:flex;}
+    .pay-box{background:white;border-radius:22px 22px 0 0;padding:2rem;max-width:460px;width:100%;animation:slideUp .3s ease-out;}
+    @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+    .pay-box h3{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--dark);margin-bottom:.35rem;}
+    .pay-box>.pay-sub{color:var(--mid);font-size:.83rem;font-weight:300;margin-bottom:1.1rem;line-height:1.65;}
+    .pay-amount{font-size:1.9rem;font-family:'Playfair Display',serif;color:var(--terracotta);font-weight:700;margin-bottom:1.2rem;}
+    .pay-amount span{font-size:.95rem;font-weight:400;color:var(--mid);}
+    #group-card-el{padding:.75rem 1rem;border:1.5px solid var(--sand);border-radius:10px;background:white;margin-bottom:.8rem;transition:border-color .2s;}
+    #group-card-el.StripeElement--focus{border-color:var(--terracotta);}
+    .pay-err{color:#ef4444;font-size:.78rem;min-height:1.1rem;margin-bottom:.5rem;}
+    .pay-leave{text-align:center;margin-top:.7rem;}
+    .pay-leave button{background:none;border:none;color:var(--light);font-size:.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;}
+    .stripe-note{text-align:center;font-size:.7rem;color:var(--light);margin-top:.5rem;}
+
+    /* ── EXPIRED SCREEN ── */
+    .expired-box{max-width:400px;margin:4rem auto;padding:2rem;text-align:center;}
+    .expired-box h2{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--dark);margin-bottom:.6rem;}
+    .expired-box p{color:var(--mid);font-size:.85rem;margin-bottom:1.5rem;font-weight:300;line-height:1.7;}
+    .btn-outline{display:inline-block;border:1.5px solid var(--terracotta);color:var(--terracotta);border-radius:50px;padding:.65rem 1.5rem;font-size:.85rem;font-weight:500;cursor:pointer;background:none;font-family:'DM Sans',sans-serif;text-decoration:none;transition:background .2s,color .2s;}
+    .btn-outline:hover{background:var(--terracotta);color:white;}
+
+    /* ── SPINNER ── */
+    .spin{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.35);border-top-color:white;border-radius:50%;animation:rot .6s linear infinite;}
+    @keyframes rot{to{transform:rotate(360deg);}}
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="/" class="nav-logo">Parlons</a>
+  <button class="nav-back" onclick="goBack()">← Retour</button>
+  <span class="nav-sep" id="nav-sep" style="display:none">·</span>
+  <span class="nav-room" id="nav-room"></span>
+</nav>
+
+<!-- ══ SCREEN 1 : ROOMS ══ -->
+<div id="s-rooms" class="screen active">
+  <div class="rooms-hero">
+    <div class="free-badge">🎁 5 minutes gratuites · Puis 1,50 € pour 30 min</div>
+    <h1>Salons de groupe</h1>
+    <p>Échangez avec des personnes qui vivent les mêmes choses. Anonyme, bienveillant, sans jugement.</p>
+    <div class="pills">
+      <span class="pill">👥 Membres illimités</span>
+      <span class="pill">💬 Discussion libre</span>
+      <span class="pill">🎧 Écoutant optionnel</span>
+      <span class="pill">🔒 Anonyme & confidentiel</span>
+    </div>
+  </div>
+  <div class="rooms-grid" id="rooms-grid"></div>
+</div>
+
+<!-- ══ SCREEN 2 : JOIN ══ -->
+<div id="s-join" class="screen">
+  <div class="join-wrap">
+    <div class="join-card">
+      <div class="join-emoji" id="j-emoji"></div>
+      <div>
+        <div class="join-lbl" id="j-lbl"></div>
+        <div class="join-sub">5 min gratuites · Puis 1,50 € / 30 min</div>
+      </div>
+    </div>
+    <div class="free-box">🎁 <strong>5 minutes offertes</strong> pour découvrir l'ambiance du salon.<br>Ensuite, 1,50 € pour continuer les 30 minutes d'échange.</div>
+    <label class="flabel" for="inp-pseudo">Votre pseudo</label>
+    <input type="text" id="inp-pseudo" class="finput" placeholder="Ex : Marie, Jean67…" maxlength="30" autocomplete="off">
+    <div class="agent-box">
+      <label class="agent-lbl">
+        <input type="checkbox" id="chk-agent" onchange="togglePwd()"> 🎧 Je suis un écoutant Parlons
+      </label>
+      <div class="agent-pwd" id="agent-pwd">
+        <input type="password" id="inp-agent-pwd" class="finput" placeholder="Mot de passe écoutant" style="margin-top:.7rem;margin-bottom:0">
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-join" onclick="doJoin()">Rejoindre · 5 min gratuites →</button>
+    <p class="join-legal">En rejoignant, vous acceptez les <a href="/">CGV</a>. Votre pseudo est anonyme — aucun compte requis.</p>
+  </div>
+</div>
+
+<!-- ══ SCREEN 3 : FORUM ══ -->
+<div id="s-forum" class="screen">
+  <div class="forum-header">
+    <div class="fh-info">
+      <div class="fh-room" id="fh-room"></div>
+      <div class="fh-members" id="fh-members">Chargement…</div>
+    </div>
+    <div class="timer-pill" id="timer-pill">5:00</div>
+  </div>
+  <div class="forum-msgs" id="forum-msgs"></div>
+  <div class="forum-input">
+    <div class="input-opts">
+      <label class="q-label"><input type="checkbox" id="chk-question"> ❓ Poser comme question (reste visible plus tard)</label>
+    </div>
+    <div class="pm-bar" id="pm-bar">
+      🔒 Message privé à <strong id="pm-target-name" style="margin-left:.3rem"></strong>
+      <button class="pm-close" onclick="clearPM()">✕</button>
+    </div>
+    <div class="input-row">
+      <textarea class="msg-ta" id="msg-ta" placeholder="Votre message…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMsg()" title="Envoyer (Entrée)">➤</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN 4 : EXPIRED ══ -->
+<div id="s-expired" class="screen">
+  <div class="expired-box">
+    <div style="font-size:3rem;margin-bottom:1rem;">⏰</div>
+    <h2>Session terminée</h2>
+    <p>Merci d'avoir participé à ce salon. Vous pouvez rejoindre à nouveau pour continuer la conversation.</p>
+    <button class="btn-primary" onclick="showScreen('rooms')" style="margin-bottom:.9rem;max-width:300px;margin-left:auto;margin-right:auto;">Rejoindre un autre salon</button>
+    <br>
+    <a href="/" class="btn-outline" style="margin-top:.5rem;display:inline-block;">← Retour à l'accueil</a>
+  </div>
+</div>
+
+<!-- ══ PAYMENT OVERLAY ══ -->
+<div class="pay-overlay" id="pay-overlay">
+  <div class="pay-box">
+    <h3>⏰ Temps gratuit écoulé</h3>
+    <p class="pay-sub">Réglez 1,50 € pour continuer les 30 minutes de discussion dans ce salon.</p>
+    <div class="pay-amount">1,50 €<span> · 30 minutes</span></div>
+    <div id="group-card-el"></div>
+    <div class="pay-err" id="pay-err"></div>
+    <button class="btn-primary" id="pay-btn" onclick="payGroup()">Payer 1,50 € et continuer</button>
+    <div class="stripe-note">Paiement sécurisé par Stripe · Aucune donnée bancaire stockée</div>
+    <div class="pay-leave"><button onclick="leaveGroup()">Quitter le salon</button></div>
+  </div>
+</div>
+
+<script>
+const STRIPE_KEY='pk_test_51TZB64Cob93hyzLhaymOSUpdD8pRdk4ElsIH23IfXcuiSb6XN5hXxYPpBzDYkKMEnwB9l9d6vhhTxglCJwjR0KYb00NoZpwzJl';
+const API='/.netlify/functions';
+
+const ROOMS={
+  anxiete: {label:'Anxiété & Stress',    emoji:'😮‍💨',desc:'Pression du quotidien, inquiétudes persistantes, anxiété généralisée.'},
+  deuil:   {label:'Deuil & Perte',       emoji:'🕊️', desc:'Un espace bienveillant pour traverser la perte d\'un être cher ou d\'une relation.'},
+  couple:  {label:'Relations & Ruptures',emoji:'💔', desc:'Ruptures amoureuses, conflits familiaux, solitude affective.'},
+  travail: {label:'Burn-out & Travail',  emoji:'🔥', desc:'Épuisement professionnel, pression au travail, reconversion, conflits.'},
+  solitude:{label:'Solitude & Isolement',emoji:'🌙', desc:'Se sentir seul(e), isolé(e) ou incompris(e) malgré l\'entourage.'},
+  confiance:{label:'Confiance en soi',   emoji:'🌱', desc:'Estime de soi, doutes, peur du jugement, perfectionnisme.'}
+};
+
+// ── STATE ──
+let currentRoom=null,currentPseudo=null,isAgent=false;
+let accessUntil=null;
+let timerIv=null,pollIv=null;
+let lastSeen=null;
+let pmTarget=null;
+let stripeInst=null,groupCard=null;
+let knownMembers=new Set();
+let sending=false;
+
+try{stripeInst=Stripe(STRIPE_KEY);}catch(e){}
+
+// ── SCREEN ──
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-'+id).classList.add('active');
+  const navSep=document.getElementById('nav-sep');
+  const navRoom=document.getElementById('nav-room');
+  if(id==='forum' && currentRoom){
+    navSep.style.display='';
+    navRoom.textContent=ROOMS[currentRoom]?.label||'';
+  } else {
+    navSep.style.display='none';
+    navRoom.textContent='';
+  }
+  if(id!=='forum') stopForum();
+}
+
+function goBack(){
+  const active=document.querySelector('.screen.active');
+  if(!active) return;
+  if(active.id==='s-join'){showScreen('rooms');return;}
+  if(active.id==='s-forum'){
+    if(confirm('Quitter le salon ?')){leaveGroup();}
+    return;
+  }
+  window.location.href='/';
+}
+
+// ── RENDER ROOMS ──
+function renderRooms(){
+  const grid=document.getElementById('rooms-grid');
+  grid.innerHTML=Object.entries(ROOMS).map(([id,r])=>`
+    <div class="room-card" onclick="selectRoom('${id}')">
+      <div class="room-emoji">${r.emoji}</div>
+      <div class="room-label">${r.label}</div>
+      <div class="room-desc">${r.desc}</div>
+      <div class="room-cta">Rejoindre · 5 min offertes</div>
+    </div>`).join('');
+}
+
+function selectRoom(id){
+  currentRoom=id;
+  const r=ROOMS[id];
+  document.getElementById('j-emoji').textContent=r.emoji;
+  document.getElementById('j-lbl').textContent=r.label;
+  document.getElementById('inp-pseudo').value='';
+  document.getElementById('chk-agent').checked=false;
+  document.getElementById('agent-pwd').style.display='none';
+  document.getElementById('inp-agent-pwd').value='';
+  showScreen('join');
+  setTimeout(()=>document.getElementById('inp-pseudo').focus(),200);
+}
+
+function togglePwd(){
+  const on=document.getElementById('chk-agent').checked;
+  document.getElementById('agent-pwd').style.display=on?'block':'none';
+  if(on) document.getElementById('inp-agent-pwd').focus();
+}
+
+// ── JOIN ──
+async function doJoin(){
+  const pseudo=document.getElementById('inp-pseudo').value.trim();
+  if(!pseudo||pseudo.length<2){document.getElementById('inp-pseudo').focus();return;}
+  const agentChecked=document.getElementById('chk-agent').checked;
+  const agentPwd=document.getElementById('inp-agent-pwd').value;
+  const btn=document.getElementById('btn-join');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin"></span> Connexion…';
+  try{
+    const res=await fetch(`${API}/group-join`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pseudo,room_id:currentRoom,is_agent:agentChecked,agent_password:agentPwd})});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Erreur serveur');
+    currentPseudo=data.pseudo;
+    isAgent=data.is_agent;
+    const now=new Date();
+    if(data.paid_until && new Date(data.paid_until)>now){
+      accessUntil=new Date(data.paid_until);
+    } else if(data.free_until && new Date(data.free_until)>now){
+      accessUntil=new Date(data.free_until);
+    } else if(data.is_agent){
+      accessUntil=new Date(now.getTime()+24*60*60*1000);
+    } else {
+      accessUntil=null;
+    }
+    showScreen('forum');
+    startForum();
+    if(!accessUntil) openPayOverlay();
+  } catch(e){
+    alert('Erreur : '+e.message);
+  } finally{
+    btn.disabled=false;
+    btn.innerHTML='Rejoindre · 5 min gratuites →';
+  }
+}
+
+// ── FORUM ──
+function startForum(){
+  knownMembers=new Set([currentPseudo]);
+  document.getElementById('forum-msgs').innerHTML='';
+  const room=ROOMS[currentRoom];
+  document.getElementById('fh-room').textContent=room.emoji+' '+room.label;
+  addSysMsg('Bienvenue, '+currentPseudo+' ! Les messages de ce salon sont chiffrés et confidentiels.');
+  loadMsgs(true);
+  pollIv=setInterval(()=>loadMsgs(false),2500);
+  startTimer();
+  sendJoinNotice();
+}
+
+function stopForum(){
+  if(pollIv){clearInterval(pollIv);pollIv=null;}
+  if(timerIv){clearInterval(timerIv);timerIv=null;}
+  lastSeen=null;
+}
+
+async function sendJoinNotice(){
+  try{
+    await fetch(`${API}/group-messages`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({room_id:currentRoom,author:'📢 Salon',
+        content:currentPseudo+(isAgent?' (🎧 écoutant)':'')+' a rejoint le salon.',
+        is_private:false,is_question:false,is_agent:false})});
+  }catch(e){}
+}
+
+// ── LOAD & RENDER MESSAGES ──
+async function loadMsgs(initial){
+  try{
+    let url=`${API}/group-messages?room_id=${currentRoom}`;
+    if(!initial && lastSeen) url+=`&since=${encodeURIComponent(lastSeen)}`;
+    const res=await fetch(url);
+    if(!res.ok) return;
+    const msgs=await res.json();
+    if(!Array.isArray(msgs)||msgs.length===0) return;
+    lastSeen=msgs[msgs.length-1].created_at;
+    const container=document.getElementById('forum-msgs');
+    const atBottom=container.scrollTop+container.clientHeight>=container.scrollHeight-40;
+    msgs.forEach(m=>renderMsg(m));
+    updateMembers(msgs);
+    if(atBottom||initial) container.scrollTop=container.scrollHeight;
+  }catch(e){}
+}
+
+function renderMsg(msg){
+  const container=document.getElementById('forum-msgs');
+  // Filter private messages: only show mine or addressed to me
+  if(msg.is_private && msg.author!==currentPseudo && msg.recipient!==currentPseudo) return;
+  // System messages
+  if(msg.author==='📢 Salon'){addSysMsg(msg.content);return;}
+  const isMine=msg.author===currentPseudo;
+  const time=new Date(msg.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const row=document.createElement('div');
+  row.className='msg-row '+(isMine?'mine':'other')+
+    (msg.is_agent?' is-agent':'')+
+    (msg.is_private?' is-private':'')+
+    (msg.is_question?' is-question':'');
+  let prefix='';
+  if(msg.is_private) prefix='🔒 ';
+  if(msg.is_question) prefix='❓ ';
+  let actions='';
+  if(!isMine && !msg.is_private){
+    actions+=`<button class="act-btn pm" onclick="setPM('${esc(msg.author)}')">✉ Privé</button>`;
+  }
+  if(!isMine && msg.is_question){
+    actions+=`<button class="act-btn reply" onclick="replyQ('${esc(msg.author)}')">↩ Répondre</button>`;
+  }
+  row.innerHTML=(
+    (!isMine?`<div class="msg-author${msg.is_agent?' agent-lbl-c':''}" onclick="setPM('${esc(msg.author)}')">${esc(msg.author)}${msg.is_agent?' 🎧':''}</div>`:'')
+    +`<div class="bubble">${prefix}${esc(msg.content)}</div>`
+    +`<div class="msg-meta"><span>${time}</span>${actions}</div>`
+  );
+  container.appendChild(row);
+}
+
+function addSysMsg(txt){
+  const container=document.getElementById('forum-msgs');
+  const d=document.createElement('div');
+  d.className='msg-sys';
+  d.textContent=txt;
+  container.appendChild(d);
+}
+
+function updateMembers(msgs){
+  const cut=new Date(Date.now()-10*60*1000);
+  msgs.forEach(m=>{if(m.author!=='📢 Salon'&&new Date(m.created_at)>cut) knownMembers.add(m.author);});
+  const n=knownMembers.size;
+  document.getElementById('fh-members').textContent=n===1?'1 membre dans ce salon':n+' membres dans ce salon';
+}
+
+// ── SEND MESSAGE ──
+async function sendMsg(){
+  if(sending) return;
+  const ta=document.getElementById('msg-ta');
+  const content=ta.value.trim();
+  if(!content) return;
+  if(!hasAccess()){openPayOverlay();return;}
+  sending=true;
+  document.getElementById('send-btn').disabled=true;
+  try{
+    const isPriv=pmTarget!==null;
+    const isQ=document.getElementById('chk-question').checked;
+    const res=await fetch(`${API}/group-messages`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({room_id:currentRoom,author:currentPseudo,content,
+        is_private:isPriv,recipient:isPriv?pmTarget:null,
+        is_question:!isPriv&&isQ,is_agent:isAgent})});
+    if(res.ok){
+      const msg=await res.json();
+      ta.value='';autoResize(ta);
+      if(isPriv) clearPM();
+      if(isQ) document.getElementById('chk-question').checked=false;
+      renderMsg(msg);
+      lastSeen=msg.created_at;
+      const c=document.getElementById('forum-msgs');
+      c.scrollTop=c.scrollHeight;
+    }
+  }catch(e){}
+  sending=false;
+  document.getElementById('send-btn').disabled=false;
+}
+
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+
+// ── PRIVATE MESSAGE ──
+function setPM(pseudo){
+  if(pseudo===currentPseudo) return;
+  pmTarget=pseudo;
+  document.getElementById('pm-target-name').textContent=pseudo;
+  document.getElementById('pm-bar').classList.add('on');
+  document.getElementById('chk-question').checked=false;
+  document.getElementById('msg-ta').focus();
+}
+function clearPM(){
+  pmTarget=null;
+  document.getElementById('pm-bar').classList.remove('on');
+}
+function replyQ(author){
+  const ta=document.getElementById('msg-ta');
+  ta.value='@'+author+' ';
+  ta.focus();autoResize(ta);
+}
+
+// ── TIMER ──
+function startTimer(){
+  if(timerIv) clearInterval(timerIv);
+  timerIv=setInterval(tick,1000);
+  tick();
+}
+function tick(){
+  if(!accessUntil) return;
+  const rem=Math.max(0,Math.floor((accessUntil-new Date())/1000));
+  const m=Math.floor(rem/60),s=rem%60;
+  const pill=document.getElementById('timer-pill');
+  pill.textContent=m+':'+(s<10?'0':'')+s;
+  pill.className='timer-pill'+(rem<30?' red':rem<120?' orange':'');
+  if(rem===0){clearInterval(timerIv);timerIv=null;if(!isAgent) openPayOverlay();}
+}
+function hasAccess(){return accessUntil && new Date()<accessUntil;}
+
+// ── PAYMENT ──
+function openPayOverlay(){
+  document.getElementById('pay-overlay').classList.add('on');
+  document.getElementById('pay-err').textContent='';
+  if(stripeInst && !groupCard){
+    const els=stripeInst.elements();
+    groupCard=els.create('card',{style:{base:{fontFamily:"'DM Sans',sans-serif",fontSize:'15px',color:'#2C1F14','::placeholder':{color:'#B09070'}}}});
+    groupCard.mount('#group-card-el');
+  }
+}
+
+async function payGroup(){
+  const btn=document.getElementById('pay-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Traitement…';
+  document.getElementById('pay-err').textContent='';
+  try{
+    const r=await fetch(`${API}/create-payment-intent`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({montant:'group',formule:'Groupe 30min',pseudo:currentPseudo,duree:1800})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur serveur');
+    const{error:sErr,paymentIntent}=await stripeInst.confirmCardPayment(d.clientSecret,{payment_method:{card:groupCard}});
+    if(sErr) throw new Error(sErr.message);
+    const cr=await fetch(`${API}/group-confirm`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pseudo:currentPseudo,room_id:currentRoom,payment_intent_id:paymentIntent.id})});
+    const cd=await cr.json();
+    if(!cr.ok) throw new Error(cd.error||'Erreur confirmation');
+    accessUntil=new Date(cd.paid_until);
+    document.getElementById('pay-overlay').classList.remove('on');
+    groupCard=null;
+    document.getElementById('group-card-el').innerHTML='';
+    startTimer();
+    addSysMsg('✅ Paiement confirmé — 30 minutes commencent maintenant.');
+    const c=document.getElementById('forum-msgs');c.scrollTop=c.scrollHeight;
+  }catch(e){
+    document.getElementById('pay-err').textContent=e.message;
+  }
+  btn.disabled=false;btn.innerHTML='Payer 1,50 € et continuer';
+}
+
+function leaveGroup(){
+  document.getElementById('pay-overlay').classList.remove('on');
+  stopForum();
+  showScreen('expired');
+}
+
+// ── UTILS ──
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── INIT ──
+renderRooms();
+// Support direct link: /groupe.html?room=anxiete
+const urlRoom=new URLSearchParams(location.search).get('room');
+if(urlRoom && ROOMS[urlRoom]) selectRoom(urlRoom);
+</script>
+</body>
+</html>
