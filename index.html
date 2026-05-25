@@ -1592,7 +1592,7 @@ function goToPayment(){
   if(cardElement){setTimeout(()=>{cardElement.mount('#stripe-card-element');cardElement.on('change',e=>{document.getElementById('payment-error').textContent=e.error?e.error.message:'';});},100);}
   else{document.getElementById('stripe-card-element').innerHTML='<p style="color:var(--mid);font-size:.82rem;padding:.4rem 0">⚠️ Widget Stripe disponible avec votre vraie clé API.</p>';}
 }
-function backToStep1(){document.getElementById('step-1').style.display='block';document.getElementById('step-2').style.display='none';if(cardElement)try{cardElement.unmount();}catch(e){}}
+function backToStep1(){document.getElementById('step-1').style.display='block';document.getElementById('step-2').style.display='none';document.getElementById('sub-success').style.display='none';document.getElementById('payment-form').style.display='block';if(cardElement)try{cardElement.unmount();}catch(e){}}
 
 // ── WAIT TIMER ──
 function startWaitTimer(){
@@ -1807,7 +1807,7 @@ function openModal(amount){
   else{offMsg.style.display='none';if(btn){btn.disabled=false;btn.style.opacity='1';}}
   if(amount!==undefined){const s=document.getElementById('session-select');for(let o of s.options){if(o.value==amount){o.selected=true;break;}}updatePrice();}
   document.getElementById('step-1').style.display='block';document.getElementById('step-2').style.display='none';
-  document.getElementById('payment-success').style.display='none';document.getElementById('payment-form').style.display='block';
+  document.getElementById('payment-success').style.display='none';document.getElementById('sub-success').style.display='none';document.getElementById('payment-form').style.display='block';
   document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';
 }
 function closeModal(){document.getElementById('modal').classList.remove('active');document.body.style.overflow='';if(cardElement)try{cardElement.unmount();}catch(e){}}

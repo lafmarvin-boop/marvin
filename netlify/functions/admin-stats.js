@@ -123,7 +123,8 @@ exports.handler = async (event) => {
   }
 
   const now = new Date();
-  const active = sub.status === 'active' && (!sub.expires_at || new Date(sub.expires_at) > now);
+  // 'pending' = paiement confirmé mais webhook pas encore traité — accès autorisé
+  const active = (sub.status === 'active' || sub.status === 'pending') && (!sub.expires_at || new Date(sub.expires_at) > now);
   const needsPasswordSetup = !sub.password_hash;
 
   return {

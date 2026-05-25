@@ -19,9 +19,9 @@ exports.handler = async (event) => {
   if (!email || !email.includes('@'))
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Email invalide' }) };
 
-  // Check active subscription
+  // Check active or pending subscription (pending = paiement confirmé, webhook pas encore traité)
   const subRes = await fetch(
-    `${SB_URL}/rest/v1/subscribers?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&status=eq.active&select=*&limit=1`,
+    `${SB_URL}/rest/v1/subscribers?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&status=in.(active,pending)&select=*&limit=1`,
     { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
   );
   const subs = await subRes.json();
