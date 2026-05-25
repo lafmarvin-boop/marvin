@@ -37,6 +37,18 @@ exports.handler = async (event) => {
         started_at: now.toISOString(),
         ends_at: ends.toISOString(),
       });
+
+      // Si c'est un Pass mensuel avec un email : créer/renouveler l'abonné
+      if (pi.metadata.formule === 'Pass mensuel' && pi.metadata.email) {
+        const expires_at = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        await upsertSubscriber({
+          email: pi.metadata.email.toLowerCase().trim(),
+          pseudo: pi.metadata.pseudo || null,
+          stripe_payment_id: pi.id,
+          status: 'active',
+          expires_at,
+        });
+      }
     }
   }
 
@@ -54,6 +66,20 @@ exports.handler = async (event) => {
 
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
+}
+
+async function upsertSubscriber(data) {
+  const res = await fetch(`${process.env.SUPABASE_URL}/rest/v1/subscribers`, {
+    method: 'POST',
+    headers: {
+      apikey: process.env.SUPABASE_SERVICE_KEY,
+      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates,return=minimal',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) console.error('upsertSubscriber error:', await res.text());
 }
 
 async function patchSession(stripePaymentId, patch) {

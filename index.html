@@ -1303,6 +1303,9 @@
         <span style="font-size:.72rem;color:#5a9a5a;">Nos écoutants peuvent rejoindre à tout moment pour veiller au bon déroulement.</span>
       </div>
 
+      <!-- Email (affiché uniquement pour le Pass mensuel) -->
+      <div class="form-group" id="email-field" style="display:none;"><label>Votre email <span style="font-size:.72rem;color:var(--light)">(pour accéder à votre espace abonné)</span></label><input type="email" id="user-email" placeholder="vous@email.com"/></div>
+
       <div class="form-group" id="subject-field"><label>Sujet (optionnel)</label><input type="text" id="user-subject" placeholder="De quoi souhaitez-vous parler ?"/></div>
 
       <!-- Choix thématique groupe (affiché uniquement si groupe sélectionné) -->
@@ -1524,9 +1527,12 @@ function updatePrice(){
   const subjectField=document.getElementById('subject-field');
   const btn=document.querySelector('#step-1 .btn-primary');
 
+  const isSub=(selectedAmount==='sub');
+  const emailField=document.getElementById('email-field');
+  if(emailField) emailField.style.display=isSub?'block':'none';
   if(groupInfo) groupInfo.style.display=isGroup?'block':'none';
   if(groupTheme) groupTheme.style.display=isGroup?'block':'none';
-  if(subjectField) subjectField.style.display=isGroup?'none':'block';
+  if(subjectField) subjectField.style.display=(isGroup||isSub)?'none':'block';
   if(btn) btn.textContent=isGroup?'Entrer gratuitement · 5 min offertes →':'Continuer →';
 
   // Afficher le champ thème libre si "Autre" sélectionné
@@ -1727,7 +1733,7 @@ async function handlePayment(){
     const resp = await fetch('/.netlify/functions/create-payment-intent',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({montant:selectedAmount,formule:selectedLabel,pseudo:name,duree:sessionDurationSec})
+      body:JSON.stringify({montant:selectedAmount,formule:selectedLabel,pseudo:name,duree:sessionDurationSec,email:(document.getElementById('user-email')?.value||'').trim()||undefined})
     });
     const {clientSecret,error:serverErr}=await resp.json();
     if(serverErr) throw new Error(serverErr);
@@ -2093,6 +2099,32 @@ function startFreeGroupTimer(theme,name){
     }
   },1000);
 }
+
+// ── SESSION ABONNÉ (depuis /espace.html) ──
+(function(){
+  const params=new URLSearchParams(location.search);
+  const subToken=params.get('sub_t');
+  const subName=params.get('sub_n')||'Abonné';
+  if(!subToken) return;
+  // Nettoyer l'URL
+  history.replaceState({},'',location.pathname);
+  // Stocker et démarrer directement la session sans paiement
+  sessionStorage.setItem('parlons_payment_id','sub_'+subToken.substring(0,20));
+  // Initialiser Crisp avec le nom
+  try{$crisp.push(['set','user:nickname',[subName]]);}catch(e){}
+  // Ouvrir le modal en mode "succès" (session déjà créée)
+  const modal=document.getElementById('modal');
+  if(modal) modal.classList.add('active');
+  document.body.style.overflow='hidden';
+  const s1=document.getElementById('step-1'),s2=document.getElementById('step-2');
+  if(s1) s1.style.display='none';
+  if(s2) s2.style.display='none';
+  const pf=document.getElementById('payment-form'),ps=document.getElementById('payment-success');
+  if(pf) pf.style.display='none';
+  if(ps) ps.style.display='block';
+  try{$crisp.push(['do','chat:show']);}catch(e){}
+  startWaitTimer();
+})();
 </script>
 <!-- CGV MODAL -->
 <div class="cgv-overlay" id="cgv-modal" onclick="if(event.target===this)closeCGV()">

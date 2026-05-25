@@ -20,7 +20,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { montant, formule, pseudo, duree } = JSON.parse(event.body || '{}');
+    const { montant, formule, pseudo, duree, email } = JSON.parse(event.body || '{}');
 
     const amountCents = VALID_AMOUNTS[String(montant)];
     if (!amountCents) {
@@ -35,7 +35,7 @@ exports.handler = async (event) => {
       currency: 'eur',
       automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
       description: `Parlons - ${formule} - ${pseudo}`,
-      metadata: { formule, pseudo, duree: String(duree || 1800), plateforme: 'parlons' },
+      metadata: { formule, pseudo, duree: String(duree || 1800), plateforme: 'parlons', ...(email ? { email } : {}) },
     });
 
     // Enregistrement optionnel dans Supabase
