@@ -10,104 +10,90 @@
     :root{--tc:#C4714A;--rust:#A84F2E;--dark:#2C1F14;--mid:#7A5C42;--light:#B09070;--sand:#E8D5B0;--cream:#FBF6EF;--warm:#F5EDE0;--green:#5CB85C;}
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--dark);min-height:100vh;}
-    a{color:var(--tc);text-decoration:none;}
 
     nav{background:white;border-bottom:1px solid var(--sand);padding:.85rem 1.5rem;display:flex;align-items:center;justify-content:space-between;}
-    .nav-logo{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--tc);}
+    .nav-logo{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--tc);text-decoration:none;}
     .nav-right{display:flex;gap:.8rem;align-items:center;}
-    .nav-link{font-size:.8rem;color:var(--mid);}
+    .nav-link{font-size:.8rem;color:var(--mid);text-decoration:none;}
     .nav-link:hover{color:var(--tc);}
     #nav-logout{display:none;background:none;border:1px solid var(--sand);border-radius:20px;padding:.3rem .8rem;font-size:.75rem;color:var(--mid);cursor:pointer;font-family:'DM Sans',sans-serif;}
     #nav-logout:hover{border-color:var(--tc);color:var(--tc);}
 
-    /* ── HOME ── */
-    .home-wrap{max-width:560px;margin:0 auto;padding:3.5rem 1.5rem;text-align:center;}
-    .home-wrap h1{font-family:'Playfair Display',serif;font-size:1.9rem;color:var(--dark);margin-bottom:.6rem;}
-    .home-wrap p{color:var(--mid);font-size:.9rem;font-weight:300;margin-bottom:2.5rem;line-height:1.7;}
-    .choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;}
-    @media(max-width:440px){.choice-grid{grid-template-columns:1fr;}}
-    .choice-card{background:white;border:1.5px solid var(--sand);border-radius:18px;padding:2rem 1.5rem;cursor:pointer;transition:border-color .2s,transform .2s,box-shadow .2s;text-align:center;}
-    .choice-card:hover{border-color:var(--tc);transform:translateY(-4px);box-shadow:0 12px 32px rgba(44,31,20,.09);}
-    .choice-icon{font-size:2.5rem;margin-bottom:.8rem;}
-    .choice-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);margin-bottom:.4rem;}
-    .choice-sub{font-size:.75rem;color:var(--mid);font-weight:300;line-height:1.6;}
-
-    /* ── AUTH FORMS ── */
-    .auth-wrap{max-width:400px;margin:0 auto;padding:3rem 1.5rem;}
-    .auth-wrap h2{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--dark);margin-bottom:.4rem;}
-    .auth-wrap .auth-sub{color:var(--mid);font-size:.83rem;font-weight:300;margin-bottom:1.8rem;line-height:1.65;}
+    /* ── LOGIN ── */
+    .login-wrap{max-width:380px;margin:0 auto;padding:4rem 1.5rem 2rem;}
+    .login-logo{text-align:center;margin-bottom:2rem;}
+    .login-logo span{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--tc);}
+    .login-logo p{font-size:.8rem;color:var(--light);margin-top:.25rem;font-weight:300;}
     .flabel{display:block;font-size:.77rem;font-weight:500;color:var(--mid);margin-bottom:.35rem;}
-    .finput{width:100%;padding:.75rem 1rem;border:1.5px solid var(--sand);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--dark);background:white;outline:none;transition:border-color .2s;margin-bottom:1.1rem;}
+    .finput{width:100%;padding:.8rem 1rem;border:1.5px solid var(--sand);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--dark);background:white;outline:none;transition:border-color .2s;margin-bottom:1rem;}
     .finput:focus{border-color:var(--tc);}
-    .btn-prim{width:100%;background:var(--tc);color:white;border:none;border-radius:50px;padding:.85rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
+    .btn-prim{width:100%;background:var(--tc);color:white;border:none;border-radius:50px;padding:.88rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
     .btn-prim:hover{background:var(--rust);}
     .btn-prim:disabled{opacity:.6;cursor:not-allowed;}
-    .btn-back{background:none;border:none;color:var(--mid);font-size:.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:.8rem;display:block;text-align:center;width:100%;}
-    .btn-back:hover{color:var(--tc);}
-    .auth-err{color:#ef4444;font-size:.78rem;margin-bottom:.6rem;min-height:1.1rem;}
-    .spin{display:inline-block;width:17px;height:17px;border:2px solid rgba(255,255,255,.35);border-top-color:white;border-radius:50%;animation:rot .6s linear infinite;}
+    .login-err{color:#ef4444;font-size:.78rem;margin-bottom:.7rem;min-height:1.1rem;text-align:center;}
+    .login-hint{font-size:.72rem;color:var(--light);text-align:center;margin-top:1.1rem;line-height:1.65;}
+    .login-hint a{color:var(--tc);text-decoration:none;}
+    .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:white;border-radius:50%;animation:rot .6s linear infinite;}
     @keyframes rot{to{transform:rotate(360deg);}}
 
     /* ── SUBSCRIBER DASHBOARD ── */
-    .sub-dash{max-width:480px;margin:0 auto;padding:2.5rem 1.5rem;}
-    .sub-status-card{background:white;border-radius:18px;padding:1.8rem;border:1px solid var(--sand);margin-bottom:1.5rem;text-align:center;}
-    .sub-status-badge{display:inline-block;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:50px;padding:.4rem 1.2rem;font-size:.8rem;font-weight:600;margin-bottom:.9rem;}
-    .sub-status-badge.expired{background:#fef2f2;border-color:#fca5a5;color:#dc2626;}
-    .sub-email{font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);margin-bottom:.3rem;}
+    .sub-wrap{max-width:460px;margin:0 auto;padding:2.5rem 1.5rem;}
+    .sub-hero{background:white;border-radius:18px;border:1px solid var(--sand);padding:2rem;text-align:center;margin-bottom:1.5rem;}
+    .sub-badge{display:inline-block;border-radius:50px;padding:.4rem 1.2rem;font-size:.8rem;font-weight:600;margin-bottom:.9rem;}
+    .sub-badge.active{background:#f0fdf4;border:1px solid #86efac;color:#16a34a;}
+    .sub-badge.expired{background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;}
+    .sub-name{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--dark);margin-bottom:.3rem;}
     .sub-expiry{font-size:.8rem;color:var(--mid);font-weight:300;}
-    .btn-session{display:block;width:100%;background:var(--tc);color:white;border:none;border-radius:50px;padding:.9rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:background .2s;text-align:center;margin-bottom:.7rem;}
+    .sub-section-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);margin-bottom:.7rem;}
+    .sub-desc{font-size:.82rem;color:var(--mid);font-weight:300;line-height:1.7;margin-bottom:1.1rem;}
+    .pseudo-row{display:flex;gap:.6rem;margin-bottom:1rem;}
+    .pseudo-row .finput{margin-bottom:0;}
+    .btn-session{width:100%;background:var(--tc);color:white;border:none;border-radius:50px;padding:.9rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
     .btn-session:hover{background:var(--rust);}
-    .sub-pseudo-row{display:flex;gap:.6rem;margin-bottom:1.2rem;}
-    .sub-pseudo-row .finput{margin-bottom:0;}
+    .btn-session:disabled{opacity:.6;cursor:not-allowed;}
+    .sub-foot{font-size:.72rem;color:var(--light);text-align:center;margin-top:.7rem;line-height:1.6;}
+    .sub-foot a{color:var(--tc);text-decoration:none;}
 
     /* ── ADMIN DASHBOARD ── */
-    .dash-wrap{max-width:1100px;margin:0 auto;padding:2rem 1.5rem 3rem;}
-    .dash-title{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--dark);margin-bottom:1.8rem;}
-    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;}
-    @media(max-width:700px){.stats-grid{grid-template-columns:1fr 1fr;}}
-    @media(max-width:420px){.stats-grid{grid-template-columns:1fr;}}
+    .dash-wrap{max-width:1060px;margin:0 auto;padding:2rem 1.5rem 3rem;}
+    .dash-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--dark);margin-bottom:1.6rem;}
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.8rem;}
+    @media(max-width:680px){.stats-grid{grid-template-columns:1fr 1fr;}}
     .stat-card{background:white;border-radius:14px;padding:1.2rem 1.4rem;border:1px solid var(--sand);}
-    .stat-label{font-size:.72rem;color:var(--light);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;}
+    .stat-label{font-size:.7rem;color:var(--light);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;}
     .stat-value{font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--dark);line-height:1;}
     .stat-sub{font-size:.72rem;color:var(--mid);margin-top:.3rem;}
     .stat-up{color:var(--green);font-weight:600;}
     .stat-down{color:#ef4444;font-weight:600;}
-
-    .section-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--dark);margin-bottom:1rem;}
+    .section-title{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--dark);margin-bottom:.9rem;}
     .card{background:white;border-radius:14px;border:1px solid var(--sand);padding:1.4rem;margin-bottom:1.5rem;overflow-x:auto;}
-
-    /* Tables */
     table{width:100%;border-collapse:collapse;font-size:.82rem;}
-    th{text-align:left;padding:.6rem .8rem;color:var(--light);font-weight:500;font-size:.72rem;text-transform:uppercase;border-bottom:1px solid var(--sand);}
+    th{text-align:left;padding:.6rem .8rem;color:var(--light);font-weight:500;font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--sand);}
     td{padding:.65rem .8rem;border-bottom:1px solid var(--warm);color:var(--dark);vertical-align:middle;}
     tr:last-child td{border-bottom:none;}
     tr:hover td{background:var(--warm);}
     .badge{display:inline-block;padding:.2rem .6rem;border-radius:50px;font-size:.68rem;font-weight:600;}
-    .badge.active{background:#f0fdf4;color:#16a34a;border:1px solid #86efac;}
-    .badge.expired{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;}
-    .badge.paid{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
-
-    /* Plan bars */
-    .plan-row{display:flex;align-items:center;gap:.8rem;padding:.6rem 0;border-bottom:1px solid var(--warm);}
+    .badge.ok{background:#f0fdf4;color:#16a34a;border:1px solid #86efac;}
+    .badge.ko{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;}
+    .plan-row{display:flex;align-items:center;gap:.8rem;padding:.55rem 0;border-bottom:1px solid var(--warm);}
     .plan-row:last-child{border-bottom:none;}
-    .plan-name{flex:1;font-size:.83rem;color:var(--dark);}
-    .plan-bar-wrap{flex:2;background:var(--warm);border-radius:50px;height:8px;overflow:hidden;}
-    .plan-bar{height:100%;background:var(--tc);border-radius:50px;transition:width .6s ease;}
-    .plan-count{min-width:60px;text-align:right;font-size:.8rem;color:var(--mid);font-weight:500;}
-    .plan-rev{min-width:60px;text-align:right;font-size:.8rem;color:var(--dark);font-weight:600;}
-
-    /* Group rooms */
-    .room-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;}
-    @media(max-width:600px){.room-grid{grid-template-columns:1fr 1fr;}}
-    .room-mini{background:var(--warm);border-radius:10px;padding:.8rem 1rem;text-align:center;}
-    .room-mini-emoji{font-size:1.4rem;margin-bottom:.3rem;}
-    .room-mini-name{font-size:.72rem;color:var(--mid);margin-bottom:.2rem;}
-    .room-mini-count{font-size:1rem;font-weight:700;color:var(--dark);}
-
+    .plan-name{flex:1;font-size:.82rem;color:var(--dark);}
+    .plan-bar-wrap{flex:2;background:var(--warm);border-radius:50px;height:7px;overflow:hidden;}
+    .plan-bar{height:100%;background:var(--tc);border-radius:50px;}
+    .plan-count{min-width:56px;text-align:right;font-size:.78rem;color:var(--mid);font-weight:500;}
+    .plan-rev{min-width:58px;text-align:right;font-size:.78rem;font-weight:700;color:var(--dark);}
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
-    @media(max-width:700px){.two-col{grid-template-columns:1fr;}}
+    @media(max-width:680px){.two-col{grid-template-columns:1fr;}}
+    .room-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.8rem;}
+    @media(max-width:500px){.room-grid{grid-template-columns:1fr 1fr;}}
+    .room-mini{background:var(--warm);border-radius:10px;padding:.7rem;text-align:center;}
+    .room-mini-name{font-size:.68rem;color:var(--mid);margin-bottom:.2rem;}
+    .room-mini-count{font-size:1.05rem;font-weight:700;color:var(--dark);}
+    .group-nums{display:flex;gap:.8rem;margin-bottom:.8rem;}
+    .group-num{flex:1;text-align:center;}
+    .group-num-val{font-size:1.3rem;font-weight:700;color:var(--dark);}
+    .group-num-lbl{font-size:.68rem;color:var(--light);}
 
-    /* Hidden by default */
     [data-screen]{display:none;}
     [data-screen].active{display:block;}
   </style>
@@ -117,50 +103,56 @@
 <nav>
   <a href="/" class="nav-logo">Parlons</a>
   <div class="nav-right">
-    <a href="/" class="nav-link">← Retour au site</a>
+    <a href="/" class="nav-link">← Site</a>
     <button id="nav-logout" onclick="logout()">Se déconnecter</button>
   </div>
 </nav>
 
-<!-- ══ HOME ══ -->
-<div data-screen="home" class="active">
-  <div class="home-wrap">
-    <h1>Espace Parlons</h1>
-    <p>Accédez à votre espace abonné ou au tableau de bord de l'équipe.</p>
-    <div class="choice-grid">
-      <div class="choice-card" onclick="showScreen('sub-auth')">
-        <div class="choice-icon">👤</div>
-        <div class="choice-title">Espace abonné</div>
-        <div class="choice-sub">Accéder à votre abonnement et démarrer une session sans repayer</div>
-      </div>
-      <div class="choice-card" onclick="showScreen('admin-auth')">
-        <div class="choice-icon">📊</div>
-        <div class="choice-title">Équipe Parlons</div>
-        <div class="choice-sub">Tableau de bord, statistiques, sessions et abonnés</div>
-      </div>
+<!-- ══ LOGIN ══ -->
+<div data-screen="login" class="active">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <span>Parlons</span>
+      <p>Espace membres</p>
     </div>
+    <label class="flabel" for="login-email">Email</label>
+    <input type="email" id="login-email" class="finput" placeholder="vous@email.com" onkeydown="if(event.key==='Enter')login()">
+    <label class="flabel" for="login-pwd">Mot de passe <span style="font-weight:300;color:var(--light)">(abonnés : laissez vide)</span></label>
+    <input type="password" id="login-pwd" class="finput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+    <div class="login-err" id="login-err"></div>
+    <button class="btn-prim" id="login-btn" onclick="login()">Accéder à mon espace</button>
+    <p class="login-hint">
+      Pas encore abonné ? <a href="/#tarifs">Découvrir le Pass mensuel →</a>
+    </p>
   </div>
 </div>
 
-<!-- ══ ADMIN AUTH ══ -->
-<div data-screen="admin-auth">
-  <div class="auth-wrap">
-    <h2>Accès équipe</h2>
-    <p class="auth-sub">Réservé à l'équipe Parlons. Entrez le mot de passe administrateur.</p>
-    <label class="flabel" for="admin-pwd">Mot de passe</label>
-    <input type="password" id="admin-pwd" class="finput" placeholder="••••••••" onkeydown="if(event.key==='Enter')adminLogin()">
-    <div class="auth-err" id="admin-err"></div>
-    <button class="btn-prim" id="admin-btn" onclick="adminLogin()">Accéder au tableau de bord</button>
-    <button class="btn-back" onclick="showScreen('home')">← Retour</button>
+<!-- ══ SUBSCRIBER DASHBOARD ══ -->
+<div data-screen="sub-dash">
+  <div class="sub-wrap">
+    <div class="sub-hero">
+      <div class="sub-badge active" id="sub-badge">✓ Abonnement actif</div>
+      <div class="sub-name" id="sub-email-display"></div>
+      <div class="sub-expiry" id="sub-expiry"></div>
+    </div>
+    <div class="sub-section-title">Démarrer une session</div>
+    <p class="sub-desc">Votre abonnement inclut des sessions illimitées de 30 minutes — sans frais supplémentaires.</p>
+    <div class="pseudo-row">
+      <input type="text" id="sub-pseudo" class="finput" placeholder="Votre prénom ou pseudo" maxlength="30">
+    </div>
+    <button class="btn-session" id="sub-start-btn" onclick="startSubSession()">💬 Démarrer une session maintenant</button>
+    <p class="sub-foot">
+      Un écoutant disponible vous rejoindra dans les prochaines minutes.<br>
+      <a href="/">Vérifier la disponibilité →</a>
+    </p>
   </div>
 </div>
 
 <!-- ══ ADMIN DASHBOARD ══ -->
 <div data-screen="admin-dash">
   <div class="dash-wrap">
-    <div class="dash-title">📊 Tableau de bord Parlons</div>
+    <div class="dash-title">📊 Tableau de bord</div>
 
-    <!-- Stat cards -->
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-label">Revenus totaux</div>
@@ -185,268 +177,184 @@
     </div>
 
     <div class="two-col">
-      <!-- Sessions par formule -->
       <div>
         <div class="section-title">Sessions par formule</div>
-        <div class="card" id="plan-breakdown">
-          <div style="color:var(--light);font-size:.82rem;">Chargement…</div>
-        </div>
+        <div class="card" id="plan-breakdown"><div style="color:var(--light);font-size:.82rem">Chargement…</div></div>
 
-        <!-- Groupe -->
         <div class="section-title">Activité des groupes</div>
         <div class="card">
-          <div style="display:flex;gap:1rem;margin-bottom:1rem;">
-            <div style="flex:1;text-align:center;"><div style="font-size:1.4rem;font-weight:700;color:var(--dark)" id="s-group-total">—</div><div style="font-size:.72rem;color:var(--light)">messages total</div></div>
-            <div style="flex:1;text-align:center;"><div style="font-size:1.4rem;font-weight:700;color:var(--tc)" id="s-group-today">—</div><div style="font-size:.72rem;color:var(--light)">aujourd'hui</div></div>
-            <div style="flex:1;text-align:center;"><div style="font-size:1.4rem;font-weight:700;color:var(--dark)" id="s-group-users">—</div><div style="font-size:.72rem;color:var(--light)">utilisateurs actifs</div></div>
+          <div class="group-nums">
+            <div class="group-num"><div class="group-num-val" id="s-group-total">—</div><div class="group-num-lbl">messages total</div></div>
+            <div class="group-num"><div class="group-num-val" id="s-group-today" style="color:var(--tc)">—</div><div class="group-num-lbl">aujourd'hui</div></div>
+            <div class="group-num"><div class="group-num-val" id="s-group-users">—</div><div class="group-num-lbl">utilisateurs actifs</div></div>
           </div>
           <div class="room-grid" id="room-grid"></div>
         </div>
       </div>
 
-      <!-- Abonnés -->
       <div>
         <div class="section-title">Abonnés</div>
-        <div class="card" style="padding:0;overflow:hidden;">
-          <table id="sub-table">
-            <thead><tr><th>Email</th><th>Statut</th><th>Expire</th></tr></thead>
-            <tbody id="sub-tbody"><tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.5rem;">Chargement…</td></tr></tbody>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table>
+            <thead><tr><th>Email</th><th>Statut</th><th>Expire le</th></tr></thead>
+            <tbody id="sub-tbody"><tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.5rem">Chargement…</td></tr></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- Sessions récentes -->
     <div class="section-title">Sessions récentes</div>
-    <div class="card" style="padding:0;overflow:hidden;">
+    <div class="card" style="padding:0;overflow:hidden">
       <table>
         <thead><tr><th>Pseudo</th><th>Formule</th><th>Montant</th><th>Date</th></tr></thead>
-        <tbody id="sessions-tbody"><tr><td colspan="4" style="color:var(--light);text-align:center;padding:1.5rem;">Chargement…</td></tr></tbody>
+        <tbody id="sessions-tbody"><tr><td colspan="4" style="color:var(--light);text-align:center;padding:1.5rem">Chargement…</td></tr></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- ══ SUBSCRIBER AUTH ══ -->
-<div data-screen="sub-auth">
-  <div class="auth-wrap">
-    <h2>Espace abonné</h2>
-    <p class="auth-sub">Entrez l'email avec lequel vous avez souscrit au Pass mensuel Parlons.</p>
-    <label class="flabel" for="sub-email">Votre email</label>
-    <input type="email" id="sub-email" class="finput" placeholder="vous@email.com" onkeydown="if(event.key==='Enter')subLogin()">
-    <div class="auth-err" id="sub-err"></div>
-    <button class="btn-prim" id="sub-btn" onclick="subLogin()">Accéder à mon espace</button>
-    <button class="btn-back" onclick="showScreen('home')">← Retour</button>
-    <p style="text-align:center;font-size:.72rem;color:var(--light);margin-top:1rem;line-height:1.6;">
-      Pas encore abonné ? <a href="/#tarifs" style="color:var(--tc)">Découvrir le Pass mensuel 15€ →</a>
-    </p>
-  </div>
-</div>
-
-<!-- ══ SUBSCRIBER DASHBOARD ══ -->
-<div data-screen="sub-dash">
-  <div class="sub-dash">
-    <div class="sub-status-card">
-      <div class="sub-status-badge" id="sub-badge">Actif</div>
-      <div class="sub-email" id="sub-email-display"></div>
-      <div class="sub-expiry" id="sub-expiry"></div>
-    </div>
-    <div class="section-title">Démarrer une session</div>
-    <p style="font-size:.82rem;color:var(--mid);margin-bottom:1.1rem;font-weight:300;line-height:1.65;">
-      En tant qu'abonné, chaque session de 30 minutes est incluse dans votre forfait — sans frais supplémentaires.
-    </p>
-    <div class="sub-pseudo-row">
-      <input type="text" id="sub-pseudo" class="finput" placeholder="Votre prénom ou pseudo" maxlength="30">
-    </div>
-    <button class="btn-session" id="sub-start-btn" onclick="startSubSession()">💬 Démarrer une session maintenant</button>
-    <p style="text-align:center;font-size:.73rem;color:var(--light);line-height:1.6;">
-      Un écoutant disponible vous rejoindra dans les prochaines minutes.<br>
-      <a href="/" style="color:var(--tc)">Vérifier la disponibilité →</a>
-    </p>
-  </div>
-</div>
-
 <script>
 const API = '/.netlify/functions';
-let currentScreen = 'home';
-let subEmail = '';
+let subEmailStored = '';
 
-// ── SCREENS ──
 function showScreen(id) {
   document.querySelectorAll('[data-screen]').forEach(el => el.classList.remove('active'));
   document.querySelector('[data-screen="' + id + '"]').classList.add('active');
-  currentScreen = id;
-  document.getElementById('nav-logout').style.display = (id !== 'home') ? 'block' : 'none';
+  document.getElementById('nav-logout').style.display = id !== 'login' ? 'block' : 'none';
   window.scrollTo(0, 0);
 }
 
-function logout() { showScreen('home'); subEmail = ''; }
+function logout() { showScreen('login'); subEmailStored = ''; }
 
-// ── ADMIN ──
-async function adminLogin() {
-  const pwd = document.getElementById('admin-pwd').value;
-  const btn = document.getElementById('admin-btn');
-  const err = document.getElementById('admin-err');
+// ── LOGIN ──
+async function login() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-pwd').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-err');
   err.textContent = '';
+
+  if (!email || !email.includes('@')) { err.textContent = 'Entrez un email valide.'; return; }
+
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> Connexion…';
+  btn.innerHTML = '<span class="spin"></span> Vérification…';
+
   try {
     const res = await fetch(`${API}/admin-stats`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pwd })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erreur');
-    renderDashboard(data);
-    showScreen('admin-dash');
+
+    if (!res.ok) throw new Error(data.error || 'Accès refusé');
+
+    if (data.role === 'admin') {
+      renderDashboard(data);
+      showScreen('admin-dash');
+    } else if (data.role === 'subscriber') {
+      subEmailStored = email;
+      renderSubDash(email, data.expires_at, data.active, data.pseudo);
+      showScreen('sub-dash');
+    } else {
+      throw new Error('Rôle inconnu');
+    }
   } catch (e) {
     err.textContent = e.message;
   }
-  btn.disabled = false;
-  btn.innerHTML = 'Accéder au tableau de bord';
-}
 
-const ROOM_LABELS = {
-  anxiete: '😮‍💨 Anxiété',
-  deuil: '🕊️ Deuil',
-  couple: '💔 Relations',
-  travail: '🔥 Travail',
-  solitude: '🌙 Solitude',
-  confiance: '🌱 Confiance'
-};
-
-function fmt(v) { return (v || 0).toFixed(2).replace('.', ',') + ' €'; }
-function fmtDate(s) { if (!s) return '—'; return new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }); }
-
-function renderDashboard(d) {
-  const { sessions, subscribers, group } = d;
-  // Revenue cards
-  document.getElementById('s-total-rev').textContent = fmt(sessions.totalRevenue);
-  document.getElementById('s-month-rev').textContent = fmt(sessions.monthRevenue);
-  const diff = sessions.monthRevenue - sessions.lastMonthRevenue;
-  const diffPct = sessions.lastMonthRevenue > 0 ? Math.round((diff / sessions.lastMonthRevenue) * 100) : null;
-  const compEl = document.getElementById('s-month-comp');
-  if (diffPct !== null) {
-    compEl.innerHTML = `<span class="${diff >= 0 ? 'stat-up' : 'stat-down'}">${diff >= 0 ? '+' : ''}${diffPct}%</span> vs mois dernier`;
-  } else {
-    compEl.textContent = fmt(sessions.lastMonthRevenue) + ' mois dernier';
-  }
-  document.getElementById('s-total-sess').textContent = sessions.total;
-  document.getElementById('s-month-sess').textContent = sessions.monthCount + ' ce mois · ' + sessions.lastMonthCount + ' le mois dernier';
-  document.getElementById('s-active-subs').textContent = subscribers.active;
-  document.getElementById('s-total-subs').textContent = subscribers.total + ' total';
-
-  // Plan breakdown
-  const byPlan = sessions.byPlan || {};
-  const maxCount = Math.max(1, ...Object.values(byPlan).map(p => p.count));
-  const planNames = { '10 min': '💬 10 min', '30 min': '💬 30 min', '1 heure': '💬 1 heure', 'Pass mensuel': '♾ Pass mensuel', 'Groupe 30min': '👥 Groupe', 'Chat de groupe': '👥 Groupe' };
-  const planHtml = Object.entries(byPlan).map(([k, v]) => `
-    <div class="plan-row">
-      <div class="plan-name">${planNames[k] || k}</div>
-      <div class="plan-bar-wrap"><div class="plan-bar" style="width:${Math.round(v.count / maxCount * 100)}%"></div></div>
-      <div class="plan-count">${v.count} sess.</div>
-      <div class="plan-rev">${fmt(v.revenue)}</div>
-    </div>`).join('') || '<div style="color:var(--light);font-size:.82rem;">Aucune session enregistrée</div>';
-  document.getElementById('plan-breakdown').innerHTML = planHtml;
-
-  // Group stats
-  document.getElementById('s-group-total').textContent = group.totalMessages;
-  document.getElementById('s-group-today').textContent = group.todayMessages;
-  document.getElementById('s-group-users').textContent = group.activeUsers;
-  const roomHtml = Object.entries(group.byRoom || {}).map(([room, cnt]) => `
-    <div class="room-mini">
-      <div class="room-mini-name">${ROOM_LABELS[room] || room}</div>
-      <div class="room-mini-count">${cnt}</div>
-    </div>`).join('') || '<div style="color:var(--light);font-size:.78rem;">Aucun message de groupe</div>';
-  document.getElementById('room-grid').innerHTML = roomHtml;
-
-  // Subscribers table
-  const subRows = (subscribers.list || []).map(s => {
-    const active = s.status === 'active' && (!s.expires_at || new Date(s.expires_at) > new Date());
-    return `<tr>
-      <td style="font-size:.8rem">${s.email || '—'}</td>
-      <td><span class="badge ${active ? 'active' : 'expired'}">${active ? 'Actif' : 'Expiré'}</span></td>
-      <td style="font-size:.78rem;color:var(--mid)">${fmtDate(s.expires_at)}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.2rem;">Aucun abonné</td></tr>';
-  document.getElementById('sub-tbody').innerHTML = subRows;
-
-  // Recent sessions
-  const sessRows = (sessions.recent || []).map(s => `<tr>
-    <td style="font-size:.8rem;font-weight:500">${s.client_pseudo || '—'}</td>
-    <td style="font-size:.78rem">${s.formule || '—'}</td>
-    <td style="font-size:.8rem;font-weight:600;color:var(--tc)">${fmt(s.montant)}</td>
-    <td style="font-size:.75rem;color:var(--mid)">${fmtDate(s.started_at)}</td>
-  </tr>`).join('') || '<tr><td colspan="4" style="color:var(--light);text-align:center;padding:1.2rem;">Aucune session</td></tr>';
-  document.getElementById('sessions-tbody').innerHTML = sessRows;
-}
-
-// ── SUBSCRIBER ──
-async function subLogin() {
-  const email = document.getElementById('sub-email').value.trim();
-  const btn = document.getElementById('sub-btn');
-  const err = document.getElementById('sub-err');
-  err.textContent = '';
-  if (!email || !email.includes('@')) { err.textContent = 'Email invalide'; return; }
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> Vérification…';
-  try {
-    // Check subscription by trying to get subscriber info via admin (we use the sub status check)
-    const res = await fetch(`${API}/subscriber-session`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, pseudo: '' })
-    });
-    const data = await res.json();
-    // Even an error means we found the subscriber — if 403 it's because status check failed
-    if (res.status === 403) {
-      err.textContent = data.error || 'Abonnement introuvable ou expiré';
-    } else if (!res.ok) {
-      err.textContent = data.error || 'Erreur serveur';
-    } else {
-      // Subscription is active
-      subEmail = email;
-      renderSubDash(email, data.expires_at, true);
-      showScreen('sub-dash');
-    }
-  } catch (e) {
-    err.textContent = 'Erreur de connexion';
-  }
   btn.disabled = false;
   btn.innerHTML = 'Accéder à mon espace';
 }
 
-function renderSubDash(email, expiresAt, active) {
+// ── SUBSCRIBER DASHBOARD ──
+function renderSubDash(email, expiresAt, active, pseudo) {
   const badge = document.getElementById('sub-badge');
   badge.textContent = active ? '✓ Abonnement actif' : 'Abonnement expiré';
-  badge.className = 'sub-status-badge' + (active ? '' : ' expired');
+  badge.className = 'sub-badge ' + (active ? 'active' : 'expired');
   document.getElementById('sub-email-display').textContent = email;
   if (expiresAt) {
     const d = new Date(expiresAt);
     document.getElementById('sub-expiry').textContent = 'Valable jusqu\'au ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
   }
-  const startBtn = document.getElementById('sub-start-btn');
-  if (!active) { startBtn.disabled = true; startBtn.textContent = 'Abonnement expiré — Renouveler'; }
+  if (pseudo) document.getElementById('sub-pseudo').value = pseudo;
+  const btn = document.getElementById('sub-start-btn');
+  if (!active) { btn.disabled = true; btn.textContent = 'Abonnement expiré'; }
 }
 
 async function startSubSession() {
   const pseudo = document.getElementById('sub-pseudo').value.trim() || 'Abonné';
   const btn = document.getElementById('sub-start-btn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin" style="border-top-color:var(--tc);border-color:rgba(196,113,74,.3)"></span> Création de session…';
+  btn.innerHTML = '<span class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:white"></span> Création…';
   try {
     const res = await fetch(`${API}/subscriber-session`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: subEmail, pseudo })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: subEmailStored, pseudo })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
-    // Redirect to main site with the session token
-    window.location.href = `/?sub_t=${data.token}&sub_n=${encodeURIComponent(pseudo)}`;
+    window.location.href = '/?sub_t=' + data.token + '&sub_n=' + encodeURIComponent(pseudo);
   } catch (e) {
     alert('Erreur : ' + e.message);
     btn.disabled = false;
     btn.innerHTML = '💬 Démarrer une session maintenant';
   }
+}
+
+// ── ADMIN DASHBOARD ──
+const ROOM_LABELS = { anxiete: '😮‍💨 Anxiété', deuil: '🕊️ Deuil', couple: '💔 Relations', travail: '🔥 Travail', solitude: '🌙 Solitude', confiance: '🌱 Confiance' };
+function fmt(v) { return (v || 0).toFixed(2).replace('.', ',') + ' €'; }
+function fmtDate(s) { return s ? new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'; }
+
+function renderDashboard(d) {
+  const { sessions, subscribers, group } = d;
+
+  document.getElementById('s-total-rev').textContent = fmt(sessions.totalRevenue);
+  document.getElementById('s-month-rev').textContent = fmt(sessions.monthRevenue);
+
+  const diff = sessions.monthRevenue - sessions.lastMonthRevenue;
+  const pct = sessions.lastMonthRevenue > 0 ? Math.round(diff / sessions.lastMonthRevenue * 100) : null;
+  document.getElementById('s-month-comp').innerHTML = pct !== null
+    ? `<span class="${diff >= 0 ? 'stat-up' : 'stat-down'}">${diff >= 0 ? '+' : ''}${pct}%</span> vs mois dernier`
+    : fmt(sessions.lastMonthRevenue) + ' mois dernier';
+
+  document.getElementById('s-total-sess').textContent = sessions.total;
+  document.getElementById('s-month-sess').textContent = sessions.monthCount + ' ce mois · ' + sessions.lastMonthCount + ' le mois dernier';
+  document.getElementById('s-active-subs').textContent = subscribers.active;
+  document.getElementById('s-total-subs').textContent = subscribers.total + ' abonné' + (subscribers.total > 1 ? 's' : '') + ' au total';
+
+  // Plan breakdown
+  const byPlan = sessions.byPlan || {};
+  const maxCount = Math.max(1, ...Object.values(byPlan).map(p => p.count));
+  const planIcons = { '10 min': '💬', '30 min': '💬', '1 heure': '💬', 'Pass mensuel': '♾', 'Groupe 30min': '👥', 'Chat de groupe': '👥' };
+  document.getElementById('plan-breakdown').innerHTML = Object.entries(byPlan).map(([k, v]) => `
+    <div class="plan-row">
+      <div class="plan-name">${planIcons[k] || '•'} ${k}</div>
+      <div class="plan-bar-wrap"><div class="plan-bar" style="width:${Math.round(v.count / maxCount * 100)}%"></div></div>
+      <div class="plan-count">${v.count}×</div>
+      <div class="plan-rev">${fmt(v.revenue)}</div>
+    </div>`).join('') || '<div style="color:var(--light);font-size:.82rem">Aucune session enregistrée</div>';
+
+  // Group
+  document.getElementById('s-group-total').textContent = group.totalMessages;
+  document.getElementById('s-group-today').textContent = group.todayMessages;
+  document.getElementById('s-group-users').textContent = group.activeUsers;
+  document.getElementById('room-grid').innerHTML = Object.entries(group.byRoom || {}).map(([r, c]) =>
+    `<div class="room-mini"><div class="room-mini-name">${ROOM_LABELS[r] || r}</div><div class="room-mini-count">${c}</div></div>`
+  ).join('') || '<div style="color:var(--light);font-size:.75rem">Aucun message de groupe</div>';
+
+  // Subscribers table
+  document.getElementById('sub-tbody').innerHTML = (subscribers.list || []).map(s => {
+    const ok = s.status === 'active' && (!s.expires_at || new Date(s.expires_at) > new Date());
+    return `<tr><td style="font-size:.8rem">${s.email || '—'}</td><td><span class="badge ${ok ? 'ok' : 'ko'}">${ok ? 'Actif' : 'Expiré'}</span></td><td style="font-size:.78rem;color:var(--mid)">${fmtDate(s.expires_at)}</td></tr>`;
+  }).join('') || '<tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.2rem">Aucun abonné</td></tr>';
+
+  // Recent sessions
+  document.getElementById('sessions-tbody').innerHTML = (sessions.recent || []).map(s =>
+    `<tr><td style="font-size:.8rem;font-weight:500">${s.client_pseudo || '—'}</td><td style="font-size:.78rem">${s.formule || '—'}</td><td style="font-size:.8rem;font-weight:700;color:var(--tc)">${fmt(s.montant)}</td><td style="font-size:.75rem;color:var(--mid)">${fmtDate(s.started_at)}</td></tr>`
+  ).join('') || '<tr><td colspan="4" style="color:var(--light);text-align:center;padding:1.2rem">Aucune session</td></tr>';
 }
 </script>
 </body>
