@@ -2,12 +2,17 @@ const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_PWD = process.env.ADMIN_PASSWORD || 'Parlons2026!';
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'lafmarvin@gmail.com').toLowerCase();
+const crypto = require('crypto');
 
 const CORS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type'
 };
+
+function hashPassword(password, salt) {
+  return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+}
 
 async function sbGet(path) {
   try {
@@ -107,8 +112,19 @@ exports.handler = async (event) => {
     return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Aucun abonnement trouvé pour cet email' }) };
 
   const sub = subs[0];
+
+  // Vérifier le mot de passe si un hash est défini
+  if (sub.password_hash && sub.password_salt) {
+    if (!password)
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
+    const hash = hashPassword(password, sub.password_salt);
+    if (hash !== sub.password_hash)
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe incorrect' }) };
+  }
+
   const now = new Date();
   const active = sub.status === 'active' && (!sub.expires_at || new Date(sub.expires_at) > now);
+  const needsPasswordSetup = !sub.password_hash;
 
   return {
     statusCode: 200,
@@ -118,7 +134,8 @@ exports.handler = async (event) => {
       active,
       expires_at: sub.expires_at,
       pseudo: sub.pseudo,
-      cancel_at_period_end: sub.cancel_at_period_end || false
+      cancel_at_period_end: sub.cancel_at_period_end || false,
+      needs_password_setup: needsPasswordSetup
     })
   };
 };

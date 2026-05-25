@@ -146,6 +146,30 @@
       <a href="/">Vérifier la disponibilité →</a>
     </p>
 
+    <!-- Définir/changer mot de passe -->
+    <div id="pwd-setup-alert" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:1rem 1.2rem;font-size:.82rem;color:#1e40af;margin-bottom:1.5rem;line-height:1.6;">
+      🔑 <strong>Définissez votre mot de passe</strong> pour sécuriser votre espace. Vous en aurez besoin à chaque connexion.
+    </div>
+
+    <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--sand);">
+      <div class="sub-section-title" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="togglePwdForm()">
+        <span>🔑 Changer mon mot de passe</span>
+        <span id="pwd-chevron" style="color:var(--light);font-size:.85rem;">▼</span>
+      </div>
+      <div id="pwd-form" style="display:none;margin-top:1rem;">
+        <div id="pwd-setup-note" style="display:none;font-size:.78rem;color:var(--mid);margin-bottom:.8rem;">Laissez "Mot de passe actuel" vide si c'est votre première connexion sans mot de passe.</div>
+        <label class="flabel">Mot de passe actuel</label>
+        <input type="password" id="pwd-current" class="finput" placeholder="Laissez vide si premier accès">
+        <label class="flabel">Nouveau mot de passe <span style="font-weight:300;color:var(--light)">(8 caractères min.)</span></label>
+        <input type="password" id="pwd-new" class="finput" placeholder="Choisissez un mot de passe">
+        <label class="flabel">Confirmer le nouveau mot de passe</label>
+        <input type="password" id="pwd-confirm" class="finput" placeholder="Répétez le mot de passe">
+        <div id="pwd-err" style="color:#ef4444;font-size:.78rem;margin-bottom:.6rem;min-height:1rem;"></div>
+        <button onclick="changePassword()" style="width:100%;background:var(--dark);color:white;border:none;border-radius:50px;padding:.75rem;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;">Enregistrer le nouveau mot de passe</button>
+        <div id="pwd-ok" style="display:none;color:#16a34a;font-size:.8rem;text-align:center;margin-top:.6rem;">✓ Mot de passe mis à jour avec succès !</div>
+      </div>
+    </div>
+
     <!-- Gestion résiliation -->
     <div id="cancel-zone" style="margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--sand);">
       <div id="cancel-pending" style="display:none;background:#fef9ec;border:1px solid #f0d060;border-radius:12px;padding:1rem 1.2rem;font-size:.82rem;color:#92630a;line-height:1.65;margin-bottom:1rem;">
@@ -267,7 +291,7 @@ async function login() {
       showScreen('admin-dash');
     } else if (data.role === 'subscriber') {
       subEmailStored = email;
-      renderSubDash(email, data.expires_at, data.active, data.pseudo, data.cancel_at_period_end);
+      renderSubDash(email, data.expires_at, data.active, data.pseudo, data.cancel_at_period_end, data.needs_password_setup);
       showScreen('sub-dash');
     } else {
       throw new Error('Rôle inconnu');
@@ -281,7 +305,46 @@ async function login() {
 }
 
 // ── SUBSCRIBER DASHBOARD ──
-function renderSubDash(email, expiresAt, active, pseudo, cancelAtPeriodEnd) {
+function togglePwdForm() {
+  const f = document.getElementById('pwd-form');
+  const c = document.getElementById('pwd-chevron');
+  const open = f.style.display !== 'none';
+  f.style.display = open ? 'none' : 'block';
+  c.textContent = open ? '▼' : '▲';
+}
+
+async function changePassword() {
+  const current = document.getElementById('pwd-current').value;
+  const newPwd = document.getElementById('pwd-new').value;
+  const confirm = document.getElementById('pwd-confirm').value;
+  const err = document.getElementById('pwd-err');
+  const ok = document.getElementById('pwd-ok');
+  err.textContent = '';
+  ok.style.display = 'none';
+
+  if (!newPwd || newPwd.length < 8) { err.textContent = 'Le mot de passe doit faire au moins 8 caractères.'; return; }
+  if (newPwd !== confirm) { err.textContent = 'Les mots de passe ne correspondent pas.'; return; }
+
+  try {
+    const res = await fetch(`${API}/change-password`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: subEmailStored, currentPassword: current || undefined, newPassword: newPwd })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    ok.style.display = 'block';
+    document.getElementById('pwd-current').value = '';
+    document.getElementById('pwd-new').value = '';
+    document.getElementById('pwd-confirm').value = '';
+    // Masquer l'alerte setup si elle était affichée
+    const alert = document.getElementById('pwd-setup-alert');
+    if (alert) alert.style.display = 'none';
+  } catch (e) {
+    err.textContent = e.message;
+  }
+}
+
+function renderSubDash(email, expiresAt, active, pseudo, cancelAtPeriodEnd, needsPasswordSetup) {
   const badge = document.getElementById('sub-badge');
   if (!active) {
     badge.textContent = 'Abonnement expiré';
@@ -302,6 +365,15 @@ function renderSubDash(email, expiresAt, active, pseudo, cancelAtPeriodEnd) {
   if (pseudo) document.getElementById('sub-pseudo').value = pseudo;
   const startBtn = document.getElementById('sub-start-btn');
   if (!active) { startBtn.disabled = true; startBtn.textContent = 'Abonnement expiré'; }
+
+  // Alerte si pas encore de mot de passe défini
+  if (needsPasswordSetup) {
+    const alert = document.getElementById('pwd-setup-alert');
+    const setupNote = document.getElementById('pwd-setup-note');
+    if (alert) alert.style.display = 'block';
+    if (setupNote) setupNote.style.display = 'block';
+    togglePwdForm(); // ouvrir le formulaire automatiquement
+  }
 
   // Zone résiliation
   if (cancelAtPeriodEnd) {
