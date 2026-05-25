@@ -40,7 +40,7 @@ exports.handler = async (event) => {
       return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe incorrect' }) };
 
     const [sessions, subscribers, groupMsgs, groupAccess] = await Promise.all([
-      sbGet('sessions?statut=eq.paid&select=formule,montant,client_pseudo,started_at,stripe_payment_id&order=started_at.desc&limit=500'),
+      sbGet('sessions?statut=eq.paid&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at&order=started_at.desc&limit=500'),
       sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
       sbGet('group_messages?select=room_id,created_at,author&order=created_at.desc&limit=2000'),
       sbGet('group_access?select=room_id,pseudo,free_until,paid_until,is_agent&order=created_at.desc&limit=300')
@@ -73,6 +73,18 @@ exports.handler = async (event) => {
       (a.paid_until && new Date(a.paid_until) > now) || (a.free_until && new Date(a.free_until) > now)
     );
 
+    // Stats par agent
+    const byAgent = {};
+    sessions.forEach(s => {
+      if (!s.agent_name) return;
+      if (!byAgent[s.agent_name]) byAgent[s.agent_name] = { name: s.agent_name, email: s.agent_email || null, sessions: 0, revenue: 0, plans: {} };
+      byAgent[s.agent_name].sessions++;
+      byAgent[s.agent_name].revenue += s.montant || 0;
+      const p = s.formule || 'Autre';
+      byAgent[s.agent_name].plans[p] = (byAgent[s.agent_name].plans[p] || 0) + 1;
+    });
+    const unassigned = sessions.filter(s => !s.agent_name).length;
+
     return {
       statusCode: 200,
       headers: CORS,
@@ -86,7 +98,9 @@ exports.handler = async (event) => {
           monthRevenue: Math.round(monthRevenue * 100) / 100,
           lastMonthRevenue: Math.round(lastMonthRevenue * 100) / 100,
           byPlan,
-          recent: sessions.slice(0, 30)
+          recent: sessions.slice(0, 30),
+          byAgent,
+          unassigned
         },
         subscribers: {
           total: subscribers.length,

@@ -240,6 +240,12 @@
       </div>
     </div>
 
+    <!-- Stats par agent -->
+    <div class="section-title">Activité par agent</div>
+    <div class="card" id="agent-section">
+      <div style="color:var(--light);font-size:.82rem">Chargement…</div>
+    </div>
+
     <div class="section-title">Sessions récentes</div>
     <div class="card" style="padding:0;overflow:hidden">
       <table>
@@ -483,6 +489,36 @@ function renderDashboard(d) {
     const ok = s.status === 'active' && (!s.expires_at || new Date(s.expires_at) > new Date());
     return `<tr><td style="font-size:.8rem">${s.email || '—'}</td><td><span class="badge ${ok ? 'ok' : 'ko'}">${ok ? 'Actif' : 'Expiré'}</span></td><td style="font-size:.78rem;color:var(--mid)">${fmtDate(s.expires_at)}</td></tr>`;
   }).join('') || '<tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.2rem">Aucun abonné</td></tr>';
+
+  // Agent stats
+  const byAgent = sessions.byAgent || {};
+  const agentList = Object.values(byAgent).sort((a, b) => b.sessions - a.sessions);
+  const unassigned = sessions.unassigned || 0;
+  if (agentList.length === 0) {
+    document.getElementById('agent-section').innerHTML = '<div style="color:var(--light);font-size:.82rem">Aucune session assignée à un agent pour l\'instant.<br><span style="font-size:.72rem">Les agents apparaîtront ici dès leur première réponse dans Crisp.</span></div>';
+  } else {
+    const planIcons2 = { '10 min': '💬', '30 min': '💬', '1 heure': '💬', 'Pass mensuel': '♾', 'Groupe 30min': '👥', 'Chat de groupe': '👥' };
+    const agentHtml = agentList.map(a => {
+      const plansStr = Object.entries(a.plans).map(([k, v]) => `${planIcons2[k] || '•'} ${k}: <strong>${v}</strong>`).join(' &nbsp;·&nbsp; ');
+      return `<div style="padding:.9rem 0;border-bottom:1px solid var(--warm);display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <div style="width:36px;height:36px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.95rem;flex-shrink:0;">${a.name.charAt(0).toUpperCase()}</div>
+        <div style="flex:1;min-width:160px;">
+          <div style="font-weight:600;font-size:.88rem;color:var(--dark)">${a.name}</div>
+          <div style="font-size:.72rem;color:var(--light);margin-top:.1rem">${plansStr}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--dark)">${a.sessions}</div>
+          <div style="font-size:.7rem;color:var(--light)">session${a.sessions > 1 ? 's' : ''}</div>
+        </div>
+        <div style="text-align:right;min-width:70px;">
+          <div style="font-weight:700;font-size:.92rem;color:var(--tc)">${fmt(a.revenue)}</div>
+          <div style="font-size:.7rem;color:var(--light)">encaissé</div>
+        </div>
+      </div>`;
+    }).join('');
+    const note = unassigned > 0 ? `<div style="font-size:.72rem;color:var(--light);margin-top:.8rem">${unassigned} session${unassigned > 1 ? 's' : ''} sans agent enregistré (avant la mise en place du suivi)</div>` : '';
+    document.getElementById('agent-section').innerHTML = agentHtml + note;
+  }
 
   // Recent sessions
   document.getElementById('sessions-tbody').innerHTML = (sessions.recent || []).map(s =>
