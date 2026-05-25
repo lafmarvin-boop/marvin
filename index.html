@@ -1398,6 +1398,15 @@
             <div class="rating-stars" id="rating-stars"><span onclick="setRating(1)">★</span><span onclick="setRating(2)">★</span><span onclick="setRating(3)">★</span><span onclick="setRating(4)">★</span><span onclick="setRating(5)">★</span></div>
             <textarea class="rating-comment" id="rating-comment" placeholder="Un commentaire sur votre écoutant ? (optionnel)"></textarea>
             <button class="btn-rate" onclick="submitRating()">Envoyer ma note</button>
+            <!-- Suggestions d'amélioration -->
+            <div style="margin-top:.8rem;border-top:1px solid var(--sand);padding-top:.8rem;">
+              <button onclick="toggleSuggestion()" id="sugg-toggle-btn" style="background:none;border:1px solid var(--sand);border-radius:50px;padding:.4rem 1rem;font-family:'DM Sans',sans-serif;font-size:.75rem;color:var(--mid);cursor:pointer;width:100%;transition:border-color .2s;">💡 Faire une suggestion d'amélioration</button>
+              <div id="sugg-form" style="display:none;margin-top:.7rem;">
+                <textarea id="sugg-text" style="width:100%;padding:.6rem .85rem;border:1.5px solid var(--sand);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;background:white;outline:none;resize:none;height:70px;" placeholder="Une idée pour améliorer Parlons ? (nouvelle fonctionnalité, organisation, tarif…)"></textarea>
+                <button onclick="submitSuggestion()" id="sugg-btn" style="margin-top:.4rem;width:100%;background:var(--dark);color:white;border:none;border-radius:50px;padding:.6rem;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;">Envoyer ma suggestion</button>
+                <div id="sugg-ok" style="display:none;color:#16a34a;font-size:.78rem;text-align:center;margin-top:.4rem;">✓ Suggestion envoyée, merci !</div>
+              </div>
+            </div>
           </div>
         </div>
         <p style="font-size:.72rem;color:#B09070;text-align:center;margin-top:1rem;">💬 Votre conversation s'ouvre dans la fenêtre de chat</p>
@@ -1730,6 +1739,34 @@ async function submitRating(){
   document.getElementById('rating-zone').innerHTML=`
     <p style="color:#2d7a2d;font-size:.86rem;text-align:center;">✅ Merci pour votre note !</p>
     <button onclick="retrySession()" style="margin-top:.7rem;width:100%;background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.7rem 1.2rem;font-family:'DM Sans',sans-serif;font-size:.84rem;font-weight:600;cursor:pointer;">💬 Démarrer une nouvelle session →</button>`;
+}
+
+// ── SUGGESTIONS ──
+function toggleSuggestion() {
+  const f = document.getElementById('sugg-form');
+  const open = f.style.display !== 'none';
+  f.style.display = open ? 'none' : 'block';
+  document.getElementById('sugg-toggle-btn').style.borderColor = open ? 'var(--sand)' : 'var(--tc)';
+}
+async function submitSuggestion() {
+  const text = document.getElementById('sugg-text').value.trim();
+  if (!text) { alert('Veuillez écrire votre suggestion.'); return; }
+  const btn = document.getElementById('sugg-btn');
+  btn.disabled = true;
+  const paymentId = sessionStorage.getItem('parlons_payment_id') || null;
+  try {
+    await fetch('/.netlify/functions/submit-suggestion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text, paymentId })
+    });
+    document.getElementById('sugg-ok').style.display = 'block';
+    document.getElementById('sugg-text').value = '';
+    btn.style.display = 'none';
+  } catch(e) {
+    btn.disabled = false;
+    alert('Erreur d\'envoi. Réessayez.');
+  }
 }
 
 // ── PAYMENT ──
