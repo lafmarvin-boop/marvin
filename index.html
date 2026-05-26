@@ -1510,6 +1510,25 @@
     setTimeout(_syncCrispAvail, 3000);
     setTimeout(_syncCrispAvail, 6000);
     setInterval(_syncCrispAvail, 10000);
+    // Vérifier si une session est en cours (reconnexion après fermeture de page)
+    setTimeout(function(){
+      var sess=JSON.parse(localStorage.getItem('parlons_active_session')||'null');
+      if(!sess||!sess.startedAt)return;
+      var elapsed=Math.floor((Date.now()-sess.startedAt)/1000);
+      var remaining=sess.duration-elapsed;
+      if(remaining<=0){localStorage.removeItem('parlons_active_session');return;}
+      if(typeof showReconnectBanner==='function')showReconnectBanner(sess,remaining);
+    },800);
+  });
+  // Sauvegarder l'état quand l'utilisateur quitte la page
+  window.addEventListener('pagehide',function(){
+    var sess=JSON.parse(localStorage.getItem('parlons_active_session')||'null');
+    if(!sess||!sess.startedAt)return;
+    var elapsed=Math.floor((Date.now()-sess.startedAt)/1000);
+    if(elapsed>=sess.duration)return;
+    sess.disconnectedAt=Date.now();
+    localStorage.setItem('parlons_active_session',JSON.stringify(sess));
+    try{$crisp.push(["set","session:event",[[["⚪ Utilisateur a quitté la page",{},"grey"]]]]);}catch(e){}
   });
   // Timer auto au 1er message de l'agent
   window.parlonsWaiting=false;
@@ -1701,6 +1720,7 @@ function agentConnected(){
   document.getElementById('waiting-zone').style.display='none';
   document.getElementById('session-zone').style.display='block';
   sessionSeconds=sessionDurationSec;updateSessionUI();
+  try{localStorage.setItem('parlons_active_session',JSON.stringify({paymentId:sessionStorage.getItem('parlons_payment_id'),startedAt:Date.now(),duration:sessionDurationSec,label:selectedLabel}));}catch(e){}
   const mbar=document.getElementById('mobile-session-bar');
   if(mbar){mbar.style.display='flex';}
   const tbadge=document.getElementById('tawk-timer-badge');
@@ -1711,6 +1731,7 @@ function agentConnected(){
     if(sessionSeconds<=120){const ec=document.getElementById('end-countdown');if(ec){const m=Math.floor(sessionSeconds/60),s=sessionSeconds%60;ec.textContent=`${m}:${String(s).padStart(2,'0')}`;ec.style.color=sessionSeconds<=30?'#e74c3c':'inherit';}}
     if(sessionSeconds<=0){
       clearInterval(sessionTimer);
+      localStorage.removeItem('parlons_active_session');
       document.getElementById('session-timer').textContent='0:00';
       const mbar2=document.getElementById('mobile-session-bar');
       if(mbar2){mbar2.style.display='none';}
@@ -1748,8 +1769,81 @@ function updateSessionUI(){
 }
 function retrySession(){
   sessionStorage.removeItem('parlons_payment_id');
+  localStorage.removeItem('parlons_active_session');
   closeModal();
   setTimeout(()=>openModal(),300);
+}
+
+// ── RECONNEXION SESSION ──
+let reconnectBarTimer=null;
+function showReconnectBanner(sess,remaining){
+  const banner=document.getElementById('reconnect-banner');
+  if(!banner)return;
+  const lbl=document.getElementById('reconnect-label');
+  if(lbl)lbl.textContent=sess.label||'en cours';
+  let rem=remaining;
+  function tick(){
+    if(rem<=0){clearInterval(reconnectBarTimer);localStorage.removeItem('parlons_active_session');banner.style.display='none';return;}
+    const m=Math.floor(rem/60),s=rem%60;
+    const el=document.getElementById('reconnect-timer');
+    if(el)el.textContent=m+':'+String(s).padStart(2,'0');
+    rem--;
+  }
+  tick();
+  banner.style.display='flex';
+  reconnectBarTimer=setInterval(tick,1000);
+  // Notifier l'agent de la reconnexion
+  if(sess.disconnectedAt){
+    try{$crisp.push(["set","session:event",[[["🟢 Utilisateur de retour",{},"green"]]]]);}catch(e){}
+    delete sess.disconnectedAt;
+    localStorage.setItem('parlons_active_session',JSON.stringify(sess));
+  }
+}
+
+function resumeSession(){
+  const sess=JSON.parse(localStorage.getItem('parlons_active_session')||'null');
+  if(!sess||!sess.startedAt)return;
+  const elapsed=Math.floor((Date.now()-sess.startedAt)/1000);
+  const remaining=sess.duration-elapsed;
+  if(remaining<=0){localStorage.removeItem('parlons_active_session');document.getElementById('reconnect-banner').style.display='none';return;}
+  clearInterval(reconnectBarTimer);
+  // Restaurer l'état
+  selectedLabel=sess.label||'Session';
+  sessionStorage.setItem('parlons_payment_id',sess.paymentId||'');
+  // Ouvrir la modale dans l'état "session en cours"
+  document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';
+  document.getElementById('step-1').style.display='none';
+  document.getElementById('step-2').style.display='block';
+  document.getElementById('payment-form').style.display='none';
+  document.getElementById('sub-success').style.display='none';
+  document.getElementById('payment-success').style.display='block';
+  document.getElementById('waiting-zone').style.display='none';
+  document.getElementById('session-zone').style.display='block';
+  const rz=document.getElementById('rating-zone');if(rz)rz.style.display='none';
+  const se=document.getElementById('session-ended');if(se)se.style.display='none';
+  const ew=document.getElementById('end-warning');if(ew)ew.style.display=remaining<=120?'block':'none';
+  document.getElementById('reconnect-banner').style.display='none';
+  // Démarrer le timer depuis le temps restant
+  if(sessionTimer){clearInterval(sessionTimer);sessionTimer=null;}
+  sessionSeconds=remaining;updateSessionUI();
+  const mbar=document.getElementById('mobile-session-bar');if(mbar)mbar.style.display='flex';
+  sessionTimer=setInterval(()=>{
+    sessionSeconds--;updateSessionUI();
+    if(sessionSeconds===120){const ew2=document.getElementById('end-warning');if(ew2)ew2.style.display='block';}
+    if(sessionSeconds<=120){const ec=document.getElementById('end-countdown');if(ec){const m=Math.floor(sessionSeconds/60),s=sessionSeconds%60;ec.textContent=m+':'+String(s).padStart(2,'0');ec.style.color=sessionSeconds<=30?'#e74c3c':'inherit';}}
+    if(sessionSeconds<=0){
+      clearInterval(sessionTimer);
+      localStorage.removeItem('parlons_active_session');
+      document.getElementById('session-timer').textContent='0:00';
+      const mbar2=document.getElementById('mobile-session-bar');if(mbar2)mbar2.style.display='none';
+      try{$crisp.push(["do","message:send",["text","⏰ Session terminée. Merci pour cet échange !"]]);setTimeout(()=>{$crisp.push(["do","chat:close"]);$crisp.push(["do","chat:hide"]);},1500);}catch(e){}
+      const se2=document.getElementById('session-ended');
+      if(se2){se2.style.display='block';se2.innerHTML=`<strong style="color:var(--dark);font-size:.88rem;">⏰ Session de ${selectedLabel} écoulée</strong><br><span style="font-size:.78rem;color:var(--mid);font-weight:300;">Merci pour cet échange.</span>`;}
+      setTimeout(()=>{const rz2=document.getElementById('rating-zone');if(rz2)rz2.style.display='block';},1500);
+    }
+  },1000);
+  // Ouvrir Crisp
+  try{$crisp.push(["do","chat:show"]);$crisp.push(["do","chat:open"]);}catch(e){}
 }
 
 // ── SIGNALEMENT ──
@@ -2636,6 +2730,15 @@ document.fonts && document.fonts.ready.then(stackBanners);
   <div style="font-size:.74rem;color:#2d7a2d;font-weight:600;">✅ Session en cours</div>
   <div id="mobile-timer-display" style="font-size:1.05rem;font-family:'Playfair Display',serif;color:#C1440E;font-weight:700;">--:--</div>
   <button onclick="openModal()" style="background:#C1440E;color:white;border:none;border-radius:50px;padding:.3rem .75rem;font-size:.72rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;">Voir →</button>
+</div>
+
+<!-- ══ BANNIÈRE RECONNEXION SESSION ══ -->
+<div id="reconnect-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--dark);color:white;padding:.7rem 1.2rem;z-index:500;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap;border-top:2px solid var(--tc);">
+  <div style="display:flex;align-items:center;gap:.7rem;">
+    <div style="width:8px;height:8px;background:#5CB85C;border-radius:50%;box-shadow:0 0 0 2px rgba(92,184,92,.3);"></div>
+    <span style="font-size:.82rem;">Session <strong id="reconnect-label">en cours</strong> · <strong id="reconnect-timer" style="color:#FFD700;">--:--</strong> restantes</span>
+  </div>
+  <button onclick="resumeSession()" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.42rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;">💬 Reprendre la discussion →</button>
 </div>
 </body>
 </html>
