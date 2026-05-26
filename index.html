@@ -1550,7 +1550,7 @@ const STRIPE_KEY='pk_test_51TZB64Cob93hyzLhaymOSUpdD8pRdk4ElsIH23IfXcuiSb6XN5hXx
   var vid=localStorage.getItem('parlons_visitor_id');
   var isNew=!vid;
   if(!vid){vid=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('parlons_visitor_id',vid);}
-  fetch('/.netlify/functions/track-visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({isNew:isNew})}).catch(function(){});
+  fetch('/.netlify/functions/track-visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId:vid,isNew:isNew})}).catch(function(){});
 })();
 
 let stripe,cardElement,selectedAmount=500,selectedLabel='30 min',sessionDurationSec=1800;

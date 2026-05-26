@@ -16,15 +16,24 @@ exports.handler = async (event) => {
 
   if (!SB_URL || !SB_KEY) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
 
-  const isNew = !!body.isNew;
+  const { visitorId, isNew } = body;
+  if (!visitorId || typeof visitorId !== 'string' || visitorId.length > 64)
+    return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Invalid visitor ID' }) };
 
   try {
+    // Enregistrer la visite avec timestamp (pour stats par période)
+    await fetch(`${SB_URL}/rest/v1/visits`, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ visitor_id: visitorId, is_new: !!isNew })
+    });
+
+    // Mettre à jour les compteurs globaux (all-time rapide)
     const res = await fetch(`${SB_URL}/rest/v1/site_stats?id=eq.1&select=total_visits,unique_visitors`, {
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }
     });
     const rows = await res.json();
     const s = rows[0] || { total_visits: 0, unique_visitors: 0 };
-
     await fetch(`${SB_URL}/rest/v1/site_stats?id=eq.1`, {
       method: 'PATCH',
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },

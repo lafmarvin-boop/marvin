@@ -39,20 +39,40 @@ exports.handler = async (event) => {
     if (password !== ADMIN_PWD)
       return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe incorrect' }) };
 
-    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows] = await Promise.all([
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows] = await Promise.all([
       sbGet('sessions?statut=eq.paid&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
       sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
       sbGet('group_messages?select=room_id,created_at,author&order=created_at.desc&limit=2000'),
       sbGet('group_access?select=room_id,pseudo,free_until,paid_until,is_agent&order=created_at.desc&limit=300'),
       sbGet('suggestions?select=*&order=created_at.desc&limit=100'),
-      sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors')
+      sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors'),
+      sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,is_new,visited_at&order=visited_at.desc&limit=50000`)
     ]);
     const siteStats = siteStatsRows[0] || { total_visits: 0, unique_visitors: 0 };
 
-    const now = new Date();
+    // Calculer stats trafic par période
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dow = now.getDay();
+    const startOfWeek = new Date(startOfDay);
+    startOfWeek.setDate(startOfDay.getDate() - (dow === 0 ? 6 : dow - 1));
     const today = now.toISOString().split('T')[0];
+
+    function periodStats(visits, from, to) {
+      const f = visits.filter(v => { const t = new Date(v.visited_at); return t >= from && (!to || t < to); });
+      return { visits: f.length, unique: new Set(f.map(v => v.visitor_id)).size };
+    }
+    const traffic = {
+      today:   periodStats(visitsRows, startOfDay),
+      week:    periodStats(visitsRows, startOfWeek),
+      month:   periodStats(visitsRows, startOfMonth),
+      year:    periodStats(visitsRows, startOfYear),
+      allTime: { visits: siteStats.total_visits || 0, unique: siteStats.unique_visitors || 0 }
+    };
 
     const totalRevenue = sessions.reduce((s, r) => s + (r.montant || 0), 0);
     const monthSessions = sessions.filter(s => s.started_at && new Date(s.started_at) >= startOfMonth);
@@ -132,10 +152,7 @@ exports.handler = async (event) => {
           byRoom,
           activeUsers: activeGroupUsers.length
         },
-        siteStats: {
-          totalVisits: siteStats.total_visits || 0,
-          uniqueVisitors: siteStats.unique_visitors || 0
-        }
+        traffic
       })
     };
   }

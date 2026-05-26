@@ -57,7 +57,7 @@
     /* ── ADMIN DASHBOARD ── */
     .dash-wrap{max-width:1060px;margin:0 auto;padding:2rem 1.5rem 3rem;}
     .dash-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--dark);margin-bottom:1.6rem;}
-    .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.8rem;}
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.8rem;}
     @media(max-width:680px){.stats-grid{grid-template-columns:1fr 1fr;}}
     .stat-card{background:white;border-radius:14px;padding:1.2rem 1.4rem;border:1px solid var(--sand);}
     .stat-label{font-size:.7rem;color:var(--light);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;}
@@ -230,16 +230,14 @@
         <div class="stat-value" id="s-active-subs">—</div>
         <div class="stat-sub" id="s-total-subs"></div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Visiteurs uniques</div>
-        <div class="stat-value" id="s-unique-visitors">—</div>
-        <div class="stat-sub">appareils distincts</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Connexions totales</div>
-        <div class="stat-value" id="s-total-visits">—</div>
-        <div class="stat-sub">visites cumulées</div>
-      </div>
+    </div>
+
+    <div class="section-title">Trafic du site</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table id="traffic-table">
+        <thead><tr><th>Période</th><th>Visites</th><th>Visiteurs uniques</th></tr></thead>
+        <tbody id="traffic-tbody"><tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.2rem">Chargement…</td></tr></tbody>
+      </table>
     </div>
 
     <div class="two-col">
@@ -538,9 +536,22 @@ function renderDashboard(d) {
   document.getElementById('s-active-subs').textContent = subscribers.active;
   document.getElementById('s-total-subs').textContent = subscribers.total + ' abonné' + (subscribers.total > 1 ? 's' : '') + ' au total';
 
-  const ss = d.siteStats || {};
-  document.getElementById('s-unique-visitors').textContent = (ss.uniqueVisitors || 0).toLocaleString('fr-FR');
-  document.getElementById('s-total-visits').textContent = (ss.totalVisits || 0).toLocaleString('fr-FR');
+  // Tableau trafic
+  const tr = d.traffic || {};
+  const periods = [
+    ["Aujourd'hui",    tr.today],
+    ['Cette semaine',  tr.week],
+    ['Ce mois',        tr.month],
+    ['Cette année',    tr.year],
+    ['Depuis toujours',tr.allTime],
+  ];
+  document.getElementById('traffic-tbody').innerHTML = periods.map(([label, s]) =>
+    `<tr>
+      <td style="font-weight:500">${label}</td>
+      <td style="font-weight:700;color:var(--tc)">${((s&&s.visits)||0).toLocaleString('fr-FR')}</td>
+      <td>${((s&&s.unique)||0).toLocaleString('fr-FR')}</td>
+    </tr>`
+  ).join('');
 
   // Plan breakdown
   const byPlan = sessions.byPlan || {};
