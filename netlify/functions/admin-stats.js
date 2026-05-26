@@ -42,16 +42,17 @@ exports.handler = async (event) => {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows] = await Promise.all([
+    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows] = await Promise.all([
       sbGet('sessions?statut=eq.paid&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
       sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
       sbGet('group_messages?select=room_id,created_at,author&order=created_at.desc&limit=2000'),
       sbGet('group_access?select=room_id,pseudo,free_until,paid_until,is_agent&order=created_at.desc&limit=300'),
       sbGet('suggestions?select=*&order=created_at.desc&limit=100'),
-      sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors'),
-      sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,is_new,visited_at&order=visited_at.desc&limit=50000`)
+      sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors,total_chats'),
+      sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,visited_at&order=visited_at.desc&limit=50000`),
+      sbGet(`chats?started_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=started_at&order=started_at.desc&limit=10000`)
     ]);
-    const siteStats = siteStatsRows[0] || { total_visits: 0, unique_visitors: 0 };
+    const siteStats = siteStatsRows[0] || { total_visits: 0, unique_visitors: 0, total_chats: 0 };
 
     // Calculer stats trafic par période
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -62,16 +63,19 @@ exports.handler = async (event) => {
     startOfWeek.setDate(startOfDay.getDate() - (dow === 0 ? 6 : dow - 1));
     const today = now.toISOString().split('T')[0];
 
-    function periodStats(visits, from, to) {
-      const f = visits.filter(v => { const t = new Date(v.visited_at); return t >= from && (!to || t < to); });
+    function periodVisits(rows, from) {
+      const f = rows.filter(v => new Date(v.visited_at) >= from);
       return { visits: f.length, unique: new Set(f.map(v => v.visitor_id)).size };
     }
+    function periodChats(rows, from) {
+      return rows.filter(v => new Date(v.started_at) >= from).length;
+    }
     const traffic = {
-      today:   periodStats(visitsRows, startOfDay),
-      week:    periodStats(visitsRows, startOfWeek),
-      month:   periodStats(visitsRows, startOfMonth),
-      year:    periodStats(visitsRows, startOfYear),
-      allTime: { visits: siteStats.total_visits || 0, unique: siteStats.unique_visitors || 0 }
+      today:   { ...periodVisits(visitsRows, startOfDay),  chats: periodChats(chatsRows, startOfDay) },
+      week:    { ...periodVisits(visitsRows, startOfWeek), chats: periodChats(chatsRows, startOfWeek) },
+      month:   { ...periodVisits(visitsRows, startOfMonth),chats: periodChats(chatsRows, startOfMonth) },
+      year:    { ...periodVisits(visitsRows, startOfYear), chats: periodChats(chatsRows, startOfYear) },
+      allTime: { visits: siteStats.total_visits || 0, unique: siteStats.unique_visitors || 0, chats: siteStats.total_chats || 0 }
     };
 
     const totalRevenue = sessions.reduce((s, r) => s + (r.montant || 0), 0);

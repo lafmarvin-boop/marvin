@@ -235,8 +235,8 @@
     <div class="section-title">Trafic du site</div>
     <div class="card" style="padding:0;overflow:hidden">
       <table id="traffic-table">
-        <thead><tr><th>Période</th><th>Visites</th><th>Visiteurs uniques</th></tr></thead>
-        <tbody id="traffic-tbody"><tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.2rem">Chargement…</td></tr></tbody>
+        <thead><tr><th>Période</th><th>Visites</th><th>Visiteurs uniques</th><th>Tchats</th></tr></thead>
+        <tbody id="traffic-tbody"><tr><td colspan="4" style="color:var(--light);text-align:center;padding:1.2rem">Chargement…</td></tr></tbody>
       </table>
     </div>
 
@@ -339,7 +339,22 @@ function showScreen(id) {
   window.scrollTo(0, 0);
 }
 
-function logout() { showScreen('login'); subEmailStored = ''; }
+function logout() {
+  localStorage.removeItem('parlons_espace_session');
+  showScreen('login');
+  subEmailStored = '';
+}
+
+// Auto-login from saved 24h session
+(async function tryAutoLogin() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || 'null');
+    if (!saved || Date.now() > saved.expires) return;
+    document.getElementById('login-email').value = saved.email;
+    document.getElementById('login-pwd').value = saved.password || '';
+    await login();
+  } catch {}
+})();
 
 // ── LOGIN ──
 async function login() {
@@ -365,9 +380,11 @@ async function login() {
     if (!res.ok) throw new Error(data.error || 'Accès refusé');
 
     if (data.role === 'admin') {
+      localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
       renderDashboard(data);
       showScreen('admin-dash');
     } else if (data.role === 'subscriber') {
+      localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
       subEmailStored = email;
       renderSubDash(email, data.expires_at, data.active, data.pseudo, data.cancel_at_period_end, data.needs_password_setup);
       showScreen('sub-dash');
@@ -550,6 +567,7 @@ function renderDashboard(d) {
       <td style="font-weight:500">${label}</td>
       <td style="font-weight:700;color:var(--tc)">${((s&&s.visits)||0).toLocaleString('fr-FR')}</td>
       <td>${((s&&s.unique)||0).toLocaleString('fr-FR')}</td>
+      <td>${((s&&s.chats)||0).toLocaleString('fr-FR')}</td>
     </tr>`
   ).join('');
 

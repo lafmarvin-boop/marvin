@@ -1988,6 +1988,8 @@ async function handlePayment(){
     const loyCount = parseInt(localStorage.getItem('parlons_session_count') || '0');
     localStorage.setItem('parlons_session_count', String(loyCount + 1));
     updateLoyaltyBadge();
+    // Tracker le tchat démarré
+    fetch('/.netlify/functions/track-chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId:localStorage.getItem('parlons_visitor_id'),formule:selectedLabel})}).catch(function(){});
     label.style.display='inline';spinner.style.display='none';btn.disabled=false;
     document.getElementById('payment-form').style.display='none';
     document.getElementById('payment-success').style.display='block';
