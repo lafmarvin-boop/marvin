@@ -163,6 +163,7 @@
     nav ul{list-style:none;display:flex;gap:1.6rem;align-items:center;}
     nav ul a{text-decoration:none;color:var(--mid);font-size:.85rem;font-weight:500;transition:color .2s;}
     nav ul a:hover{color:var(--terracotta);}
+    .nav-espace-btn{display:none;text-decoration:none;font-size:.78rem;font-weight:600;color:white;background:var(--tc);border-radius:50px;padding:.38rem .95rem;white-space:nowrap;margin-left:auto;}
     .nav-cta{background:var(--terracotta)!important;color:white!important;padding:.5rem 1.2rem;border-radius:50px;}
     .nav-cta:hover{background:var(--rust)!important;}
     .nav-agent{border:1.5px solid var(--terracotta)!important;color:var(--terracotta)!important;padding:.5rem 1.2rem;border-radius:50px;}
@@ -552,6 +553,7 @@
       /* Nav */
       nav{padding:.7rem 1rem;}
       nav ul{display:none;}
+      .nav-espace-btn{display:inline-flex;}
       /* Hero — padding géré par JS */
       .hero{grid-template-columns:1fr;text-align:center;gap:2rem;}
       .hero p{margin:0 auto 1.8rem;}
@@ -653,6 +655,7 @@
 <!-- NAV -->
 <nav>
   <div class="logo">Par<span>lons</span></div>
+  <a href="/espace.html" class="nav-espace-btn">🔑 Espace abonné</a>
   <ul>
     <li><a href="#comment">Comment ça marche</a></li>
     <li><a href="#tarifs">Tarifs</a></li>
