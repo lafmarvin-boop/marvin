@@ -688,7 +688,7 @@
       <div class="sep">/</div>
       <div class="desc">pour 10 minutes<br><span style="color:var(--terracotta)">Sans abonnement</span> · Paiement sécurisé</div>
     </div>
-    <div class="loyalty-badge">🎁 Programme fidélité · -10% dès la 5e session</div>
+    <div class="loyalty-badge" id="loyalty-hero-badge">🎁 Programme fidélité · -10% dès la 5e session</div>
   </div>
   <div style="animation:fadeUp .8s .2s ease both;">
     <div class="chat-card">
@@ -1296,6 +1296,9 @@
         </select>
       </div>
 
+      <!-- Badge fidélité (affiché si réduction active) -->
+      <div id="loyalty-modal-badge" style="display:none;background:#FFF8E1;border:1px solid #FFD700;border-radius:9px;padding:.55rem .9rem;font-size:.78rem;color:#7a6000;margin-bottom:.7rem;line-height:1.5;"></div>
+
       <!-- Info groupe (affiché uniquement si groupe sélectionné) -->
       <div id="group-info-box" style="display:none;background:#e8f8e8;border:1px solid #5CB85C;border-radius:10px;padding:.85rem 1rem;font-size:.8rem;color:#2d7a2d;line-height:1.6;margin-bottom:.5rem;">
         🎁 <strong>5 minutes gratuites</strong> pour découvrir l'ambiance du groupe.<br>
@@ -1534,6 +1537,26 @@ updateAvailUI();
 // ── STRIPE ──
 try{stripe=Stripe(STRIPE_KEY);const el=stripe.elements();cardElement=el.create('card',{style:{base:{fontFamily:"'DM Sans',sans-serif",fontSize:'15px',color:'#2C1F14','::placeholder':{color:'#B09070'}}}});}catch(e){console.warn('Stripe:',e.message);}
 
+// ── FIDÉLITÉ (Option A — localStorage) ──
+function getLoyaltyInfo() {
+  const count = parseInt(localStorage.getItem('parlons_session_count') || '0');
+  if (count >= 19) return { count, discount: 30, next: 'Statut VIP maximum !' };
+  if (count >= 9)  return { count, discount: 20, next: `Encore ${19-count} session${19-count>1?'s':''} pour -30%` };
+  if (count >= 4)  return { count, discount: 10, next: `Encore ${9-count} session${9-count>1?'s':''} pour -20%` };
+  return { count, discount: 0, next: count > 0 ? `Encore ${4-count} session${4-count>1?'s':''} pour -10%` : '-10% dès la 5e session' };
+}
+
+function updateLoyaltyBadge() {
+  const info = getLoyaltyInfo();
+  const badge = document.getElementById('loyalty-hero-badge');
+  if (!badge) return;
+  if (info.discount > 0) {
+    badge.innerHTML = `🎁 Fidélité : <strong>-${info.discount}%</strong> appliqué automatiquement · ${info.next}`;
+  } else {
+    badge.innerHTML = `🎁 Programme fidélité · ${info.next}`;
+  }
+}
+
 function updatePrice(){
   const s=document.getElementById('session-select');
   const o=s.options[s.selectedIndex];
@@ -1562,6 +1585,21 @@ function updatePrice(){
     themeSelect.onchange=()=>{
       groupCustom.style.display=themeSelect.value==='Autre (libre)'?'block':'none';
     };
+  }
+
+  // Badge fidélité dans la modale
+  const isDiscountable = !isNaN(parseInt(selectedAmount));
+  const loyalty = getLoyaltyInfo();
+  const loyBadge = document.getElementById('loyalty-modal-badge');
+  if (loyBadge) {
+    if (isDiscountable && loyalty.discount > 0) {
+      const base = selectedAmount / 100;
+      const discounted = (Math.round(base * (1 - loyalty.discount / 100) * 100) / 100).toFixed(2).replace('.', ',');
+      loyBadge.style.display = 'block';
+      loyBadge.innerHTML = `🎁 Réduction fidélité <strong>-${loyalty.discount}%</strong> · <strong>${discounted} €</strong> au lieu de ${base.toFixed(2).replace('.',',')} €<br><span style="font-size:.7rem;opacity:.75">${loyalty.next}</span>`;
+    } else {
+      loyBadge.style.display = 'none';
+    }
   }
 }
 
@@ -1595,8 +1633,17 @@ function goToPayment(){
   }
 
   // ── CAS NORMAL : paiement ──
-  const euros=selectedAmount==='sub'?'15,00':((selectedAmount/100).toFixed(2).replace('.',','));
-  document.getElementById('payment-summary').innerHTML=`Session <strong>${selectedLabel}</strong> · <strong style="color:var(--terracotta)">${euros} €</strong> · Bonjour <strong>${name}</strong> 👋`;
+  let payEuros;
+  if (selectedAmount === 'sub') {
+    payEuros = '15,00';
+  } else {
+    const base = selectedAmount / 100;
+    const loy = getLoyaltyInfo();
+    const finalAmt = loy.discount > 0 ? Math.round(base * (1 - loy.discount / 100) * 100) / 100 : base;
+    payEuros = finalAmt.toFixed(2).replace('.', ',');
+  }
+  const loyNote = (getLoyaltyInfo().discount > 0 && selectedAmount !== 'sub') ? ` <span style="font-size:.75rem;color:var(--tc)">(-${getLoyaltyInfo().discount}%)</span>` : '';
+  document.getElementById('payment-summary').innerHTML=`Session <strong>${selectedLabel}</strong> · <strong style="color:var(--terracotta)">${payEuros} €</strong>${loyNote} · Bonjour <strong>${name}</strong> 👋`;
   document.getElementById('step-1').style.display='none';document.getElementById('step-2').style.display='block';
   if(cardElement){setTimeout(()=>{cardElement.mount('#stripe-card-element');cardElement.on('change',e=>{document.getElementById('payment-error').textContent=e.error?e.error.message:'';});},100);}
   else{document.getElementById('stripe-card-element').innerHTML='<p style="color:var(--mid);font-size:.82rem;padding:.4rem 0">⚠️ Widget Stripe disponible avec votre vraie clé API.</p>';}
@@ -1812,9 +1859,11 @@ async function handlePayment(){
     }
 
     // ── Sessions à la carte : flow paiement unique ──
+    const isDiscountable = !isNaN(parseInt(selectedAmount));
+    const loyDiscount = isDiscountable ? getLoyaltyInfo().discount : 0;
     const resp = await fetch('/.netlify/functions/create-payment-intent',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({montant:selectedAmount,formule:selectedLabel,pseudo:name,duree:sessionDurationSec,email:email||undefined})
+      body:JSON.stringify({montant:selectedAmount,discountPct:loyDiscount,formule:selectedLabel,pseudo:name,duree:sessionDurationSec,email:email||undefined})
     });
     const {clientSecret,error:serverErr}=await resp.json();
     if(serverErr) throw new Error(serverErr);
@@ -1825,6 +1874,10 @@ async function handlePayment(){
     if(stripeErr) throw new Error(stripeErr.message);
 
     sessionStorage.setItem('parlons_payment_id', paymentIntent.id);
+    // Incrémenter le compteur de fidélité
+    const loyCount = parseInt(localStorage.getItem('parlons_session_count') || '0');
+    localStorage.setItem('parlons_session_count', String(loyCount + 1));
+    updateLoyaltyBadge();
     label.style.display='inline';spinner.style.display='none';btn.disabled=false;
     document.getElementById('payment-form').style.display='none';
     document.getElementById('payment-success').style.display='block';
@@ -1874,6 +1927,7 @@ function renderReviews(){
   list.innerHTML=savedReviews.map(r=>`<div class="review-card"><div class="r-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</div><blockquote>"${r.text}"</blockquote><div class="reviewer">${r.name} · ${r.date}</div></div>`).join('');
 }
 renderReviews();
+updateLoyaltyBadge();
 
 // ── NOTIFY ──
 function submitNotify(){

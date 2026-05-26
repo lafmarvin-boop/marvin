@@ -1,6 +1,8 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-const VALID_AMOUNTS = { '200': 200, '500': 500, '900': 900, 'sub': 1500, 'group': 150 };
+const BASE_AMOUNTS   = { '200': 200, '500': 500, '900': 900 };
+const FIXED_AMOUNTS  = { 'sub': 1500, 'group': 150 };
+const VALID_DISCOUNTS = new Set([0, 10, 20, 30]);
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -20,22 +22,29 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { montant, formule, pseudo, duree, email } = JSON.parse(event.body || '{}');
+    const { montant, discountPct, formule, pseudo, duree, email } = JSON.parse(event.body || '{}');
 
-    const amountCents = VALID_AMOUNTS[String(montant)];
-    if (!amountCents) {
+    let amountCents;
+    if (FIXED_AMOUNTS[String(montant)] !== undefined) {
+      amountCents = FIXED_AMOUNTS[String(montant)];
+    } else if (BASE_AMOUNTS[String(montant)] !== undefined) {
+      const base = BASE_AMOUNTS[String(montant)];
+      const pct = VALID_DISCOUNTS.has(parseInt(discountPct) || 0) ? (parseInt(discountPct) || 0) : 0;
+      amountCents = Math.round(base * (1 - pct / 100));
+    } else {
       return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Montant invalide' }) };
     }
     if (!pseudo || pseudo.length > 50) {
       return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Pseudo invalide' }) };
     }
 
+    const effectiveDiscount = FIXED_AMOUNTS[String(montant)] !== undefined ? 0 : (VALID_DISCOUNTS.has(parseInt(discountPct) || 0) ? (parseInt(discountPct) || 0) : 0);
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: 'eur',
       automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
       description: `Parlons - ${formule} - ${pseudo}`,
-      metadata: { formule, pseudo, duree: String(duree || 1800), plateforme: 'parlons', ...(email ? { email } : {}) },
+      metadata: { formule, pseudo, duree: String(duree || 1800), plateforme: 'parlons', discount: String(effectiveDiscount), ...(email ? { email } : {}) },
     });
 
     // Enregistrement optionnel dans Supabase
