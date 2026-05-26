@@ -1545,6 +1545,14 @@
 
 <script>
 const STRIPE_KEY='pk_test_51TZB64Cob93hyzLhaymOSUpdD8pRdk4ElsIH23IfXcuiSb6XN5hXxYPpBzDYkKMEnwB9l9d6vhhTxglCJwjR0KYb00NoZpwzJl';
+// ── TRACKING VISITES (anonyme, localStorage) ──
+(function(){
+  var vid=localStorage.getItem('parlons_visitor_id');
+  var isNew=!vid;
+  if(!vid){vid=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('parlons_visitor_id',vid);}
+  fetch('/.netlify/functions/track-visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({isNew:isNew})}).catch(function(){});
+})();
+
 let stripe,cardElement,selectedAmount=500,selectedLabel='30 min',sessionDurationSec=1800;
 let isOnline=false,queueCount=0;
 let waitTimer=null,sessionTimer=null,waitSeconds=0,sessionSeconds=0,reportShown=false;

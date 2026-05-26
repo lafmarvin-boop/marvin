@@ -39,13 +39,15 @@ exports.handler = async (event) => {
     if (password !== ADMIN_PWD)
       return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe incorrect' }) };
 
-    const [sessions, subscribers, groupMsgs, groupAccess, suggestions] = await Promise.all([
+    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows] = await Promise.all([
       sbGet('sessions?statut=eq.paid&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
       sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
       sbGet('group_messages?select=room_id,created_at,author&order=created_at.desc&limit=2000'),
       sbGet('group_access?select=room_id,pseudo,free_until,paid_until,is_agent&order=created_at.desc&limit=300'),
-      sbGet('suggestions?select=*&order=created_at.desc&limit=100')
+      sbGet('suggestions?select=*&order=created_at.desc&limit=100'),
+      sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors')
     ]);
+    const siteStats = siteStatsRows[0] || { total_visits: 0, unique_visitors: 0 };
 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -129,6 +131,10 @@ exports.handler = async (event) => {
           todayMessages: todayMsgs.length,
           byRoom,
           activeUsers: activeGroupUsers.length
+        },
+        siteStats: {
+          totalVisits: siteStats.total_visits || 0,
+          uniqueVisitors: siteStats.unique_visitors || 0
         }
       })
     };
