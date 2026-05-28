@@ -10,11 +10,11 @@ object HomeProgramBuilder {
 
     private const val ID = "home"
 
-    private const val REST_MAIN = "60-90 s repos"
-    private const val REST_EXPLO = "90 s repos · qualité du mouvement"
-    private const val REST_SUPER = "30-45 s entre exos · 60-90 s entre tours"
-    private const val REST_ISO = "45-60 s repos · respiration nasale"
-    private const val REST_CIRCUIT = "30 s entre exos · 60 s entre tours"
+    private const val REST_MAIN = "45-60 s repos"
+    private const val REST_EXPLO = "60 s repos · qualité du mouvement"
+    private const val REST_SUPER = "15-20 s entre exos · 45 s entre tours"
+    private const val REST_ISO = "30-40 s repos · respiration nasale"
+    private const val REST_CIRCUIT = "20 s entre exos · 45 s entre tours"
 
     private const val WARMUP_DYN = "Mobilité dynamique 5' / hip openers / 20 squats / shadow 2'"
     private const val WARMUP_PUSH = "Mobilité épaules/T-spine 3' / 20 pompes mur / 10 dislocations / shadow 2'"
