@@ -166,9 +166,10 @@ object HomeProgramBuilder {
                 annotation = "Corps gainé, tirer la poitrine vers la table",
             ),
             Exercise(
-                "Pull-up à la porte (serviette)", "${sp.sets}", "max reps",
+                "Rowing unilatéral sac à dos", "${sp.sets}", "${sp.mainReps} par bras",
+                oneRmKey = "Sac à dos lesté", percentage = 1.0,
                 rest = REST_EXPLO,
-                annotation = "Serviette pliée sur porte solide, ou barre si dispo",
+                annotation = "Appui main/genou sur chaise, tirer le sac vers la hanche, dos plat",
             ),
             Exercise(
                 "Bridge wrestling (cou)", "3", "${sp.isoSec} s",
