@@ -166,10 +166,9 @@ object HomeProgramBuilder {
                 annotation = "Corps gainé, tirer la poitrine vers la table",
             ),
             Exercise(
-                "Rowing unilatéral sac à dos", "${sp.sets}", "${sp.mainReps} par bras",
-                oneRmKey = "Sac à dos lesté", percentage = 1.0,
+                "Superman pulls (tirage dorsal au sol)", "${sp.sets}", "${sp.mainReps} reps",
                 rest = REST_EXPLO,
-                annotation = "Appui main/genou sur chaise, tirer le sac vers la hanche, dos plat",
+                annotation = "Allongé sur le ventre, bras tendus devant → ramener les coudes vers les hanches en serrant le dos",
             ),
             Exercise(
                 "Bridge wrestling (cou)", "3", "${sp.isoSec} s",
