@@ -63,6 +63,19 @@ internal fun MainActivity.showLayersDialog() {
                 }
             }
             row.addView(label)
+            val mergeBtn = TextView(this).apply {
+                text = "🔀"
+                textSize = 20f
+                setPadding(16, 8, 16, 8)
+                isClickable = true; isFocusable = true
+                alpha = if (f.layers.size >= 2) 1f else 0.3f
+                setOnClickListener {
+                    if (f.layers.size < 2) { toast("Un seul calque"); return@setOnClickListener }
+                    mergeLayerDown(i)
+                    rebuild()
+                }
+            }
+            row.addView(mergeBtn)
             container.addView(row)
         }
     }
@@ -96,7 +109,8 @@ internal fun MainActivity.showLayerActions() {
         "Supprimer",
         "Monter (au-dessus)",
         "Descendre (en dessous)",
-        "Fusionner avec la couche du dessous"
+        "🔀 Fusionner avec la couche du dessous",
+        "🪄 Tout aplatir (calques visibles)"
     )
     AlertDialog.Builder(this)
         .setTitle("« ${l.name} »")
@@ -114,6 +128,7 @@ internal fun MainActivity.showLayerActions() {
                 5 -> moveLayer(+1)
                 6 -> moveLayer(-1)
                 7 -> mergeDown()
+                8 -> flattenVisibleLayers()
             }
             framesAdapter.notifyItemChanged(project.currentIndex)
             refreshLayersStrip()
@@ -196,24 +211,77 @@ internal fun MainActivity.moveLayer(direction: Int) {
 }
 
 internal fun MainActivity.mergeDown() {
+    mergeLayerDown(project.currentFrame.activeLayer)
+}
+
+/**
+ * Merge layer [idx] into the one immediately below it (or above if idx == 0,
+ * so the action never blocks at the bottom). Uses proper src-over alpha
+ * compositing and honors the source layer's opacity and visibility — the
+ * result on the surviving layer matches what was on screen.
+ */
+internal fun MainActivity.mergeLayerDown(idx: Int) {
     val f = project.currentFrame
-    val active = f.activeLayer
     if (f.layers.size < 2) { toast("Un seul calque, rien à fusionner"); return }
-    // If active is the bottom, merge UP instead so the action never blocks.
+    val active = idx.coerceIn(0, f.layers.size - 1)
     val targetIdx = if (active == 0) 1 else active - 1
     pushUndo()
     val top = f.layers[maxOf(active, targetIdx)]
     val below = f.layers[minOf(active, targetIdx)]
-    for (i in top.pixels.indices) {
-        val src = top.pixels[i]
-        if ((src ushr 24) and 0xFF >= 128) below.pixels[i] = src
+    if (top.visible) {
+        val layerOp = (top.opacity * 255).toInt().coerceIn(0, 255)
+        for (i in top.pixels.indices) {
+            val src = top.pixels[i]
+            val srcA = ((src ushr 24) and 0xFF) * layerOp / 255
+            if (srcA == 0) continue
+            val dst = below.pixels[i]
+            val dstA = (dst ushr 24) and 0xFF
+            if (dstA == 0 || srcA == 255) {
+                below.pixels[i] = (srcA shl 24) or (src and 0xFFFFFF)
+            } else {
+                val sa = srcA / 255f
+                val da = dstA / 255f * (1f - sa)
+                val outA = (sa + da).coerceIn(0f, 1f)
+                val sr = ((src shr 16) and 0xFF) * sa
+                val sg = ((src shr 8) and 0xFF) * sa
+                val sb = (src and 0xFF) * sa
+                val dr = ((dst shr 16) and 0xFF) * da
+                val dg = ((dst shr 8) and 0xFF) * da
+                val db = (dst and 0xFF) * da
+                val rr = ((sr + dr) / outA).toInt().coerceIn(0, 255)
+                val gg = ((sg + dg) / outA).toInt().coerceIn(0, 255)
+                val bb = ((sb + db) / outA).toInt().coerceIn(0, 255)
+                below.pixels[i] = ((outA * 255).toInt() shl 24) or (rr shl 16) or (gg shl 8) or bb
+            }
+        }
     }
+    below.visible = true
+    below.opacity = 1f
     f.layers.remove(top)
     f.activeLayer = f.layers.indexOf(below).coerceAtLeast(0)
     f.invalidateComposite()
     binding.canvas.syncFrameBitmap()
+    framesAdapter.notifyItemChanged(project.currentIndex)
     refreshLayersStrip()
     toast("Calques fusionnés")
+}
+
+/** Flatten all visible layers of the current frame into one. */
+internal fun MainActivity.flattenVisibleLayers() {
+    val f = project.currentFrame
+    if (f.layers.size < 2) { toast("Un seul calque"); return }
+    pushUndo()
+    val composite = f.composited().copyOf()
+    f.layers.clear()
+    val merged = f.addLayer("Fusionné")
+    System.arraycopy(composite, 0, merged.pixels, 0, composite.size)
+    merged.visible = true; merged.opacity = 1f
+    f.activeLayer = 0
+    f.invalidateComposite()
+    binding.canvas.syncFrameBitmap()
+    framesAdapter.notifyItemChanged(project.currentIndex)
+    refreshLayersStrip()
+    toast("Calques aplatis")
 }
 
 /**
@@ -344,6 +412,17 @@ private fun MainActivity.addLayerRow(strip: LinearLayout, f: Frame, i: Int, inde
             refreshLayersStrip()
         }
     }
-    row.addView(eye); row.addView(name); row.addView(upBtn); row.addView(downBtn)
+    val mergeBtn = TextView(this).apply {
+        text = "🔀"
+        setTextColor(if (f.layers.size >= 2) 0xFFE8E8F0.toInt() else 0x44888888)
+        textSize = 14f
+        setPadding(8, 4, 8, 4)
+        isClickable = true; isFocusable = true
+        setOnClickListener {
+            if (f.layers.size < 2) { toast("Un seul calque"); return@setOnClickListener }
+            mergeLayerDown(i)
+        }
+    }
+    row.addView(eye); row.addView(name); row.addView(upBtn); row.addView(downBtn); row.addView(mergeBtn)
     strip.addView(row)
 }
