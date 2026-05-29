@@ -1,7 +1,8 @@
 package com.pixelhero.app
 
-import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
@@ -34,15 +35,20 @@ internal fun MainActivity.showLayersDialog() {
                 setPadding(8, 12, 8, 12)
                 gravity = android.view.Gravity.CENTER_VERTICAL
             }
-            val eye = TextView(this).apply {
-                text = if (l.visible) "👁" else "🚫"
-                textSize = 22f
-                setPadding(16, 8, 24, 8)
-                isClickable = true; isFocusable = true
+            val dlgIcon = (resources.displayMetrics.density * 36).toInt()
+            val eye = ImageButton(this).apply {
+                setImageResource(if (l.visible) R.drawable.ic_visibility else R.drawable.ic_visibility_off)
+                contentDescription = if (l.visible) "Masquer" else "Afficher"
+                background = null
+                layoutParams = LinearLayout.LayoutParams(dlgIcon, dlgIcon).apply {
+                    rightMargin = 12
+                }
+                setPadding(6, 6, 6, 6)
+                scaleType = ImageView.ScaleType.FIT_CENTER
                 setOnClickListener {
                     l.visible = !l.visible
                     f.invalidateComposite()
-                    text = if (l.visible) "👁" else "🚫"
+                    setImageResource(if (l.visible) R.drawable.ic_visibility else R.drawable.ic_visibility_off)
                     binding.canvas.syncFrameBitmap()
                     framesAdapter.notifyItemChanged(project.currentIndex)
                 }
@@ -64,19 +70,17 @@ internal fun MainActivity.showLayersDialog() {
                 }
             }
             row.addView(label)
-            val mergeBtn = Button(this).apply {
-                text = "🔀 ↓"
-                textSize = 14f
-                setPadding(20, 12, 20, 12)
-                isAllCaps = false
+            val mergeBtn = ImageButton(this).apply {
+                setImageResource(R.drawable.ic_merge)
+                contentDescription = "Fusionner avec le calque du dessous"
+                background = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.tool_button_bg)
                 alpha = if (f.layers.size >= 2) 1f else 0.3f
+                layoutParams = LinearLayout.LayoutParams(dlgIcon, dlgIcon)
+                setPadding(6, 6, 6, 6)
+                scaleType = ImageView.ScaleType.FIT_CENTER
                 setOnClickListener {
-                    toast("Fusion ↓ : calque #${i + 1}")
                     if (f.layers.size < 2) { toast("Un seul calque"); return@setOnClickListener }
-                    val before = f.layers.size
                     mergeLayerDown(i)
-                    val after = f.layers.size
-                    if (after == before) toast("⚠ Aucun calque retiré (avant=$before, après=$after)")
                     rebuild()
                 }
             }
@@ -398,11 +402,14 @@ private fun MainActivity.addGroupHeader(strip: LinearLayout, f: Frame, groupName
         setBackgroundColor(0x22FFFFFF)
         gravity = android.view.Gravity.CENTER_VERTICAL
     }
-    val eye = TextView(this).apply {
-        text = if (anyVisible) "👁" else "🚫"
-        textSize = 16f
-        setPadding(8, 4, 12, 4)
-        isClickable = true; isFocusable = true
+    val groupIconSize = (resources.displayMetrics.density * 28).toInt()
+    val eye = ImageButton(this).apply {
+        setImageResource(if (anyVisible) R.drawable.ic_visibility else R.drawable.ic_visibility_off)
+        contentDescription = if (anyVisible) "Masquer le groupe" else "Afficher le groupe"
+        background = null
+        layoutParams = LinearLayout.LayoutParams(groupIconSize, groupIconSize)
+        setPadding(4, 4, 4, 4)
+        scaleType = ImageView.ScaleType.FIT_CENTER
         setOnClickListener {
             val turnOn = !anyVisible
             members.forEach { it.visible = turnOn }
@@ -430,15 +437,18 @@ private fun MainActivity.addLayerRow(strip: LinearLayout, f: Frame, i: Int, inde
         gravity = android.view.Gravity.CENTER_VERTICAL
         if (i == f.activeLayer) setBackgroundColor(0x33A5B4FF)
     }
-    val eye = TextView(this).apply {
-        text = if (layer.visible) "👁" else "🚫"
-        textSize = 16f
-        setPadding(8, 4, 12, 4)
-        isClickable = true; isFocusable = true
+    val iconSize = (resources.displayMetrics.density * 28).toInt()
+    val eye = ImageButton(this).apply {
+        setImageResource(if (layer.visible) R.drawable.ic_visibility else R.drawable.ic_visibility_off)
+        contentDescription = if (layer.visible) "Masquer" else "Afficher"
+        background = null
+        layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
+        setPadding(4, 4, 4, 4)
+        scaleType = ImageView.ScaleType.FIT_CENTER
         setOnClickListener {
             layer.visible = !layer.visible
             f.invalidateComposite()
-            text = if (layer.visible) "👁" else "🚫"
+            setImageResource(if (layer.visible) R.drawable.ic_visibility else R.drawable.ic_visibility_off)
             binding.canvas.syncFrameBitmap()
             framesAdapter.notifyItemChanged(project.currentIndex)
         }
@@ -450,6 +460,7 @@ private fun MainActivity.addLayerRow(strip: LinearLayout, f: Frame, i: Int, inde
         maxLines = 1
         ellipsize = android.text.TextUtils.TruncateAt.END
         layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        setPadding(8, 0, 4, 0)
         isClickable = true; isFocusable = true
         setOnClickListener {
             f.activeLayer = i
@@ -462,12 +473,14 @@ private fun MainActivity.addLayerRow(strip: LinearLayout, f: Frame, i: Int, inde
             true
         }
     }
-    val upBtn = TextView(this).apply {
-        text = "▲"
-        setTextColor(if (i < f.layers.size - 1) 0xFFE8E8F0.toInt() else 0x44888888)
-        textSize = 14f
-        setPadding(8, 4, 8, 4)
-        isClickable = true; isFocusable = true
+    val upBtn = ImageButton(this).apply {
+        setImageResource(R.drawable.ic_arrow_upward)
+        contentDescription = "Monter"
+        background = null
+        alpha = if (i < f.layers.size - 1) 1f else 0.3f
+        layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
+        setPadding(4, 4, 4, 4)
+        scaleType = ImageView.ScaleType.FIT_CENTER
         setOnClickListener {
             if (i >= f.layers.size - 1) return@setOnClickListener
             f.activeLayer = i
@@ -475,12 +488,14 @@ private fun MainActivity.addLayerRow(strip: LinearLayout, f: Frame, i: Int, inde
             refreshLayersStrip()
         }
     }
-    val downBtn = TextView(this).apply {
-        text = "▼"
-        setTextColor(if (i > 0) 0xFFE8E8F0.toInt() else 0x44888888)
-        textSize = 14f
-        setPadding(8, 4, 8, 4)
-        isClickable = true; isFocusable = true
+    val downBtn = ImageButton(this).apply {
+        setImageResource(R.drawable.ic_arrow_downward)
+        contentDescription = "Descendre"
+        background = null
+        alpha = if (i > 0) 1f else 0.3f
+        layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
+        setPadding(4, 4, 4, 4)
+        scaleType = ImageView.ScaleType.FIT_CENTER
         setOnClickListener {
             if (i <= 0) return@setOnClickListener
             f.activeLayer = i
@@ -488,16 +503,16 @@ private fun MainActivity.addLayerRow(strip: LinearLayout, f: Frame, i: Int, inde
             refreshLayersStrip()
         }
     }
-    val mergeBtn = Button(this).apply {
-        text = "🔀↓"
-        textSize = 11f
-        setPadding(12, 4, 12, 4)
-        isAllCaps = false
-        minimumWidth = 0
-        minWidth = 0
-        alpha = if (f.layers.size >= 2) 1f else 0.4f
+    val mergeBtn = ImageButton(this).apply {
+        setImageResource(R.drawable.ic_merge)
+        contentDescription = "Fusionner avec le calque du dessous"
+        background = null
+        alpha = if (f.layers.size >= 2) 1f else 0.3f
+        layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
+        setPadding(4, 4, 4, 4)
+        scaleType = ImageView.ScaleType.FIT_CENTER
         setOnClickListener {
-            toast("Fusion ↓ calque #${i + 1}")
+            toast("Fusion calque #${i + 1}")
             if (f.layers.size < 2) { toast("Un seul calque"); return@setOnClickListener }
             val before = f.layers.size
             mergeLayerDown(i)

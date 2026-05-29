@@ -1,7 +1,7 @@
 package com.pixelhero.app
 
 import android.view.View
-import android.widget.Button
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import androidx.appcompat.app.AlertDialog
 
@@ -27,53 +27,51 @@ internal fun MainActivity.refreshSelectionPalette() {
     container.visibility = View.VISIBLE
     row.removeAllViews()
 
-    fun btn(label: String, onClick: () -> Unit): Button = Button(this).apply {
-        text = label
-        textSize = 14f
-        isAllCaps = false
-        minWidth = (resources.displayMetrics.density * 56).toInt()
-        setPadding(16, 8, 16, 8)
-        val lp = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { setMargins(4, 0, 4, 0) }
+    fun iconBtn(iconRes: Int, contentDesc: String, onClick: () -> Unit): ImageButton = ImageButton(this).apply {
+        setImageResource(iconRes)
+        contentDescription = contentDesc
+        background = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.tool_button_bg)
+        val sz = (resources.displayMetrics.density * 44).toInt()
+        val lp = LinearLayout.LayoutParams(sz, sz).apply { setMargins(4, 0, 4, 0) }
         layoutParams = lp
+        setPadding(10, 10, 10, 10)
+        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
         setOnClickListener { onClick() }
     }
 
-    row.addView(btn("▭") {
+    row.addView(iconBtn(R.drawable.ic_select, "Rectangle") {
         binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.NONE
         switchTool(Tool.SELECT, toastIt = false)
         toast("Trace un rectangle.")
     })
-    row.addView(btn("🪢") {
+    row.addView(iconBtn(R.drawable.ic_lasso, "Lasso") {
         binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.NONE
         switchTool(Tool.LASSO, toastIt = false)
         toast("Trace le contour à main levée.")
     })
-    row.addView(btn("🪄") {
+    row.addView(iconBtn(R.drawable.ic_wand, "Baguette magique") {
         binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.NONE
         switchTool(Tool.WAND, toastIt = false)
         toast("Touche une zone à sélectionner par couleur.")
     })
-    row.addView(btn("🖐") {
+    row.addView(iconBtn(R.drawable.ic_pan_hand, "Déplacer la sélection") {
         binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.NONE
         switchTool(Tool.SELECT, toastIt = false)
         toast("Glisse la sélection pour la déplacer.")
     })
-    row.addView(btn("➕") {
+    row.addView(iconBtn(R.drawable.ic_add, "Ajouter des pixels") {
         binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.ADD
         toast("Touche des pixels pour les AJOUTER à la sélection")
     })
-    row.addView(btn("➖") {
+    row.addView(iconBtn(R.drawable.ic_remove, "Retirer des pixels") {
         binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.SUB
         toast("Touche des pixels pour les RETIRER de la sélection")
     })
-    row.addView(btn("📋") {
+    row.addView(iconBtn(R.drawable.ic_copy, "Copier") {
         val pair = binding.canvas.copySelectionToClipboard() ?: liftAndCopy()
         pair?.let { clipboardW = it.first; clipboardPixels = it.second; toast("Copié") }
     })
-    row.addView(btn("✂") {
+    row.addView(iconBtn(R.drawable.ic_cut, "Couper") {
         if (sel.floating == null) liftAndCopy()
         binding.canvas.copySelectionToClipboard()?.let { clipboardW = it.first; clipboardPixels = it.second }
         binding.canvas.cutSelectionToClipboard()
@@ -81,17 +79,17 @@ internal fun MainActivity.refreshSelectionPalette() {
         toast("Coupé")
     })
     if (clipboardPixels != null) {
-        row.addView(btn("📌") {
-            val pixels = clipboardPixels ?: return@btn
+        row.addView(iconBtn(R.drawable.ic_pin, "Coller") {
+            val pixels = clipboardPixels ?: return@iconBtn
             pushUndo()
             binding.canvas.pasteClipboard(clipboardW, pixels,
                 sel.xMin.coerceAtLeast(0), sel.yMin.coerceAtLeast(0))
         })
-        row.addView(btn("📌→") { showPasteIntoLayerPicker(sel) })
+        row.addView(iconBtn(R.drawable.ic_pin_arrow, "Coller dans un autre calque") { showPasteIntoLayerPicker(sel) })
     }
-    row.addView(btn("↔") { flipSelection(horizontal = true) })
-    row.addView(btn("↕") { flipSelection(horizontal = false) })
-    row.addView(btn("✓") {
+    row.addView(iconBtn(R.drawable.ic_swap_horiz, "Miroir horizontal") { flipSelection(horizontal = true) })
+    row.addView(iconBtn(R.drawable.ic_swap_vert, "Miroir vertical") { flipSelection(horizontal = false) })
+    row.addView(iconBtn(R.drawable.ic_check, "Valider la sélection") {
         pushUndo()
         binding.canvas.commitFloatingSelection()
         binding.canvas.selection.clear()
