@@ -964,11 +964,22 @@ class PixelCanvasView @JvmOverloads constructor(
                 invalidate()
             }
             Tool.LASSO -> {
-                commitFloatingSelection()
-                selection.clear()
-                lassoPoints.clear()
-                lassoPoints.add(intArrayOf(px, py))
-                invalidate()
+                // If the user taps INSIDE the floating selection created by a
+                // previous lasso, treat it as a drag (move the selection)
+                // instead of immediately committing it and starting a new path.
+                val floating = selection.floating
+                if (floating != null && px in selection.floatX until (selection.floatX + selection.floatW) &&
+                    py in selection.floatY until (selection.floatY + selection.floatH)) {
+                    selectionDragMode = SelectionDragMode.MOVE_FLOATING
+                    floatingDragOffsetX = px - selection.floatX
+                    floatingDragOffsetY = py - selection.floatY
+                } else {
+                    commitFloatingSelection()
+                    selection.clear()
+                    lassoPoints.clear()
+                    lassoPoints.add(intArrayOf(px, py))
+                    invalidate()
+                }
             }
             else -> {}
         }
@@ -1013,7 +1024,11 @@ class PixelCanvasView @JvmOverloads constructor(
                 }
             }
             Tool.LASSO -> {
-                if (lassoPoints.isEmpty() || lassoPoints.last()[0] != px || lassoPoints.last()[1] != py) {
+                if (selectionDragMode == SelectionDragMode.MOVE_FLOATING) {
+                    selection.floatX = px - floatingDragOffsetX
+                    selection.floatY = py - floatingDragOffsetY
+                    invalidate()
+                } else if (lassoPoints.isEmpty() || lassoPoints.last()[0] != px || lassoPoints.last()[1] != py) {
                     lassoPoints.add(intArrayOf(px, py))
                     invalidate()
                 }
@@ -1037,7 +1052,11 @@ class PixelCanvasView @JvmOverloads constructor(
                 selectionDragMode = SelectionDragMode.NONE
             }
             Tool.LASSO -> {
-                if (lassoPoints.size >= 3) {
+                if (selectionDragMode == SelectionDragMode.MOVE_FLOATING) {
+                    // Drag-move ended; keep the floating selection where it is.
+                    selectionDragMode = SelectionDragMode.NONE
+                    lassoPoints.clear()
+                } else if (lassoPoints.size >= 3) {
                     finalizeLassoSelection()
                     onSelectionCreated?.invoke()
                 }

@@ -56,6 +56,11 @@ internal fun MainActivity.refreshSelectionPalette() {
         switchTool(Tool.WAND, toastIt = false)
         toast("Touche une zone à sélectionner par couleur.")
     })
+    row.addView(btn("🖐") {
+        binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.NONE
+        switchTool(Tool.SELECT, toastIt = false)
+        toast("Glisse la sélection pour la déplacer.")
+    })
     row.addView(btn("➕") {
         binding.canvas.selectionRefineMode = PixelCanvasView.SelectionRefineMode.ADD
         toast("Touche des pixels pour les AJOUTER à la sélection")
