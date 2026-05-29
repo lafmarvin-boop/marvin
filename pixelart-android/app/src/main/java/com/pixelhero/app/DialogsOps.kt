@@ -199,15 +199,28 @@ internal fun MainActivity.showFrameEditDialog(idx: Int) {
         orientation = LinearLayout.HORIZONTAL
         setPadding(24, 8, 24, 8)
     }
-    val btnCopy = android.widget.Button(this).apply {
-        text = "📋"; textSize = 14f; isAllCaps = false
+    val dlgIconSize = (resources.displayMetrics.density * 40).toInt()
+    val btnCopy = android.widget.ImageButton(this).apply {
+        setImageResource(R.drawable.ic_copy)
+        contentDescription = "Copier la frame"
+        layoutParams = LinearLayout.LayoutParams(dlgIconSize, dlgIconSize).apply {
+            rightMargin = 8
+        }
+        setPadding(6, 6, 6, 6)
+        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
         setOnClickListener {
             frameClipboard = f.copy()
             toast("Frame #${idx + 1} copiée")
         }
     }
-    val btnCut = android.widget.Button(this).apply {
-        text = "✂"; textSize = 14f; isAllCaps = false
+    val btnCut = android.widget.ImageButton(this).apply {
+        setImageResource(R.drawable.ic_cut)
+        contentDescription = "Couper la frame"
+        layoutParams = LinearLayout.LayoutParams(dlgIconSize, dlgIconSize).apply {
+            rightMargin = 8
+        }
+        setPadding(6, 6, 6, 6)
+        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
         setOnClickListener {
             if (project.frames.size <= 1) { toast("Au moins 1 frame requise"); return@setOnClickListener }
             pushUndo()
@@ -220,7 +233,9 @@ internal fun MainActivity.showFrameEditDialog(idx: Int) {
         }
     }
     val btnPaste = android.widget.Button(this).apply {
-        text = "📌 après"; textSize = 14f; isAllCaps = false
+        text = "après"; textSize = 14f; isAllCaps = false
+        setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_pin, 0, 0, 0)
+        compoundDrawablePadding = 6
         setOnClickListener {
             val src = frameClipboard ?: run { toast("Aucune frame copiée"); return@setOnClickListener }
             if (src.width != project.width || src.height != project.height) {

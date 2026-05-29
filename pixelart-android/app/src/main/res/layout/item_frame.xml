@@ -30,30 +30,24 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <Button
+        <ImageButton
             android:id="@+id/btnUp"
             android:layout_width="32dp"
             android:layout_height="22dp"
-            android:text="▲"
-            android:textSize="9sp"
-            android:textColor="@color/text"
-            android:backgroundTint="@color/bg_panel"
-            android:minWidth="0dp"
-            android:paddingHorizontal="0dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp" />
-        <Button
+            android:src="@drawable/ic_arrow_upward"
+            android:scaleType="fitCenter"
+            android:padding="2dp"
+            android:background="@color/bg_panel"
+            android:contentDescription="Monter la frame" />
+        <ImageButton
             android:id="@+id/btnDown"
             android:layout_width="32dp"
             android:layout_height="22dp"
-            android:text="▼"
-            android:textSize="9sp"
-            android:textColor="@color/text"
-            android:backgroundTint="@color/bg_panel"
-            android:minWidth="0dp"
-            android:paddingHorizontal="0dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
+            android:src="@drawable/ic_arrow_downward"
+            android:scaleType="fitCenter"
+            android:padding="2dp"
+            android:background="@color/bg_panel"
+            android:contentDescription="Descendre la frame"
             android:layout_marginTop="2dp" />
     </LinearLayout>
 </LinearLayout>

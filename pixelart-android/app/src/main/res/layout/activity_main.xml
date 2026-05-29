@@ -185,13 +185,19 @@
                 android:padding="4dp"
                 android:layout_marginBottom="6dp">
                 <Button android:id="@+id/tabColors" style="@style/SmallButton"
-                    android:text="🎨" android:layout_weight="1"
+                    android:text="" app:icon="@drawable/ic_palette" app:iconGravity="textStart"
+                    app:iconPadding="0dp" android:layout_weight="1"
+                    android:contentDescription="Couleurs"
                     android:layout_width="0dp" android:layout_marginEnd="2dp"/>
                 <Button android:id="@+id/tabLayers" style="@style/SmallButton"
-                    android:text="🧱" android:layout_weight="1"
+                    android:text="" app:icon="@drawable/ic_layers" app:iconGravity="textStart"
+                    app:iconPadding="0dp" android:layout_weight="1"
+                    android:contentDescription="Calques"
                     android:layout_width="0dp" android:layout_marginHorizontal="2dp"/>
                 <Button android:id="@+id/tabAnim" style="@style/SmallButton"
-                    android:text="🎬" android:layout_weight="1"
+                    android:text="" app:icon="@drawable/ic_movie" app:iconGravity="textStart"
+                    app:iconPadding="0dp" android:layout_weight="1"
+                    android:contentDescription="Animation"
                     android:layout_width="0dp" android:layout_marginStart="2dp"/>
             </LinearLayout>
 
@@ -326,7 +332,9 @@
                     <Button android:id="@+id/btnSketchBake" style="@style/SmallButton"
                         android:text="Valider" android:layout_marginEnd="2dp"/>
                     <Button android:id="@+id/btnSketchClear" style="@style/SmallButton"
-                        android:text="✕" android:minWidth="0dp"/>
+                        android:text="" app:icon="@drawable/ic_close" app:iconPadding="0dp"
+                        android:contentDescription="Effacer le croquis"
+                        android:minWidth="0dp"/>
                 </LinearLayout>
             </LinearLayout>
 
@@ -336,11 +344,15 @@
                 android:orientation="horizontal" android:layout_marginBottom="8dp"
                 android:background="@drawable/panel_bg" android:padding="8dp">
                 <Button android:id="@+id/btnZoomOut" style="@style/SmallButton"
-                    android:text="−" android:layout_weight="1"/>
+                    android:text="" app:icon="@drawable/ic_remove" app:iconPadding="0dp"
+                    android:contentDescription="Zoom arrière"
+                    android:layout_weight="1"/>
                 <Button android:id="@+id/btnZoomFit" style="@style/SmallButton"
                     android:text="Adapter" android:layout_weight="1" android:layout_marginStart="4dp"/>
                 <Button android:id="@+id/btnZoomIn" style="@style/SmallButton"
-                    android:text="+" android:layout_weight="1" android:layout_marginStart="4dp"/>
+                    android:text="" app:icon="@drawable/ic_add" app:iconPadding="0dp"
+                    android:contentDescription="Zoom avant"
+                    android:layout_weight="1" android:layout_marginStart="4dp"/>
                 <Button android:id="@+id/btnZoom100" style="@style/SmallButton"
                     android:text="1×" android:layout_weight="1" android:layout_marginStart="4dp"/>
                 <Button android:id="@+id/btnZoom400" style="@style/SmallButton"
@@ -383,14 +395,18 @@
                         android:text="Stop" android:layout_marginStart="8dp"/>
                     <!-- Quick tween between current frame and a chosen target -->
                     <Button android:id="@+id/btnTween" style="@style/SmallButton"
-                        android:text="🔀" android:layout_marginStart="6dp"/>
+                        android:text="" app:icon="@drawable/ic_compare_arrows" app:iconPadding="0dp"
+                        android:contentDescription="Tween entre frames"
+                        android:layout_marginStart="6dp"/>
                     <!-- Quick: duplicate current frame as next -->
                     <Button android:id="@+id/btnDuplicateFrame" style="@style/SmallButton"
-                        android:text="+f" android:layout_marginStart="6dp"
+                        android:text="" app:icon="@drawable/ic_duplicate" app:iconPadding="0dp"
+                        android:layout_marginStart="6dp"
                         android:contentDescription="Dupliquer la frame courante"/>
                     <!-- Smart in-between: insert empty frame with onion auto -->
                     <Button android:id="@+id/btnSmartInbetween" style="@style/SmallButton"
-                        android:text="↹" android:layout_marginStart="6dp"
+                        android:text="" app:icon="@drawable/ic_auto_awesome" app:iconPadding="0dp"
+                        android:layout_marginStart="6dp"
                         android:contentDescription="Insérer une in-between"/>
                 </LinearLayout>
 
@@ -408,7 +424,8 @@
                         android:max="16" android:progress="4"/>
                 </LinearLayout>
                 <Button android:id="@+id/btnFrameDelay" style="@style/SmallButton"
-                    android:text="⏱ Délai frame courante…"
+                    android:text="Délai frame courante…"
+                    app:icon="@drawable/ic_timer" app:iconGravity="textStart"
                     android:layout_width="match_parent" android:layout_marginTop="4dp"/>
 
                 <!-- Frame navigation steppers + label -->
@@ -416,14 +433,18 @@
                     android:orientation="horizontal" android:layout_marginTop="4dp"
                     android:gravity="center_vertical">
                     <Button android:id="@+id/btnPrevFrame" style="@style/SmallButton"
-                        android:text="◀" android:minWidth="48dp"/>
+                        android:text="" app:icon="@drawable/ic_chevron_left" app:iconPadding="0dp"
+                        android:contentDescription="Frame précédente"
+                        android:minWidth="48dp"/>
                     <TextView android:id="@+id/frameIndexLabel"
                         android:layout_width="0dp" android:layout_height="wrap_content"
                         android:layout_weight="1" android:gravity="center"
                         android:text="Frame 1/1" android:textColor="@color/text"
                         android:textSize="12sp"/>
                     <Button android:id="@+id/btnNextFrame" style="@style/SmallButton"
-                        android:text="▶" android:minWidth="48dp"/>
+                        android:text="" app:icon="@drawable/ic_chevron_right" app:iconPadding="0dp"
+                        android:contentDescription="Frame suivante"
+                        android:minWidth="48dp"/>
                 </LinearLayout>
 
                 <!-- A ↔ B loop test -->

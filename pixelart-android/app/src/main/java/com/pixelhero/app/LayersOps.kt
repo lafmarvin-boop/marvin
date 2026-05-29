@@ -109,7 +109,7 @@ internal fun MainActivity.showLayersDialog() {
 internal fun MainActivity.showLayerActions() {
     val f = project.currentFrame
     val l = f.layers[f.activeLayer]
-    val groupAction = if (l.groupName == null) "📁 Mettre dans un groupe…" else "📁 Sortir du groupe « ${l.groupName} »"
+    val groupAction = if (l.groupName == null) "Mettre dans un groupe…" else "Sortir du groupe « ${l.groupName} »"
     val items = arrayOf(
         if (l.visible) "Masquer" else "Afficher",
         "Renommer…",
@@ -118,9 +118,9 @@ internal fun MainActivity.showLayerActions() {
         "Supprimer",
         "Monter (au-dessus)",
         "Descendre (en dessous)",
-        "🔀 Fusionner avec la couche du dessous",
-        "🎯 Fusionner sélection… (choisir)",
-        "🪄 Tout aplatir (calques visibles)"
+        "Fusionner avec la couche du dessous",
+        "Fusionner sélection… (choisir)",
+        "Tout aplatir (calques visibles)"
     )
     AlertDialog.Builder(this)
         .setTitle("« ${l.name} »")
@@ -420,10 +420,12 @@ private fun MainActivity.addGroupHeader(strip: LinearLayout, f: Frame, groupName
         }
     }
     val name = TextView(this).apply {
-        text = "📁 $groupName"
+        text = groupName
         setTextColor(0xFFA5B4FF.toInt())
         textSize = 13f
         setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_folder, 0, 0, 0)
+        compoundDrawablePadding = 8
     }
     row.addView(eye); row.addView(name)
     strip.addView(row)
