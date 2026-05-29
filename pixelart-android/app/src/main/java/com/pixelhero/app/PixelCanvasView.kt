@@ -237,27 +237,27 @@ class PixelCanvasView @JvmOverloads constructor(
     init { isFocusable = true; isClickable = true }
 
     private var selectionScaleAccum: Float = 1f
+    /** Set in onScaleBegin: true only when the pinch focus started inside the
+     *  floating selection. Without this, [onScale] would resize the floating
+     *  on every pinch, even when the user is just zooming the canvas. */
+    private var pinchResizesSelection: Boolean = false
     private val scaleGD = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScaleBegin(d: ScaleGestureDetector): Boolean {
-            // If the user is pinching INSIDE a floating selection, redirect
-            // the pinch to scale the selection (nearest-neighbor) instead
-            // of zooming the canvas.
+            pinchResizesSelection = false
             val sel = selection
             if (sel.floating != null) {
                 val coords = clientToPixel(d.focusX, d.focusY)
                 val px = coords[0]; val py = coords[1]
                 if (px in sel.floatX until sel.floatX + sel.floatW &&
                     py in sel.floatY until sel.floatY + sel.floatH) {
+                    pinchResizesSelection = true
                     selectionScaleAccum = 1f
-                    return true
                 }
             }
             return true
         }
         override fun onScale(d: ScaleGestureDetector): Boolean {
-            val sel = selection
-            val floating = sel.floating
-            if (floating != null && selectionScaleAccum > 0f) {
+            if (pinchResizesSelection && selection.floating != null) {
                 selectionScaleAccum *= d.scaleFactor
                 // Apply the accumulated scale to the floating buffer when it
                 // crosses a threshold worth re-rasterizing (avoid wasted work
@@ -266,11 +266,10 @@ class PixelCanvasView @JvmOverloads constructor(
                     resizeFloatingSelection(selectionScaleAccum)
                     selectionScaleAccum = 1f
                     invalidate()
-                    return true
                 }
                 return true
             }
-            // Canvas zoom path (no floating selection under pinch focus).
+            // Canvas zoom path (pinch did NOT start inside a floating selection).
             val factor = d.scaleFactor
             val fx = d.focusX; val fy = d.focusY
             val newScale = (scale * factor).coerceIn(0.25f, 32f)
