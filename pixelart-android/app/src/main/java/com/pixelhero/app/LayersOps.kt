@@ -1,5 +1,6 @@
 package com.pixelhero.app
 
+import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -63,15 +64,19 @@ internal fun MainActivity.showLayersDialog() {
                 }
             }
             row.addView(label)
-            val mergeBtn = TextView(this).apply {
-                text = "🔀"
-                textSize = 20f
-                setPadding(16, 8, 16, 8)
-                isClickable = true; isFocusable = true
+            val mergeBtn = Button(this).apply {
+                text = "🔀 ↓"
+                textSize = 14f
+                setPadding(20, 12, 20, 12)
+                isAllCaps = false
                 alpha = if (f.layers.size >= 2) 1f else 0.3f
                 setOnClickListener {
+                    toast("Fusion ↓ : calque #${i + 1}")
                     if (f.layers.size < 2) { toast("Un seul calque"); return@setOnClickListener }
+                    val before = f.layers.size
                     mergeLayerDown(i)
+                    val after = f.layers.size
+                    if (after == before) toast("⚠ Aucun calque retiré (avant=$before, après=$after)")
                     rebuild()
                 }
             }
@@ -247,12 +252,16 @@ private fun blendSrcOver(src: Int, dst: Int, layerOp: Int): Int {
  */
 internal fun MainActivity.mergeLayerDown(idx: Int) {
     val f = project.currentFrame
+    android.util.Log.d("PixelHero.Merge", "mergeLayerDown(idx=$idx) size=${f.layers.size}")
     if (f.layers.size < 2) { toast("Un seul calque, rien à fusionner"); return }
     val active = idx.coerceIn(0, f.layers.size - 1)
     val targetIdx = if (active == 0) 1 else active - 1
+    val topIdx = maxOf(active, targetIdx)
+    val belowIdx = minOf(active, targetIdx)
+    val sizeBefore = f.layers.size
     pushUndo()
-    val top = f.layers[maxOf(active, targetIdx)]
-    val below = f.layers[minOf(active, targetIdx)]
+    val top = f.layers[topIdx]
+    val below = f.layers[belowIdx]
     if (top.visible) {
         val layerOp = (top.opacity * 255).toInt().coerceIn(0, 255)
         for (i in top.pixels.indices) {
@@ -261,13 +270,15 @@ internal fun MainActivity.mergeLayerDown(idx: Int) {
     }
     below.visible = true
     below.opacity = 1f
-    f.layers.remove(top)
+    val removed = f.layers.remove(top)
     f.activeLayer = f.layers.indexOf(below).coerceAtLeast(0)
     f.invalidateComposite()
     binding.canvas.syncFrameBitmap()
     framesAdapter.notifyItemChanged(project.currentIndex)
     refreshLayersStrip()
-    toast("Calques fusionnés")
+    val sizeAfter = f.layers.size
+    android.util.Log.d("PixelHero.Merge", "done removed=$removed size $sizeBefore→$sizeAfter active=${f.activeLayer}")
+    toast("Fusion #${topIdx + 1}→#${belowIdx + 1} ($sizeBefore→$sizeAfter calques)")
 }
 
 /**
@@ -477,15 +488,21 @@ private fun MainActivity.addLayerRow(strip: LinearLayout, f: Frame, i: Int, inde
             refreshLayersStrip()
         }
     }
-    val mergeBtn = TextView(this).apply {
-        text = "🔀"
-        setTextColor(if (f.layers.size >= 2) 0xFFE8E8F0.toInt() else 0x44888888)
-        textSize = 14f
-        setPadding(8, 4, 8, 4)
-        isClickable = true; isFocusable = true
+    val mergeBtn = Button(this).apply {
+        text = "🔀↓"
+        textSize = 11f
+        setPadding(12, 4, 12, 4)
+        isAllCaps = false
+        minimumWidth = 0
+        minWidth = 0
+        alpha = if (f.layers.size >= 2) 1f else 0.4f
         setOnClickListener {
+            toast("Fusion ↓ calque #${i + 1}")
             if (f.layers.size < 2) { toast("Un seul calque"); return@setOnClickListener }
+            val before = f.layers.size
             mergeLayerDown(i)
+            val after = f.layers.size
+            if (after == before) toast("⚠ rien retiré ($before → $after)")
         }
         setOnLongClickListener {
             f.activeLayer = i
