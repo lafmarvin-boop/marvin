@@ -1208,7 +1208,7 @@ class PixelCanvasView @JvmOverloads constructor(
     }
 
     // ---- Selection ----
-    private fun liftSelectionToFloating() {
+    fun liftSelectionToFloating() {
         val p = project ?: return
         if (!selection.active) return
         val w = selection.width

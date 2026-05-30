@@ -89,6 +89,8 @@ internal fun MainActivity.refreshSelectionPalette() {
     }
     row.addView(iconBtn(R.drawable.ic_swap_horiz, "Miroir horizontal") { flipSelection(horizontal = true) })
     row.addView(iconBtn(R.drawable.ic_swap_vert, "Miroir vertical") { flipSelection(horizontal = false) })
+    row.addView(iconBtn(R.drawable.ic_rotate_left, "Rotation 90° gauche") { rotateSelection(cw = false) })
+    row.addView(iconBtn(R.drawable.ic_rotate_right, "Rotation 90° droite") { rotateSelection(cw = true) })
     row.addView(iconBtn(R.drawable.ic_check, "Valider la sélection") {
         pushUndo()
         binding.canvas.commitFloatingSelection()
@@ -258,6 +260,52 @@ internal fun MainActivity.liftAndCopy(): Pair<Int, IntArray>? {
         }
     }
     return binding.canvas.copySelectionToClipboard()
+}
+
+/**
+ * Rotate the active selection by 90° (clockwise if [cw], else counter-clockwise).
+ * Always operates on a floating buffer — if the selection isn't floating yet,
+ * it's lifted first (matching the rectangle SELECT behavior). For non-square
+ * selections the bounding box swaps dimensions; the new floating buffer stays
+ * centered on the same canvas point so the rotation feels in-place.
+ */
+internal fun MainActivity.rotateSelection(cw: Boolean) {
+    val sel = binding.canvas.selection
+    if (!sel.active) { toast("Aucune sélection"); return }
+    if (sel.floating == null) binding.canvas.liftSelectionToFloating()
+    val floating = sel.floating ?: return
+    val w = sel.floatW; val h = sel.floatH
+    if (w <= 0 || h <= 0) return
+    pushUndo()
+    val out = IntArray(w * h)
+    val newW = h; val newH = w
+    if (cw) {
+        // (x,y) → (newW-1-y, x) = (h-1-y, x)
+        for (y in 0 until h) for (x in 0 until w) {
+            val nx = h - 1 - y
+            val ny = x
+            out[ny * newW + nx] = floating[y * w + x]
+        }
+    } else {
+        // (x,y) → (y, newH-1-x) = (y, w-1-x)
+        for (y in 0 until h) for (x in 0 until w) {
+            val nx = y
+            val ny = w - 1 - x
+            out[ny * newW + nx] = floating[y * w + x]
+        }
+    }
+    val centerX = sel.floatX + w / 2
+    val centerY = sel.floatY + h / 2
+    sel.floating = out
+    sel.floatW = newW
+    sel.floatH = newH
+    sel.floatX = centerX - newW / 2
+    sel.floatY = centerY - newH / 2
+    sel.x0 = sel.floatX; sel.y0 = sel.floatY
+    sel.x1 = sel.floatX + newW - 1
+    sel.y1 = sel.floatY + newH - 1
+    sel.mask = null
+    binding.canvas.invalidate()
 }
 
 internal fun MainActivity.flipSelection(horizontal: Boolean) {
