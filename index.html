@@ -82,23 +82,13 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <script src="https://js.stripe.com/v3/"></script>
-  <!-- ══ EMAILJS — alertes automatiques ══ -->
-  <!-- Créez votre compte sur emailjs.com, remplacez les IDs ci-dessous -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>
-    // ⚠️ REMPLACEZ par vos vraies clés EmailJS (emailjs.com → Account → API Keys)
-    const EMAILJS_PUBLIC_KEY  = 'VOTRE_PUBLIC_KEY';
-    const EMAILJS_SERVICE_ID  = 'VOTRE_SERVICE_ID';
-    const EMAILJS_TEMPLATE_SIGNALEMENT = 'VOTRE_TEMPLATE_SIGNALEMENT';
-    const EMAILJS_TEMPLATE_CANDIDATURE = 'VOTRE_TEMPLATE_CANDIDATURE';
-    const EMAILJS_TEMPLATE_NOTIF       = 'VOTRE_TEMPLATE_NOTIF';
-    const ADMIN_EMAIL = 'contact.parlons.ecoute@gmail.com';
-    try { emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY }); } catch(e) { console.warn('EmailJS non initialisé:', e.message); }
-
-    function sendEmailAlert(templateId, params) {
-      return emailjs.send(EMAILJS_SERVICE_ID, templateId, {
-        to_email: ADMIN_EMAIL, ...params
-      }).catch(err => console.warn('EmailJS erreur:', err));
+    function notifyAdmin(params) {
+      fetch('/.netlify/functions/notify-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params)
+      }).catch(err => console.warn('notify-admin:', err.message));
     }
   </script>
   <style>
@@ -1167,7 +1157,7 @@
         ⚠️ <strong>RC Pro :</strong> Pensez à souscrire une assurance Responsabilité Civile Professionnelle avant le lancement (~150-400€/an). Indispensable en cas de litige client.
       </div>
       <div style="margin-top:.6rem;background:#e8f8e8;border-radius:10px;padding:.8rem 1rem;font-size:.75rem;color:#2d7a2d;line-height:1.55;">
-        ✅ <strong>EmailJS :</strong> Configurez vos templates sur emailjs.com pour recevoir automatiquement les candidatures, signalements et alertes de disponibilité par email.
+        ✅ <strong>Notifications email :</strong> Les candidatures et alertes de disponibilité vous sont transmises automatiquement via Resend dès que <code>RESEND_API_KEY</code> est configuré dans Netlify.
       </div>
     </div>
   </div>
@@ -2104,13 +2094,7 @@ function submitNotify(){
   const notifs=JSON.parse(localStorage.getItem('parlons_notifs')||'[]');
   notifs.push({email,date:new Date().toLocaleDateString('fr-FR')});
   localStorage.setItem('parlons_notifs',JSON.stringify(notifs));
-  // Email admin via EmailJS
-  sendEmailAlert(EMAILJS_TEMPLATE_NOTIF, {
-    subject: '📩 Nouvelle alerte disponibilité — Parlons',
-    client_email: email,
-    date: new Date().toLocaleDateString('fr-FR'),
-    message: `Un visiteur souhaite être prévenu quand un écoutant est disponible. Email : ${email}`
-  });
+  notifyAdmin({ type: 'notify', email });
   document.getElementById('notify-email').value='';
   document.getElementById('notify-success').textContent='✅ Parfait ! Vous serez notifié(e) dès qu\'un écoutant est disponible.';
   document.getElementById('notify-success').style.display='block';
@@ -2122,12 +2106,7 @@ function sendRecontactRequest(prenom){
   const email=emailEl?emailEl.value.trim():'';
   if(!email||!email.includes('@')){if(emailEl)emailEl.focus();return;}
   const msg=document.getElementById('recontact-msg')?document.getElementById('recontact-msg').value.trim():'';
-  sendEmailAlert(EMAILJS_TEMPLATE_NOTIF,{
-    subject:'📩 Demande de recontact — attente dépassée — Parlons',
-    client_email:email,
-    date:new Date().toLocaleDateString('fr-FR'),
-    message:`Demande de recontact après 10 min d'attente sans réponse.\nPrénom : ${prenom||'non renseigné'}\nEmail : ${email}\nMessage : ${msg||'—'}`
-  });
+  notifyAdmin({ type: 'recontact', email, prenom, message: msg || '' });
   const wz=document.getElementById('waiting-zone');
   if(wz) wz.innerHTML=`<div style="background:#e8f8e8;border-radius:9px;padding:1rem;border:1px solid #5CB85C;text-align:center;font-size:.84rem;color:#2d7a2d;line-height:1.7;">✅ <strong>Demande enregistrée !</strong><br>Nous vous recontacterons à<br><strong>${email}</strong><br>dès qu'un écoutant est disponible.</div>`;
 }
@@ -2187,15 +2166,7 @@ function submitAgentForm(){
   const apps=JSON.parse(localStorage.getItem('parlons_agents')||'[]');
   apps.push({name,pseudo,email,dispo:document.getElementById('ag-dispo').value,why,exp:document.getElementById('ag-exp').value,charterAccepted:true,cgvAccepted:true,date:new Date().toLocaleDateString('fr-FR')});
   localStorage.setItem('parlons_agents',JSON.stringify(apps));
-  // Email admin via EmailJS
-  sendEmailAlert(EMAILJS_TEMPLATE_CANDIDATURE, {
-    subject: '🎙️ Nouvelle candidature écoutant — Parlons',
-    pseudo, name, email,
-    dispo: document.getElementById('ag-dispo').value,
-    why, exp: document.getElementById('ag-exp').value,
-    date: new Date().toLocaleDateString('fr-FR'),
-    message: `Nouvelle candidature écoutant reçue sur Parlons.`
-  });
+  notifyAdmin({ type: 'candidature', name, pseudo, email, dispo: document.getElementById('ag-dispo').value, why, exp: document.getElementById('ag-exp').value });
   document.getElementById('ag-ok').style.display='block';
   document.getElementById('ag-name').value='';
   document.getElementById('ag-pseudo').value='';
