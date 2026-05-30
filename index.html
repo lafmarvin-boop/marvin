@@ -1287,8 +1287,9 @@
   </div>
 
   <!-- SÉPARATEUR -->
-  <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:1.2rem;max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.8rem;">
+  <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:1.2rem;max-width:1000px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:.4rem;flex-wrap:wrap;text-align:center;">
     <p style="font-size:.72rem;color:#4A3020;">© 2026 Parlons — Tous droits réservés · Service d'écoute en ligne</p>
+    <p style="font-size:.68rem;color:#3A2010;">Micro-entreprise Parlons · SIRET 105 179 360 000 18 · 112 route Bois de Lion, 33240 Peujard · <a href="mailto:contact.parlons.ecoute@gmail.com" style="color:#4A3020;text-decoration:none;">contact.parlons.ecoute@gmail.com</a></p>
   </div>
 </footer>
 
@@ -2521,10 +2522,9 @@ function startFreeGroupTimer(theme,name){
      COOKIE BANNER
 ═══════════════════════════════════════ -->
 <div class="cookie-banner" id="cookie-banner">
-  <p>🍪 Nous utilisons des cookies essentiels (Stripe pour les paiements, Crisp pour le chat). En continuant, vous acceptez leur utilisation. <a href="#" onclick="openPrivacy();return false;">En savoir plus</a></p>
+  <p>Ce site utilise uniquement des cookies <strong>strictement nécessaires</strong> au fonctionnement (Stripe pour le paiement, Crisp pour le chat). Aucun cookie publicitaire ni de suivi tiers. Un identifiant de visite anonyme est stocké localement pour la mesure d'audience (exempté de consentement — CNIL délibération 2020-091). <a href="#" onclick="openPrivacy();return false;">En savoir plus</a></p>
   <div class="cookie-btns">
-    <button class="cookie-accept" onclick="acceptCookies()">Accepter</button>
-    <button class="cookie-refuse" onclick="refuseCookies()">Refuser</button>
+    <button class="cookie-accept" onclick="acceptCookies()">Compris</button>
   </div>
 </div>
 
@@ -2535,11 +2535,11 @@ function startFreeGroupTimer(theme,name){
   <div class="legal-box">
     <button class="legal-sticky-close" onclick="closePrivacy()">✕ Fermer</button>
     <h1>Politique de Confidentialité</h1>
-    <div class="legal-meta">Parlons · Version 1.0 · Avril 2026 · Conformément au RGPD (UE 2016/679)</div>
+    <div class="legal-meta">Parlons · Version 2.0 · Mai 2026 · Conformément au RGPD (UE 2016/679)</div>
     <p>Parlons s'engage à protéger la vie privée de ses utilisateurs. La présente politique explique quelles données sont collectées, pourquoi, et comment vous pouvez les contrôler.</p>
 
     <h2>1. Responsable du traitement</h2>
-    <p>Micro-entreprise Parlons · 112 route Bois de Lion, 33240 Peujard · SIRET : ________________ · Email : <a href="mailto:contact.parlons.ecoute@gmail.com" style="color:var(--terracotta)">contact.parlons.ecoute@gmail.com</a></p>
+    <p>Micro-entreprise Parlons · 112 route Bois de Lion, 33240 Peujard · SIRET : 105 179 360 000 18 · Email : <a href="mailto:contact.parlons.ecoute@gmail.com" style="color:var(--terracotta)">contact.parlons.ecoute@gmail.com</a></p>
 
     <h2>2. Données collectées</h2>
     <ul>
@@ -2547,7 +2547,10 @@ function startFreeGroupTimer(theme,name){
       <li><strong>Email</strong> — uniquement si vous vous inscrivez à l'alerte disponibilité ou postulez comme écoutant</li>
       <li><strong>Données de paiement</strong> — traitées exclusivement par Stripe (nous ne stockons aucune donnée bancaire)</li>
       <li><strong>Horodatage des sessions</strong> — date et heure de connexion, durée</li>
-      <li><strong>Cookies techniques</strong> — Stripe (paiement), Crisp (chat), aucun cookie publicitaire</li>
+      <li><strong>Adresse IP</strong> — collectée à chaque visite à des fins de sécurité · base légale : intérêt légitime (Art. 6.1.f RGPD)</li>
+      <li><strong>Géolocalisation approximative</strong> — pays, ville, région déduits de l'IP (via ipwho.is) · précision ~ville, pas de géolocalisation GPS</li>
+      <li><strong>Identifiant de visite anonyme</strong> — UUID aléatoire stocké dans le localStorage de votre navigateur, non lié à votre identité · base légale : intérêt légitime, exempté de consentement cookie (CNIL délibération 2020-091)</li>
+      <li><strong>Cookies techniques</strong> — Stripe (paiement), Crisp (chat) — strictement nécessaires, aucun cookie publicitaire</li>
     </ul>
 
     <h2>3. Finalités du traitement</h2>
@@ -2556,7 +2559,8 @@ function startFreeGroupTimer(theme,name){
       <li>Traitement des paiements et remboursements</li>
       <li>Envoi d'alertes de disponibilité (si consentement)</li>
       <li>Gestion des candidatures écoutants</li>
-      <li>Amélioration de la qualité du service</li>
+      <li>Sécurité de la plateforme et prévention des abus</li>
+      <li>Statistiques de fréquentation anonymes (mesure d'audience)</li>
     </ul>
 
     <h2>4. Durée de conservation</h2>
@@ -2565,6 +2569,8 @@ function startFreeGroupTimer(theme,name){
       <li>Candidatures agents : 2 ans maximum</li>
       <li>Données de paiement : 5 ans (obligation légale comptable)</li>
       <li>Historique de chat : 48h puis suppression automatique</li>
+      <li><strong>Adresse IP et géolocalisation : 30 jours maximum</strong> — suppression automatique au-delà</li>
+      <li>Identifiant de visite (localStorage) : jusqu'à effacement de votre navigateur</li>
     </ul>
 
     <h2>5. Vos droits</h2>
@@ -2580,7 +2586,7 @@ function startFreeGroupTimer(theme,name){
     <div class="lb-info">Aucun cookie publicitaire ou de tracking n'est utilisé sur Parlons.</div>
 
     <h2>7. Transferts hors UE</h2>
-    <p>Stripe et Crisp peuvent traiter des données hors de l'Union Européenne. Ces transferts sont encadrés par des clauses contractuelles types conformes au RGPD.</p>
+    <p>Certains sous-traitants sont établis hors de l'UE (Stripe, Supabase, Netlify, Resend — USA). Ces transferts sont encadrés par des clauses contractuelles types conformes au RGPD. Crisp est hébergé en Europe. ipwho.is effectue une résolution IP sans stockage identifiable.</p>
     <button class="legal-close-btn" onclick="closePrivacy()">Fermer ✕</button>
   </div>
 </div>
@@ -2598,7 +2604,7 @@ function startFreeGroupTimer(theme,name){
     <ul>
       <li>Dénomination : Parlons</li>
       <li>Statut : Micro-entrepreneur (Entrepreneur individuel)</li>
-      <li>SIRET : ________________________________</li>
+      <li>SIRET : 105 179 360 000 18</li>
       <li>Code APE : 8899B</li>
       <li>Adresse : 112 route Bois de Lion, 33240 Peujard</li>
       <li>Email : <a href="mailto:contact.parlons.ecoute@gmail.com" style="color:var(--terracotta)">contact.parlons.ecoute@gmail.com</a></li>
@@ -2706,7 +2712,6 @@ function closeCGV(){document.getElementById('cgv-modal').classList.remove('activ
 
 // ── COOKIES ──
 function acceptCookies(){localStorage.setItem('parlons_cookies','accepted');document.getElementById('cookie-banner').style.display='none';}
-function refuseCookies(){localStorage.setItem('parlons_cookies','refused');document.getElementById('cookie-banner').style.display='none';}
 function initCookieBanner(){
   const choice=localStorage.getItem('parlons_cookies');
   if(!choice){setTimeout(()=>{const b=document.getElementById('cookie-banner');if(b)b.style.display='flex';},1500);}
