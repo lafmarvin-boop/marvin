@@ -115,6 +115,19 @@
     .sugg-card{background:var(--warm);border-radius:12px;padding:.85rem 1rem;margin-bottom:.6rem;}
     .sugg-text{font-size:.84rem;color:var(--dark);line-height:1.65;}
     .sugg-meta{font-size:.7rem;color:var(--light);margin-top:.3rem;}
+
+    /* ── AGENT DASHBOARD ── */
+    .agent-wrap{max-width:820px;margin:0 auto;padding:2rem 1.5rem 3rem;}
+    .agent-hero{background:linear-gradient(135deg,var(--tc),var(--rust));border-radius:18px;padding:1.8rem 2rem;color:white;margin-bottom:1.8rem;display:flex;align-items:center;gap:1.2rem;}
+    .agent-avatar{width:52px;height:52px;background:rgba(255,255,255,.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;flex-shrink:0;}
+    .agent-hero-name{font-family:'Playfair Display',serif;font-size:1.2rem;}
+    .agent-hero-sub{font-size:.78rem;opacity:.8;margin-top:.2rem;}
+    .agent-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.8rem;}
+    @media(max-width:600px){.agent-stats{grid-template-columns:1fr 1fr;}}
+    .agent-period-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+    .agent-period-table th{text-align:left;padding:.55rem .8rem;color:var(--light);font-weight:500;font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--sand);}
+    .agent-period-table td{padding:.6rem .8rem;border-bottom:1px solid var(--warm);}
+    .agent-period-table tr:last-child td{border-bottom:none;}
   </style>
 </head>
 <body>
@@ -288,6 +301,63 @@
   </div>
 </div>
 
+<!-- ══ AGENT PASSWORD SETUP ══ -->
+<div data-screen="agent-setup">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <span>Parlons</span>
+      <p>Première connexion agent</p>
+    </div>
+    <p style="font-size:.82rem;color:var(--mid);margin-bottom:1.4rem;line-height:1.7;text-align:center;">Bienvenue ! Définissez un mot de passe pour sécuriser votre espace agent. Vous l'utiliserez à chaque connexion.</p>
+    <label class="flabel">Nouveau mot de passe <span style="font-weight:300;color:var(--light)">(8 caractères min.)</span></label>
+    <input type="password" id="agent-pwd1" class="finput" placeholder="Choisissez un mot de passe">
+    <label class="flabel">Confirmer le mot de passe</label>
+    <input type="password" id="agent-pwd2" class="finput" placeholder="Répétez le mot de passe" onkeydown="if(event.key==='Enter')agentSetPassword()">
+    <div class="login-err" id="agent-setup-err"></div>
+    <button class="btn-prim" id="agent-setup-btn" onclick="agentSetPassword()">Créer mon mot de passe</button>
+  </div>
+</div>
+
+<!-- ══ AGENT DASHBOARD ══ -->
+<div data-screen="agent-dash">
+  <div class="agent-wrap">
+    <div class="agent-hero">
+      <div class="agent-avatar" id="agent-avatar">?</div>
+      <div>
+        <div class="agent-hero-name" id="agent-hero-name">Agent</div>
+        <div class="agent-hero-sub" id="agent-hero-sub">Tableau de bord personnel</div>
+      </div>
+    </div>
+
+    <div class="section-title">Activité par période</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="agent-period-table">
+        <thead><tr><th>Période</th><th>Sessions</th><th>CA généré</th></tr></thead>
+        <tbody id="agent-periods-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="section-title">Par formule</div>
+        <div class="card" id="agent-byplan"></div>
+      </div>
+      <div>
+        <div class="section-title">Notes reçues</div>
+        <div class="card" id="agent-rating"></div>
+      </div>
+    </div>
+
+    <div class="section-title">Sessions récentes</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table>
+        <thead><tr><th>Pseudo</th><th>Formule</th><th>Montant</th><th>Note</th><th>Date</th></tr></thead>
+        <tbody id="agent-sessions-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- ══ REVIEWS OVERLAY ══ -->
 <div id="reviews-overlay" class="overlay" onclick="if(event.target===this)closeReviews()">
   <div class="overlay-box">
@@ -302,6 +372,7 @@
 const API = '/.netlify/functions';
 let subEmailStored = '';
 let agentData = {};
+let agentEmailStored = '';
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -352,6 +423,7 @@ function logout() {
     if (!saved || Date.now() > saved.expires) return;
     document.getElementById('login-email').value = saved.email;
     document.getElementById('login-pwd').value = saved.password || '';
+    if (saved.role === 'agent') agentEmailStored = saved.email;
     await login();
   } catch {}
 })();
@@ -370,12 +442,23 @@ async function login() {
   btn.innerHTML = '<span class="spin"></span> Vérification…';
 
   try {
-    const res = await fetch(`${API}/admin-stats`, {
+    // Essayer admin-stats en premier, puis agent-stats
+    let res = await fetch(`${API}/admin-stats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    const data = await res.json();
+    let data = await res.json();
+
+    // Si admin-stats refuse, tenter agent-stats
+    if (!res.ok || (!data.role)) {
+      res = await fetch(`${API}/agent-stats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      data = await res.json();
+    }
 
     if (!res.ok) throw new Error(data.error || 'Accès refusé');
 
@@ -388,6 +471,15 @@ async function login() {
       subEmailStored = email;
       renderSubDash(email, data.expires_at, data.active, data.pseudo, data.cancel_at_period_end, data.needs_password_setup);
       showScreen('sub-dash');
+    } else if (data.role === 'agent') {
+      agentEmailStored = email;
+      if (data.needs_password_setup) {
+        showScreen('agent-setup');
+      } else {
+        localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, role: 'agent', expires: Date.now() + 86400000 }));
+        renderAgentDash(email, data);
+        showScreen('agent-dash');
+      }
     } else {
       throw new Error('Rôle inconnu');
     }
@@ -647,6 +739,94 @@ function renderDashboard(d) {
   document.getElementById('sessions-tbody').innerHTML = (sessions.recent || []).map(s =>
     `<tr><td style="font-size:.8rem;font-weight:500">${s.client_pseudo || '—'}</td><td style="font-size:.78rem">${s.formule || '—'}</td><td style="font-size:.8rem;font-weight:700;color:var(--tc)">${fmt(s.montant)}</td><td style="font-size:.75rem;color:var(--mid)">${fmtDate(s.started_at)}</td></tr>`
   ).join('') || '<tr><td colspan="4" style="color:var(--light);text-align:center;padding:1.2rem">Aucune session</td></tr>';
+}
+
+// ── AGENT DASHBOARD ──
+function renderAgentDash(email, d) {
+  const initial = email.charAt(0).toUpperCase();
+  document.getElementById('agent-avatar').textContent = initial;
+  document.getElementById('agent-hero-name').textContent = email;
+  document.getElementById('agent-hero-sub').textContent = 'Tableau de bord personnel · ' + new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const periods = d.periods || {};
+  const periodRows = [
+    ["Aujourd'hui", periods.today],
+    ['Cette semaine', periods.week],
+    ['Ce mois', periods.month],
+    ['Depuis toujours', periods.allTime],
+  ];
+  document.getElementById('agent-periods-tbody').innerHTML = periodRows.map(([label, p]) =>
+    `<tr>
+      <td style="font-weight:500">${label}</td>
+      <td style="font-weight:700;color:var(--tc)">${(p && p.sessions) || 0}</td>
+      <td style="font-weight:700">${fmt((p && p.revenue) || 0)}</td>
+    </tr>`
+  ).join('');
+
+  const byPlan = d.byPlan || {};
+  const maxCount = Math.max(1, ...Object.values(byPlan).map(p => p.count));
+  document.getElementById('agent-byplan').innerHTML = Object.keys(byPlan).length
+    ? Object.entries(byPlan).sort((a,b) => b[1].count - a[1].count).map(([k, p]) =>
+        `<div class="plan-row">
+          <div class="plan-name">${escHtml(k)}</div>
+          <div class="plan-bar-wrap"><div class="plan-bar" style="width:${Math.round(p.count/maxCount*100)}%"></div></div>
+          <div class="plan-count">${p.count}</div>
+          <div class="plan-rev">${fmt(p.revenue)}</div>
+        </div>`
+      ).join('')
+    : '<div style="color:var(--light);font-size:.82rem">Aucune session pour l\'instant.</div>';
+
+  const avg = d.avgRating;
+  document.getElementById('agent-rating').innerHTML = avg
+    ? `<div style="text-align:center;padding:.5rem 0">
+        <div style="font-size:2rem;color:#FFD700">${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))}</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--dark);margin:.4rem 0">${avg.toFixed(1)}<span style="font-size:.9rem;color:var(--light)">/5</span></div>
+        <div style="font-size:.75rem;color:var(--light)">${d.ratingCount} avis reçu${d.ratingCount > 1 ? 's' : ''}</div>
+      </div>`
+    : '<div style="color:var(--light);font-size:.82rem;text-align:center;padding:1rem">Aucune note pour l\'instant.</div>';
+
+  document.getElementById('agent-sessions-tbody').innerHTML = (d.recent || []).map(s => {
+    const stars = s.rating ? `<span style="color:#FFD700">${'★'.repeat(s.rating)}</span>` : '—';
+    return `<tr>
+      <td style="font-size:.8rem;font-weight:500">${escHtml(s.pseudo || '—')}</td>
+      <td style="font-size:.78rem">${escHtml(s.formule || '—')}</td>
+      <td style="font-size:.8rem;font-weight:700;color:var(--tc)">${fmt(s.montant)}</td>
+      <td style="font-size:.8rem">${stars}</td>
+      <td style="font-size:.75rem;color:var(--mid)">${fmtDate(s.started_at)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="color:var(--light);text-align:center;padding:1.2rem">Aucune session</td></tr>';
+}
+
+async function agentSetPassword() {
+  const pwd1 = document.getElementById('agent-pwd1').value;
+  const pwd2 = document.getElementById('agent-pwd2').value;
+  const err = document.getElementById('agent-setup-err');
+  const btn = document.getElementById('agent-setup-btn');
+  err.textContent = '';
+
+  if (pwd1.length < 8) { err.textContent = 'Minimum 8 caractères.'; return; }
+  if (pwd1 !== pwd2) { err.textContent = 'Les mots de passe ne correspondent pas.'; return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Enregistrement…';
+
+  try {
+    const res = await fetch(`${API}/agent-stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: agentEmailStored, password: pwd1, action: 'set_password' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    localStorage.setItem('parlons_espace_session', JSON.stringify({ email: agentEmailStored, password: pwd1, role: 'agent', expires: Date.now() + 86400000 }));
+    renderAgentDash(agentEmailStored, data);
+    showScreen('agent-dash');
+  } catch(e) {
+    err.textContent = e.message;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Créer mon mot de passe';
 }
 </script>
 </body>
