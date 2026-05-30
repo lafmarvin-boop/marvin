@@ -69,7 +69,7 @@ exports.handler = async (event) => {
       sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,visited_at&order=visited_at.desc&limit=50000`),
       sbGet(`chats?started_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=started_at&order=started_at.desc&limit=10000`),
       getCrispOperators(),
-      sbGet('visits?select=ip_address,country,visited_at,visitor_id,is_new&order=visited_at.desc&limit=200')
+      sbGet('visits?select=ip_address,country,city,region,visited_at,visitor_id,is_new&order=visited_at.desc&limit=200')
     ]);
     const siteStats = siteStatsRows[0] || { total_visits: 0, unique_visitors: 0, total_chats: 0 };
 
@@ -214,6 +214,8 @@ exports.handler = async (event) => {
         ipLogs: ipLogs.filter(v => v.ip_address).map(v => ({
           ip: v.ip_address,
           country: v.country || '—',
+          city: v.city || null,
+          region: v.region || null,
           visited_at: v.visited_at,
           is_new: v.is_new
         })),

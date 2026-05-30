@@ -287,9 +287,9 @@
         <div style="overflow-x:auto;max-height:260px;overflow-y:auto;">
           <table id="ip-logs-table" style="font-size:.75rem;">
             <thead><tr>
-              <th>Date / heure</th><th>Adresse IP</th><th>Pays</th><th>Type</th>
+              <th>Date / heure</th><th>Adresse IP</th><th>Pays</th><th>Ville</th><th>Type</th>
             </tr></thead>
-            <tbody id="ip-logs-tbody"><tr><td colspan="4" style="color:var(--light);text-align:center;padding:1rem">Chargement…</td></tr></tbody>
+            <tbody id="ip-logs-tbody"><tr><td colspan="5" style="color:var(--light);text-align:center;padding:1rem">Chargement…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -805,7 +805,7 @@ function filterIpLogs(period) {
   const tbody = document.getElementById('ip-logs-tbody');
   if (!tbody) return;
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--light);text-align:center;padding:1rem">Aucune connexion sur cette période.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--light);text-align:center;padding:1rem">Aucune connexion sur cette période.</td></tr>';
     return;
   }
   tbody.innerHTML = filtered.map(v => {
@@ -814,10 +814,12 @@ function filterIpLogs(period) {
     const badge = v.is_new
       ? '<span style="background:#dcfce7;color:#166534;border-radius:50px;padding:.1rem .45rem;font-size:.65rem;font-weight:600">Nouveau</span>'
       : '<span style="background:var(--warm);color:var(--mid);border-radius:50px;padding:.1rem .45rem;font-size:.65rem;">Retour</span>';
+    const cityStr = v.city ? escHtml(v.city) + (v.region ? `<span style="color:var(--light)"> · ${escHtml(v.region)}</span>` : '') : '<span style="color:var(--light)">—</span>';
     return `<tr>
       <td style="white-space:nowrap;color:var(--mid)">${dateStr}</td>
       <td style="font-family:monospace">${escHtml(v.ip || '—')}</td>
       <td>${countryFlag(v.country)} ${countryName(v.country)}</td>
+      <td style="font-size:.7rem">${cityStr}</td>
       <td>${badge}</td>
     </tr>`;
   }).join('');
