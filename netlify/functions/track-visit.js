@@ -23,9 +23,17 @@ async function getGeoData(ip) {
   } catch { return {}; }
 }
 
+const BOT_UA = /bot|crawl|spider|slurp|mediapartners|googlebot|bingbot|yandex|baidu|duckduck|netlify|checkbot|monitor|pingdom|uptimerobot|statuscake|curl|wget|python|axios|go-http|java\/|ruby|scrapy|phantomjs|headless|selenium|puppeteer|playwright/i;
+const DATACENTER = /^(3\.|52\.|54\.|18\.|34\.|35\.|44\.|13\.|15\.|100\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.source;
+const DC_RE = new RegExp(DATACENTER);
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: CORS, body: 'Method Not Allowed' };
+
+  // Ignorer les bots et crawlers connus
+  const ua = event.headers['user-agent'] || '';
+  if (BOT_UA.test(ua)) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
 
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
@@ -40,6 +48,9 @@ exports.handler = async (event) => {
     || (event.headers['x-forwarded-for'] || '').split(',')[0].trim()
     || null;
   const country = (event.headers['x-country'] || '').toUpperCase() || null;
+
+  // Ignorer les IP de datacenter AWS/GCP/Azure qui arrivent toujours comme "nouveau" (pas de localStorage)
+  if (ip && DC_RE.test(ip) && isNew) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
 
   try {
     // Géolocalisation ville/région (ipwho.is, gratuit, sans clé)
