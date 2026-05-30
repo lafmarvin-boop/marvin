@@ -202,6 +202,26 @@
       </div>
     </div>
 
+    <!-- Historique des sessions -->
+    <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--sand);">
+      <div class="sub-section-title" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="toggleSubHistory()">
+        <span>📋 Mes sessions passées</span>
+        <span id="sub-history-chevron" style="color:var(--light);font-size:.85rem;">▼</span>
+      </div>
+      <div id="sub-history" style="display:none;margin-top:1rem;">
+        <table style="width:100%;border-collapse:collapse;font-family:'DM Sans',sans-serif;">
+          <thead><tr style="border-bottom:2px solid var(--sand);">
+            <th style="text-align:left;font-size:.75rem;color:var(--light);font-weight:600;padding:.4rem .3rem;">Date</th>
+            <th style="text-align:left;font-size:.75rem;color:var(--light);font-weight:600;padding:.4rem .3rem;">Formule</th>
+            <th style="text-align:left;font-size:.75rem;color:var(--light);font-weight:600;padding:.4rem .3rem;">Agent</th>
+            <th style="text-align:center;font-size:.75rem;color:var(--light);font-weight:600;padding:.4rem .3rem;">Note</th>
+          </tr></thead>
+          <tbody id="sub-sessions-tbody"></tbody>
+        </table>
+        <div id="sub-sessions-empty" style="display:none;color:var(--light);font-size:.82rem;text-align:center;padding:1.2rem 0;">Aucune session pour l'instant.</div>
+      </div>
+    </div>
+
     <!-- Gestion résiliation -->
     <div id="cancel-zone" style="margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--sand);">
       <div id="cancel-pending" style="display:none;background:#fef9ec;border:1px solid #f0d060;border-radius:12px;padding:1rem 1.2rem;font-size:.82rem;color:#92630a;line-height:1.65;margin-bottom:1rem;">
@@ -524,7 +544,7 @@ async function login() {
     } else if (data.role === 'subscriber') {
       localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
       subEmailStored = email;
-      renderSubDash(email, data.expires_at, data.active, data.pseudo, data.cancel_at_period_end, data.needs_password_setup);
+      renderSubDash(email, data.expires_at, data.active, data.pseudo, data.cancel_at_period_end, data.needs_password_setup, data.sessions);
       showScreen('sub-dash');
     } else if (data.role === 'agent') {
       agentEmailStored = email;
@@ -586,7 +606,15 @@ async function changePassword() {
   }
 }
 
-function renderSubDash(email, expiresAt, active, pseudo, cancelAtPeriodEnd, needsPasswordSetup) {
+function toggleSubHistory() {
+  const h = document.getElementById('sub-history');
+  const c = document.getElementById('sub-history-chevron');
+  const open = h.style.display !== 'none';
+  h.style.display = open ? 'none' : 'block';
+  c.textContent = open ? '▼' : '▲';
+}
+
+function renderSubDash(email, expiresAt, active, pseudo, cancelAtPeriodEnd, needsPasswordSetup, sessions) {
   const badge = document.getElementById('sub-badge');
   if (!active) {
     badge.textContent = 'Abonnement expiré';
@@ -623,6 +651,26 @@ function renderSubDash(email, expiresAt, active, pseudo, cancelAtPeriodEnd, need
     const cancelBtn = document.getElementById('cancel-btn');
     if (pending) pending.style.display = 'block';
     if (cancelBtn) { cancelBtn.disabled = true; cancelBtn.textContent = 'Résiliation déjà programmée'; cancelBtn.style.opacity = '.5'; }
+  }
+
+  // Historique des sessions
+  const tbody = document.getElementById('sub-sessions-tbody');
+  const empty = document.getElementById('sub-sessions-empty');
+  if (tbody) {
+    const list = sessions || [];
+    if (!list.length) {
+      if (empty) empty.style.display = 'block';
+    } else {
+      tbody.innerHTML = list.map(s => {
+        const stars = s.rating ? `<span style="color:#FFD700;font-size:.8rem">${'★'.repeat(s.rating)}</span>` : '—';
+        return `<tr style="border-bottom:1px solid var(--sand);">
+          <td style="font-size:.75rem;color:var(--mid);padding:.5rem .3rem;">${fmtDate(s.started_at)}</td>
+          <td style="font-size:.78rem;padding:.5rem .3rem;">${escHtml(s.formule||'—')}</td>
+          <td style="font-size:.75rem;color:var(--mid);padding:.5rem .3rem;">${escHtml(s.agent_name||'—')}</td>
+          <td style="text-align:center;padding:.5rem .3rem;">${stars}</td>
+        </tr>`;
+      }).join('');
+    }
   }
 }
 

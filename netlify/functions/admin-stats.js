@@ -231,6 +231,10 @@ exports.handler = async (event) => {
   const active = (sub.status === 'active' || sub.status === 'pending') && (!sub.expires_at || new Date(sub.expires_at) > now);
   const needsPasswordSetup = !sub.password_hash;
 
+  const subSessions = sub.pseudo
+    ? await sbGet(`sessions?statut=eq.paid&client_pseudo=eq.${encodeURIComponent(sub.pseudo)}&select=formule,started_at,rating,rating_comment,agent_name&order=started_at.desc&limit=50`)
+    : [];
+
   return {
     statusCode: 200,
     headers: CORS,
@@ -240,7 +244,8 @@ exports.handler = async (event) => {
       expires_at: sub.expires_at,
       pseudo: sub.pseudo,
       cancel_at_period_end: sub.cancel_at_period_end || false,
-      needs_password_setup: needsPasswordSetup
+      needs_password_setup: needsPasswordSetup,
+      sessions: subSessions
     })
   };
 };

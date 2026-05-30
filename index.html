@@ -2076,12 +2076,24 @@ function submitReview(){
   document.getElementById('review-name').value='';document.getElementById('review-age').value='';document.getElementById('review-text').value='';setStars(0);
   document.getElementById('review-ok').style.display='block';setTimeout(()=>document.getElementById('review-ok').style.display='none',4000);
 }
-function renderReviews(){
+function renderReviews(apiReviews){
   const list=document.getElementById('reviews-list');
-  if(!savedReviews.length){list.innerHTML='<p class="reviews-empty">Soyez le premier à laisser un avis ! 💬</p>';return;}
-  list.innerHTML=savedReviews.map(r=>`<div class="review-card"><div class="r-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</div><blockquote>"${r.text}"</blockquote><div class="reviewer">${r.name} · ${r.date}</div></div>`).join('');
+  if(!list)return;
+  const reviews=apiReviews||savedReviews;
+  if(!reviews.length){list.innerHTML='<p class="reviews-empty">Soyez le premier à laisser un avis ! 💬</p>';return;}
+  list.innerHTML=reviews.map(r=>{
+    const stars=r.stars||r.rating||0;
+    const text=r.text||r.rating_comment||'';
+    const name=r.name||(r.client_pseudo?r.client_pseudo+' · '+escHtml(r.formule||''):'Anonyme');
+    const date=r.date||(r.started_at?new Date(r.started_at).toLocaleDateString('fr-FR'):'');
+    return `<div class="review-card"><div class="r-stars">${'★'.repeat(stars)}${'☆'.repeat(5-stars)}</div><blockquote>"${escHtml(text)}"</blockquote><div class="reviewer">${escHtml(name)} · ${date}</div></div>`;
+  }).join('');
 }
-renderReviews();
+// Charger les vrais avis depuis Supabase, sinon localStorage
+fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
+  if(Array.isArray(data)&&data.length)renderReviews(data);
+  else renderReviews();
+}).catch(()=>renderReviews());
 updateLoyaltyBadge();
 
 // ── NOTIFY ──
