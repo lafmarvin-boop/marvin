@@ -112,6 +112,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Crash reporter must be installed BEFORE anything else so it catches
+        // failures during setup. Reports go to filesDir/last_crash.txt and are
+        // surfaced via consume() once the UI is up.
+        CrashReporter.install(this)
         // Splash screen API (animated fade-out). Auto on Android 12+, fallback theme below.
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -121,6 +125,12 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Throwable) {}
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // If the previous run crashed, offer the captured stack so the user
+        // can share it. Triggered AFTER the UI is set up so the dialog can show.
+        CrashReporter.consume(this)?.let { report ->
+            binding.root.post { showCrashReportDialog(report) }
+        }
 
         // Crash recovery: if previous session was abnormal, offer to restore
         if (CrashRecovery.hasUnsavedSession(this)) {
@@ -1865,6 +1875,30 @@ class MainActivity : AppCompatActivity() {
             .setTitle(entry.title)
             .setMessage(ToolHelp.format(entry))
             .setPositiveButton("Compris", null)
+            .show()
+    }
+
+    private fun showCrashReportDialog(report: String) {
+        val container = android.widget.ScrollView(this).apply {
+            setPadding(32, 16, 32, 16)
+        }
+        val tv = android.widget.TextView(this).apply {
+            text = report
+            textSize = 10f
+            typeface = android.graphics.Typeface.MONOSPACE
+            setTextColor(0xFFE8E8F0.toInt())
+            setTextIsSelectable(true)
+        }
+        container.addView(tv)
+        AlertDialog.Builder(this)
+            .setTitle("Crash de la session précédente")
+            .setView(container)
+            .setPositiveButton("Copier") { _, _ ->
+                val cm = getSystemService(android.content.ClipboardManager::class.java)
+                cm?.setPrimaryClip(android.content.ClipData.newPlainText("crash", report))
+                toast("Rapport copié")
+            }
+            .setNegativeButton("Fermer", null)
             .show()
     }
 }
