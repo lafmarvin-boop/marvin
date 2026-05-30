@@ -280,16 +280,71 @@ internal fun MainActivity.showFrameEditDialog(idx: Int) {
     }
     outer.addView(kindRow)
 
-    AlertDialog.Builder(this)
+    // Frame merge: combine this frame's composite with adjacent or selected
+    // frames into a single frame. Useful for flattening rough drafts or
+    // collapsing multiple poses into one image.
+    outer.addView(TextView(this).apply {
+        text = "Fusionner avec d'autres frames"
+        setTextColor(0xFFA5B4FF.toInt()); textSize = 12f
+        setPadding(24, 12, 24, 4)
+    })
+    val mergeRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL; setPadding(24, 0, 24, 8)
+    }
+    val canMergePrev = idx > 0
+    val canMergeNext = idx < project.frames.size - 1
+
+    val dialog = AlertDialog.Builder(this)
         .setTitle("Frame #${idx + 1}")
         .setView(outer)
         .setPositiveButton("OK") { _, _ ->
-            f.tag = tagEt.text.toString()
-            f.delayMs = delayEt.text.toString().toIntOrNull()?.coerceIn(0, 10_000) ?: 0
-            framesAdapter.notifyItemChanged(idx)
+            if (idx < project.frames.size && project.frames[idx] === f) {
+                f.tag = tagEt.text.toString()
+                f.delayMs = delayEt.text.toString().toIntOrNull()?.coerceIn(0, 10_000) ?: 0
+                framesAdapter.notifyItemChanged(idx)
+            }
         }
         .setNegativeButton(R.string.cancel, null)
-        .show()
+        .create()
+
+    mergeRow.addView(android.widget.Button(this).apply {
+        text = "← précédente"; textSize = 12f; isAllCaps = false
+        alpha = if (canMergePrev) 1f else 0.4f
+        isEnabled = canMergePrev
+        setOnClickListener {
+            if (!canMergePrev) return@setOnClickListener
+            mergeFramesInto(idx - 1, listOf(idx))
+            dialog.dismiss()
+        }
+    })
+    mergeRow.addView(android.widget.Button(this).apply {
+        text = "suivante →"; textSize = 12f; isAllCaps = false
+        alpha = if (canMergeNext) 1f else 0.4f
+        isEnabled = canMergeNext
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { leftMargin = 8 }
+        setOnClickListener {
+            if (!canMergeNext) return@setOnClickListener
+            mergeFramesInto(idx, listOf(idx + 1))
+            dialog.dismiss()
+        }
+    })
+    mergeRow.addView(android.widget.Button(this).apply {
+        text = "sélection…"; textSize = 12f; isAllCaps = false
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { leftMargin = 8 }
+        setOnClickListener {
+            dialog.dismiss()
+            showFrameMergeSelectionDialog(idx)
+        }
+    })
+    outer.addView(mergeRow)
+
+    dialog.show()
 }
 
 /**
@@ -498,5 +553,80 @@ private fun MainActivity.showTutorialPage(pages: List<String>, idx: Int, seenKey
         .setNeutralButton("Passer") { _, _ ->
             getPreferences(Context.MODE_PRIVATE).edit().putBoolean(seenKey, true).apply()
         }
+        .show()
+}
+
+/**
+ * Merge the composited content of [otherIndices] frames into the frame at
+ * [targetIdx], blending src-over in index order. The target frame is replaced
+ * with a single flattened layer; the others are removed. Frames must all be
+ * the same size as the project — they always are within one project.
+ */
+internal fun MainActivity.mergeFramesInto(targetIdx: Int, otherIndices: List<Int>) {
+    if (otherIndices.isEmpty()) return
+    if (otherIndices.any { it == targetIdx }) return
+    pushUndoAllFrames()
+    val target = project.frames[targetIdx]
+    val w = target.width; val h = target.height
+    val composed = target.composited().copyOf()
+    val ordered = otherIndices.sorted()
+    for (i in ordered) {
+        val src = project.frames[i].composited()
+        for (p in composed.indices) {
+            composed[p] = blendSrcOver(src[p], composed[p], 255)
+        }
+    }
+    target.layers.clear()
+    val merged = target.addLayer("Fusionné")
+    System.arraycopy(composed, 0, merged.pixels, 0, w * h)
+    merged.visible = true; merged.opacity = 1f
+    target.activeLayer = 0
+    target.invalidateComposite()
+    // Remove the merged frames from highest index down so earlier ones stay valid.
+    ordered.sortedDescending().forEach { project.frames.removeAt(it) }
+    project.currentIndex = project.frames.indexOf(target).coerceAtLeast(0)
+    framesAdapter.notifyDataSetChanged()
+    refreshAfterFrameChange()
+    binding.canvas.syncFrameBitmap()
+    toast("${ordered.size + 1} frames fusionnées → frame #${project.currentIndex + 1}")
+}
+
+/** Multi-choice picker: tick the frames to merge with [keepIdx]. */
+internal fun MainActivity.showFrameMergeSelectionDialog(keepIdx: Int) {
+    val n = project.frames.size
+    if (n < 2) { toast("Une seule frame"); return }
+    // List all frames; the keepIdx one is the receiver and pre-checked but
+    // disabled (you can't un-keep it).
+    val labels = (0 until n).map { i ->
+        val f = project.frames[i]
+        val tag = if (f.tag.isNotBlank()) " « ${f.tag} »" else ""
+        val kind = when (f.kind) {
+            FrameKind.KEY -> " KEY"
+            FrameKind.INBETWEEN -> " IB"
+            FrameKind.HOLD -> " HOLD"
+            else -> ""
+        }
+        val role = if (i == keepIdx) "  (cible — survivra)" else ""
+        "Frame #${i + 1}$tag$kind$role"
+    }.toTypedArray()
+    val checked = BooleanArray(n) { it == keepIdx }
+    AlertDialog.Builder(this)
+        .setTitle("Fusionner les frames choisies")
+        .setMultiChoiceItems(labels, checked) { dlg, which, isChecked ->
+            if (which == keepIdx) {
+                // Force the receiver to stay checked.
+                (dlg as? AlertDialog)?.listView?.setItemChecked(which, true)
+                checked[which] = true
+            } else {
+                checked[which] = isChecked
+            }
+        }
+        .setPositiveButton("Fusionner") { _, _ ->
+            val sel = checked.toList().mapIndexedNotNull { i, c -> if (c) i else null }
+            if (sel.size < 2) { toast("Choisis au moins 2 frames"); return@setPositiveButton }
+            val others = sel.filter { it != keepIdx }
+            mergeFramesInto(keepIdx, others)
+        }
+        .setNegativeButton(R.string.cancel, null)
         .show()
 }

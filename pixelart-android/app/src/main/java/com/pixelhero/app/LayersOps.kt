@@ -226,7 +226,7 @@ internal fun MainActivity.mergeDown() {
 }
 
 /** src-over alpha blending of one pixel; layerOp is 0..255. */
-private fun blendSrcOver(src: Int, dst: Int, layerOp: Int): Int {
+internal fun blendSrcOver(src: Int, dst: Int, layerOp: Int): Int {
     val srcA = ((src ushr 24) and 0xFF) * layerOp / 255
     if (srcA == 0) return dst
     val dstA = (dst ushr 24) and 0xFF
