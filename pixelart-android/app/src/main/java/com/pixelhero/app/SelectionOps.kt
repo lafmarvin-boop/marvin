@@ -89,6 +89,8 @@ internal fun MainActivity.refreshSelectionPalette() {
     }
     row.addView(iconBtn(R.drawable.ic_swap_horiz, "Miroir horizontal") { flipSelection(horizontal = true) })
     row.addView(iconBtn(R.drawable.ic_swap_vert, "Miroir vertical") { flipSelection(horizontal = false) })
+    row.addView(iconBtn(R.drawable.ic_flip_diag, "Miroir diagonale \\") { flipSelectionDiagonal(antiDiagonal = false) })
+    row.addView(iconBtn(R.drawable.ic_flip_antidiag, "Miroir diagonale /") { flipSelectionDiagonal(antiDiagonal = true) })
     row.addView(iconBtn(R.drawable.ic_rotate_left, "Rotation 90° gauche") { rotateSelection(cw = false) })
     row.addView(iconBtn(R.drawable.ic_rotate_right, "Rotation 90° droite") { rotateSelection(cw = true) })
     row.addView(iconBtn(R.drawable.ic_check, "Valider la sélection") {
@@ -290,6 +292,50 @@ internal fun MainActivity.rotateSelection(cw: Boolean) {
         // (x,y) → (y, newH-1-x) = (y, w-1-x)
         for (y in 0 until h) for (x in 0 until w) {
             val nx = y
+            val ny = w - 1 - x
+            out[ny * newW + nx] = floating[y * w + x]
+        }
+    }
+    val centerX = sel.floatX + w / 2
+    val centerY = sel.floatY + h / 2
+    sel.floating = out
+    sel.floatW = newW
+    sel.floatH = newH
+    sel.floatX = centerX - newW / 2
+    sel.floatY = centerY - newH / 2
+    sel.x0 = sel.floatX; sel.y0 = sel.floatY
+    sel.x1 = sel.floatX + newW - 1
+    sel.y1 = sel.floatY + newH - 1
+    sel.mask = null
+    binding.canvas.invalidate()
+}
+
+/**
+ * Mirror the selection across a diagonal axis. [antiDiagonal] = false uses the
+ * main diagonal (top-left ↔ bottom-right, swaps x↔y = transpose);
+ * [antiDiagonal] = true uses the anti-diagonal (top-right ↔ bottom-left).
+ * Like rotate, this swaps the bounding box width and height; the new floating
+ * stays centered on the same canvas point.
+ */
+internal fun MainActivity.flipSelectionDiagonal(antiDiagonal: Boolean) {
+    val sel = binding.canvas.selection
+    if (!sel.active) { toast("Aucune sélection"); return }
+    if (sel.floating == null) binding.canvas.liftSelectionToFloating()
+    val floating = sel.floating ?: return
+    val w = sel.floatW; val h = sel.floatH
+    if (w <= 0 || h <= 0) return
+    pushUndo()
+    val out = IntArray(w * h)
+    val newW = h; val newH = w
+    if (!antiDiagonal) {
+        // Main diagonal: (x, y) → (y, x)
+        for (y in 0 until h) for (x in 0 until w) {
+            out[x * newW + y] = floating[y * w + x]
+        }
+    } else {
+        // Anti-diagonal: (x, y) → (h-1-y, w-1-x)
+        for (y in 0 until h) for (x in 0 until w) {
+            val nx = h - 1 - y
             val ny = w - 1 - x
             out[ny * newW + nx] = floating[y * w + x]
         }
