@@ -95,6 +95,26 @@ exports.handler = async (event) => {
     } catch (err) { console.error('message:send handler:', err.message); }
   }
 
+  // ── Transfert de conversation → réattribuer à l'agent cible ──
+  if (eventType === 'conversation:assigned') {
+    const sessionId = data?.session_id;
+    // Crisp peut mettre l'opérateur dans data.assigned ou data.user selon la version
+    const operator = data?.assigned || data?.user || null;
+    const newAgentName = operator?.nickname || operator?.display_name || null;
+    const newAgentEmail = operator?.email || null;
+
+    if (sessionId && newAgentName) {
+      try {
+        const sessionData = await getCrispSessionData(sessionId);
+        const parlonsId = sessionData?.parlons_id;
+        if (parlonsId) {
+          await patchSession(parlonsId, { agent_name: newAgentName, agent_email: newAgentEmail });
+          console.log('Transfert accepté — agent mis à jour:', newAgentName, 'session:', parlonsId);
+        }
+      } catch (err) { console.error('conversation:assigned handler:', err.message); }
+    }
+  }
+
   // ── Conversation résolue → enregistrer la date de fin ──
   if (eventType === 'conversation:resolved') {
     const sessionId = data?.session_id;
