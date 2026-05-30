@@ -21,6 +21,23 @@ async function getCrispSessionData(sessionId) {
   } catch (err) { console.error('getCrispSessionData:', err.message); return null; }
 }
 
+async function assignCrispConversation(sessionId, userId) {
+  if (!CRISP_API_ID || !CRISP_API_KEY || !userId) return;
+  const auth = Buffer.from(`${CRISP_API_ID}:${CRISP_API_KEY}`).toString('base64');
+  try {
+    const res = await fetch(
+      `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/conversation/${encodeURIComponent(sessionId)}/meta`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: `Basic ${auth}`, 'X-Crisp-Tier': 'plugin', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assigned: { user_id: userId } })
+      }
+    );
+    if (!res.ok) console.error('assignCrispConversation error:', res.status, await res.text());
+    else console.log('Conversation assignée à userId:', userId);
+  } catch (err) { console.error('assignCrispConversation:', err.message); }
+}
+
 async function patchSession(parlonsId, patch) {
   const res = await fetch(
     `${SB_URL}/rest/v1/sessions?stripe_payment_id=eq.${encodeURIComponent(parlonsId)}`,
@@ -49,11 +66,12 @@ exports.handler = async (event) => {
   const { event: eventType, data } = payload;
   console.log('Crisp webhook:', eventType);
 
-  // ── Premier message d'un agent → enregistrer son nom ──
+  // ── Premier message d'un agent → enregistrer son nom + assigner la conversation ──
   if (eventType === 'message:send' && data?.from === 'operator' && data?.user?.nickname) {
     const sessionId = data.session_id;
     const agentName = data.user.nickname;
     const agentEmail = data.user.email || null;
+    const agentUserId = data.user.user_id || null;
 
     try {
       const sessionData = await getCrispSessionData(sessionId);
@@ -67,8 +85,12 @@ exports.handler = async (event) => {
       );
       const rows = await check.json();
       if (Array.isArray(rows) && rows.length > 0) {
-        await patchSession(parlonsId, { agent_name: agentName, agent_email: agentEmail });
-        console.log('Agent enregistré:', agentName, 'pour session:', parlonsId);
+        // Enregistrer en Supabase + assigner dans Crisp en parallèle
+        await Promise.all([
+          patchSession(parlonsId, { agent_name: agentName, agent_email: agentEmail }),
+          assignCrispConversation(sessionId, agentUserId)
+        ]);
+        console.log('Agent enregistré et conversation assignée:', agentName, 'session:', parlonsId);
       }
     } catch (err) { console.error('message:send handler:', err.message); }
   }
