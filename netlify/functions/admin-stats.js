@@ -144,16 +144,31 @@ exports.handler = async (event) => {
       delete a.ratingSum;
     });
 
-    // Ajouter les opérateurs Crisp sans session (affichage dès l'ajout dans Crisp)
-    crispOperators.forEach(op => {
-      const name = op.user?.nickname || op.user?.first_name || op.email;
-      if (!name || byAgent[name]) return;
-      byAgent[name] = {
-        name, email: op.email || null,
-        sessions: 0, revenue: 0, plans: {},
-        ratingCount: 0, avgRating: null, reviews: []
-      };
-    });
+    // Synchroniser avec les opérateurs Crisp (source de vérité)
+    if (crispOperators.length > 0) {
+      // Construire un set des emails et noms autorisés
+      const authorizedEmails = new Set(crispOperators.map(op => (op.email || '').toLowerCase()));
+      const authorizedNames = new Set(crispOperators.map(op => op.user?.nickname || op.user?.first_name).filter(Boolean));
+
+      // Supprimer les agents non présents dans Crisp
+      Object.keys(byAgent).forEach(name => {
+        const a = byAgent[name];
+        const emailOk = a.email && authorizedEmails.has(a.email.toLowerCase());
+        const nameOk = authorizedNames.has(name);
+        if (!emailOk && !nameOk) delete byAgent[name];
+      });
+
+      // Ajouter les opérateurs Crisp sans session
+      crispOperators.forEach(op => {
+        const name = op.user?.nickname || op.user?.first_name || op.email;
+        if (!name || byAgent[name]) return;
+        byAgent[name] = {
+          name, email: op.email || null,
+          sessions: 0, revenue: 0, plans: {},
+          ratingCount: 0, avgRating: null, reviews: []
+        };
+      });
+    }
 
     const unassigned = sessions.filter(s => !s.agent_name).length;
 
