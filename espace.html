@@ -329,16 +329,35 @@
   <div class="agent-wrap">
     <div class="agent-hero">
       <div class="agent-avatar" id="agent-avatar">?</div>
-      <div>
+      <div style="flex:1">
         <div class="agent-hero-name" id="agent-hero-name">Agent</div>
         <div class="agent-hero-sub" id="agent-hero-sub">Tableau de bord personnel</div>
+      </div>
+    </div>
+
+    <!-- Alerte profil incomplet -->
+    <div id="agent-profile-alert" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:1rem 1.2rem;font-size:.82rem;color:#1e40af;margin-bottom:1.5rem;line-height:1.6;">
+      📋 <strong>Complétez votre profil</strong> pour pouvoir générer vos factures (SIRET, adresse, IBAN requis).
+    </div>
+
+    <!-- Facture du mois -->
+    <div style="background:white;border:1px solid var(--sand);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);">Ma facture mensuelle</div>
+          <div style="font-size:.75rem;color:var(--light);margin-top:.2rem;">Mise à jour automatique le 1er de chaque mois</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
+          <select id="agent-pdf-month" style="border:1.5px solid var(--sand);border-radius:8px;padding:.35rem .7rem;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--dark);background:white;cursor:pointer;"></select>
+          <button onclick="downloadAgentInvoice()" id="agent-invoice-btn" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.5rem 1.1rem;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📄 Télécharger ma facture</button>
+        </div>
       </div>
     </div>
 
     <div class="section-title">Activité par période</div>
     <div class="card" style="padding:0;overflow:hidden">
       <table class="agent-period-table">
-        <thead><tr><th>Période</th><th>Sessions</th><th>CA généré</th></tr></thead>
+        <thead><tr><th>Période</th><th>Sessions</th><th>Honoraires</th></tr></thead>
         <tbody id="agent-periods-tbody"></tbody>
       </table>
     </div>
@@ -357,10 +376,38 @@
     <div class="section-title">Sessions récentes</div>
     <div class="card" style="padding:0;overflow:hidden">
       <table>
-        <thead><tr><th>Pseudo</th><th>Formule</th><th>Montant</th><th>Note</th><th>Date</th></tr></thead>
+        <thead><tr><th>Pseudo</th><th>Formule</th><th>Honoraires</th><th>Note</th><th>Date</th></tr></thead>
         <tbody id="agent-sessions-tbody"></tbody>
       </table>
     </div>
+
+    <!-- Profil auto-entrepreneur -->
+    <div style="margin-top:1rem;">
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:white;border:1px solid var(--sand);border-radius:14px;padding:1rem 1.4rem;" onclick="toggleAgentProfile()">
+        <span>👤 Mon profil auto-entrepreneur</span>
+        <span id="agent-profile-chevron" style="color:var(--light);font-size:.85rem;">▼</span>
+      </div>
+      <div id="agent-profile-form" style="display:none;background:white;border:1px solid var(--sand);border-top:none;border-radius:0 0 14px 14px;padding:1.4rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;">
+          <div><label class="flabel">Prénom</label><input type="text" id="ap-prenom" class="finput" placeholder="Prénom"></div>
+          <div><label class="flabel">Nom</label><input type="text" id="ap-nom" class="finput" placeholder="Nom"></div>
+        </div>
+        <label class="flabel">Adresse</label>
+        <input type="text" id="ap-adresse" class="finput" placeholder="Numéro et rue">
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:.8rem;">
+          <div><label class="flabel">Code postal</label><input type="text" id="ap-cp" class="finput" placeholder="75000"></div>
+          <div><label class="flabel">Ville</label><input type="text" id="ap-ville" class="finput" placeholder="Paris"></div>
+        </div>
+        <label class="flabel">SIRET auto-entrepreneur</label>
+        <input type="text" id="ap-siret" class="finput" placeholder="000 000 000 00000">
+        <label class="flabel">IBAN (pour les virements)</label>
+        <input type="text" id="ap-iban" class="finput" placeholder="FR76 0000 0000 0000 0000 0000 000">
+        <div id="ap-err" style="color:#ef4444;font-size:.78rem;margin-bottom:.6rem;min-height:1rem;"></div>
+        <div id="ap-ok" style="display:none;color:#16a34a;font-size:.8rem;margin-bottom:.6rem;">✓ Profil enregistré !</div>
+        <button onclick="saveAgentProfile()" style="background:var(--dark);color:white;border:none;border-radius:50px;padding:.75rem 1.5rem;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;">Enregistrer</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -753,24 +800,61 @@ function renderDashboard(d) {
 }
 
 // ── AGENT DASHBOARD ──
-function renderAgentDash(email, d) {
-  const initial = email.charAt(0).toUpperCase();
-  document.getElementById('agent-avatar').textContent = initial;
-  document.getElementById('agent-hero-name').textContent = email;
-  document.getElementById('agent-hero-sub').textContent = 'Tableau de bord personnel · ' + new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+let agentSessionsCache = [];
+let agentPasswordCache = '';
 
-  const periods = d.periods || {};
+function renderAgentDash(email, d) {
+  agentSessionsCache = d.sessions || [];
+  agentPasswordCache = localStorage.getItem('parlons_espace_session')
+    ? (JSON.parse(localStorage.getItem('parlons_espace_session')).password || '') : '';
+
+  const profile = d.profile || {};
+  const profileComplete = profile.nom && profile.prenom && profile.siret && profile.iban && profile.adresse;
+  document.getElementById('agent-profile-alert').style.display = profileComplete ? 'none' : 'block';
+
+  // Remplir le formulaire profil
+  ['prenom','nom','adresse','ville','siret','iban'].forEach(f => {
+    const el = document.getElementById('ap-' + f);
+    if (el && profile[f]) el.value = profile[f];
+  });
+  if (profile.code_postal) document.getElementById('ap-cp').value = profile.code_postal;
+
+  const initial = (profile.prenom || email).charAt(0).toUpperCase();
+  const displayName = profile.prenom && profile.nom ? `${profile.prenom} ${profile.nom}` : email;
+  document.getElementById('agent-avatar').textContent = initial;
+  document.getElementById('agent-hero-name').textContent = displayName;
+  document.getElementById('agent-hero-sub').textContent = 'Espace agent · ' + new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  initAgentMonthSelector();
+
+  // Calcul honoraires par période
+  const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+  function calcHonoraires(sessions) {
+    return sessions.reduce((s, r) => {
+      for (const [k, v] of Object.entries(RATES)) { if ((r.formule||'').includes(k)) return s + v; }
+      return s;
+    }, 0);
+  }
+
+  const now = new Date();
+  const startOfDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dow = now.getDay();
+  const startOfWeek  = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - (dow===0?6:dow-1));
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  function filterFrom(from) { return agentSessionsCache.filter(s => s.started_at && new Date(s.started_at) >= from); }
+
   const periodRows = [
-    ["Aujourd'hui", periods.today],
-    ['Cette semaine', periods.week],
-    ['Ce mois', periods.month],
-    ['Depuis toujours', periods.allTime],
+    ["Aujourd'hui",    filterFrom(startOfDay)],
+    ['Cette semaine',  filterFrom(startOfWeek)],
+    ['Ce mois',        filterFrom(startOfMonth)],
+    ['Depuis toujours', agentSessionsCache],
   ];
-  document.getElementById('agent-periods-tbody').innerHTML = periodRows.map(([label, p]) =>
+  document.getElementById('agent-periods-tbody').innerHTML = periodRows.map(([label, rows]) =>
     `<tr>
       <td style="font-weight:500">${label}</td>
-      <td style="font-weight:700;color:var(--tc)">${(p && p.sessions) || 0}</td>
-      <td style="font-weight:700">${fmt((p && p.revenue) || 0)}</td>
+      <td style="font-weight:700;color:var(--tc)">${rows.length}</td>
+      <td style="font-weight:700">${calcHonoraires(rows).toFixed(2)} €</td>
     </tr>`
   ).join('');
 
@@ -782,9 +866,7 @@ function renderAgentDash(email, d) {
           <div class="plan-name">${escHtml(k)}</div>
           <div class="plan-bar-wrap"><div class="plan-bar" style="width:${Math.round(p.count/maxCount*100)}%"></div></div>
           <div class="plan-count">${p.count}</div>
-          <div class="plan-rev">${fmt(p.revenue)}</div>
-        </div>`
-      ).join('')
+        </div>`).join('')
     : '<div style="color:var(--light);font-size:.82rem">Aucune session pour l\'instant.</div>';
 
   const avg = d.avgRating;
@@ -792,20 +874,229 @@ function renderAgentDash(email, d) {
     ? `<div style="text-align:center;padding:.5rem 0">
         <div style="font-size:2rem;color:#FFD700">${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))}</div>
         <div style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--dark);margin:.4rem 0">${avg.toFixed(1)}<span style="font-size:.9rem;color:var(--light)">/5</span></div>
-        <div style="font-size:.75rem;color:var(--light)">${d.ratingCount} avis reçu${d.ratingCount > 1 ? 's' : ''}</div>
+        <div style="font-size:.75rem;color:var(--light)">${d.ratingCount} avis reçu${d.ratingCount>1?'s':''}</div>
       </div>`
     : '<div style="color:var(--light);font-size:.82rem;text-align:center;padding:1rem">Aucune note pour l\'instant.</div>';
 
-  document.getElementById('agent-sessions-tbody').innerHTML = (d.recent || []).map(s => {
+  document.getElementById('agent-sessions-tbody').innerHTML = agentSessionsCache.slice(0,50).map(s => {
+    const hon = (() => { for (const [k,v] of Object.entries(RATES)) { if ((s.formule||'').includes(k)) return v.toFixed(2)+' €'; } return '—'; })();
     const stars = s.rating ? `<span style="color:#FFD700">${'★'.repeat(s.rating)}</span>` : '—';
     return `<tr>
-      <td style="font-size:.8rem;font-weight:500">${escHtml(s.pseudo || '—')}</td>
-      <td style="font-size:.78rem">${escHtml(s.formule || '—')}</td>
-      <td style="font-size:.8rem;font-weight:700;color:var(--tc)">${fmt(s.montant)}</td>
+      <td style="font-size:.8rem;font-weight:500">${escHtml(s.pseudo||'—')}</td>
+      <td style="font-size:.78rem">${escHtml(s.formule||'—')}</td>
+      <td style="font-size:.8rem;font-weight:700;color:var(--tc)">${hon}</td>
       <td style="font-size:.8rem">${stars}</td>
       <td style="font-size:.75rem;color:var(--mid)">${fmtDate(s.started_at)}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="5" style="color:var(--light);text-align:center;padding:1.2rem">Aucune session</td></tr>';
+}
+
+function initAgentMonthSelector() {
+  const sel = document.getElementById('agent-pdf-month');
+  if (!sel || sel.options.length > 0) return;
+  const now = new Date();
+  for (let i = 1; i <= 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const opt = document.createElement('option');
+    opt.value = `${d.getFullYear()}-${d.getMonth()}`;
+    opt.textContent = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    if (i === 1) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function toggleAgentProfile() {
+  const f = document.getElementById('agent-profile-form');
+  const c = document.getElementById('agent-profile-chevron');
+  const open = f.style.display !== 'none';
+  f.style.display = open ? 'none' : 'block';
+  c.textContent = open ? '▼' : '▲';
+}
+
+async function saveAgentProfile() {
+  const err = document.getElementById('ap-err');
+  const ok = document.getElementById('ap-ok');
+  err.textContent = ''; ok.style.display = 'none';
+
+  const profile = {
+    nom:         document.getElementById('ap-nom').value.trim(),
+    prenom:      document.getElementById('ap-prenom').value.trim(),
+    adresse:     document.getElementById('ap-adresse').value.trim(),
+    code_postal: document.getElementById('ap-cp').value.trim(),
+    ville:       document.getElementById('ap-ville').value.trim(),
+    siret:       document.getElementById('ap-siret').value.trim(),
+    iban:        document.getElementById('ap-iban').value.trim(),
+  };
+
+  if (!profile.nom || !profile.prenom) { err.textContent = 'Nom et prénom requis.'; return; }
+  if (!profile.siret) { err.textContent = 'SIRET requis.'; return; }
+
+  try {
+    const res = await fetch(`${API}/agent-stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache, action: 'save_profile', profile })
+    });
+    if (!res.ok) throw new Error('Erreur serveur');
+    ok.style.display = 'block';
+    document.getElementById('agent-profile-alert').style.display = 'none';
+  } catch(e) { err.textContent = e.message; }
+}
+
+function downloadAgentInvoice() {
+  if (!window.jspdf) { alert('PDF non disponible, rechargez la page.'); return; }
+
+  const profile = {
+    nom:     document.getElementById('ap-nom')?.value.trim() || '',
+    prenom:  document.getElementById('ap-prenom')?.value.trim() || '',
+    adresse: document.getElementById('ap-adresse')?.value.trim() || '',
+    cp:      document.getElementById('ap-cp')?.value.trim() || '',
+    ville:   document.getElementById('ap-ville')?.value.trim() || '',
+    siret:   document.getElementById('ap-siret')?.value.trim() || '',
+    iban:    document.getElementById('ap-iban')?.value.trim() || '',
+  };
+
+  if (!profile.siret || !profile.nom) {
+    alert('Complétez votre profil (nom, SIRET) avant de générer la facture.');
+    document.getElementById('agent-profile-form').style.display = 'block';
+    document.getElementById('agent-profile-chevron').textContent = '▲';
+    return;
+  }
+
+  const sel = document.getElementById('agent-pdf-month');
+  const [year, month] = (sel?.value || '').split('-').map(Number);
+  const monthName = new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  const monthSessions = agentSessionsCache.filter(s => {
+    if (!s.started_at) return false;
+    const d = new Date(s.started_at);
+    return d.getMonth() === month && d.getFullYear() === year;
+  });
+
+  const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+  function getRate(formule) {
+    for (const [k,v] of Object.entries(RATES)) { if ((formule||'').includes(k)) return v; }
+    return null;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Numéro de facture
+  const initiales = (profile.prenom.charAt(0) + profile.nom.charAt(0)).toUpperCase();
+  const invoiceNum = `PARL-${year}-${String(month+1).padStart(2,'0')}-${initiales}`;
+  // Date de facturation : 1er du mois suivant
+  const invoiceDate = new Date(year, month + 1, 1).toLocaleDateString('fr-FR');
+
+  // ── En-tête agent (gauche) ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(44, 31, 20);
+  doc.text(`${profile.prenom} ${profile.nom}`, 20, 25);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  if (profile.adresse) doc.text(profile.adresse, 20, 31);
+  if (profile.cp || profile.ville) doc.text(`${profile.cp} ${profile.ville}`.trim(), 20, 36);
+  doc.text(agentEmailStored, 20, 41);
+  if (profile.siret) doc.text(`SIRET : ${profile.siret}`, 20, 46);
+
+  // ── Numéro et date (droite) ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(196, 113, 74);
+  doc.text('FACTURE', 190, 25, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text(`N° ${invoiceNum}`, 190, 32, { align: 'right' });
+  doc.text(`Date : ${invoiceDate}`, 190, 38, { align: 'right' });
+
+  // ── Destinataire ──
+  doc.setDrawColor(232, 213, 176);
+  doc.line(20, 54, 190, 54);
+  doc.setFontSize(8);
+  doc.setTextColor(150);
+  doc.text('DESTINATAIRE', 20, 61);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(44, 31, 20);
+  doc.text('PARLONS', 20, 67);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text('SIRET : 105 179 360 000 18', 20, 73);
+
+  // ── Objet ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(44, 31, 20);
+  doc.text(`Objet : Missions d'écoute — ${monthName}`, 20, 83);
+
+  // ── Tableau ──
+  let totalHonoraires = 0;
+  let passCount = 0;
+  const rows = monthSessions.map(s => {
+    const date = new Date(s.started_at).toLocaleDateString('fr-FR');
+    const rate = getRate(s.formule);
+    const isPass = (s.formule||'').includes('Pass mensuel');
+    if (isPass) passCount++;
+    if (rate !== null) totalHonoraires += rate;
+    return [date, s.pseudo || 'Anonyme', s.formule || '—', rate !== null ? `${rate.toFixed(2)} €` : 'Au prorata*'];
+  });
+
+  doc.autoTable({
+    startY: 90,
+    head: [['Date', 'Pseudo client', 'Prestation', 'Honoraires']],
+    body: rows.length ? rows : [['—', '—', 'Aucune session ce mois', '0,00 €']],
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [196, 113, 74], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [251, 246, 239] },
+    columnStyles: { 3: { halign: 'right' } }
+  });
+
+  const y = doc.lastAutoTable.finalY + 8;
+
+  // ── Total ──
+  doc.setDrawColor(196, 113, 74);
+  doc.line(130, y, 190, y);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(44, 31, 20);
+  doc.text('Total HT :', 130, y + 7);
+  doc.text(`${totalHonoraires.toFixed(2)} €`, 190, y + 7, { align: 'right' });
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8.5);
+  doc.setTextColor(100);
+  doc.text('TVA non applicable — art. 293 B du CGI', 130, y + 14);
+
+  if (passCount > 0) {
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(`* ${passCount} session(s) Pass mensuel à régler au prorata — montant à confirmer avec Parlons.`, 20, y + 22);
+  }
+
+  // ── IBAN ──
+  const yIban = passCount > 0 ? y + 30 : y + 22;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(44, 31, 20);
+  doc.text('Coordonnées bancaires pour règlement :', 20, yIban);
+  doc.setFont('helvetica', 'bold');
+  doc.text(profile.iban || '— (IBAN non renseigné)', 20, yIban + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(100);
+  doc.text('Règlement attendu avant le 15 du mois en cours — virement bancaire.', 20, yIban + 13);
+
+  // ── Pied de page ──
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(160);
+  doc.text(`${profile.prenom} ${profile.nom} · SIRET ${profile.siret} · Facture ${invoiceNum}`, 105, 288, { align: 'center' });
+
+  const safeName = (profile.nom || 'agent').replace(/[^a-z0-9]/gi, '_');
+  doc.save(`Facture_Parlons_${safeName}_${year}-${String(month+1).padStart(2,'0')}.pdf`);
 }
 
 // ── PDF GENERATION ──

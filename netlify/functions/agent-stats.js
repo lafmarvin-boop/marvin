@@ -48,9 +48,12 @@ async function buildAgentStats(email) {
   startOfWeek.setDate(startOfDay.getDate() - (dow === 0 ? 6 : dow - 1));
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const sessions = await sbGet(
-    `sessions?statut=eq.paid&agent_email=eq.${encodeURIComponent(email)}&select=formule,montant,client_pseudo,started_at,rating,rating_comment&order=started_at.desc&limit=500`
-  );
+  const [sessions, profileRows] = await Promise.all([
+    sbGet(`sessions?statut=eq.paid&agent_email=eq.${encodeURIComponent(email)}&select=formule,montant,client_pseudo,started_at,rating,rating_comment&order=started_at.desc&limit=500`),
+    sbGet(`agent_profiles?email=eq.${encodeURIComponent(email)}&select=*&limit=1`)
+  ]);
+
+  const profile = profileRows[0] || null;
 
   function periodRows(from) {
     return sessions.filter(s => s.started_at && new Date(s.started_at) >= from);
@@ -63,9 +66,9 @@ async function buildAgentStats(email) {
   }
 
   const periods = {
-    today: periodStats(periodRows(startOfDay)),
-    week:  periodStats(periodRows(startOfWeek)),
-    month: periodStats(periodRows(startOfMonth)),
+    today:   periodStats(periodRows(startOfDay)),
+    week:    periodStats(periodRows(startOfWeek)),
+    month:   periodStats(periodRows(startOfMonth)),
     allTime: periodStats(sessions)
   };
 
@@ -85,11 +88,12 @@ async function buildAgentStats(email) {
   return {
     role: 'agent',
     needs_password_setup: false,
+    profile,
     periods,
     byPlan,
     avgRating,
     ratingCount: rated.length,
-    recent: sessions.slice(0, 50).map(s => ({
+    sessions: sessions.map(s => ({
       pseudo: s.client_pseudo,
       formule: s.formule,
       montant: s.montant,
@@ -117,6 +121,22 @@ exports.handler = async (event) => {
   const isOp = await isCrispOperator(email);
   if (!isOp)
     return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Email non reconnu comme agent Parlons' }) };
+
+  // ── Sauvegarder le profil ──
+  if (action === 'save_profile') {
+    const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
+    if (!pwdRows.length) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
+    const hash = hashPassword(password, pwdRows[0].password_salt);
+    if (hash !== pwdRows[0].password_hash) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
+
+    const { nom, prenom, adresse, code_postal, ville, siret, iban } = body.profile || {};
+    await fetch(`${SB_URL}/rest/v1/agent_profiles`, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify({ email, nom, prenom, adresse, code_postal, ville, siret, iban, updated_at: new Date().toISOString() })
+    });
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
+  }
 
   // ── Définir le mot de passe (première connexion) ──
   if (action === 'set_password') {
