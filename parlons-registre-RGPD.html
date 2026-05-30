@@ -28,7 +28,7 @@
 <body>
 <div class="container">
   <div class="logo">Par<span>lons</span></div>
-  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 1.0 · Avril 2026 · Document interne confidentiel</div>
+  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.0 · Mai 2026 · Document interne confidentiel</div>
 
   <h1>Registre des Activités de Traitement</h1>
   <p>Conformément à l'article 30 du Règlement Général sur la Protection des Données (RGPD — UE 2016/679), tout responsable de traitement doit tenir un registre documentant l'ensemble des traitements de données personnelles réalisés. Ce document constitue ce registre pour la micro-entreprise Parlons.</p>
@@ -49,7 +49,7 @@
     <tr><td><strong>Personnes concernées</strong></td><td>Utilisateurs de la plateforme (clients)</td></tr>
     <tr><td><strong>Destinataires</strong></td><td>Écoutants (pseudonyme uniquement), administrateur de la plateforme</td></tr>
     <tr><td><strong>Durée conservation</strong></td><td>48h pour l'historique de chat, 5 ans pour les données comptables</td></tr>
-    <tr><td><strong>Transferts hors UE</strong></td><td>Tawk.to (hébergement USA) — clauses contractuelles types en place</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Crisp (France/UE) — hébergement européen, DPA disponible · Supabase (USA) — clauses contractuelles types UE</td></tr>
     <tr><td><strong>Mesures sécurité</strong></td><td>Chiffrement HTTPS, accès restreint, pseudonymisation des utilisateurs</td></tr>
   </table>
 
@@ -79,7 +79,33 @@
     <tr><td><strong>Mesures sécurité</strong></td><td>Stockage local chiffré, accès administrateur uniquement</td></tr>
   </table>
 
-  <h2>Traitement n°4 — Candidatures écoutants</h2>
+  <h2>Traitement n°4 — Journal de connexion et géolocalisation IP</h2>
+  <table>
+    <tr><th>Élément</th><th>Détail</th></tr>
+    <tr><td><strong>Finalité</strong></td><td>Sécurité de la plateforme, prévention des abus, statistiques de fréquentation agrégées, protection des utilisateurs vulnérables</td></tr>
+    <tr><td><strong>Base légale</strong></td><td>Intérêt légitime (Art. 6.1.f RGPD) — sécurité informatique et lutte contre la fraude</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Adresse IP, pays, ville, région (géolocalisation approximative), identifiant de visite anonyme, horodatage, type de visite (nouveau / retour)</td></tr>
+    <tr><td><strong>Personnes concernées</strong></td><td>Tout visiteur du site</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme uniquement</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td><strong>30 jours maximum</strong> — suppression automatique au-delà</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Supabase (USA) — clauses contractuelles types UE · ipwho.is (géolocalisation, traitement sans stockage côté tiers)</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Accès restreint à l'administrateur, suppression automatique à 30 jours, pas de croisement avec les données d'identité</td></tr>
+  </table>
+
+  <h2>Traitement n°5 — Identifiant de visite anonyme (localStorage)</h2>
+  <table>
+    <tr><th>Élément</th><th>Détail</th></tr>
+    <tr><td><strong>Finalité</strong></td><td>Comptage des visiteurs uniques et retours pour les statistiques de fréquentation (sans traçage cross-site ni profilage)</td></tr>
+    <tr><td><strong>Base légale</strong></td><td>Intérêt légitime (Art. 6.1.f RGPD) — mesure d'audience interne non invasive, exemptée de consentement (CNIL délibération 2020-091)</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Identifiant aléatoire généré localement (UUID), stocké dans le localStorage du navigateur — non lié à l'identité de la personne</td></tr>
+    <tr><td><strong>Personnes concernées</strong></td><td>Tout visiteur du site</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme uniquement (statistiques agrégées)</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>30 jours côté serveur · Dans le navigateur : jusqu'à effacement du localStorage par l'utilisateur</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Supabase (USA) — clauses contractuelles types UE</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Identifiant non déchiffrable, pas de cookies, pas de fingerprinting, pas de croisement inter-site</td></tr>
+  </table>
+
+  <h2>Traitement n°6 — Candidatures écoutants</h2>
   <table>
     <tr><th>Élément</th><th>Détail</th></tr>
     <tr><td><strong>Finalité</strong></td><td>Traitement des candidatures pour devenir écoutant</td></tr>
@@ -92,7 +118,7 @@
     <tr><td><strong>Mesures sécurité</strong></td><td>Accès restreint à l'administrateur, stockage local sécurisé</td></tr>
   </table>
 
-  <h2>Traitement n°5 — Gestion des agents (écoutants)</h2>
+  <h2>Traitement n°7 — Gestion des agents (écoutants)</h2>
   <table>
     <tr><th>Élément</th><th>Détail</th></tr>
     <tr><td><strong>Finalité</strong></td><td>Gestion de la relation contractuelle avec les écoutants indépendants</td></tr>
@@ -117,19 +143,22 @@
   <table>
     <tr><th>Sous-traitant</th><th>Pays</th><th>Finalité</th><th>Garanties</th></tr>
     <tr><td><strong>Stripe</strong></td><td>USA</td><td>Paiements en ligne</td><td>PCI-DSS, Clauses contractuelles types UE</td></tr>
-    <tr><td><strong>Tawk.to</strong></td><td>USA</td><td>Chat en direct</td><td>Politique de confidentialité RGPD conforme</td></tr>
-    <tr><td><strong>Netlify</strong></td><td>USA</td><td>Hébergement du site</td><td>DPA RGPD disponible</td></tr>
+    <tr><td><strong>Crisp</strong></td><td>France / UE</td><td>Chat en direct et messagerie agents</td><td>Hébergement européen, DPA RGPD disponible</td></tr>
+    <tr><td><strong>Netlify</strong></td><td>USA</td><td>Hébergement du site et fonctions serverless</td><td>DPA RGPD disponible</td></tr>
+    <tr><td><strong>Supabase</strong></td><td>USA</td><td>Base de données (sessions, abonnés, visites)</td><td>Clauses contractuelles types UE, chiffrement au repos</td></tr>
+    <tr><td><strong>ipwho.is</strong></td><td>Indéterminé</td><td>Géolocalisation approximative par IP (ville/région)</td><td>Requête sans stockage de données côté tiers — l'IP n'est pas conservée par le service</td></tr>
+    <tr><td><strong>Resend</strong></td><td>USA</td><td>Envoi d'emails transactionnels</td><td>Clauses contractuelles types UE</td></tr>
   </table>
 
   <h2>Historique des mises à jour</h2>
   <table>
     <tr><th>Date</th><th>Version</th><th>Modification</th></tr>
     <tr><td>Avril 2026</td><td>1.0</td><td>Création du registre</td></tr>
-    <tr><td>________________</td><td>1.1</td><td>À compléter</td></tr>
+    <tr><td>Mai 2026</td><td>2.0</td><td>Ajout traitements n°4 (journal IP/géoloc) et n°5 (visitorId localStorage) · Remplacement Tawk.to par Crisp · Ajout Supabase, ipwho.is, Resend dans sous-traitants · Correction références</td></tr>
   </table>
 
   <div class="footer">
-    Parlons · Registre RGPD v1.0 · Avril 2026 · Document interne confidentiel<br>
+    Parlons · Registre RGPD v2.0 · Mai 2026 · Document interne confidentiel<br>
     Ce registre doit être mis à jour à chaque nouveau traitement de données ou modification significative.
   </div>
 </div>
