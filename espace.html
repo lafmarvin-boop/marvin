@@ -281,7 +281,13 @@
     </div>
 
     <!-- Stats par agent -->
-    <div class="section-title">Activité par agent</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:.9rem">
+      <div class="section-title" style="margin-bottom:0">Activité par agent</div>
+      <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
+        <select id="pdf-month" style="border:1.5px solid var(--sand);border-radius:8px;padding:.35rem .7rem;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--dark);background:white;cursor:pointer;"></select>
+        <button onclick="generateGlobalPDF()" style="background:var(--dark);color:white;border:none;border-radius:50px;padding:.4rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📄 Récap URSSAF</button>
+      </div>
+    </div>
     <div class="card" id="agent-section">
       <div style="color:var(--light);font-size:.82rem">Chargement…</div>
     </div>
@@ -368,6 +374,8 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 const API = '/.netlify/functions';
 let subEmailStored = '';
@@ -629,6 +637,8 @@ function fmt(v) { return (v || 0).toFixed(2).replace('.', ',') + ' €'; }
 function fmtDate(s) { return s ? new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'; }
 
 function renderDashboard(d) {
+  window._adminSessions = d.sessions.list || [];
+  initPdfMonthSelector();
   const { sessions, subscribers, group } = d;
 
   document.getElementById('s-total-rev').textContent = fmt(sessions.totalRevenue);
@@ -722,11 +732,12 @@ function renderDashboard(d) {
         ${planCells}
         <td style="text-align:center;font-weight:700">${a.sessions}</td>
         <td style="font-weight:700;color:var(--tc);white-space:nowrap">${fmt(a.revenue)}</td>
+        <td onclick="event.stopPropagation()"><button onclick="generateAgentPDF(${JSON.stringify(a.name)})" style="background:none;border:1px solid var(--sand);border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:var(--mid);white-space:nowrap;">📄 Fiche</button></td>
       </tr>`;
     }).join('');
     const note = unassigned > 0 ? `<div style="font-size:.72rem;color:var(--light);margin-top:.8rem">${unassigned} session${unassigned>1?'s':''} sans agent enregistré</div>` : '';
     document.getElementById('agent-section').innerHTML =
-      `<div style="overflow-x:auto"><table><thead><tr><th>Agent</th><th>Note</th>${thCols}<th style="text-align:center">Total</th><th>CA</th></tr></thead><tbody>${rows}</tbody></table></div>${note}`;
+      `<div style="overflow-x:auto"><table><thead><tr><th>Agent</th><th>Note</th>${thCols}<th style="text-align:center">Total</th><th>CA</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${note}`;
   }
 
   // Suggestions
@@ -795,6 +806,219 @@ function renderAgentDash(email, d) {
       <td style="font-size:.75rem;color:var(--mid)">${fmtDate(s.started_at)}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="5" style="color:var(--light);text-align:center;padding:1.2rem">Aucune session</td></tr>';
+}
+
+// ── PDF GENERATION ──
+const AGENT_RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+
+function agentRate(formule) {
+  if (!formule) return 0;
+  for (const [k, v] of Object.entries(AGENT_RATES)) {
+    if (formule.includes(k)) return v;
+  }
+  return 0;
+}
+
+function initPdfMonthSelector() {
+  const sel = document.getElementById('pdf-month');
+  if (!sel) return;
+  sel.innerHTML = '';
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const opt = document.createElement('option');
+    opt.value = `${d.getFullYear()}-${d.getMonth()}`;
+    opt.textContent = label;
+    if (i === 1) opt.selected = true; // mois précédent par défaut
+    sel.appendChild(opt);
+  }
+}
+
+function getSelectedMonth() {
+  const sel = document.getElementById('pdf-month');
+  if (!sel || !sel.value) {
+    const now = new Date();
+    return { month: now.getMonth() - 1 < 0 ? 11 : now.getMonth() - 1, year: now.getFullYear() };
+  }
+  const [year, month] = sel.value.split('-').map(Number);
+  return { month, year };
+}
+
+function generateAgentPDF(agentName) {
+  if (!window.jspdf) { alert('PDF non disponible, rechargez la page.'); return; }
+  const { jsPDF } = window.jspdf;
+  const { month, year } = getSelectedMonth();
+  const monthName = new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  const allSessions = window._adminSessions || [];
+  const agentSessions = allSessions.filter(s => {
+    if (s.agent_name !== agentName || !s.started_at) return false;
+    const d = new Date(s.started_at);
+    return d.getMonth() === month && d.getFullYear() === year;
+  });
+
+  const doc = new jsPDF();
+
+  // En-tête
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(196, 113, 74);
+  doc.text('PARLONS', 20, 26);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(120, 100, 90);
+  doc.text('SIRET : 105 179 360 000 18', 20, 33);
+  doc.text('parlonsecoute.netlify.app', 20, 38);
+
+  doc.setDrawColor(232, 213, 176);
+  doc.line(20, 43, 190, 43);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(44, 31, 20);
+  doc.text('Relevé de missions mensuel', 20, 52);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Période : ${monthName}`, 20, 60);
+  doc.text(`Agent : ${agentName}`, 20, 67);
+  doc.text(`Généré le : ${new Date().toLocaleDateString('fr-FR')}`, 20, 74);
+
+  // Tableau
+  let totalEarnings = 0;
+  let passCount = 0;
+  const rows = agentSessions.map(s => {
+    const date = new Date(s.started_at).toLocaleDateString('fr-FR');
+    const rate = agentRate(s.formule);
+    const isPass = (s.formule || '').includes('Pass mensuel');
+    if (isPass) passCount++;
+    totalEarnings += rate;
+    return [date, s.client_pseudo || 'Anonyme', s.formule || '—', isPass ? '—*' : `${rate.toFixed(2)} €`];
+  });
+
+  doc.autoTable({
+    startY: 82,
+    head: [['Date', 'Pseudo', 'Formule', 'Honoraires']],
+    body: rows.length ? rows : [['—', '—', 'Aucune session ce mois', '0,00 €']],
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [196, 113, 74], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [251, 246, 239] },
+    columnStyles: { 3: { halign: 'right' } }
+  });
+
+  const y = doc.lastAutoTable.finalY + 8;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(44, 31, 20);
+  doc.text(`Total sessions : ${agentSessions.length}`, 20, y);
+  doc.text(`Honoraires fixes : ${totalEarnings.toFixed(2)} €`, 20, y + 8);
+
+  if (passCount > 0) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8.5);
+    doc.setTextColor(120);
+    doc.text(`* ${passCount} session(s) Pass mensuel : rémunération au prorata entre agents actifs — à confirmer avec Parlons.`, 20, y + 18);
+  }
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(160);
+  doc.text('Ce relevé est fourni à titre informatif pour établir votre facture mensuelle.', 20, 278);
+  doc.text('Envoyez votre facture avant le 5 du mois suivant — règlement par virement sous 10 jours ouvrés.', 20, 283);
+  doc.text('Parlons · SIRET 105 179 360 000 18', 20, 288);
+
+  const safeName = agentName.replace(/[^a-z0-9]/gi, '_');
+  doc.save(`Parlons_${safeName}_${year}-${String(month + 1).padStart(2, '0')}.pdf`);
+}
+
+function generateGlobalPDF() {
+  if (!window.jspdf) { alert('PDF non disponible, rechargez la page.'); return; }
+  const { jsPDF } = window.jspdf;
+  const { month, year } = getSelectedMonth();
+  const monthName = new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  const allSessions = window._adminSessions || [];
+  const monthSessions = allSessions.filter(s => {
+    if (!s.started_at) return false;
+    const d = new Date(s.started_at);
+    return d.getMonth() === month && d.getFullYear() === year;
+  });
+
+  const byAgent = {};
+  monthSessions.forEach(s => {
+    const name = s.agent_name || 'Non assigné';
+    if (!byAgent[name]) byAgent[name] = { sessions: 0, earnings: 0, passCount: 0 };
+    byAgent[name].sessions++;
+    byAgent[name].earnings += agentRate(s.formule);
+    if ((s.formule || '').includes('Pass mensuel')) byAgent[name].passCount++;
+  });
+
+  const doc = new jsPDF();
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(196, 113, 74);
+  doc.text('PARLONS', 20, 26);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(120, 100, 90);
+  doc.text('SIRET : 105 179 360 000 18', 20, 33);
+
+  doc.setDrawColor(232, 213, 176);
+  doc.line(20, 38, 190, 38);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(44, 31, 20);
+  doc.text('Récapitulatif mensuel — Honoraires agents', 20, 47);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Période : ${monthName}`, 20, 55);
+  doc.text(`Généré le : ${new Date().toLocaleDateString('fr-FR')}`, 20, 62);
+  doc.text('Usage : comptabilité / déclaration URSSAF', 20, 69);
+
+  const rows = Object.entries(byAgent)
+    .sort((a, b) => b[1].sessions - a[1].sessions)
+    .map(([name, d]) => [
+      name,
+      d.sessions,
+      `${d.earnings.toFixed(2)} €`,
+      d.passCount > 0 ? `${d.passCount} session(s)` : '—'
+    ]);
+
+  const totalSess = monthSessions.length;
+  const totalEarn = Object.values(byAgent).reduce((s, a) => s + a.earnings, 0);
+
+  doc.autoTable({
+    startY: 76,
+    head: [['Agent', 'Sessions', 'Honoraires fixes', 'Pass mensuel']],
+    body: rows.length ? rows : [['—', '0', '0,00 €', '—']],
+    foot: [['TOTAL', totalSess, `${totalEarn.toFixed(2)} €`, '']],
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [196, 113, 74], textColor: 255, fontStyle: 'bold' },
+    footStyles: { fillColor: [245, 237, 224], fontStyle: 'bold', textColor: [44, 31, 20] },
+    alternateRowStyles: { fillColor: [251, 246, 239] },
+    columnStyles: { 2: { halign: 'right' } }
+  });
+
+  const y = doc.lastAutoTable.finalY + 10;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8.5);
+  doc.setTextColor(120);
+  doc.text('Les honoraires du Pass mensuel sont à répartir équitablement entre les agents ayant réalisé 10+ sessions ce mois.', 20, y);
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(160);
+  doc.text(`Parlons · SIRET 105 179 360 000 18 · Document généré le ${new Date().toLocaleDateString('fr-FR')}`, 20, 288);
+
+  doc.save(`Parlons_recap_URSSAF_${year}-${String(month + 1).padStart(2, '0')}.pdf`);
 }
 
 async function agentSetPassword() {

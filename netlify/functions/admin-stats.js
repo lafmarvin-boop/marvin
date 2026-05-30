@@ -186,6 +186,7 @@ exports.handler = async (event) => {
           lastMonthRevenue: Math.round(lastMonthRevenue * 100) / 100,
           byPlan,
           recent: sessions.slice(0, 30),
+          list: sessions,
           byAgent,
           unassigned
         },
