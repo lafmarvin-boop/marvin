@@ -2039,6 +2039,7 @@ async function handlePayment(){
       $crisp.push(["set","user:nickname",[document.getElementById('user-name').value.trim()||'Client']]);
       $crisp.push(["set","session:data",[[["parlons_id",paymentIntent.id],["formule",selectedLabel]]]]);
       $crisp.push(["do","chat:show"]);
+      $crisp.push(["do","chat:open"]);
     }catch(e){}
     startWaitTimer();
 
@@ -2415,7 +2416,7 @@ function startFreeGroupTimer(theme,name){
   const pf=document.getElementById('payment-form'),ps=document.getElementById('payment-success');
   if(pf) pf.style.display='none';
   if(ps) ps.style.display='block';
-  try{$crisp.push(['do','chat:show']);}catch(e){}
+  try{$crisp.push(['do','chat:show']);$crisp.push(['do','chat:open']);}catch(e){}
   startWaitTimer();
 })();
 </script>
