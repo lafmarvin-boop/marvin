@@ -339,7 +339,7 @@ internal fun MainActivity.showMergeSelectionDialog() {
             checked[which] = isChecked
         }
         .setPositiveButton("Fusionner") { _, _ ->
-            val sel = checked.mapIndexedNotNull { i, c -> if (c) displayOrder[i] else null }
+            val sel = checked.toList().mapIndexedNotNull { i, c -> if (c) displayOrder[i] else null }
             mergeSelectedLayers(sel)
         }
         .setNegativeButton(R.string.cancel, null)
