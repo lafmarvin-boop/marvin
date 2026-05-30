@@ -59,7 +59,7 @@ exports.handler = async (event) => {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows, crispOperators] = await Promise.all([
+    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows, crispOperators, ipLogs] = await Promise.all([
       sbGet('sessions?statut=eq.paid&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
       sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
       sbGet('group_messages?select=room_id,created_at,author&order=created_at.desc&limit=2000'),
@@ -68,7 +68,8 @@ exports.handler = async (event) => {
       sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors,total_chats'),
       sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,visited_at&order=visited_at.desc&limit=50000`),
       sbGet(`chats?started_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=started_at&order=started_at.desc&limit=10000`),
-      getCrispOperators()
+      getCrispOperators(),
+      sbGet('visits?select=ip_address,country,visited_at,visitor_id,is_new&order=visited_at.desc&limit=200')
     ]);
     const siteStats = siteStatsRows[0] || { total_visits: 0, unique_visitors: 0, total_chats: 0 };
 
@@ -172,6 +173,13 @@ exports.handler = async (event) => {
 
     const unassigned = sessions.filter(s => !s.agent_name).length;
 
+    // Répartition par pays (30 derniers jours de logs)
+    const countryBreakdown = {};
+    ipLogs.forEach(v => {
+      if (!v.country) return;
+      countryBreakdown[v.country] = (countryBreakdown[v.country] || 0) + 1;
+    });
+
     return {
       statusCode: 200,
       headers: CORS,
@@ -202,7 +210,14 @@ exports.handler = async (event) => {
           byRoom,
           activeUsers: activeGroupUsers.length
         },
-        traffic
+        traffic,
+        ipLogs: ipLogs.filter(v => v.ip_address).map(v => ({
+          ip: v.ip_address,
+          country: v.country || '—',
+          visited_at: v.visited_at,
+          is_new: v.is_new
+        })),
+        countryBreakdown
       })
     };
   }

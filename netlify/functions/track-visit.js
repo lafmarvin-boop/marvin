@@ -20,15 +20,28 @@ exports.handler = async (event) => {
   if (!visitorId || typeof visitorId !== 'string' || visitorId.length > 64)
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Invalid visitor ID' }) };
 
+  // Récupérer IP et pays depuis les headers Netlify
+  const ip = event.headers['x-nf-client-connection-ip']
+    || (event.headers['x-forwarded-for'] || '').split(',')[0].trim()
+    || null;
+  const country = (event.headers['x-country'] || '').toUpperCase() || null;
+
   try {
-    // Enregistrer la visite avec timestamp (pour stats par période)
+    // Enregistrer la visite avec IP et pays (conservation 30 jours max — intérêt légitime RGPD)
     await fetch(`${SB_URL}/rest/v1/visits`, {
       method: 'POST',
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ visitor_id: visitorId, is_new: !!isNew })
+      body: JSON.stringify({ visitor_id: visitorId, is_new: !!isNew, ip_address: ip, country })
     });
 
-    // Mettre à jour les compteurs globaux (all-time rapide)
+    // Nettoyage automatique des visites > 30 jours (conformité RGPD)
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    fetch(`${SB_URL}/rest/v1/visits?visited_at=lt.${encodeURIComponent(cutoff)}`, {
+      method: 'DELETE',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Prefer: 'return=minimal' }
+    }).catch(e => console.error('cleanup:', e.message));
+
+    // Mettre à jour les compteurs globaux (all-time)
     const res = await fetch(`${SB_URL}/rest/v1/site_stats?id=eq.1&select=total_visits,unique_visitors`, {
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }
     });
