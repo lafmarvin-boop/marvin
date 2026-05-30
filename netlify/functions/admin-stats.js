@@ -2,7 +2,24 @@ const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_PWD = process.env.ADMIN_PASSWORD || 'Parlons2026!';
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'lafmarvin@gmail.com').toLowerCase();
+const CRISP_WEBSITE_ID = process.env.CRISP_WEBSITE_ID || 'fd20e23d-059a-4552-9aae-6df05f653d02';
+const CRISP_API_ID = process.env.CRISP_API_IDENTIFIER;
+const CRISP_API_KEY = process.env.CRISP_API_KEY || process.env.CRISP_API_TOKEN;
 const crypto = require('crypto');
+
+async function getCrispOperators() {
+  if (!CRISP_API_ID || !CRISP_API_KEY) return [];
+  try {
+    const auth = Buffer.from(`${CRISP_API_ID}:${CRISP_API_KEY}`).toString('base64');
+    const res = await fetch(
+      `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operators/list`,
+      { headers: { Authorization: `Basic ${auth}`, 'X-Crisp-Tier': 'plugin' } }
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    return Array.isArray(json.data) ? json.data : [];
+  } catch { return []; }
+}
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -42,7 +59,7 @@ exports.handler = async (event) => {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows] = await Promise.all([
+    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows, crispOperators] = await Promise.all([
       sbGet('sessions?statut=eq.paid&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
       sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
       sbGet('group_messages?select=room_id,created_at,author&order=created_at.desc&limit=2000'),
@@ -50,7 +67,8 @@ exports.handler = async (event) => {
       sbGet('suggestions?select=*&order=created_at.desc&limit=100'),
       sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors,total_chats'),
       sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,visited_at&order=visited_at.desc&limit=50000`),
-      sbGet(`chats?started_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=started_at&order=started_at.desc&limit=10000`)
+      sbGet(`chats?started_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=started_at&order=started_at.desc&limit=10000`),
+      getCrispOperators()
     ]);
     const siteStats = siteStatsRows[0] || { total_visits: 0, unique_visitors: 0, total_chats: 0 };
 
@@ -125,6 +143,18 @@ exports.handler = async (event) => {
       a.avgRating = a.ratingCount > 0 ? Math.round((a.ratingSum / a.ratingCount) * 10) / 10 : null;
       delete a.ratingSum;
     });
+
+    // Ajouter les opérateurs Crisp sans session (affichage dès l'ajout dans Crisp)
+    crispOperators.forEach(op => {
+      const name = op.user?.nickname || op.user?.first_name || op.email;
+      if (!name || byAgent[name]) return;
+      byAgent[name] = {
+        name, email: op.email || null,
+        sessions: 0, revenue: 0, plans: {},
+        ratingCount: 0, avgRating: null, reviews: []
+      };
+    });
+
     const unassigned = sessions.filter(s => !s.agent_name).length;
 
     return {

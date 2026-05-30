@@ -2,7 +2,7 @@ const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const CRISP_WEBSITE_ID = process.env.CRISP_WEBSITE_ID || 'fd20e23d-059a-4552-9aae-6df05f653d02';
 const CRISP_API_ID = process.env.CRISP_API_IDENTIFIER;
-const CRISP_API_KEY = process.env.CRISP_API_KEY;
+const CRISP_API_KEY = process.env.CRISP_API_KEY || process.env.CRISP_API_TOKEN;
 const HOOK_TOKEN = process.env.CRISP_HOOK_TOKEN;
 
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
