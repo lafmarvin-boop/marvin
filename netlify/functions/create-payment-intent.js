@@ -65,7 +65,7 @@ exports.handler = async (event) => {
     };
   } catch (err) {
     console.error('create-payment-intent:', err.message);
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Erreur serveur' }) };
   }
 };
 

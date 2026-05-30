@@ -140,6 +140,6 @@ exports.handler = async (event) => {
     };
   } catch (err) {
     console.error('create-subscription error:', err.message);
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Erreur serveur' }) };
   }
 };

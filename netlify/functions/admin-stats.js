@@ -1,7 +1,7 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const ADMIN_PWD = process.env.ADMIN_PASSWORD || 'Parlons2026!';
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'lafmarvin@gmail.com').toLowerCase();
+const ADMIN_PWD = process.env.ADMIN_PASSWORD;
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
 const CRISP_WEBSITE_ID = process.env.CRISP_WEBSITE_ID || 'fd20e23d-059a-4552-9aae-6df05f653d02';
 const CRISP_API_ID = process.env.CRISP_API_IDENTIFIER;
 const CRISP_API_KEY = process.env.CRISP_API_KEY || process.env.CRISP_API_TOKEN;
@@ -52,9 +52,9 @@ exports.handler = async (event) => {
   const password = body.password || '';
 
   // ── Admin check ──
-  if (email === ADMIN_EMAIL) {
-    if (password !== ADMIN_PWD)
-      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe incorrect' }) };
+  if (ADMIN_EMAIL && email === ADMIN_EMAIL) {
+    if (!ADMIN_PWD || password !== ADMIN_PWD)
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Identifiants incorrects' }) };
 
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);

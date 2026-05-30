@@ -17,8 +17,10 @@ exports.handler = async (event) => {
 
     if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY && paymentId) {
       const patch = { statut: 'ended' };
-      if (rating) patch.rating = rating;
-      if (comment) patch.rating_comment = comment;
+      const safeRating = Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : null;
+      const safeComment = typeof comment === 'string' ? comment.slice(0, 500) : null;
+      if (safeRating) patch.rating = safeRating;
+      if (safeComment) patch.rating_comment = safeComment;
 
       await fetch(
         `${process.env.SUPABASE_URL}/rest/v1/sessions?stripe_payment_id=eq.${paymentId}`,
@@ -38,6 +40,6 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ended: true }) };
   } catch (err) {
     console.error('end-session:', err.message);
-    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Erreur serveur' }) };
   }
 };
