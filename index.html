@@ -158,6 +158,8 @@
     .nav-cta:hover{background:var(--rust)!important;}
     .nav-agent{border:1.5px solid var(--terracotta)!important;color:var(--terracotta)!important;padding:.5rem 1.2rem;border-radius:50px;}
     .nav-agent:hover{background:var(--terracotta)!important;color:white!important;}
+    .nav-espace-link{color:white!important;background:var(--mid);border-radius:50px;padding:.5rem 1.2rem;font-weight:500;white-space:nowrap;}
+    .nav-espace-link:hover{background:#444!important;}
 
     /* Tablette (640px–1280px) : nav compacte, liens secondaires masqués */
     @media(min-width:641px) and (max-width:1280px){
@@ -165,7 +167,8 @@
       nav ul{gap:1rem;flex-wrap:nowrap;}
       nav ul a{font-size:.82rem;}
       .logo{font-size:1.25rem;}
-      .nav-cta{padding:.45rem 1.1rem;font-size:.82rem;white-space:nowrap;}
+      .nav-cta{padding:.45rem 1.1rem!important;font-size:.82rem!important;white-space:nowrap;}
+      .nav-espace-link{padding:.45rem 1.1rem!important;font-size:.82rem!important;}
       .nav-tab-hide{display:none;}
     }
     .avail-bar{
@@ -670,7 +673,7 @@
     <li><a href="#ecoutants">Nos écoutants</a></li>
     <li class="nav-tab-hide"><a href="#contact">Contact</a></li>
     <li class="nav-tab-hide"><a href="#" class="nav-agent" onclick="showAgentPage();return false;">🎙️ Devenir écoutant</a></li>
-    <li><a href="/espace.html" style="font-size:.75rem;color:white;background:var(--mid);border-radius:50px;padding:.4rem .9rem;font-weight:500;">🔑 Espace</a></li>
+    <li><a href="/espace.html" class="nav-espace-link">🔑 Espace perso</a></li>
     <li><a href="#" class="nav-cta" onclick="openModal();return false;">Commencer →</a></li>
   </ul>
 </nav>
