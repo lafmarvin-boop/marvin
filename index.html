@@ -167,12 +167,7 @@
       .logo{font-size:1.2rem;}
       .nav-cta{padding:.4rem .9rem;font-size:.75rem;}
       .nav-agent{padding:.4rem .9rem;font-size:.75rem;}
-      /* Masquer les liens les moins prioritaires pour gagner de la place */
-      nav ul li:has(a[href="#comment"]),
-      nav ul li:has(a[href="#ressources"]),
-      nav ul li:has(a[href="#groupes"]),
-      nav ul li:has(a[href="#avis"]),
-      nav ul li:has(a[href="#contact"]){display:none;}
+      .nav-tab-hide{display:none;}
     }
     .avail-bar{
       position:fixed;left:0;right:0;z-index:199;
@@ -668,15 +663,15 @@
   <div class="logo">Par<span>lons</span></div>
   <a href="/espace.html" class="nav-espace-btn">🔑 Espace abonné</a>
   <ul>
-    <li><a href="#comment">Comment ça marche</a></li>
+    <li class="nav-tab-hide"><a href="#comment">Comment ça marche</a></li>
     <li><a href="#tarifs">Tarifs</a></li>
-    <li><a href="#groupes">Groupes</a></li>
-    <li><a href="#ressources">Ressources</a></li>
-    <li><a href="#avis">Avis</a></li>
+    <li class="nav-tab-hide"><a href="#groupes">Groupes</a></li>
+    <li class="nav-tab-hide"><a href="#ressources">Ressources</a></li>
+    <li class="nav-tab-hide"><a href="#avis">Avis</a></li>
     <li><a href="#ecoutants">Nos écoutants</a></li>
-    <li><a href="#contact">Contact</a></li>
+    <li class="nav-tab-hide"><a href="#contact">Contact</a></li>
     <li><a href="#" class="nav-agent" onclick="showAgentPage();return false;">🎙️ Devenir écoutant</a></li>
-    <li><a href="/espace.html" style="font-size:.82rem;color:white;background:var(--mid);border-radius:50px;padding:.4rem 1rem;font-weight:500;">🔑 Espace abonné</a></li>
+    <li><a href="/espace.html" style="font-size:.75rem;color:white;background:var(--mid);border-radius:50px;padding:.4rem .9rem;font-weight:500;">🔑 Espace</a></li>
     <li><a href="#" class="nav-cta" onclick="openModal();return false;">Commencer →</a></li>
   </ul>
 </nav>
