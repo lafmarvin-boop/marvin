@@ -326,6 +326,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:.9rem">
       <div class="section-title" style="margin-bottom:0">Activité par agent</div>
       <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
+        <button onclick="openAddAgentModal()" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.4rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Ajouter un agent</button>
         <select id="pdf-month" style="border:1.5px solid var(--sand);border-radius:8px;padding:.35rem .7rem;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--dark);background:white;cursor:pointer;"></select>
         <button onclick="generateGlobalPDF()" style="background:var(--dark);color:white;border:none;border-radius:50px;padding:.4rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📄 Récap URSSAF</button>
       </div>
@@ -1519,6 +1520,65 @@ async function agentSetPassword() {
   btn.disabled = false;
   btn.innerHTML = 'Créer mon mot de passe';
 }
+
+// ── AJOUTER UN AGENT ──
+function openAddAgentModal() {
+  document.getElementById('add-agent-modal').style.display = 'flex';
+  document.getElementById('add-agent-email').value = '';
+  document.getElementById('add-agent-pwd').value = '';
+  document.getElementById('add-agent-err').textContent = '';
+  document.getElementById('add-agent-ok').style.display = 'none';
+  setTimeout(() => document.getElementById('add-agent-email').focus(), 100);
+}
+function closeAddAgentModal() {
+  document.getElementById('add-agent-modal').style.display = 'none';
+}
+async function submitAddAgent() {
+  const agentEmail = document.getElementById('add-agent-email').value.trim();
+  const agentPassword = document.getElementById('add-agent-pwd').value;
+  const err = document.getElementById('add-agent-err');
+  const ok = document.getElementById('add-agent-ok');
+  const btn = document.getElementById('add-agent-btn');
+  err.textContent = ''; ok.style.display = 'none';
+
+  if (!agentEmail || !agentEmail.includes('@')) { err.textContent = 'Email invalide.'; return; }
+  if (!agentPassword || agentPassword.length < 8) { err.textContent = 'Mot de passe trop court (8 car. min.).'; return; }
+
+  btn.disabled = true; btn.textContent = 'Création…';
+  try {
+    const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
+    const res = await fetch(`${API}/admin-stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'add_agent', agentEmail, agentPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || 'Erreur serveur.'; return; }
+    ok.style.display = 'block';
+    ok.innerHTML = `✅ Agent créé.${data.crispInvited ? ' Invitation Crisp envoyée.' : ' (Crisp non configuré — invitation manuelle requise.)'}`;
+    document.getElementById('add-agent-email').value = '';
+    document.getElementById('add-agent-pwd').value = '';
+  } catch (e) {
+    err.textContent = 'Erreur réseau.';
+  }
+  btn.disabled = false; btn.textContent = 'Créer l\'agent';
+}
 </script>
+
+<!-- Modal ajouter agent -->
+<div id="add-agent-modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(44,31,20,.55);backdrop-filter:blur(5px);align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:20px;padding:2rem;width:92%;max-width:400px;position:relative;">
+    <button onclick="closeAddAgentModal()" style="position:absolute;top:.8rem;right:.8rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--light);">✕</button>
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:.3rem;">Ajouter un agent</h3>
+    <p style="font-size:.8rem;color:var(--light);margin-bottom:1.2rem;">L'agent pourra modifier son mot de passe depuis son espace personnel.</p>
+    <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Email de l'agent</label>
+    <input id="add-agent-email" type="email" placeholder="agent@email.com" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;margin-bottom:.9rem;">
+    <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Mot de passe temporaire</label>
+    <input id="add-agent-pwd" type="password" placeholder="Min. 8 caractères" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;margin-bottom:.4rem;" onkeydown="if(event.key==='Enter')submitAddAgent()">
+    <div id="add-agent-err" style="color:#c0392b;font-size:.78rem;min-height:1.1rem;margin-bottom:.5rem;"></div>
+    <div id="add-agent-ok" style="display:none;color:#2d7a2d;font-size:.82rem;background:#e8f8e8;border-radius:8px;padding:.6rem .9rem;margin-bottom:.8rem;"></div>
+    <button id="add-agent-btn" onclick="submitAddAgent()" style="width:100%;padding:.85rem;background:var(--tc);color:white;border:none;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:600;cursor:pointer;">Créer l'agent</button>
+  </div>
+</div>
 </body>
 </html>

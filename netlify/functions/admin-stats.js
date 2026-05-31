@@ -56,6 +56,42 @@ exports.handler = async (event) => {
     if (!ADMIN_PWD || password !== ADMIN_PWD)
       return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Identifiants incorrects' }) };
 
+    // ── Action : ajouter un agent ──
+    if (body.action === 'add_agent') {
+      const agentEmail = (body.agentEmail || '').toLowerCase().trim();
+      const agentPassword = body.agentPassword || '';
+      if (!agentEmail || !agentEmail.includes('@'))
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Email invalide' }) };
+      if (!agentPassword || agentPassword.length < 8)
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Mot de passe trop court (8 car. min.)' }) };
+
+      const crypto = require('crypto');
+      const salt = crypto.randomBytes(32).toString('hex');
+      const hash = crypto.pbkdf2Sync(agentPassword, salt, 100000, 64, 'sha512').toString('hex');
+
+      await fetch(`${SB_URL}/rest/v1/agent_passwords`, {
+        method: 'POST',
+        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({ email: agentEmail, password_hash: hash, password_salt: salt })
+      });
+
+      // Inviter dans Crisp si configuré
+      let crispInvited = false;
+      if (CRISP_API_ID && CRISP_API_KEY) {
+        try {
+          const auth = Buffer.from(`${CRISP_API_ID}:${CRISP_API_KEY}`).toString('base64');
+          const r = await fetch(`https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operators/invite`, {
+            method: 'POST',
+            headers: { Authorization: `Basic ${auth}`, 'X-Crisp-Tier': 'plugin', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: agentEmail, role: 'operator' })
+          });
+          crispInvited = r.ok;
+        } catch {}
+      }
+
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, crispInvited }) };
+    }
+
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
