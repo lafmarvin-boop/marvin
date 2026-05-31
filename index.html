@@ -1527,7 +1527,7 @@
     try{const r=await fetch('/.netlify/functions/availability',{cache:'no-store'});const d=await r.json();if(typeof window.setAvailability==='function')window.setAvailability(!!d.online);}catch(e){}
   }
   window.addEventListener('load',function(){
-    _syncAvail();setInterval(_syncAvail,10000);
+    _syncAvail();setInterval(_syncAvail,5000);
     setTimeout(function(){
       var sess=JSON.parse(localStorage.getItem('parlons_active_session')||'null');
       if(!sess||!sess.startedAt)return;
@@ -1592,6 +1592,10 @@ function updateAvailUI(){
   const bar=document.getElementById('avail-bar'),text=document.getElementById('avail-text'),queue=document.getElementById('avail-queue'),dot=document.querySelector('.dot');
   if(isOnline){bar.className='avail-bar online';text.textContent='Nos écoutants sont disponibles · Démarrez votre session maintenant';queue.textContent=queueCount>0?`· ${queueCount} en attente`:'';if(dot)dot.style.background='#5CB85C';}
   else{bar.className='avail-bar offline';text.textContent='⚠️ Tous nos écoutants sont occupés — Paiement suspendu';queue.textContent='';if(dot)dot.style.background='#e74c3c';}
+  // Mettre à jour le modal si déjà ouvert
+  const offMsg=document.getElementById('offline-msg'),btn=document.querySelector('#step-1 .btn-primary');
+  if(offMsg){offMsg.style.display=isOnline?'none':'block';}
+  if(btn){btn.disabled=!isOnline;btn.style.opacity=isOnline?'1':'.4';}
 }
 updateAvailUI();
 
