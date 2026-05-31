@@ -2853,6 +2853,7 @@ document.fonts && document.fonts.ready.then(stackBanners);
 // ── WIDGET CHAT PARLONS ──
 let chatSessionId=null,chatPollingInterval=null,chatLastMsgTime=null,chatRenderedIds=new Set();
 let chatPanelOpen=false,chatUnreadCount=0,chatPreTopicSent=false,chatState='idle';
+let chatExtensionPending=false,chatExtensionNewDuration=0;
 
 function toggleChatPanel(){
   chatPanelOpen=!chatPanelOpen;
@@ -2915,20 +2916,14 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
 }
 async function extendChatSession(newDurationSec,paymentId,label){
   try{
-    const r=await fetch('/.netlify/functions/chat-extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,newDurationSec,paymentId,label})});
+    const remainingSec=sessionTimer!==null?Math.max(0,Math.round((sessionEndAt-Date.now())/1000)):0;
+    const r=await fetch('/.netlify/functions/chat-extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,newDurationSec,paymentId,label,remainingSec})});
     const d=await r.json();
     if(!d.ok)return;
-    // Étendre le timer local
-    sessionEndAt+=newDurationSec*1000;
-    sessionDurationSec+=newDurationSec;
-    updateSessionUI();
-    // Cacher les boutons relancer
-    const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
-    const mobileRenew=document.getElementById('mobile-renew-btn');if(mobileRenew)mobileRenew.style.display='none';
-    // Notification dans le header chat
+    chatExtensionPending=true;
+    chatExtensionNewDuration=newDurationSec;
     const sub=document.getElementById('pcp-subtitle');
-    if(sub){const m=Math.floor(newDurationSec/60);sub.textContent='+ '+m+' min ajoutées !';setTimeout(()=>{if(sub)sub.textContent='Session en cours';},3000);}
-    // Fermer le modal
+    if(sub)sub.textContent='En attente de l\'agent…';
     closeModal();
   }catch(e){console.error('extendChatSession:',e);}
 }
@@ -2944,7 +2939,35 @@ async function pollChat(){
     const d=await r.json();
     if(d.messages)d.messages.forEach(m=>appendChatMsg(m));
     if(d.status==='active'&&chatState==='waiting'&&d.agentConnected){setChatState('active');agentConnected(d.agentPseudo||null);}
-    if(d.status==='closed'&&chatState!=='ended'){
+    // Gestion prolongation en attente
+    if(chatExtensionPending){
+      const sub=document.getElementById('pcp-subtitle');
+      if(d.extensionPending){
+        if(sub)sub.textContent='En attente de l\'agent…';
+      } else if(d.status==='active'){
+        // Accepté
+        chatExtensionPending=false;
+        sessionEndAt+=chatExtensionNewDuration*1000;
+        sessionDurationSec+=chatExtensionNewDuration;
+        updateSessionUI();
+        const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
+        const mobileRenew=document.getElementById('mobile-renew-btn');if(mobileRenew)mobileRenew.style.display='none';
+        const m=Math.floor(chatExtensionNewDuration/60);
+        chatExtensionNewDuration=0;
+        if(sub){sub.textContent='+ '+m+' min ajoutées !';setTimeout(()=>{if(sub)sub.textContent='Session en cours';},3000);}
+      } else if(d.status==='closed'&&d.transferSessionId){
+        // Refusé — transfert vers nouvelle session
+        chatExtensionPending=false;chatExtensionNewDuration=0;
+        chatSessionId=d.transferSessionId;
+        sessionStorage.setItem('parlons_chat_session_id',d.transferSessionId);
+        localStorage.setItem('parlons_chat_session_id',d.transferSessionId);
+        chatRenderedIds=new Set();chatLastMsgTime=null;
+        if(sub)sub.textContent='Transfert en cours…';
+        // Ne pas déclencher endSession — la session continue avec un autre agent
+        return;
+      }
+    }
+    if(d.status==='closed'&&chatState!=='ended'&&!chatExtensionPending){
       setChatState('ended');clearInterval(chatPollingInterval);chatPollingInterval=null;
       showChatPanel(false);
       const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';

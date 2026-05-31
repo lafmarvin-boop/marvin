@@ -1778,10 +1778,12 @@ async function pollAgentChat() {
           id: s.id, name: s.pre_name || 'Anonyme', topic: s.pre_topic || null,
           label: s.session_label || '', durationSec: s.duration_sec || 1800,
           assignedAt: s.assigned_at, timerStartedAt: null,
+          extensionPending: s.extension_pending || null,
           messages: [], renderedIds: new Set(), unread: 0
         });
-      } else if (s.duration_sec && s.duration_sec > existing.durationSec) {
-        existing.durationSec = s.duration_sec;
+      } else {
+        if (s.duration_sec && s.duration_sec > existing.durationSec) existing.durationSec = s.duration_sec;
+        existing.extensionPending = s.extension_pending || null;
       }
       // Append new messages
       const sess = agentSessions.get(s.id);
@@ -1911,7 +1913,18 @@ function renderAgentFloatMessages() {
     msgsEl.appendChild(div);
   });
   msgsEl.scrollTop = msgsEl.scrollHeight;
-  if (infoEl) infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong> · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
+  if (infoEl) {
+    if (sess.extensionPending) {
+      const mins = Math.floor((sess.extensionPending.newDurationSec || 0) / 60);
+      infoEl.innerHTML = `<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+        <span style="font-weight:600;color:#92400e;">⏳ Demande de +${mins} min</span>
+        <button onclick="respondExtension('${escHtml(sess.id)}',true)" style="background:#22c55e;color:white;border:none;border-radius:50px;padding:.2rem .7rem;font-size:.72rem;font-weight:700;cursor:pointer;">✓ Accepter</button>
+        <button onclick="respondExtension('${escHtml(sess.id)}',false)" style="background:#ef4444;color:white;border:none;border-radius:50px;padding:.2rem .7rem;font-size:.72rem;font-weight:700;cursor:pointer;">✗ Refuser</button>
+      </div>`;
+    } else {
+      infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong> · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
+    }
+  }
   if (titleEl) titleEl.textContent = `💬 ${sess.name}`;
 }
 
@@ -1981,6 +1994,29 @@ async function endAgentFloatSession() {
   renderAgentFloatTabs();
   renderAgentFloatMessages();
   updateAgentFloatBubble();
+}
+
+async function respondExtension(sessionId, accept) {
+  try {
+    const res = await fetch(`${API}/chat-extension-respond`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, agentEmail: agentEmailStored, agentToken: agentChatToken, accept })
+    });
+    const data = await res.json();
+    if (!data.ok) return;
+    if (!accept) {
+      // L'ancienne session est fermée : la retirer de la Map
+      agentSessions.delete(sessionId);
+      if (agentActiveTabId === sessionId) {
+        agentActiveTabId = agentSessions.size > 0 ? agentSessions.keys().next().value : null;
+        agentChatSessionId = agentActiveTabId;
+      }
+      renderAgentFloatTabs();
+      renderAgentFloatMessages();
+      updateAgentFloatBubble();
+    }
+    // Si accepté, le poll renverra duration_sec mis à jour et extensionPending=null
+  } catch(e) { console.error('respondExtension:', e); }
 }
 
 async function agentAcceptFromQueue(sessionId) {

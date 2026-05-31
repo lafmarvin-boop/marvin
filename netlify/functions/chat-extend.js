@@ -24,14 +24,13 @@ exports.handler = async (event) => {
 
   if (!SB_URL || !SB_KEY) return { statusCode: 503, headers: CORS, body: JSON.stringify({ error: 'Service non configuré' }) };
 
-  const { sessionId, newDurationSec, paymentId, label } = body;
+  const { sessionId, newDurationSec, paymentId, label, remainingSec } = body;
   if (!sessionId || !newDurationSec)
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Paramètres manquants' }) };
 
   try {
-    // Charger la session en cours
     const sessions = await sbGet(
-      `chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,duration_sec,agent_email,pre_name,stripe_payment_id&limit=1`
+      `chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email,pre_name&limit=1`
     );
     if (!sessions.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Session introuvable' }) };
     const sess = sessions[0];
@@ -40,52 +39,38 @@ exports.handler = async (event) => {
     const addSec = parseInt(newDurationSec) || 0;
     if (addSec <= 0) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Durée invalide' }) };
 
-    const newTotal = (sess.duration_sec || 1800) + addSec;
+    const remaining = parseInt(remainingSec) || 0;
+    const totalForNew = addSec + remaining;
+    const mins = Math.floor(addSec / 60);
 
-    // Prolonger la session
+    // Stocker la demande de prolongation dans la session (sans étendre encore)
     await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
       method: 'PATCH',
       headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ duration_sec: newTotal, stripe_payment_id: paymentId || sess.stripe_payment_id })
+      body: JSON.stringify({
+        extension_pending: {
+          newDurationSec: addSec,
+          remainingSec: remaining,
+          totalForNewSession: totalForNew,
+          paymentId: paymentId || null,
+          label: label || null,
+          requestedAt: new Date().toISOString()
+        }
+      })
     });
 
-    // Message système dans le tchat
-    const mins = Math.floor(addSec / 60);
+    // Message système dans le tchat courant
     await fetch(`${SB_URL}/rest/v1/chat_messages`, {
       method: 'POST',
       headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({
         session_id: sessionId,
-        content: `⏱ Session prolongée de ${mins} min. Continuez !`,
+        content: `⏳ Le visiteur souhaite prolonger la session de ${mins} min. En attente de votre accord.`,
         sender_type: 'system'
       })
     });
 
-    // Enregistrer le nouveau paiement dans sessions (stats)
-    if (paymentId && paymentId.startsWith('pi_')) {
-      const now = new Date().toISOString();
-      const agentEmail = sess.agent_email || null;
-      let agentName = null;
-      if (agentEmail) {
-        const profiles = await sbGet(`agent_profiles?email=eq.${encodeURIComponent(agentEmail)}&select=prenom,nom&limit=1`);
-        const p = profiles[0];
-        agentName = p && p.prenom ? `${p.prenom} ${p.nom || ''}`.trim() : agentEmail.split('@')[0];
-      }
-      await fetch(`${SB_URL}/rest/v1/sessions`, {
-        method: 'POST',
-        headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({
-          stripe_payment_id: paymentId,
-          statut: 'paid',
-          formule: label || 'Prolongation',
-          client_pseudo: sess.pre_name || 'Visiteur',
-          started_at: now,
-          ...(agentEmail ? { agent_email: agentEmail, agent_name: agentName } : {})
-        })
-      });
-    }
-
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, totalDurationSec: newTotal }) };
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, pending: true }) };
   } catch (e) {
     console.error('chat-extend:', e.message);
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: e.message }) };
