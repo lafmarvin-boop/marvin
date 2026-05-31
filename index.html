@@ -1571,6 +1571,20 @@ let isOnline=false,queueCount=0;
 let waitTimer=null,sessionTimer=null,waitSeconds=0,sessionSeconds=0,reportShown=false;
 let ratingVal=0;
 
+// Restaurer l'état d'attente si l'utilisateur a rechargé la page après paiement
+(function(){
+  try{
+    const w=JSON.parse(localStorage.getItem('parlons_waiting')||'null');
+    if(w && w.paidAt && (Date.now()-w.paidAt)<30*60*1000){
+      selectedLabel=w.label||selectedLabel;
+      sessionDurationSec=w.duration||sessionDurationSec;
+      window.parlonsWaiting=true;
+    } else if(w){
+      localStorage.removeItem('parlons_waiting');
+    }
+  }catch(e){}
+})();
+
 // Setter global accessible depuis le bloc Crisp (scope différent)
 window.setAvailability = function(v){ isOnline=!!v; updateAvailUI(); };
 
@@ -1704,6 +1718,8 @@ function startWaitTimer(){
   document.getElementById('waiting-zone').style.display='block';
   document.getElementById('session-zone').style.display='none';
   window.parlonsWaiting=true;
+  // Persister l'état d'attente pour survivre à un rechargement de page
+  try{localStorage.setItem('parlons_waiting',JSON.stringify({paymentId:sessionStorage.getItem('parlons_payment_id')||'',label:selectedLabel,duration:sessionDurationSec,paidAt:Date.now()}));}catch(e){}
   waitTimer=setInterval(()=>{
     waitSeconds++;
     const m=Math.floor(waitSeconds/60),s=waitSeconds%60;
@@ -1739,6 +1755,7 @@ function startWaitTimer(){
 function agentConnected(){
   if(sessionTimer!==null) return;
   window.parlonsWaiting=false;
+  try{localStorage.removeItem('parlons_waiting');}catch(e){}
   clearInterval(waitTimer); waitTimer=null;
   openCrisp();
   document.getElementById('waiting-zone').style.display='none';
