@@ -186,14 +186,19 @@ exports.handler = async (event) => {
     ]);
     const profileMap = {};
     agentProfileRows.forEach(p => { if (p.email) profileMap[p.email.toLowerCase()] = p; });
-    agentPwdRows.forEach(row => {
-      if (!row.email) return;
-      const alreadyIn = Object.values(byAgent).some(a => (a.email || '').toLowerCase() === row.email.toLowerCase());
+    // Inclure l'admin comme agent (même s'il n'est pas dans agent_passwords)
+    const adminEmailLower = ADMIN_EMAIL;
+    const allAgentEmails = [
+      ...agentPwdRows.map(r => r.email).filter(Boolean),
+      ...(adminEmailLower && !agentPwdRows.some(r => (r.email||'').toLowerCase() === adminEmailLower) ? [adminEmailLower] : [])
+    ];
+    allAgentEmails.forEach(emailEntry => {
+      const alreadyIn = Object.values(byAgent).some(a => (a.email || '').toLowerCase() === emailEntry.toLowerCase());
       if (alreadyIn) return;
-      const profile = profileMap[row.email.toLowerCase()];
-      const name = profile && profile.prenom ? `${profile.prenom} ${profile.nom || ''}`.trim() : row.email.split('@')[0];
+      const profile = profileMap[emailEntry.toLowerCase()];
+      const name = profile && profile.prenom ? `${profile.prenom} ${profile.nom || ''}`.trim() : emailEntry.split('@')[0];
       byAgent[name] = {
-        name, email: row.email,
+        name, email: emailEntry,
         sessions: 0, revenue: 0, plans: {},
         ratingCount: 0, avgRating: null, reviews: []
       };
