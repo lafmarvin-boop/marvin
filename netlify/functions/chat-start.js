@@ -41,7 +41,7 @@ exports.handler = async (event) => {
 
   if (!SB_URL || !SB_KEY) return { statusCode: 503, headers: CORS, body: JSON.stringify({ error: 'Service non configuré' }) };
 
-  const { visitorId, name, sessionType, sessionLabel, durationSec } = body;
+  const { visitorId, name, sessionType, sessionLabel, durationSec, paymentId } = body;
   if (!visitorId || !name)
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Données manquantes' }) };
 
@@ -53,7 +53,8 @@ exports.handler = async (event) => {
       pre_name: name,
       session_type: sessionType || 'paid',
       session_label: sessionLabel || '',
-      duration_sec: parseInt(durationSec) || 1800
+      duration_sec: parseInt(durationSec) || 1800,
+      stripe_payment_id: paymentId || null
     });
     const session = Array.isArray(created) ? created[0] : created;
     if (!session?.id) throw new Error('Création session échouée');

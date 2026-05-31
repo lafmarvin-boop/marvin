@@ -36,7 +36,7 @@ exports.handler = async (event) => {
   if (!sessionId) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'sessionId requis' }) };
 
   try {
-    const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=agent_email,status&limit=1`);
+    const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=agent_email,status,stripe_payment_id,session_type,session_label,pre_name,assigned_at&limit=1`);
     if (!sessions.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Session introuvable' }) };
     if (sessions[0].status === 'closed') return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
 
@@ -55,12 +55,51 @@ exports.handler = async (event) => {
     await sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, updates);
 
     // Libérer l'agent (repasse en ligne, prêt pour la session suivante)
-    const agentMail = sessions[0].agent_email;
+    const chatSession = sessions[0];
+    const agentMail = chatSession.agent_email;
     if (agentMail) {
       await sbPatch(`agent_presence?agent_email=eq.${encodeURIComponent(agentMail)}`, {
         status: 'online',
         current_session_id: null
       });
+
+      // ── Enregistrer la session dans la table sessions (stats agent/admin) ──
+      if (chatSession.session_type !== 'test') {
+        const profiles = await sbGet(`agent_profiles?email=eq.${encodeURIComponent(agentMail)}&select=prenom,nom&limit=1`);
+        const profile = profiles[0];
+        const agentName = profile && profile.prenom ? `${profile.prenom} ${profile.nom || ''}`.trim() : agentMail.split('@')[0];
+
+        const sessionUpdate = {
+          agent_email: agentMail,
+          agent_name: agentName,
+          resolved_at: now,
+          ...(rating ? { rating: parseInt(rating), rating_comment: ratingComment || null } : {})
+        };
+
+        const stripeId = chatSession.stripe_payment_id;
+        if (stripeId && stripeId.startsWith('pi_')) {
+          // Session à la carte : mettre à jour la ligne existante créée par Stripe
+          await fetch(`${SB_URL}/rest/v1/sessions?stripe_payment_id=eq.${encodeURIComponent(stripeId)}`, {
+            method: 'PATCH',
+            headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify(sessionUpdate)
+          });
+        } else {
+          // Abonnement / groupe : insérer une nouvelle ligne (pas de paiement Stripe individuel)
+          await fetch(`${SB_URL}/rest/v1/sessions`, {
+            method: 'POST',
+            headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify({
+              statut: 'paid',
+              formule: chatSession.session_label || chatSession.session_type || 'Session',
+              montant: 0,
+              client_pseudo: chatSession.pre_name || 'Visiteur',
+              started_at: chatSession.assigned_at || now,
+              ...sessionUpdate
+            })
+          });
+        }
+      }
     }
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };

@@ -2036,7 +2036,7 @@ async function handlePayment(){
     label.style.display='inline';spinner.style.display='none';btn.disabled=false;
     document.getElementById('payment-form').style.display='none';
     document.getElementById('payment-success').style.display='block';
-    startChatSession(document.getElementById('user-name').value.trim()||'Client','paid',selectedLabel,sessionDurationSec);
+    startChatSession(document.getElementById('user-name').value.trim()||'Client','paid',selectedLabel,sessionDurationSec,paymentIntent.id);
     startWaitTimer();
 
   } catch(err){
@@ -2397,7 +2397,7 @@ function startFreeGroupTimer(theme,name){
   const pf=document.getElementById('payment-form'),ps=document.getElementById('payment-success');
   if(pf) pf.style.display='none';
   if(ps) ps.style.display='block';
-  startChatSession(subName,'sub','Pass mensuel',1800);
+  startChatSession(subName,'sub','Pass mensuel',1800,sessionStorage.getItem('parlons_payment_id'));
   startWaitTimer();
 })();
 </script>
@@ -2863,11 +2863,11 @@ function appendChatMsg(msg){
   if(!chatPanelOpen&&msg.sender_type==='agent'){chatUnreadCount++;updateChatBadge();}
   if(msg.sender_type==='agent'&&sessionTimer===null&&chatState==='active')startSessionCountdown();
 }
-async function startChatSession(name,sessionType,sessionLabel,durationSec){
+async function startChatSession(name,sessionType,sessionLabel,durationSec,paymentId){
   chatRenderedIds=new Set();chatLastMsgTime=null;
   const visitorId=localStorage.getItem('parlons_visitor_id')||'';
   try{
-    const r=await fetch('/.netlify/functions/chat-start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId,name,sessionType,sessionLabel,durationSec})});
+    const r=await fetch('/.netlify/functions/chat-start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId,name,sessionType,sessionLabel,durationSec,paymentId:paymentId||null})});
     const d=await r.json();
     if(!d.sessionId)return;
     chatSessionId=d.sessionId;
