@@ -1920,8 +1920,8 @@ function resumeSession(){
     }
   },1000);
   // Rouvrir le widget chat si session en cours
-  const sid2=sessionStorage.getItem('parlons_chat_session_id');
-  if(sid2){chatSessionId=sid2;document.getElementById('parlons-chat-btn').style.display='flex';showChatPanel(true);setChatState('active');startChatPolling();}
+  const sid2=chatSessionId||sessionStorage.getItem('parlons_chat_session_id')||localStorage.getItem('parlons_chat_session_id');
+  if(sid2){chatSessionId=sid2;sessionStorage.setItem('parlons_chat_session_id',sid2);document.getElementById('parlons-chat-btn').style.display='flex';showChatPanel(true);setChatState('active');startChatPolling();}
 }
 
 // ── SIGNALEMENT ──
