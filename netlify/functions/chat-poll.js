@@ -42,11 +42,18 @@ exports.handler = async (event) => {
       if (!sessions.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Session introuvable' }) };
       const s = sessions[0];
 
+      let agentPseudo = null;
+      if (s.agent_email) {
+        const profiles = await sbGet(`agent_profiles?email=eq.${encodeURIComponent(s.agent_email)}&select=pseudo,prenom&limit=1`);
+        agentPseudo = profiles[0]?.pseudo || profiles[0]?.prenom || null;
+      }
+
       return {
         statusCode: 200, headers: CORS,
         body: JSON.stringify({
           status: s.status,
           agentConnected: s.status === 'active' && !!s.agent_email,
+          agentPseudo,
           messages
         })
       };

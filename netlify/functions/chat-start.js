@@ -66,10 +66,12 @@ exports.handler = async (event) => {
     );
 
     let assignedAgent = null;
+    let agentPseudo = null;
     if (agents.length) {
       assignedAgent = agents[0].agent_email;
       const now = new Date().toISOString();
-      await Promise.all([
+      const [profiles] = await Promise.all([
+        sbGet(`agent_profiles?email=eq.${encodeURIComponent(assignedAgent)}&select=pseudo,prenom&limit=1`),
         sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
           agent_email: assignedAgent,
           status: 'active',
@@ -80,17 +82,19 @@ exports.handler = async (event) => {
           status: 'busy'
         })
       ]);
+      agentPseudo = profiles[0]?.pseudo || profiles[0]?.prenom || null;
     }
 
     // Message système initial
+    const greeting = agentPseudo
+      ? `${agentPseudo} vous a rejoint. La session peut commencer.`
+      : 'Un écoutant vous a rejoint. La session peut commencer.';
     await fetch(`${SB_URL}/rest/v1/chat_messages`, {
       method: 'POST',
       headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({
         session_id: sessionId,
-        content: assignedAgent
-          ? 'Un écoutant vous a rejoint. La session peut commencer.'
-          : 'Demande enregistrée. Un écoutant vous rejoindra dès que possible.',
+        content: assignedAgent ? greeting : 'Demande enregistrée. Un écoutant vous rejoindra dès que possible.',
         sender_type: 'system'
       })
     });

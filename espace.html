@@ -516,6 +516,8 @@
         <span id="agent-profile-chevron" style="color:var(--light);font-size:.85rem;">▼</span>
       </div>
       <div id="agent-profile-form" style="display:none;background:white;border:1px solid var(--sand);border-top:none;border-radius:0 0 14px 14px;padding:1.4rem;">
+        <label class="flabel">Pseudo d'écoute <span style="color:var(--tc);font-weight:600;">(visible par le visiteur)</span></label>
+        <input type="text" id="ap-pseudo" class="finput" placeholder="Ex : Sophie" style="margin-bottom:.9rem;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;">
           <div><label class="flabel">Prénom</label><input type="text" id="ap-prenom" class="finput" placeholder="Prénom"></div>
           <div><label class="flabel">Nom</label><input type="text" id="ap-nom" class="finput" placeholder="Nom"></div>
@@ -1149,7 +1151,7 @@ function renderAgentDash(email, d) {
   document.getElementById('agent-profile-alert').style.display = profileComplete ? 'none' : 'block';
 
   // Remplir le formulaire profil
-  ['prenom','nom','adresse','ville','siret','iban'].forEach(f => {
+  ['pseudo','prenom','nom','adresse','ville','siret','iban'].forEach(f => {
     const el = document.getElementById('ap-' + f);
     if (el && profile[f]) el.value = profile[f];
   });
@@ -1255,6 +1257,7 @@ async function saveAgentProfile() {
   err.textContent = ''; ok.style.display = 'none';
 
   const profile = {
+    pseudo:      document.getElementById('ap-pseudo').value.trim(),
     nom:         document.getElementById('ap-nom').value.trim(),
     prenom:      document.getElementById('ap-prenom').value.trim(),
     adresse:     document.getElementById('ap-adresse').value.trim(),
@@ -1774,7 +1777,8 @@ async function pollAgentChat() {
         agentSessions.set(s.id, {
           id: s.id, name: s.pre_name || 'Anonyme', topic: s.pre_topic || null,
           label: s.session_label || '', durationSec: s.duration_sec || 1800,
-          assignedAt: s.assigned_at, messages: [], renderedIds: new Set(), unread: 0
+          assignedAt: s.assigned_at, timerStartedAt: null,
+          messages: [], renderedIds: new Set(), unread: 0
         });
       }
       // Append new messages
@@ -1933,8 +1937,8 @@ function updateAgentFloatTimer() {
   const timerEl = document.getElementById('afloat-timer');
   if (!timerEl) return;
   const sess = agentSessions.get(agentActiveTabId);
-  if (!sess || !sess.assignedAt) { timerEl.style.display = 'none'; return; }
-  const elapsed = (Date.now() - new Date(sess.assignedAt).getTime()) / 1000;
+  if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; return; }
+  const elapsed = (Date.now() - sess.timerStartedAt) / 1000;
   const remaining = Math.max(0, sess.durationSec - elapsed);
   const m = Math.floor(remaining / 60), s = Math.floor(remaining % 60);
   timerEl.style.display = 'inline';
@@ -1948,13 +1952,10 @@ async function sendAgentFloatMsg() {
   const content = (ta && ta.value.trim()) || '';
   if (!content || !agentActiveTabId || !agentChatToken) return;
   ta.value = ''; ta.style.height = 'auto';
-  // Optimistic render
   const sess = agentSessions.get(agentActiveTabId);
-  if (sess) {
-    const tempId = 'tmp_' + Date.now();
-    sess.messages.push({ id: tempId, content, sender_type: 'agent', created_at: new Date().toISOString() });
-    sess.renderedIds.add(tempId);
-    renderAgentFloatMessages();
+  if (sess && !sess.timerStartedAt) {
+    sess.timerStartedAt = Date.now();
+    startAgentFloatTimer();
   }
   try {
     await fetch(`${API}/chat-send`, {

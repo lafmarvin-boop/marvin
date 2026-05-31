@@ -56,15 +56,23 @@ exports.handler = async (event) => {
     const patchRows = await patchRes.json();
     const updatedSession = (Array.isArray(patchRows) && patchRows[0]) || session;
 
-    // 4. Insérer le message système
+    // 4. Chercher le pseudo de l'agent
+    const profRes = await fetch(
+      `${SB_URL}/rest/v1/agent_profiles?email=eq.${encodeURIComponent(agentEmail)}&select=pseudo,prenom&limit=1`,
+      { headers: H() }
+    );
+    const profRows = await profRes.json();
+    const agentPseudo = (Array.isArray(profRows) && profRows[0])
+      ? (profRows[0].pseudo || profRows[0].prenom || null)
+      : null;
+    const greeting = agentPseudo
+      ? `${agentPseudo} vous a rejoint. La session peut commencer.`
+      : 'Un écoutant vous a rejoint. La session peut commencer.';
+
     await fetch(`${SB_URL}/rest/v1/chat_messages`, {
       method: 'POST',
       headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        session_id: sessionId,
-        content: 'Un écoutant vous a rejoint. La session peut commencer.',
-        sender_type: 'system'
-      })
+      body: JSON.stringify({ session_id: sessionId, content: greeting, sender_type: 'system' })
     });
 
     // 5. Mettre à jour current_session_id dans agent_presence

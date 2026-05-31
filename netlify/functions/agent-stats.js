@@ -112,11 +112,11 @@ exports.handler = async (event) => {
       if (hash !== pwdRows[0].password_hash) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
     }
 
-    const { nom, prenom, adresse, code_postal, ville, siret, iban } = body.profile || {};
+    const { pseudo, nom, prenom, adresse, code_postal, ville, siret, iban } = body.profile || {};
     await fetch(`${SB_URL}/rest/v1/agent_profiles`, {
       method: 'POST',
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify({ email, nom, prenom, adresse, code_postal, ville, siret, iban, updated_at: new Date().toISOString() })
+      body: JSON.stringify({ email, pseudo, nom, prenom, adresse, code_postal, ville, siret, iban, updated_at: new Date().toISOString() })
     });
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
   }
