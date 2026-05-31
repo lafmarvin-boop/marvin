@@ -290,6 +290,35 @@
       </div>
     </div>
 
+    <!-- Chat en direct (admin) -->
+    <div class="agent-chat-card" id="admin-live-chat" style="margin-bottom:1.8rem;">
+      <div class="agent-chat-title">💬 Permanence chat <span id="agent-status-badge" style="font-size:.72rem;padding:.15rem .7rem;border-radius:50px;background:#f3f4f6;color:#6b7280;font-family:'DM Sans',sans-serif;font-weight:500;">Hors ligne</span></div>
+      <div class="agent-presence-row">
+        <button id="btn-go-online" class="agent-presence-btn btn-go-online" onclick="agentGoOnline()">Se mettre en ligne</button>
+        <button id="btn-go-offline" class="agent-presence-btn btn-go-offline" style="display:none" onclick="agentGoOffline()">Se mettre hors ligne</button>
+        <span id="agent-pres-status" class="agent-presence-status"><span class="status-dot" style="background:#9ca3af"></span><span style="color:var(--light)">Hors ligne</span></span>
+      </div>
+      <div id="agent-chat-err" style="color:#ef4444;font-size:.78rem;min-height:1rem;margin-bottom:.3rem;"></div>
+      <div id="agent-waiting-queue" style="display:none;margin-bottom:.7rem;">
+        <div style="font-size:.72rem;font-weight:600;color:var(--mid);margin-bottom:.35rem;">File d'attente</div>
+        <div id="agent-waiting-list" style="display:flex;flex-direction:column;gap:.3rem;"></div>
+      </div>
+      <div id="agent-chat-idle" style="display:none;text-align:center;padding:1.2rem .5rem;color:var(--mid);font-size:.82rem;">⏳ En attente d'un visiteur…</div>
+      <div id="agent-active-chat" style="display:none;">
+        <div class="agent-visitor-info" id="agent-visitor-info"></div>
+        <div class="agent-chat-msgs" id="agent-chat-msgs"></div>
+        <div class="agent-chat-input-row">
+          <textarea class="agent-chat-ta" id="agent-chat-ta" placeholder="Votre message…"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentMessage();}"
+            oninput="this.style.height='42px';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+          <button class="agent-chat-send-btn" onclick="sendAgentMessage()">➤</button>
+        </div>
+        <div style="margin-top:.55rem;text-align:right;">
+          <button class="agent-chat-end-btn" onclick="endAgentSession()">Terminer la session</button>
+        </div>
+      </div>
+    </div>
+
     <div class="section-title">Trafic du site</div>
     <div class="card" style="padding:0;overflow:hidden">
       <table id="traffic-table">
@@ -524,6 +553,11 @@ let subEmailStored = '';
 let agentData = {};
 let agentEmailStored = '';
 let agentChatToken = null;
+// Cherche l'élément dans l'écran actif (admin-dash ou agent-dash partagent les mêmes IDs de chat)
+function chatEl(id) {
+  const active = document.querySelector('[data-screen].active');
+  return (active && active.querySelector('#' + id)) || document.getElementById(id);
+}
 let agentChatSessionId = null;
 let agentPollingInterval = null;
 let agentLastMsgTime = null;
@@ -625,6 +659,8 @@ async function login() {
 
     if (data.role === 'admin') {
       localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
+      agentEmailStored = email;
+      agentPasswordCache = password;
       renderDashboard(data);
       showScreen('admin-dash');
     } else if (data.role === 'subscriber') {
@@ -1566,26 +1602,26 @@ function generateGlobalPDF() {
 
 // ── AGENT CHAT EN DIRECT ──
 function updateAgentPresenceUI(online) {
-  document.getElementById('btn-go-online').style.display = online ? 'none' : 'inline-block';
-  document.getElementById('btn-go-offline').style.display = online ? 'inline-block' : 'none';
-  const badge = document.getElementById('agent-status-badge');
-  const pres  = document.getElementById('agent-pres-status');
+  chatEl('btn-go-online').style.display = online ? 'none' : 'inline-block';
+  chatEl('btn-go-offline').style.display = online ? 'inline-block' : 'none';
+  const badge = chatEl('agent-status-badge');
+  const pres  = chatEl('agent-pres-status');
   if (online) {
     badge.textContent = 'En ligne'; badge.style.background = '#dcfce7'; badge.style.color = '#16a34a';
     pres.innerHTML = '<span class="status-dot" style="background:#22c55e"></span><span style="color:#16a34a;font-weight:600">En ligne</span>';
-    document.getElementById('agent-chat-idle').style.display = 'block';
+    chatEl('agent-chat-idle').style.display = 'block';
   } else {
     badge.textContent = 'Hors ligne'; badge.style.background = '#f3f4f6'; badge.style.color = '#6b7280';
     pres.innerHTML = '<span class="status-dot" style="background:#9ca3af"></span><span style="color:var(--light)">Hors ligne</span>';
-    document.getElementById('agent-chat-idle').style.display = 'none';
-    document.getElementById('agent-active-chat').style.display = 'none';
-    document.getElementById('agent-waiting-queue').style.display = 'none';
+    chatEl('agent-chat-idle').style.display = 'none';
+    chatEl('agent-active-chat').style.display = 'none';
+    chatEl('agent-waiting-queue').style.display = 'none';
   }
 }
 
 async function agentGoOnline() {
-  const btn = document.getElementById('btn-go-online');
-  const err = document.getElementById('agent-chat-err');
+  const btn = chatEl('btn-go-online');
+  const err = chatEl('agent-chat-err');
   err.textContent = '';
   btn.disabled = true; btn.textContent = 'Connexion…';
   try {
@@ -1605,7 +1641,7 @@ async function agentGoOnline() {
 }
 
 async function agentGoOffline() {
-  const btn = document.getElementById('btn-go-offline');
+  const btn = chatEl('btn-go-offline');
   btn.disabled = true; btn.textContent = 'Déconnexion…';
   try {
     await fetch(`${API}/chat-presence`, {
@@ -1642,8 +1678,8 @@ async function pollAgentChat() {
     agentChatSessionId = data.currentSessionId || null;
 
     // File d'attente
-    const queueEl = document.getElementById('agent-waiting-queue');
-    const listEl  = document.getElementById('agent-waiting-list');
+    const queueEl = chatEl('agent-waiting-queue');
+    const listEl  = chatEl('agent-waiting-list');
     const waiting = data.waitingSessions || [];
     if (waiting.length) {
       queueEl.style.display = 'block';
@@ -1659,8 +1695,8 @@ async function pollAgentChat() {
       queueEl.style.display = 'none';
     }
 
-    const idleEl   = document.getElementById('agent-chat-idle');
-    const activeEl = document.getElementById('agent-active-chat');
+    const idleEl   = chatEl('agent-chat-idle');
+    const activeEl = chatEl('agent-active-chat');
 
     if (agentChatSessionId && data.currentSession) {
       // Nouvelle session assignée — réinitialiser l'affichage
@@ -1668,9 +1704,9 @@ async function pollAgentChat() {
         agentPrevSessionId = agentChatSessionId;
         agentLastMsgTime   = null;
         agentRenderedIds   = new Set();
-        document.getElementById('agent-chat-msgs').innerHTML = '';
+        chatEl('agent-chat-msgs').innerHTML = '';
         const s = data.currentSession;
-        document.getElementById('agent-visitor-info').innerHTML =
+        chatEl('agent-visitor-info').innerHTML =
           `<strong>${escHtml(s.pre_name || 'Anonyme')}</strong> · ${escHtml(s.session_label || '')}` +
           (s.pre_topic ? `<br><em style="color:var(--mid)">"${escHtml(s.pre_topic)}"</em>` : '');
       }
@@ -1678,7 +1714,7 @@ async function pollAgentChat() {
       activeEl.style.display = 'block';
 
       if (data.messages && data.messages.length) {
-        const msgsEl = document.getElementById('agent-chat-msgs');
+        const msgsEl = chatEl('agent-chat-msgs');
         data.messages.forEach(m => {
           if (m.id && agentRenderedIds.has(m.id)) return;
           if (m.id) agentRenderedIds.add(m.id);
@@ -1688,22 +1724,21 @@ async function pollAgentChat() {
           msgsEl.appendChild(div);
         });
         agentLastMsgTime = data.messages[data.messages.length - 1].created_at;
-        const msgsEl2 = document.getElementById('agent-chat-msgs');
-        msgsEl2.scrollTop = msgsEl2.scrollHeight;
+        msgsEl.scrollTop = msgsEl.scrollHeight;
       }
     } else {
       idleEl.style.display = 'block';
       activeEl.style.display = 'none';
       if (agentPrevSessionId && !agentChatSessionId) {
         agentPrevSessionId = null; agentLastMsgTime = null; agentRenderedIds = new Set();
-        document.getElementById('agent-chat-msgs').innerHTML = '';
+        chatEl('agent-chat-msgs').innerHTML = '';
       }
     }
   } catch {}
 }
 
 async function sendAgentMessage() {
-  const ta = document.getElementById('agent-chat-ta');
+  const ta = chatEl('agent-chat-ta');
   const content = (ta.value || '').trim();
   if (!content || !agentChatSessionId || !agentChatToken) return;
   ta.value = ''; ta.style.height = '42px';
@@ -1725,9 +1760,9 @@ async function endAgentSession() {
   } catch {}
   agentChatSessionId = null; agentPrevSessionId = null; agentLastMsgTime = null;
   agentRenderedIds = new Set();
-  document.getElementById('agent-chat-msgs').innerHTML = '';
-  document.getElementById('agent-active-chat').style.display = 'none';
-  const idleEl = document.getElementById('agent-chat-idle');
+  chatEl('agent-chat-msgs').innerHTML = '';
+  chatEl('agent-active-chat').style.display = 'none';
+  const idleEl = chatEl('agent-chat-idle');
   idleEl.style.display = 'block';
   idleEl.textContent = '✓ Session terminée — en attente d\'un nouveau visiteur…';
 }

@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
+const ADMIN_PWD   = process.env.ADMIN_PASSWORD;
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -46,12 +48,17 @@ exports.handler = async (event) => {
     if (status === 'online') {
       if (!password) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
 
-      const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(agentEmail)}&select=password_hash,password_salt&limit=1`);
-      if (!pwdRows.length) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Agent non autorisé' }) };
+      // Bypass admin : accepte les identifiants admin directement
+      const isAdmin = ADMIN_EMAIL && agentEmail.toLowerCase() === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD;
 
-      const hash = hashPassword(password, pwdRows[0].password_salt);
-      if (hash !== pwdRows[0].password_hash)
-        return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe incorrect' }) };
+      if (!isAdmin) {
+        const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(agentEmail)}&select=password_hash,password_salt&limit=1`);
+        if (!pwdRows.length) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Agent non autorisé' }) };
+
+        const hash = hashPassword(password, pwdRows[0].password_salt);
+        if (hash !== pwdRows[0].password_hash)
+          return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe incorrect' }) };
+      }
 
       const token = crypto.randomBytes(32).toString('hex');
       const now = new Date().toISOString();
