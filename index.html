@@ -1310,6 +1310,7 @@
           <option value="900" data-label="1 heure" data-sec="3600">💬 Session individuelle · 1 heure — 9,00 €</option>
           <option value="sub" data-label="Pass mensuel" data-sec="1800">♾️ Pass mensuel illimité — 15,00 €/mois</option>
           <option value="group" data-label="Chat de groupe" data-sec="1800">👥 Chat de groupe · 5 min gratuites puis 1,50 €</option>
+          <option value="test" data-label="Test 1 min" data-sec="60">🧪 [TEST] Session 1 min — Gratuit</option>
         </select>
       </div>
 
@@ -1643,6 +1644,7 @@ function updatePrice(){
   sessionDurationSec=parseInt(o.dataset.sec)||1800;
 
   const isGroup=(selectedAmount==='group');
+  const isTest=(selectedAmount==='test');
   const groupInfo=document.getElementById('group-info-box');
   const groupTheme=document.getElementById('group-theme-field');
   const groupCustom=document.getElementById('group-custom-theme');
@@ -1655,7 +1657,7 @@ function updatePrice(){
   if(groupInfo) groupInfo.style.display=isGroup?'block':'none';
   if(groupTheme) groupTheme.style.display=isGroup?'block':'none';
   if(subjectField) subjectField.style.display=(isGroup||isSub)?'none':'block';
-  if(btn) btn.textContent=isGroup?'Entrer gratuitement · 5 min offertes →':'Continuer →';
+  if(btn) btn.textContent=isGroup?'Entrer gratuitement · 5 min offertes →':isTest?'🧪 Lancer le test →':'Continuer →';
 
   // Afficher le champ thème libre si "Autre" sélectionné
   const themeSelect=document.getElementById('group-theme-select');
@@ -1686,6 +1688,19 @@ function goToPayment(){
   const name=document.getElementById('user-name').value.trim();
   if(!name){document.getElementById('user-name').focus();return;}
 
+  updatePrice();
+
+  // ── CAS TEST : 1 min gratuite, bypass total ──
+  if(selectedAmount==='test'){
+    closeModal();
+    openCrisp();
+    setTimeout(()=>{
+      try{$crisp.push(["do","message:send",["text","🧪 Session TEST 1 min — la session démarrera dès qu'un écoutant vous répond."]]);}catch(e){}
+    },800);
+    startWaitTimer();
+    return;
+  }
+
   // Vérification cases obligatoires
   const checkAge=document.getElementById('check-age');
   const checkCrisis=document.getElementById('check-notcrisis');
@@ -1695,8 +1710,6 @@ function goToPayment(){
   if(!checkCgv||!checkCgv.checked){alert('⚠️ Veuillez accepter les CGV et la politique de confidentialité pour continuer.');return;}
   const checkRetractation=document.getElementById('check-retractation');
   if(!checkRetractation||!checkRetractation.checked){alert('⚠️ Vous devez renoncer expressément à votre droit de rétractation pour continuer (service démarrant immédiatement).');return;}
-
-  updatePrice();
 
   // ── CAS GROUPE : 5 min gratuites, pas de paiement immédiat ──
   if(selectedAmount==='group'){
