@@ -1,5 +1,7 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
+const ADMIN_PWD   = process.env.ADMIN_PASSWORD;
 const crypto = require('crypto');
 
 const CORS = {
@@ -132,17 +134,22 @@ exports.handler = async (event) => {
   }
 
   // ── Connexion ──
-  const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
+  // Bypass admin : accepte directement les identifiants admin
+  const isAdmin = ADMIN_EMAIL && email === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD;
 
-  if (!pwdRows.length)
-    return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Compte non trouvé. Contactez l\'administrateur.' }) };
+  if (!isAdmin) {
+    const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
 
-  if (!password)
-    return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
+    if (!pwdRows.length)
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Compte non trouvé. Contactez l\'administrateur.' }) };
 
-  const hash = hashPassword(password, pwdRows[0].password_salt);
-  if (hash !== pwdRows[0].password_hash)
-    return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe incorrect' }) };
+    if (!password)
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
+
+    const hash = hashPassword(password, pwdRows[0].password_salt);
+    if (hash !== pwdRows[0].password_hash)
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe incorrect' }) };
+  }
 
   const stats = await buildAgentStats(email);
   return { statusCode: 200, headers: CORS, body: JSON.stringify(stats) };
