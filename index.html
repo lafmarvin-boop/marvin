@@ -1574,7 +1574,7 @@
   });
   document.addEventListener('visibilitychange',function(){
     if(document.visibilityState!=='visible')return;
-    if(sessionTimer!==null&&sessionEndAt>0&&Date.now()>=sessionEndAt)endSession();
+    if(sessionTimer!==null&&sessionEndAt>0&&Date.now()>=sessionEndAt&&!chatExtensionPending)endSession();
   });
 </script>
 
@@ -1818,6 +1818,7 @@ function agentConnected(pseudo, assignedAt){
   document.getElementById('waiting-zone').style.display='none';
   if(sz)sz.style.display='block';
   sessionSeconds=sessionDurationSec; updateSessionUI();
+  startSessionCountdown(assignedAt);
   const mbar=document.getElementById('mobile-session-bar');
   if(mbar){mbar.style.display='flex';}
   const sub=document.getElementById('pcp-subtitle');
@@ -2963,8 +2964,10 @@ async function pollChat(){
         localStorage.setItem('parlons_chat_session_id',d.transferSessionId);
         chatRenderedIds=new Set();chatLastMsgTime=null;
         if(sub)sub.textContent='Transfert en cours…';
-        // Ne pas déclencher endSession — la session continue avec un autre agent
         return;
+      } else if(d.status==='closed'){
+        // Session fermée sans transfert (fermeture externe) : sortir du mode extension
+        chatExtensionPending=false;chatExtensionNewDuration=0;
       }
     }
     if(d.status==='closed'&&chatState!=='ended'&&!chatExtensionPending){

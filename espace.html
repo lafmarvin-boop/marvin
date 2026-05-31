@@ -1923,6 +1923,7 @@ async function pollAgentChat() {
     // Render
     renderAgentFloatTabs();
     if (agentFloatOpen) renderAgentFloatMessages();
+    else updateAgentExtBar();
     updateAgentFloatBubble();
     updateAgentFloatTimer();
 
@@ -2015,22 +2016,11 @@ function renderAgentFloatMessages() {
     div.textContent = m.content;
     msgsEl.appendChild(div);
   });
-  if (sess.extensionPending) {
-    const mins = Math.floor((sess.extensionPending.newDurationSec || 0) / 60);
-    const sid = escHtml(sess.id);
-    const card = document.createElement('div');
-    card.className = 'afloat-ext-card';
-    card.innerHTML = `<div>⏳ Prolongation demandée : +${mins} min</div>
-      <div style="display:flex;gap:.5rem;margin-top:.5rem;">
-        <button onclick="respondExtension('${sid}',true)" style="flex:1;background:#22c55e;color:white;border:none;border-radius:50px;padding:.3rem .7rem;font-size:.78rem;font-weight:700;cursor:pointer;">✓ Accepter</button>
-        <button onclick="respondExtension('${sid}',false)" style="flex:1;background:#ef4444;color:white;border:none;border-radius:50px;padding:.3rem .7rem;font-size:.78rem;font-weight:700;cursor:pointer;">✗ Refuser</button>
-      </div>`;
-    msgsEl.appendChild(card);
-  }
   msgsEl.scrollTop = msgsEl.scrollHeight;
   if (infoEl) {
     infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong> · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
   }
+  updateAgentExtBar();
   if (titleEl) titleEl.textContent = `💬 ${sess.name}`;
 }
 
@@ -2054,12 +2044,31 @@ function startAgentFloatTimer() {
   agentFloatTimerInterval = setInterval(updateAgentFloatTimer, 1000);
 }
 
+function updateAgentExtBar() {
+  const bar = document.getElementById('afloat-ext-bar');
+  if (!bar) return;
+  const sess = agentSessions.get(agentActiveTabId);
+  if (sess && sess.extensionPending) {
+    const mins = Math.floor((sess.extensionPending.newDurationSec || 0) / 60);
+    const textEl = document.getElementById('afloat-ext-text');
+    if (textEl) textEl.textContent = `⏳ Prolongation demandée : +${mins} min`;
+    bar.style.display = 'block';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function respondExtensionBar(accept) {
+  if (!agentActiveTabId) return;
+  respondExtension(agentActiveTabId, accept);
+}
+
 function updateAgentFloatTimer() {
   const timerEl = document.getElementById('afloat-timer');
   if (!timerEl) return;
   const sess = agentSessions.get(agentActiveTabId);
-  if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; return; }
-  const elapsed = (Date.now() - sess.timerStartedAt) / 1000;
+  if (!sess || !sess.assignedAt) { timerEl.style.display = 'none'; return; }
+  const elapsed = (Date.now() - new Date(sess.assignedAt).getTime()) / 1000;
   const remaining = Math.max(0, sess.durationSec - elapsed);
   const m = Math.floor(remaining / 60), s = Math.floor(remaining % 60);
   timerEl.style.display = 'inline';
@@ -2073,11 +2082,6 @@ async function sendAgentFloatMsg() {
   const content = (ta && ta.value.trim()) || '';
   if (!content || !agentActiveTabId || !agentChatToken) return;
   ta.value = ''; ta.style.height = 'auto';
-  const sess = agentSessions.get(agentActiveTabId);
-  if (sess && !sess.timerStartedAt) {
-    sess.timerStartedAt = Date.now();
-    startAgentFloatTimer();
-  }
   try {
     await fetch(`${API}/chat-send`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2279,6 +2283,13 @@ async function submitAddAgent() {
   <div class="afloat-tabs" id="afloat-tabs"></div>
   <div class="afloat-info" id="afloat-info"></div>
   <div class="afloat-msgs" id="afloat-msgs"></div>
+  <div id="afloat-ext-bar" style="display:none;padding:.6rem .85rem;background:#fff7ed;border-top:1.5px solid #fbbf24;flex-shrink:0;">
+    <div id="afloat-ext-text" style="font-size:.78rem;color:#92400e;font-weight:600;margin-bottom:.4rem;">⏳ Prolongation demandée</div>
+    <div style="display:flex;gap:.5rem;">
+      <button onclick="respondExtensionBar(true)" style="flex:1;background:#22c55e;color:white;border:none;border-radius:50px;padding:.35rem .7rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">✓ Accepter</button>
+      <button onclick="respondExtensionBar(false)" style="flex:1;background:#ef4444;color:white;border:none;border-radius:50px;padding:.35rem .7rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">✗ Refuser</button>
+    </div>
+  </div>
   <div class="afloat-input-row" id="afloat-input">
     <textarea class="afloat-ta" id="afloat-ta" placeholder="Votre message…" rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentFloatMsg();}"
