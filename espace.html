@@ -1528,20 +1528,33 @@ async function agentSetPassword() {
 }
 
 // ── RETIRER UN AGENT ──
-async function removeAgent(agentEmail, agentName) {
-  if (!confirm(`Retirer l'agent ${agentName} (${agentEmail}) ?\n\nSon accès à l'espace agent sera supprimé. Ses sessions passées restent dans l'historique.`)) return;
+let _removeAgentEmail = '', _removeAgentName = '';
+function removeAgent(agentEmail, agentName) {
+  _removeAgentEmail = agentEmail;
+  _removeAgentName = agentName;
+  document.getElementById('remove-agent-label').textContent = agentName + (agentEmail !== agentName ? ' (' + agentEmail + ')' : '');
+  document.getElementById('remove-agent-err').textContent = '';
+  document.getElementById('remove-agent-modal').style.display = 'flex';
+}
+function closeRemoveAgentModal() {
+  document.getElementById('remove-agent-modal').style.display = 'none';
+}
+async function confirmRemoveAgent() {
+  const btn = document.getElementById('remove-agent-btn');
+  const err = document.getElementById('remove-agent-err');
+  btn.disabled = true; btn.textContent = 'Suppression…';
   try {
     const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
     const res = await fetch(`${API}/admin-stats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'remove_agent', agentEmail })
+      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'remove_agent', agentEmail: _removeAgentEmail })
     });
     const data = await res.json();
-    if (!res.ok) { alert(data.error || 'Erreur serveur.'); return; }
-    alert(`✅ ${agentName} a été retiré.`);
+    if (!res.ok) { err.textContent = data.error || 'Erreur serveur.'; btn.disabled = false; btn.textContent = 'Retirer'; return; }
+    closeRemoveAgentModal();
     location.reload();
-  } catch { alert('Erreur réseau.'); }
+  } catch { err.textContent = 'Erreur réseau.'; btn.disabled = false; btn.textContent = 'Retirer'; }
 }
 
 // ── AJOUTER UN AGENT ──
@@ -1591,6 +1604,19 @@ async function submitAddAgent() {
   btn.disabled = false; btn.textContent = 'Créer l\'agent';
 }
 </script>
+
+<!-- Modal retirer agent -->
+<div id="remove-agent-modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(44,31,20,.55);backdrop-filter:blur(5px);align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:20px;padding:2rem;width:92%;max-width:380px;position:relative;">
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:.6rem;">Retirer cet agent ?</h3>
+    <p style="font-size:.82rem;color:var(--light);margin-bottom:.5rem;">L'accès de <strong id="remove-agent-label"></strong> sera supprimé. Ses sessions passées restent dans l'historique.</p>
+    <div id="remove-agent-err" style="color:#c0392b;font-size:.78rem;min-height:1rem;margin-bottom:.6rem;"></div>
+    <div style="display:flex;gap:.7rem;">
+      <button onclick="closeRemoveAgentModal()" style="flex:1;padding:.75rem;background:none;border:1.5px solid var(--sand);border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.88rem;cursor:pointer;color:var(--mid);">Annuler</button>
+      <button id="remove-agent-btn" onclick="confirmRemoveAgent()" style="flex:1;padding:.75rem;background:#c0392b;color:white;border:none;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;">Retirer</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal ajouter agent -->
 <div id="add-agent-modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(44,31,20,.55);backdrop-filter:blur(5px);align-items:center;justify-content:center;">
