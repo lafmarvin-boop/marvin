@@ -70,6 +70,7 @@ exports.handler = async (event) => {
         const agentName = profile && profile.prenom ? `${profile.prenom} ${profile.nom || ''}`.trim() : agentMail.split('@')[0];
 
         const sessionUpdate = {
+          statut: 'paid',
           agent_email: agentMail,
           agent_name: agentName,
           resolved_at: now,
