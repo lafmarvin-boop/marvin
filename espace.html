@@ -139,12 +139,17 @@
     .agent-chat-card{background:white;border:1px solid var(--sand);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem;}
     .agent-chat-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);margin-bottom:.9rem;display:flex;align-items:center;gap:.6rem;}
     .agent-presence-row{display:flex;align-items:center;gap:.8rem;margin-bottom:.9rem;flex-wrap:wrap;}
-    .agent-presence-btn{padding:.45rem 1.1rem;border:none;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .15s;}
-    .btn-go-online{background:#5CB85C;color:white;}
-    .btn-go-online:hover{background:#4aa04a;}
-    .btn-go-offline{background:#e5e7eb;color:#374151;}
-    .btn-go-offline:hover{background:#d1d5db;}
     .agent-presence-status{font-size:.78rem;font-weight:500;}
+    /* ── Toggle présence ── */
+    .presence-toggle{display:flex;align-items:center;gap:.85rem;cursor:pointer;user-select:none;transition:opacity .15s;}
+    .presence-toggle.loading{opacity:.7;pointer-events:none;}
+    .presence-toggle:hover .presence-track{filter:brightness(1.06);}
+    .presence-track{position:relative;display:inline-flex;width:60px;height:30px;border-radius:50px;background:#e5e7eb;transition:background .35s cubic-bezier(.4,0,.2,1);flex-shrink:0;align-items:center;padding:3px;box-shadow:inset 0 1px 3px rgba(0,0,0,.1);}
+    .presence-thumb{width:24px;height:24px;border-radius:50%;background:white;box-shadow:0 2px 5px rgba(0,0,0,.2);transition:transform .35s cubic-bezier(.4,0,.2,1);}
+    .presence-toggle.online .presence-track{background:#22c55e;}
+    .presence-toggle.online .presence-thumb{transform:translateX(30px);}
+    @keyframes toggle-pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+    .presence-toggle.loading .presence-track{animation:toggle-pulse .65s ease-in-out infinite;}
     .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;}
     .agent-chat-msgs{height:260px;overflow-y:auto;border:1px solid #f0e8e0;border-radius:10px;padding:.65rem;display:flex;flex-direction:column;gap:.4rem;background:#fafaf9;margin-bottom:.7rem;}
     .agent-msg{max-width:82%;padding:.45rem .7rem;border-radius:13px;font-size:.79rem;line-height:1.5;word-break:break-word;}
@@ -423,9 +428,10 @@
     <div class="agent-chat-card" id="agent-live-chat">
       <div class="agent-chat-title">💬 Chat en direct <span id="agent-status-badge" style="font-size:.72rem;padding:.15rem .7rem;border-radius:50px;background:#f3f4f6;color:#6b7280;font-family:'DM Sans',sans-serif;font-weight:500;">Hors ligne</span></div>
       <div class="agent-presence-row">
-        <button id="btn-go-online" class="agent-presence-btn btn-go-online" onclick="agentGoOnline()">Se mettre en ligne</button>
-        <button id="btn-go-offline" class="agent-presence-btn btn-go-offline" style="display:none" onclick="agentGoOffline()">Se mettre hors ligne</button>
-        <span id="agent-pres-status" class="agent-presence-status"><span class="status-dot" style="background:#9ca3af"></span><span style="color:var(--light)">Hors ligne</span></span>
+        <div id="agent-toggle" class="presence-toggle" onclick="agentTogglePresence()" title="Cliquer pour changer de statut">
+          <span class="presence-track"><span class="presence-thumb"></span></span>
+          <span id="agent-pres-status" class="agent-presence-status"><span class="status-dot" style="background:#9ca3af"></span><span style="color:var(--light)">Hors ligne</span></span>
+        </div>
       </div>
       <div id="agent-chat-err" style="color:#ef4444;font-size:.78rem;min-height:1rem;margin-bottom:.3rem;"></div>
       <div id="agent-waiting-queue" style="display:none;margin-bottom:.7rem;">
@@ -1629,14 +1635,10 @@ function generateGlobalPDF() {
 
 // ── AGENT CHAT EN DIRECT ──
 function updateAgentPresenceUI(online) {
-  const btnOn  = chatEl('btn-go-online');
-  const btnOff = chatEl('btn-go-offline');
-  btnOn.style.display  = online ? 'none' : 'inline-block';
-  btnOff.style.display = online ? 'inline-block' : 'none';
-  if (!online) { btnOn.disabled  = false; btnOn.textContent  = 'Se mettre en ligne'; }
-  if (online)  { btnOff.disabled = false; btnOff.textContent = 'Se mettre hors ligne'; }
-  const badge = chatEl('agent-status-badge');
-  const pres  = chatEl('agent-pres-status');
+  const toggle = chatEl('agent-toggle');
+  const badge  = chatEl('agent-status-badge');
+  const pres   = chatEl('agent-pres-status');
+  if (toggle) { toggle.classList.remove('loading'); toggle.classList.toggle('online', online); }
   if (online) {
     badge.textContent = 'En ligne'; badge.style.background = '#dcfce7'; badge.style.color = '#16a34a';
     pres.innerHTML = '<span class="status-dot" style="background:#22c55e"></span><span style="color:#16a34a;font-weight:600">En ligne</span>';
@@ -1650,11 +1652,15 @@ function updateAgentPresenceUI(online) {
   }
 }
 
+function agentTogglePresence() {
+  if (agentChatToken) agentGoOffline(); else agentGoOnline();
+}
+
 async function agentGoOnline() {
-  const btn = chatEl('btn-go-online');
-  const err = chatEl('agent-chat-err');
+  const toggle = chatEl('agent-toggle');
+  const err    = chatEl('agent-chat-err');
   err.textContent = '';
-  btn.disabled = true; btn.textContent = 'Connexion…';
+  if (toggle) toggle.classList.add('loading');
   try {
     const res = await fetch(`${API}/chat-presence`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1667,13 +1673,13 @@ async function agentGoOnline() {
     startAgentPolling();
   } catch(e) {
     err.textContent = e.message;
-    btn.disabled = false; btn.textContent = 'Se mettre en ligne';
+    updateAgentPresenceUI(false);
   }
 }
 
 async function agentGoOffline() {
-  const btn = chatEl('btn-go-offline');
-  btn.disabled = true; btn.textContent = 'Déconnexion…';
+  const toggle = chatEl('agent-toggle');
+  if (toggle) toggle.classList.add('loading');
   try {
     await fetch(`${API}/chat-presence`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1684,7 +1690,6 @@ async function agentGoOffline() {
   agentPollingInterval = null; agentChatToken = null; agentChatSessionId = null;
   agentLastMsgTime = null; agentPrevSessionId = null; agentRenderedIds = new Set();
   updateAgentPresenceUI(false);
-  btn.disabled = false; btn.textContent = 'Se mettre hors ligne';
 }
 
 function startAgentPolling() {
