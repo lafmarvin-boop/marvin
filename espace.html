@@ -1780,6 +1780,8 @@ async function pollAgentChat() {
           assignedAt: s.assigned_at, timerStartedAt: null,
           messages: [], renderedIds: new Set(), unread: 0
         });
+      } else if (s.duration_sec && s.duration_sec > existing.durationSec) {
+        existing.durationSec = s.duration_sec;
       }
       // Append new messages
       const sess = agentSessions.get(s.id);

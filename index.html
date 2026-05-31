@@ -1832,7 +1832,7 @@ function startSessionCountdown(){
     updateSessionUI();
     if(sessionSeconds===120)document.getElementById('end-warning').style.display='block';
     if(sessionSeconds<=120){const ec=document.getElementById('end-countdown');if(ec){const m=Math.floor(sessionSeconds/60),s=sessionSeconds%60;ec.textContent=`${m}:${String(s).padStart(2,'0')}`;ec.style.color=sessionSeconds<=30?'#e74c3c':'inherit';}}
-    if(sessionSeconds===30){const rb=document.getElementById('mobile-renew-btn');if(rb)rb.style.display='inline-block';const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='inline-block';}
+    if(sessionSeconds<=30&&sessionSeconds>0){const rb=document.getElementById('mobile-renew-btn');if(rb&&rb.style.display==='none')rb.style.display='inline-block';const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew&&pcpRenew.style.display==='none')pcpRenew.style.display='inline-block';}
     if(sessionSeconds<=0) endSession();
   },1000);
 }
@@ -1846,7 +1846,7 @@ function updateSessionUI(){
   if(mel){mel.textContent=timeStr;if(red)mel.style.color='#e74c3c';}
   // Timer dans le panel chat
   const pcpTimer=document.getElementById('pcp-timer');
-  if(pcpTimer){pcpTimer.textContent=timeStr;pcpTimer.style.background=red?'rgba(220,40,40,.35)':'rgba(0,0,0,.2)';}
+  if(pcpTimer){pcpTimer.style.display='inline';pcpTimer.textContent=timeStr;pcpTimer.style.background=red?'rgba(220,40,40,.35)':'rgba(0,0,0,.2)';}
 }
 function retrySession(){
   sessionStorage.removeItem('parlons_payment_id');
@@ -2062,8 +2062,13 @@ async function handlePayment(){
     label.style.display='inline';spinner.style.display='none';btn.disabled=false;
     document.getElementById('payment-form').style.display='none';
     document.getElementById('payment-success').style.display='block';
-    startChatSession(document.getElementById('user-name').value.trim()||'Client','paid',selectedLabel,sessionDurationSec,paymentIntent.id);
-    startWaitTimer();
+    // Si une session est déjà active, on prolonge au lieu d'en créer une nouvelle
+    if(chatSessionId&&chatState==='active'&&sessionTimer!==null){
+      extendChatSession(sessionDurationSec,paymentIntent.id,selectedLabel);
+    } else {
+      startChatSession(document.getElementById('user-name').value.trim()||'Client','paid',selectedLabel,sessionDurationSec,paymentIntent.id);
+      startWaitTimer();
+    }
 
   } catch(err){
     document.getElementById('payment-error').textContent=err.message||'Erreur lors du paiement. Réessayez.';
@@ -2907,6 +2912,25 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
     if(d.agentAssigned)agentConnected();
     startChatPolling();
   }catch(e){console.error('startChatSession:',e);}
+}
+async function extendChatSession(newDurationSec,paymentId,label){
+  try{
+    const r=await fetch('/.netlify/functions/chat-extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,newDurationSec,paymentId,label})});
+    const d=await r.json();
+    if(!d.ok)return;
+    // Étendre le timer local
+    sessionEndAt+=newDurationSec*1000;
+    sessionDurationSec+=newDurationSec;
+    updateSessionUI();
+    // Cacher les boutons relancer
+    const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
+    const mobileRenew=document.getElementById('mobile-renew-btn');if(mobileRenew)mobileRenew.style.display='none';
+    // Notification dans le header chat
+    const sub=document.getElementById('pcp-subtitle');
+    if(sub){const m=Math.floor(newDurationSec/60);sub.textContent='+ '+m+' min ajoutées !';setTimeout(()=>{if(sub)sub.textContent='Session en cours';},3000);}
+    // Fermer le modal
+    closeModal();
+  }catch(e){console.error('extendChatSession:',e);}
 }
 function startChatPolling(){
   if(chatPollingInterval)clearInterval(chatPollingInterval);
