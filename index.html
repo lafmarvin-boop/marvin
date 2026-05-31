@@ -1551,6 +1551,11 @@
   $crisp.push(["on", "message:received", function(){
     if(window.parlonsWaiting && typeof agentConnected==='function') agentConnected();
   }]);
+  // Détection réveil téléphone : vérifier immédiatement si la session est terminée
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState!=='visible') return;
+    if(sessionTimer!==null && sessionEndAt>0 && Date.now()>=sessionEndAt) endSession();
+  });
   function openCrisp(){
     try{$crisp.push(["do","chat:show"]);$crisp.push(["do","chat:open"]);}catch(e){console.warn('Crisp:',e);}
   }
@@ -1752,6 +1757,35 @@ function startWaitTimer(){
 }
 
 // ── AGENT CONNECTED ──
+let sessionEndAt = 0; // timestamp absolu de fin de session
+
+function endSession(){
+  if(sessionTimer===null) return;
+  clearInterval(sessionTimer); sessionTimer=null;
+  localStorage.removeItem('parlons_active_session');
+  document.getElementById('session-timer').textContent='0:00';
+  const mbar2=document.getElementById('mobile-session-bar');
+  if(mbar2){mbar2.style.display='none';}
+  const badge=document.getElementById('crisp-launcher-badge');
+  if(badge){badge.style.display='none';}
+  const bar=document.getElementById('crisp-chat-timer-bar');
+  if(bar){bar.style.display='none';}
+  try{
+    $crisp.push(["do","message:send",["text","⏰ Session terminée. Merci pour cet échange !"]]);
+    setTimeout(()=>{$crisp.push(["do","chat:close"]);$crisp.push(["do","chat:hide"]);},1500);
+  }catch(e){}
+  const se=document.getElementById('session-ended');
+  if(se){
+    se.style.display='block';
+    se.innerHTML=`<strong style="color:var(--dark);font-size:.88rem;">⏰ Session de ${selectedLabel} écoulée</strong><br><span style="font-size:.78rem;color:var(--mid);font-weight:300;">Merci pour cet échange.</span>`;
+  }
+  if(selectedAmount==='sub'){
+    showEndOfSubSessionChoice();
+  } else {
+    setTimeout(()=>document.getElementById('rating-zone').style.display='block',1500);
+  }
+}
+
 function agentConnected(){
   if(sessionTimer!==null) return;
   window.parlonsWaiting=false;
@@ -1760,48 +1794,25 @@ function agentConnected(){
   openCrisp();
   document.getElementById('waiting-zone').style.display='none';
   document.getElementById('session-zone').style.display='block';
-  sessionSeconds=sessionDurationSec;updateSessionUI();
+  sessionEndAt=Date.now()+sessionDurationSec*1000;
+  sessionSeconds=sessionDurationSec; updateSessionUI();
   try{localStorage.setItem('parlons_active_session',JSON.stringify({paymentId:sessionStorage.getItem('parlons_payment_id'),startedAt:Date.now(),duration:sessionDurationSec,label:selectedLabel}));}catch(e){}
   const mbar=document.getElementById('mobile-session-bar');
   if(mbar){mbar.style.display='flex';}
   // Message de démarrage dans le chat (visible client + agent)
   try{
-    const endTime=new Date(Date.now()+sessionDurationSec*1000);
-    const endStr=endTime.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const endStr=new Date(sessionEndAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
     $crisp.push(["do","message:send",["text",`⏱ Session ${selectedLabel} démarrée — fin à ${endStr}`]]);
   }catch(e){}
-  // Afficher le badge launcher (le bar s'affiche via chat:opened)
   const badge0=document.getElementById('crisp-launcher-badge');
   if(badge0){badge0.style.display='block';}
+  // Timer basé sur l'horodatage (résiste au verrouillage du téléphone)
   sessionTimer=setInterval(()=>{
-    sessionSeconds--;updateSessionUI();
+    sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
+    updateSessionUI();
     if(sessionSeconds===120)document.getElementById('end-warning').style.display='block';
     if(sessionSeconds<=120){const ec=document.getElementById('end-countdown');if(ec){const m=Math.floor(sessionSeconds/60),s=sessionSeconds%60;ec.textContent=`${m}:${String(s).padStart(2,'0')}`;ec.style.color=sessionSeconds<=30?'#e74c3c':'inherit';}}
-    if(sessionSeconds<=0){
-      clearInterval(sessionTimer);
-      localStorage.removeItem('parlons_active_session');
-      document.getElementById('session-timer').textContent='0:00';
-      const mbar2=document.getElementById('mobile-session-bar');
-      if(mbar2){mbar2.style.display='none';}
-      const badge=document.getElementById('crisp-launcher-badge');
-      if(badge){badge.style.display='none';}
-      const bar=document.getElementById('crisp-chat-timer-bar');
-      if(bar){bar.style.display='none';}
-      try{
-        $crisp.push(["do","message:send",["text","⏰ Session terminée. Merci pour cet échange !"]]);
-        setTimeout(()=>{$crisp.push(["do","chat:close"]);$crisp.push(["do","chat:hide"]);},1500);
-      }catch(e){}
-      const se=document.getElementById('session-ended');
-      if(se){
-        se.style.display='block';
-        se.innerHTML=`<strong style="color:var(--dark);font-size:.88rem;">⏰ Session de ${selectedLabel} écoulée</strong><br><span style="font-size:.78rem;color:var(--mid);font-weight:300;">Merci pour cet échange.</span>`;
-      }
-      if(selectedAmount==='sub'){
-        showEndOfSubSessionChoice();
-      } else {
-        setTimeout(()=>document.getElementById('rating-zone').style.display='block',1500);
-      }
-    }
+    if(sessionSeconds<=0) endSession();
   },1000);
 }
 function updateSessionUI(){
