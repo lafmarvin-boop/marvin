@@ -1424,7 +1424,7 @@
           <div id="wait-counter">0:00</div>
           <p style="font-size:.7rem;color:#B09070;margin-top:.3rem;">temps d'attente</p>
           <div style="margin-top:.9rem;">
-            <button onclick="agentConnected()" style="background:#2d7a2d;color:white;border:none;border-radius:50px;padding:.6rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;width:100%;">✅ Démarrer le chrono manuellement</button>
+            <button onclick="agentConnected();startSessionCountdown()" style="background:#2d7a2d;color:white;border:none;border-radius:50px;padding:.6rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;width:100%;">✅ Démarrer le chrono manuellement</button>
             <p style="font-size:.68rem;color:#B09070;margin-top:.4rem;text-align:center;">Le chrono démarre automatiquement dès que l'écoutant envoie son premier message</p>
           </div>
           <div id="report-zone" style="display:none;margin-top:.9rem;">
@@ -1790,19 +1790,21 @@ function endSession(){
 }
 
 function agentConnected(){
-  if(sessionTimer!==null) return;
+  const sz=document.getElementById('session-zone');
+  if(sz&&sz.style.display==='block')return;
   window.parlonsWaiting=false;
   try{localStorage.removeItem('parlons_waiting');}catch(e){}
   clearInterval(waitTimer); waitTimer=null;
   document.getElementById('waiting-zone').style.display='none';
-  document.getElementById('session-zone').style.display='block';
-  sessionEndAt=Date.now()+sessionDurationSec*1000;
+  if(sz)sz.style.display='block';
   sessionSeconds=sessionDurationSec; updateSessionUI();
-  try{localStorage.setItem('parlons_active_session',JSON.stringify({paymentId:sessionStorage.getItem('parlons_payment_id'),startedAt:Date.now(),duration:sessionDurationSec,label:selectedLabel}));}catch(e){}
   const mbar=document.getElementById('mobile-session-bar');
   if(mbar){mbar.style.display='flex';}
-  // Message de démarrage envoyé par le backend via chat-start
-  // Timer basé sur l'horodatage (résiste au verrouillage du téléphone)
+}
+function startSessionCountdown(){
+  if(sessionTimer!==null)return;
+  sessionEndAt=Date.now()+sessionDurationSec*1000;
+  try{localStorage.setItem('parlons_active_session',JSON.stringify({paymentId:sessionStorage.getItem('parlons_payment_id'),startedAt:Date.now(),duration:sessionDurationSec,label:selectedLabel}));}catch(e){}
   sessionTimer=setInterval(()=>{
     sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
     updateSessionUI();
@@ -2817,7 +2819,7 @@ document.fonts && document.fonts.ready.then(stackBanners);
 
 <script>
 // ── WIDGET CHAT PARLONS ──
-let chatSessionId=null,chatPollingInterval=null,chatLastMsgTime=null;
+let chatSessionId=null,chatPollingInterval=null,chatLastMsgTime=null,chatRenderedIds=new Set();
 let chatPanelOpen=false,chatUnreadCount=0,chatPreTopicSent=false,chatState='idle';
 
 function toggleChatPanel(){
@@ -2851,6 +2853,7 @@ function setChatState(state){
 function appendChatMsg(msg){
   const area=document.getElementById('pcp-msgs');
   if(!area)return;
+  if(msg.id){if(chatRenderedIds.has(msg.id))return;chatRenderedIds.add(msg.id);}
   const div=document.createElement('div');
   div.className='pcp-msg '+msg.sender_type;
   div.textContent=msg.content;
@@ -2858,8 +2861,10 @@ function appendChatMsg(msg){
   area.scrollTop=area.scrollHeight;
   if(msg.created_at)chatLastMsgTime=msg.created_at;
   if(!chatPanelOpen&&msg.sender_type==='agent'){chatUnreadCount++;updateChatBadge();}
+  if(msg.sender_type==='agent'&&sessionTimer===null&&chatState==='active')startSessionCountdown();
 }
 async function startChatSession(name,sessionType,sessionLabel,durationSec){
+  chatRenderedIds=new Set();chatLastMsgTime=null;
   const visitorId=localStorage.getItem('parlons_visitor_id')||'';
   try{
     const r=await fetch('/.netlify/functions/chat-start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId,name,sessionType,sessionLabel,durationSec})});
