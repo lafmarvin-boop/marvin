@@ -508,8 +508,8 @@
     .test-banner span{opacity:.7;color:white;margin-left:.8rem;}
 
     /* ── TAWK TRIGGER ── */
-    .tawk-trigger{position:fixed;bottom:4.5rem;right:1.3rem;z-index:400;background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.7rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.83rem;font-weight:500;cursor:pointer;box-shadow:0 4px 18px rgba(196,113,74,.4);display:flex;align-items:center;gap:.5rem;transition:background .2s,transform .15s;}
-    .tawk-trigger:hover{background:var(--rust);transform:translateY(-2px);}
+    .chat-trigger{position:fixed;bottom:4.5rem;right:1.3rem;z-index:400;background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.7rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.83rem;font-weight:500;cursor:pointer;box-shadow:0 4px 18px rgba(196,113,74,.4);display:flex;align-items:center;gap:.5rem;transition:background .2s,transform .15s;}
+    .chat-trigger:hover{background:var(--rust);transform:translateY(-2px);}
 
     /* ── ARTICLE MODAL ── */
     .article-modal{display:none;position:fixed;inset:0;z-index:600;background:rgba(44,31,20,.65);backdrop-filter:blur(7px);align-items:center;justify-content:center;padding:1.5rem;}
@@ -1481,7 +1481,7 @@
 <div class="test-banner">🧪 MODE TEST STRIPE<span>Aucun vrai paiement effectué</span></div>
 
 <!-- TAWK TRIGGER -->
-<button class="tawk-trigger" onclick="openModal()">💬 Discuter maintenant</button>
+<button class="chat-trigger" onclick="openModal()">💬 Discuter maintenant</button>
 
 <!-- CRISP CHAT -->
 <script>
@@ -2204,17 +2204,17 @@ function renderEcoutants(){
 }
 renderEcoutants();
 
-// ── TRANSFERT DE CONVERSATION (fonctionnalité Tawk.to native) ──
-// En production : utiliser Tawk.to → Paramètres → Transfert de chat
-// L'écoutant peut transférer via le bouton natif Tawk.to dans l'interface agent
+// ── TRANSFERT DE CONVERSATION (géré côté Crisp) ──
+// En production : utiliser Crisp → bouton de transfert dans l'interface agent
+// Le webhook conversation:assigned met à jour l'agent attribué automatiquement
 // Les agents connectés apparaissent dans la liste de transfert avec leur pseudo
 
-// ── FIN DE SESSION PASS MENSUEL : décision de l'AGENT dans Tawk.to ──
+// ── FIN DE SESSION PASS MENSUEL : décision de l'AGENT dans Crisp ──
 // Côté client : message d'attente affiché
-// Côté agent : notification dans Tawk.to avec deux réponses prédéfinies à configurer :
+// Côté agent : message dans Crisp avec deux réponses prédéfinies à configurer :
 //   /continuer  → "Je continue avec vous, c'est parti pour 30 min supplémentaires !"
 //   /fileattente → "Votre session est terminée. Je vous remets en file d'attente, un autre écoutant va vous rejoindre."
-// Ces réponses prédéfinies se configurent dans Tawk.to → Paramètres → Réponses prédéfinies
+// Ces réponses prédéfinies se configurent dans Crisp → Settings → Canned Responses
 
 function showEndOfSubSessionChoice() {
   // Côté client : message d'attente neutre
@@ -2230,9 +2230,9 @@ function showEndOfSubSessionChoice() {
     se.style.display = 'block';
   }
 
-  // Côté agent (simulation démo) : en production, l'agent voit une alerte dans Tawk.to
+  // Côté agent (simulation démo) : en production, l'agent voit une alerte dans Crisp
   // et utilise les réponses prédéfinies /continuer ou /fileattente
-  console.log('[AGENT] Session 30 min écoulée. Utiliser /continuer ou /fileattente dans Tawk.to');
+  console.log('[AGENT] Session 30 min écoulée. Utiliser les réponses prédéfinies /continuer ou /fileattente dans Crisp');
 }
 
 function continueSubSession() {
@@ -2320,7 +2320,7 @@ function submitCreateGroup(){
   groups.unshift({name,title,desc,date:new Date().toLocaleDateString('fr-FR'),members:1});
   localStorage.setItem('parlons_custom_groups',JSON.stringify(groups));
   closeCreateGroupModal();
-  // Simulation : ouvre le chat Tawk avec le thème
+  // Simulation : ouvre le chat Crisp avec le thème
   alert(`✅ Groupe "${title}" créé !\n\nVos 5 minutes gratuites démarrent maintenant. Partagez le lien du site pour inviter d'autres membres dans votre groupe.`);
   openCrisp();
 }
