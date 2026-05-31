@@ -56,11 +56,19 @@ exports.handler = async (event) => {
     // Géolocalisation ville/région (ipwho.is, gratuit, sans clé)
     const geo = await getGeoData(ip);
 
+    // Vérifier côté serveur si ce visitorId a déjà été vu (plus fiable que isNew client)
+    const checkRes = await fetch(
+      `${SB_URL}/rest/v1/visits?visitor_id=eq.${encodeURIComponent(visitorId)}&select=id&limit=1`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
+    );
+    const existing = await checkRes.json();
+    const isActuallyNew = !Array.isArray(existing) || existing.length === 0;
+
     // Enregistrer la visite (conservation 30 jours max — intérêt légitime RGPD)
     await fetch(`${SB_URL}/rest/v1/visits`, {
       method: 'POST',
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ visitor_id: visitorId, is_new: !!isNew, ip_address: ip, country, city: geo.city, region: geo.region })
+      body: JSON.stringify({ visitor_id: visitorId, is_new: isActuallyNew, ip_address: ip, country, city: geo.city, region: geo.region })
     });
 
     // Nettoyage automatique > 30 jours (fire-and-forget)
@@ -81,7 +89,7 @@ exports.handler = async (event) => {
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({
         total_visits: (s.total_visits || 0) + 1,
-        unique_visitors: (s.unique_visitors || 0) + (isNew ? 1 : 0),
+        unique_visitors: (s.unique_visitors || 0) + (isActuallyNew ? 1 : 0),
         updated_at: new Date().toISOString()
       })
     });
