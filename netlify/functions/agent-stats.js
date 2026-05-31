@@ -118,14 +118,6 @@ exports.handler = async (event) => {
   if (!email || !email.includes('@'))
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Email invalide' }) };
 
-  // Si Crisp est configuré, vérifier que l'email est un opérateur Crisp
-  // Si Crisp n'est pas configuré, on accepte tout email avec un mot de passe en base
-  if (CRISP_API_ID && CRISP_API_KEY) {
-    const isOp = await isCrispOperator(email);
-    if (!isOp)
-      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Email non reconnu comme agent Parlons' }) };
-  }
-
   // ── Sauvegarder le profil ──
   if (action === 'save_profile') {
     const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
@@ -160,8 +152,15 @@ exports.handler = async (event) => {
   // ── Connexion ──
   const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
 
-  if (!pwdRows.length)
+  if (!pwdRows.length) {
+    // Première connexion : vérifier via Crisp si configuré, sinon accepter
+    if (CRISP_API_ID && CRISP_API_KEY) {
+      const isOp = await isCrispOperator(email);
+      if (!isOp)
+        return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Email non reconnu comme agent Parlons' }) };
+    }
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ role: 'agent', needs_password_setup: true }) };
+  }
 
   if (!password)
     return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
