@@ -159,10 +159,10 @@
     .nav-agent{border:1.5px solid var(--terracotta)!important;color:var(--terracotta)!important;padding:.5rem 1.2rem;border-radius:50px;}
     .nav-agent:hover{background:var(--terracotta)!important;color:white!important;}
 
-    /* Tablette (640px–1080px) : nav compacte, liens secondaires masqués */
-    @media(min-width:641px) and (max-width:1080px){
+    /* Tablette (640px–1280px) : nav compacte, liens secondaires masqués */
+    @media(min-width:641px) and (max-width:1280px){
       nav{padding:.7rem 1.2rem;}
-      nav ul{gap:.6rem;}
+      nav ul{gap:.6rem;flex-wrap:nowrap;overflow:hidden;}
       nav ul a{font-size:.75rem;}
       .logo{font-size:1.2rem;}
       .nav-cta{padding:.4rem .9rem;font-size:.75rem;}
