@@ -1350,28 +1350,28 @@
         <button class="btn-primary" style="width:100%;padding:.95rem;border-radius:11px;" onclick="goToPayment()">Continuer →</button>
       </div>
       <!-- Cases à cocher obligatoires -->
-      <div style="margin-top:1rem;display:flex;flex-direction:column;gap:.5rem;">
-        <label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.72rem;color:var(--mid);cursor:pointer;">
+      <div style="margin-top:1rem;display:flex;flex-direction:column;gap:.55rem;">
+        <label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.72rem;color:var(--mid);cursor:pointer;width:100%;">
           <input type="checkbox" id="check-age" style="margin-top:2px;accent-color:var(--terracotta);flex-shrink:0;"/>
-          Je certifie avoir <strong style="margin:0 .25rem;">18 ans ou plus</strong>
+          <span>Je certifie avoir <strong>18 ans ou plus</strong></span>
         </label>
-        <label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.72rem;color:var(--mid);cursor:pointer;">
+        <label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.72rem;color:var(--mid);cursor:pointer;width:100%;">
           <input type="checkbox" id="check-notcrisis" style="margin-top:2px;accent-color:var(--terracotta);flex-shrink:0;"/>
-          Je comprends que ce service n'est pas médical et je ne suis pas en situation de crise suicidaire active
+          <span>Je comprends que ce service n'est pas médical et je ne suis pas en situation de crise suicidaire active</span>
         </label>
-        <label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.72rem;color:var(--mid);cursor:pointer;">
+        <label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.72rem;color:var(--mid);cursor:pointer;width:100%;">
           <input type="checkbox" id="check-cgv" style="margin-top:2px;accent-color:var(--terracotta);flex-shrink:0;"/>
-          J'accepte les <a href="#" onclick="openCGV();return false;" style="color:var(--terracotta)">CGV</a> et la <a href="#" onclick="openPrivacy();return false;" style="color:var(--terracotta)">politique de confidentialité</a>
+          <span>J'accepte les <a href="#" onclick="openCGV();return false;" style="color:var(--terracotta)">CGV</a> et la <a href="#" onclick="openPrivacy();return false;" style="color:var(--terracotta)">politique de confidentialité</a></span>
         </label>
-        <!-- CASE RÉTRACTATION LÉGALE OBLIGATOIRE -->
-        <div class="retractation-box">
-          <strong>⚖️ Droit de rétractation (obligation légale)</strong>
-          En cochant la case ci-dessous, vous reconnaissez que la prestation de service démarre immédiatement après paiement et renoncez expressément à votre droit de rétractation de 14 jours, conformément à l'article L221-28 du Code de la consommation.
-        </div>
-        <label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.72rem;color:var(--mid);cursor:pointer;">
+        <label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.72rem;color:var(--mid);cursor:pointer;width:100%;">
           <input type="checkbox" id="check-retractation" style="margin-top:2px;accent-color:var(--terracotta);flex-shrink:0;"/>
-          Je renonce expressément à mon droit de rétractation — la session démarre immédiatement après paiement
+          <span>Je renonce expressément à mon droit de rétractation — la session démarre immédiatement après paiement</span>
         </label>
+        <!-- EXPLICATION RÉTRACTATION LÉGALE (après les cases) -->
+        <div class="retractation-box" style="margin-top:.3rem;">
+          <strong>⚖️ Droit de rétractation (obligation légale)</strong>
+          En cochant la case ci-dessus, vous reconnaissez que la prestation de service démarre immédiatement après paiement et renoncez expressément à votre droit de rétractation de 14 jours, conformément à l'article L221-28 du Code de la consommation.
+        </div>
       </div>
     </div>
     <div id="step-2" style="display:none;">
