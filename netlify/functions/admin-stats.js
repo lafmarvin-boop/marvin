@@ -103,6 +103,23 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, crispInvited }) };
     }
 
+    // ── Action : retirer un agent ──
+    if (body.action === 'remove_agent') {
+      const agentEmail = (body.agentEmail || '').toLowerCase().trim();
+      if (!agentEmail) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Email manquant' }) };
+      await Promise.all([
+        fetch(`${SB_URL}/rest/v1/agent_passwords?email=eq.${encodeURIComponent(agentEmail)}`, {
+          method: 'DELETE',
+          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Prefer: 'return=minimal' }
+        }),
+        fetch(`${SB_URL}/rest/v1/agent_profiles?email=eq.${encodeURIComponent(agentEmail)}`, {
+          method: 'DELETE',
+          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Prefer: 'return=minimal' }
+        })
+      ]);
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
+    }
+
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 

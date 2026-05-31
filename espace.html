@@ -929,7 +929,10 @@ function renderDashboard(d) {
           </div>
         </div>
         ${planBadges ? `<div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.7rem;">${planBadges}</div>` : ''}
-        <button onclick="event.stopPropagation();generateAgentPDF(${JSON.stringify(a.name)})" style="background:none;border:1px solid var(--sand);border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:var(--mid);width:100%;">📄 Générer la fiche</button>
+        <div style="display:flex;gap:.5rem;">
+          <button onclick="event.stopPropagation();generateAgentPDF(${JSON.stringify(a.name)})" style="flex:1;background:none;border:1px solid var(--sand);border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:var(--mid);">📄 Générer la fiche</button>
+          <button onclick="event.stopPropagation();removeAgent(${JSON.stringify(a.email||a.name)},${JSON.stringify(a.displayName||a.name)})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:#c0392b;">✕ Retirer</button>
+        </div>
       </div>`;
     }).join('');
     document.getElementById('agent-section').innerHTML = cards + note;
@@ -954,7 +957,10 @@ function renderDashboard(d) {
         ${planCells}
         <td style="text-align:center;font-weight:700">${a.sessions}</td>
         <td style="font-weight:700;color:var(--tc);white-space:nowrap">${fmt(a.revenue)}</td>
-        <td onclick="event.stopPropagation()"><button onclick="generateAgentPDF(${JSON.stringify(a.name)})" style="background:none;border:1px solid var(--sand);border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:var(--mid);white-space:nowrap;">📄 Fiche</button></td>
+        <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+          <button onclick="generateAgentPDF(${JSON.stringify(a.name)})" style="background:none;border:1px solid var(--sand);border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:var(--mid);">📄 Fiche</button>
+          <button onclick="removeAgent(${JSON.stringify(a.email||a.name)},${JSON.stringify(a.displayName||a.name)})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:#c0392b;margin-left:.3rem;">✕ Retirer</button>
+        </td>
       </tr>`;
     }).join('');
     document.getElementById('agent-section').innerHTML =
@@ -1519,6 +1525,23 @@ async function agentSetPassword() {
 
   btn.disabled = false;
   btn.innerHTML = 'Créer mon mot de passe';
+}
+
+// ── RETIRER UN AGENT ──
+async function removeAgent(agentEmail, agentName) {
+  if (!confirm(`Retirer l'agent ${agentName} (${agentEmail}) ?\n\nSon accès à l'espace agent sera supprimé. Ses sessions passées restent dans l'historique.`)) return;
+  try {
+    const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
+    const res = await fetch(`${API}/admin-stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'remove_agent', agentEmail })
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'Erreur serveur.'); return; }
+    alert(`✅ ${agentName} a été retiré.`);
+    location.reload();
+  } catch { alert('Erreur réseau.'); }
 }
 
 // ── AJOUTER UN AGENT ──
