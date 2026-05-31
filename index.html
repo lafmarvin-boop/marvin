@@ -1818,7 +1818,6 @@ function agentConnected(pseudo, assignedAt){
   document.getElementById('waiting-zone').style.display='none';
   if(sz)sz.style.display='block';
   sessionSeconds=sessionDurationSec; updateSessionUI();
-  startSessionCountdown(assignedAt);
   const mbar=document.getElementById('mobile-session-bar');
   if(mbar){mbar.style.display='flex';}
   const sub=document.getElementById('pcp-subtitle');
@@ -1834,7 +1833,7 @@ function startSessionCountdown(assignedAt){
     if(sessionSeconds===120)document.getElementById('end-warning').style.display='block';
     if(sessionSeconds<=120){const ec=document.getElementById('end-countdown');if(ec){const m=Math.floor(sessionSeconds/60),s=sessionSeconds%60;ec.textContent=`${m}:${String(s).padStart(2,'0')}`;ec.style.color=sessionSeconds<=30?'#e74c3c':'inherit';}}
     if(sessionSeconds<=30&&sessionSeconds>0){const rb=document.getElementById('mobile-renew-btn');if(rb&&rb.style.display==='none')rb.style.display='inline-block';const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew&&pcpRenew.style.display==='none')pcpRenew.style.display='inline-block';}
-    if(sessionSeconds<=0) endSession();
+    if(sessionSeconds<=0&&!chatExtensionPending) endSession();
   },1000);
 }
 function updateSessionUI(){

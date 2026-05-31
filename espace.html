@@ -189,7 +189,23 @@
     .afloat-footer{padding:.35rem .85rem;border-top:1px solid #f0e8e0;display:flex;justify-content:flex-end;gap:.5rem;flex-shrink:0;}
     .afloat-end-btn{background:none;border:1px solid #e5e7eb;border-radius:50px;padding:.2rem .75rem;font-size:.72rem;color:var(--light);cursor:pointer;font-family:'DM Sans',sans-serif;}
     .afloat-end-btn:hover{border-color:#ef4444;color:#ef4444;}
+    .afloat-ext-card{background:#fff7ed;border:1.5px solid #fbbf24;border-radius:12px;padding:.6rem .8rem;font-size:.78rem;color:#92400e;font-weight:600;align-self:stretch;margin:.2rem 0;}
     @media(max-width:640px){.afloat-panel{bottom:0;right:0;width:100vw;max-width:100vw;border-radius:20px 20px 0 0;height:82dvh;max-height:82dvh;}.afloat-bubble{bottom:1rem;right:1rem;}}
+    /* ── Archives ── */
+    .archive-card{background:white;border-radius:12px;border:1.5px solid var(--sand);padding:.85rem 1rem;margin-bottom:.65rem;cursor:pointer;transition:border-color .15s;}
+    .archive-card:hover{border-color:var(--tc);}
+    .archive-card-header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;}
+    .archive-card-info{font-size:.82rem;color:var(--dark);font-weight:500;}
+    .archive-card-meta{font-size:.72rem;color:var(--light);margin-top:.2rem;}
+    .archive-chevron{font-size:.8rem;color:var(--light);transition:transform .2s;flex-shrink:0;}
+    .archive-card.open .archive-chevron{transform:rotate(180deg);}
+    .archive-msgs{display:none;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--sand);}
+    .archive-card.open .archive-msgs{display:flex;flex-direction:column;gap:.35rem;}
+    .archive-msg{padding:.4rem .7rem;border-radius:10px;font-size:.78rem;line-height:1.5;max-width:80%;word-break:break-word;}
+    .archive-msg.visitor{background:var(--warm);color:var(--dark);align-self:flex-start;}
+    .archive-msg.agent{background:var(--tc);color:white;align-self:flex-end;}
+    .archive-msg.system{background:#f1f5f9;color:var(--light);text-align:center;align-self:center;font-size:.7rem;max-width:92%;}
+    .archive-loading{color:var(--light);font-size:.78rem;text-align:center;padding:.5rem;}
   </style>
 </head>
 <body>
@@ -207,6 +223,7 @@
   <div class="admin-tab-wrap">
     <button id="tab-admin" class="atab atab-active" onclick="switchTab('admin')">📊 Admin</button>
     <button id="tab-agent" class="atab" onclick="switchTab('agent')">💬 Agent</button>
+    <button id="tab-archives" class="atab" onclick="switchTab('archives')" style="display:none;">📁 Archives</button>
   </div>
 </div>
 
@@ -418,6 +435,14 @@
   </div>
 </div>
 
+<!-- ══ ARCHIVES ══ -->
+<div data-screen="archives-dash">
+  <div style="max-width:860px;margin:0 auto;padding:1.5rem 1rem;">
+    <div class="section-title">📁 Conversations archivées <span style="font-weight:400;font-size:.78rem;color:var(--light)">(30 derniers jours)</span></div>
+    <div id="archives-list"><div style="color:var(--light);font-size:.82rem;padding:.5rem 0;">Chargement…</div></div>
+  </div>
+</div>
+
 <!-- ══ AGENT PASSWORD SETUP ══ -->
 <div data-screen="agent-setup">
   <div class="login-wrap">
@@ -584,10 +609,16 @@ async function switchTab(tab) {
   currentAdminTab = tab;
   document.getElementById('tab-admin').classList.toggle('atab-active', tab === 'admin');
   document.getElementById('tab-agent').classList.toggle('atab-active', tab === 'agent');
+  const archTab = document.getElementById('tab-archives');
+  if (archTab) archTab.classList.toggle('atab-active', tab === 'archives');
 
   if (tab === 'admin') {
     showScreen('admin-dash');
     document.getElementById('admin-tabs').style.display = 'block';
+  } else if (tab === 'archives') {
+    showScreen('archives-dash');
+    document.getElementById('admin-tabs').style.display = 'block';
+    renderArchives();
   } else {
     const btn = document.getElementById('tab-agent');
     if (!adminAgentDataCache) {
@@ -713,6 +744,8 @@ async function login() {
       agentPasswordCache = password;
       currentAdminTab = 'admin';
       adminAgentDataCache = null;
+      const archTab = document.getElementById('tab-archives');
+      if (archTab) archTab.style.display = '';
       document.getElementById('tab-admin').classList.add('atab-active');
       document.getElementById('tab-agent').classList.remove('atab-active');
       document.getElementById('admin-tabs').style.display = 'block';
@@ -1140,6 +1173,70 @@ function renderDashboard(d) {
 // ── AGENT DASHBOARD ──
 let agentSessionsCache = [];
 let agentPasswordCache = '';
+
+async function renderArchives() {
+  const container = document.getElementById('archives-list');
+  if (!container) return;
+  container.innerHTML = '<div style="color:var(--light);font-size:.82rem;padding:.5rem 0;">Chargement…</div>';
+  try {
+    const res = await fetch(`${API}/admin-chat-archive`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache, action: 'list' })
+    });
+    const data = await res.json();
+    const sessions = data.sessions || [];
+    if (!sessions.length) {
+      container.innerHTML = '<div style="color:var(--light);font-size:.82rem;padding:.5rem 0;">Aucune conversation archivée sur les 30 derniers jours.</div>';
+      return;
+    }
+    container.innerHTML = '';
+    sessions.forEach(s => {
+      const closedAt = s.closed_at ? new Date(s.closed_at) : null;
+      const dateStr = closedAt ? closedAt.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+      const dur = s.duration_sec ? `${Math.round(s.duration_sec/60)} min` : '—';
+      const card = document.createElement('div');
+      card.className = 'archive-card';
+      card.innerHTML = `
+        <div class="archive-card-header">
+          <div>
+            <div class="archive-card-info">${escHtml(s.pre_name||'Anonyme')}${s.pre_topic?` — <em style="font-weight:400;font-style:italic;color:var(--mid)">"${escHtml(s.pre_topic.substring(0,60))}"</em>`:''}</div>
+            <div class="archive-card-meta">${escHtml(s.session_label||s.session_type||'—')} · ${dur} · ${s.agentName?escHtml(s.agentName):'Sans agent'} · ${dateStr}</div>
+          </div>
+          <span class="archive-chevron">▼</span>
+        </div>
+        <div class="archive-msgs" id="archive-msgs-${escHtml(s.id)}"></div>`;
+      card.addEventListener('click', async () => {
+        const isOpen = card.classList.contains('open');
+        card.classList.toggle('open');
+        if (!isOpen) {
+          const msgsEl = document.getElementById(`archive-msgs-${s.id}`);
+          if (msgsEl && !msgsEl.dataset.loaded) {
+            msgsEl.innerHTML = '<div class="archive-loading">Chargement des messages…</div>';
+            try {
+              const mr = await fetch(`${API}/admin-chat-archive`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache, action: 'messages', sessionId: s.id })
+              });
+              const md = await mr.json();
+              msgsEl.innerHTML = '';
+              (md.messages || []).forEach(m => {
+                const d = document.createElement('div');
+                d.className = `archive-msg ${m.sender_type}`;
+                d.textContent = m.content;
+                msgsEl.appendChild(d);
+              });
+              if (!(md.messages||[]).length) msgsEl.innerHTML = '<div class="archive-loading">Aucun message.</div>';
+              msgsEl.dataset.loaded = '1';
+            } catch { msgsEl.innerHTML = '<div class="archive-loading">Erreur de chargement.</div>'; }
+          }
+        }
+      });
+      container.appendChild(card);
+    });
+  } catch {
+    container.innerHTML = '<div style="color:#ef4444;font-size:.82rem;">Erreur de chargement.</div>';
+  }
+}
 
 function renderAgentDash(email, d) {
   agentSessionsCache = d.sessions || [];
@@ -1918,18 +2015,21 @@ function renderAgentFloatMessages() {
     div.textContent = m.content;
     msgsEl.appendChild(div);
   });
+  if (sess.extensionPending) {
+    const mins = Math.floor((sess.extensionPending.newDurationSec || 0) / 60);
+    const sid = escHtml(sess.id);
+    const card = document.createElement('div');
+    card.className = 'afloat-ext-card';
+    card.innerHTML = `<div>⏳ Prolongation demandée : +${mins} min</div>
+      <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+        <button onclick="respondExtension('${sid}',true)" style="flex:1;background:#22c55e;color:white;border:none;border-radius:50px;padding:.3rem .7rem;font-size:.78rem;font-weight:700;cursor:pointer;">✓ Accepter</button>
+        <button onclick="respondExtension('${sid}',false)" style="flex:1;background:#ef4444;color:white;border:none;border-radius:50px;padding:.3rem .7rem;font-size:.78rem;font-weight:700;cursor:pointer;">✗ Refuser</button>
+      </div>`;
+    msgsEl.appendChild(card);
+  }
   msgsEl.scrollTop = msgsEl.scrollHeight;
   if (infoEl) {
-    if (sess.extensionPending) {
-      const mins = Math.floor((sess.extensionPending.newDurationSec || 0) / 60);
-      infoEl.innerHTML = `<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-        <span style="font-weight:600;color:#92400e;">⏳ Demande de +${mins} min</span>
-        <button onclick="respondExtension('${escHtml(sess.id)}',true)" style="background:#22c55e;color:white;border:none;border-radius:50px;padding:.2rem .7rem;font-size:.72rem;font-weight:700;cursor:pointer;">✓ Accepter</button>
-        <button onclick="respondExtension('${escHtml(sess.id)}',false)" style="background:#ef4444;color:white;border:none;border-radius:50px;padding:.2rem .7rem;font-size:.72rem;font-weight:700;cursor:pointer;">✗ Refuser</button>
-      </div>`;
-    } else {
-      infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong> · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
-    }
+    infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong> · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
   }
   if (titleEl) titleEl.textContent = `💬 ${sess.name}`;
 }
@@ -1958,8 +2058,8 @@ function updateAgentFloatTimer() {
   const timerEl = document.getElementById('afloat-timer');
   if (!timerEl) return;
   const sess = agentSessions.get(agentActiveTabId);
-  if (!sess || !sess.assignedAt) { timerEl.style.display = 'none'; return; }
-  const elapsed = (Date.now() - new Date(sess.assignedAt).getTime()) / 1000;
+  if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; return; }
+  const elapsed = (Date.now() - sess.timerStartedAt) / 1000;
   const remaining = Math.max(0, sess.durationSec - elapsed);
   const m = Math.floor(remaining / 60), s = Math.floor(remaining % 60);
   timerEl.style.display = 'inline';
@@ -1974,6 +2074,10 @@ async function sendAgentFloatMsg() {
   if (!content || !agentActiveTabId || !agentChatToken) return;
   ta.value = ''; ta.style.height = 'auto';
   const sess = agentSessions.get(agentActiveTabId);
+  if (sess && !sess.timerStartedAt) {
+    sess.timerStartedAt = Date.now();
+    startAgentFloatTimer();
+  }
   try {
     await fetch(`${API}/chat-send`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
