@@ -476,8 +476,8 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function openAgentReviews(name) {
-  const a = agentData[name];
+function openAgentReviews(idx) {
+  const a = typeof idx === 'number' ? (window._agentList||[])[idx] : agentData[idx];
   if (!a) return;
   const avg = a.avgRating
     ? `<span style="color:#FFD700;font-size:1.1rem">${'★'.repeat(Math.round(a.avgRating))}${'☆'.repeat(5-Math.round(a.avgRating))}</span> ${a.avgRating.toFixed(1)}/5 · ${a.ratingCount} avis`
@@ -904,9 +904,10 @@ function renderDashboard(d) {
   const note = unassigned > 0 ? `<div style="font-size:.72rem;color:var(--light);margin-top:.8rem">${unassigned} session${unassigned>1?'s':''} sans agent enregistré</div>` : '';
   if (agentList.length === 0) {
     document.getElementById('agent-section').innerHTML = '<div style="color:var(--light);font-size:.82rem">Aucune session assignée à un agent pour l\'instant.<br><span style="font-size:.72rem">Les agents apparaîtront ici dès leur première réponse dans Crisp.</span></div>';
+  window._agentList = agentList;
   } else if (window.innerWidth < 640) {
     // ── Affichage mobile : cartes ──
-    const cards = agentList.map(a => {
+    const cards = agentList.map((a, idx) => {
       agentData[a.name] = a;
       const avg = a.avgRating ? `<span style="color:#FFD700">${'★'.repeat(Math.round(a.avgRating))}</span> ${a.avgRating.toFixed(1)}` : '—';
       const planBadges = PLAN_COLS.map(c => {
@@ -914,7 +915,7 @@ function renderDashboard(d) {
         if (!cnt) return '';
         return `<span style="background:var(--warm);border:1px solid var(--sand);border-radius:50px;padding:.15rem .55rem;font-size:.7rem;white-space:nowrap;">${c.label} <strong>${cnt}</strong></span>`;
       }).join('');
-      return `<div style="background:white;border:1px solid var(--sand);border-radius:12px;padding:1rem;margin-bottom:.8rem;" onclick="openAgentReviews(${JSON.stringify(a.name)})">
+      return `<div style="background:white;border:1px solid var(--sand);border-radius:12px;padding:1rem;margin-bottom:.8rem;" onclick="openAgentReviews(${idx})">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;">
           <div style="display:flex;align-items:center;gap:.6rem;">
             <div style="width:34px;height:34px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.85rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
@@ -930,8 +931,8 @@ function renderDashboard(d) {
         </div>
         ${planBadges ? `<div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.7rem;">${planBadges}</div>` : ''}
         <div style="display:flex;gap:.5rem;">
-          <button onclick="event.stopPropagation();generateAgentPDF(${JSON.stringify(a.name)})" style="flex:1;background:none;border:1px solid var(--sand);border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:var(--mid);">📄 Générer la fiche</button>
-          <button onclick="event.stopPropagation();removeAgent(${JSON.stringify(a.email||a.name)},${JSON.stringify(a.displayName||a.name)})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:#c0392b;">✕ Retirer</button>
+          <button onclick="event.stopPropagation();generateAgentPDF(${idx})" style="flex:1;background:none;border:1px solid var(--sand);border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:var(--mid);">📄 Générer la fiche</button>
+          <button onclick="event.stopPropagation();removeAgent(${idx})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:#c0392b;">✕ Retirer</button>
         </div>
       </div>`;
     }).join('');
@@ -939,14 +940,14 @@ function renderDashboard(d) {
   } else {
     // ── Affichage desktop : tableau ──
     const thCols = PLAN_COLS.map(c => `<th style="text-align:center">${c.label}<br><span style="font-weight:400;color:var(--light);font-size:.62rem">${c.price}</span></th>`).join('');
-    const rows = agentList.map(a => {
+    const rows = agentList.map((a, idx) => {
       agentData[a.name] = a;
       const avg = a.avgRating ? a.avgRating.toFixed(1) + ' ★' : '—';
       const planCells = PLAN_COLS.map(c => {
         const cnt = (a.plans[c.key] || 0) + (c.alt ? (a.plans[c.alt] || 0) : 0);
         return `<td style="text-align:center">${cnt > 0 ? `<strong>${cnt}</strong>` : '<span style="color:var(--sand)">—</span>'}</td>`;
       }).join('');
-      return `<tr class="agent-row" onclick="openAgentReviews(${JSON.stringify(a.name)})">
+      return `<tr class="agent-row" onclick="openAgentReviews(${idx})">
         <td>
           <div style="display:flex;align-items:center;gap:.5rem">
             <div style="width:28px;height:28px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.75rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
@@ -958,8 +959,8 @@ function renderDashboard(d) {
         <td style="text-align:center;font-weight:700">${a.sessions}</td>
         <td style="font-weight:700;color:var(--tc);white-space:nowrap">${fmt(a.revenue)}</td>
         <td onclick="event.stopPropagation()" style="white-space:nowrap;">
-          <button onclick="generateAgentPDF(${JSON.stringify(a.name)})" style="background:none;border:1px solid var(--sand);border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:var(--mid);">📄 Fiche</button>
-          <button onclick="removeAgent(${JSON.stringify(a.email||a.name)},${JSON.stringify(a.displayName||a.name)})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:#c0392b;margin-left:.3rem;">✕ Retirer</button>
+          <button onclick="generateAgentPDF(${idx})" style="background:none;border:1px solid var(--sand);border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:var(--mid);">📄 Fiche</button>
+          <button onclick="removeAgent(${idx})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:#c0392b;margin-left:.3rem;">✕ Retirer</button>
         </td>
       </tr>`;
     }).join('');
@@ -1319,11 +1320,14 @@ function getSelectedMonth() {
   return { month, year };
 }
 
-function generateAgentPDF(agentName) {
+function generateAgentPDF(idx) {
   if (!window.jspdf) { alert('PDF non disponible, rechargez la page.'); return; }
   const { jsPDF } = window.jspdf;
   const { month, year } = getSelectedMonth();
   const monthName = new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  const agentObj = typeof idx === 'number' ? (window._agentList||[])[idx] : null;
+  const agentName = agentObj ? (agentObj.displayName || agentObj.name) : idx;
 
   const allSessions = window._adminSessions || [];
   const agentSessions = allSessions.filter(s => {
@@ -1529,10 +1533,12 @@ async function agentSetPassword() {
 
 // ── RETIRER UN AGENT ──
 let _removeAgentEmail = '', _removeAgentName = '';
-function removeAgent(agentEmail, agentName) {
-  _removeAgentEmail = agentEmail;
-  _removeAgentName = agentName;
-  document.getElementById('remove-agent-label').textContent = agentName + (agentEmail !== agentName ? ' (' + agentEmail + ')' : '');
+function removeAgent(idx) {
+  const a = (window._agentList || [])[idx];
+  if (!a) return;
+  _removeAgentEmail = a.email || a.name;
+  _removeAgentName = a.displayName || a.name;
+  document.getElementById('remove-agent-label').textContent = _removeAgentName + (_removeAgentEmail !== _removeAgentName ? ' (' + _removeAgentEmail + ')' : '');
   document.getElementById('remove-agent-err').textContent = '';
   document.getElementById('remove-agent-modal').style.display = 'flex';
 }
