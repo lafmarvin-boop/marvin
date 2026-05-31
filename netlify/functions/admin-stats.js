@@ -169,6 +169,20 @@ exports.handler = async (event) => {
           ratingCount: 0, avgRating: null, reviews: []
         };
       });
+    } else {
+      // Crisp non configuré : fallback sur la table agent_passwords
+      const agentPwdRows = await sbGet('agent_passwords?select=email&limit=100');
+      agentPwdRows.forEach(row => {
+        if (!row.email) return;
+        const name = row.email.split('@')[0];
+        const alreadyIn = Object.values(byAgent).some(a => (a.email || '').toLowerCase() === row.email.toLowerCase());
+        if (alreadyIn) return;
+        byAgent[name] = {
+          name, email: row.email,
+          sessions: 0, revenue: 0, plans: {},
+          ratingCount: 0, avgRating: null, reviews: []
+        };
+      });
     }
 
     const unassigned = sessions.filter(s => !s.agent_name).length;

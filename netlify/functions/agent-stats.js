@@ -118,9 +118,13 @@ exports.handler = async (event) => {
   if (!email || !email.includes('@'))
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Email invalide' }) };
 
-  const isOp = await isCrispOperator(email);
-  if (!isOp)
-    return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Email non reconnu comme agent Parlons' }) };
+  // Si Crisp est configuré, vérifier que l'email est un opérateur Crisp
+  // Si Crisp n'est pas configuré, on accepte tout email avec un mot de passe en base
+  if (CRISP_API_ID && CRISP_API_KEY) {
+    const isOp = await isCrispOperator(email);
+    if (!isOp)
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Email non reconnu comme agent Parlons' }) };
+  }
 
   // ── Sauvegarder le profil ──
   if (action === 'save_profile') {
