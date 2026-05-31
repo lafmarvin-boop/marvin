@@ -1629,8 +1629,12 @@ function generateGlobalPDF() {
 
 // ── AGENT CHAT EN DIRECT ──
 function updateAgentPresenceUI(online) {
-  chatEl('btn-go-online').style.display = online ? 'none' : 'inline-block';
-  chatEl('btn-go-offline').style.display = online ? 'inline-block' : 'none';
+  const btnOn  = chatEl('btn-go-online');
+  const btnOff = chatEl('btn-go-offline');
+  btnOn.style.display  = online ? 'none' : 'inline-block';
+  btnOff.style.display = online ? 'inline-block' : 'none';
+  if (!online) { btnOn.disabled  = false; btnOn.textContent  = 'Se mettre en ligne'; }
+  if (online)  { btnOff.disabled = false; btnOff.textContent = 'Se mettre hors ligne'; }
   const badge = chatEl('agent-status-badge');
   const pres  = chatEl('agent-pres-status');
   if (online) {
