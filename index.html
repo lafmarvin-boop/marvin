@@ -475,14 +475,6 @@
     .dark-toggle{position:fixed;bottom:9rem;right:1.3rem;z-index:400;background:var(--warm);border:1.5px solid var(--sand);border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(0,0,0,.15);}
     .dark-toggle:hover{transform:scale(1.1);}
 
-    /* ══ PARRAINAGE ══ */
-    .referral-banner{background:linear-gradient(135deg,var(--terracotta),var(--rust));padding:2.5rem;text-align:center;color:white;}
-    .referral-banner h2{font-family:'Playfair Display',serif;font-size:clamp(1.4rem,3vw,2rem);margin-bottom:.5rem;}
-    .referral-banner p{font-size:.88rem;opacity:.85;max-width:480px;margin:0 auto 1.4rem;line-height:1.65;}
-    .referral-code{background:rgba(255,255,255,.2);border:1.5px dashed rgba(255,255,255,.5);border-radius:12px;padding:.7rem 1.4rem;display:inline-block;font-size:1rem;font-weight:700;letter-spacing:.2rem;cursor:pointer;transition:background .2s;margin-bottom:.8rem;}
-    .referral-code:hover{background:rgba(255,255,255,.3);}
-    .referral-copied{display:none;font-size:.75rem;opacity:.7;margin-top:.3rem;}
-
     /* ══ RÉSEAUX SOCIAUX ══ */
     .social-links{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;margin-top:1rem;}
     .social-btn{display:inline-flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:white;text-decoration:none;padding:.42rem .9rem;border-radius:50px;font-size:.76rem;font-weight:500;transition:background .2s;}
@@ -1097,8 +1089,7 @@
     <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Puis-je accéder à une conversation précédente ?<span class="arrow">+</span></button><div class="faq-answer">L'historique reste accessible dans la fenêtre de chat tant que vous ne videz pas vos cookies. Une session terminée ne peut pas être rouverte sans nouvelle souscription.</div></div>
     <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Comment fonctionne le programme de fidélité ?<span class="arrow">+</span></button><div class="faq-answer">Dès votre 5e session, vous bénéficiez automatiquement de -10% sur chaque session. -20% dès la 10e, et -30% (statut VIP) dès la 20e. Les réductions s'appliquent sur toutes les formules individuelles.</div></div>
     <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Puis-je choisir mon écoutant ?<span class="arrow">+</span></button><div class="faq-answer">La mise en relation est automatique avec l'écoutant disponible. Vous pouvez consulter la page "Nos écoutants" pour découvrir les profils avant de démarrer une session.</div></div>
-    <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Comment fonctionne le parrainage ?<span class="arrow">+</span></button><div class="faq-answer">Partagez votre code personnel. Quand votre filleul effectue sa première session, vous recevez 10 minutes gratuites créditées sur votre prochain tchat.</div></div>
-    <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Comment me faire rembourser ?<span class="arrow">+</span></button><div class="faq-answer">Si l'écoutant n'a pas répondu dans les 2 minutes, cliquez sur le bouton de signalement qui apparaît automatiquement. Pour tout autre cas, contactez-nous via la rubrique "Remboursement" en bas de page. Réponse sous 48h.</div></div>
+<div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Comment me faire rembourser ?<span class="arrow">+</span></button><div class="faq-answer">Si l'écoutant n'a pas répondu dans les 2 minutes, cliquez sur le bouton de signalement qui apparaît automatiquement. Pour tout autre cas, contactez-nous via la rubrique "Remboursement" en bas de page. Réponse sous 48h.</div></div>
     <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Les chats de groupe sont-ils sécurisés ?<span class="arrow">+</span></button><div class="faq-answer">Oui. Les groupes sont chiffrés et anonymes. Vous pouvez utiliser un pseudonyme. Les échanges ne sont pas rendus publics et restent dans l'espace de discussion fermé.</div></div>
     <div class="faq-item"><button class="faq-question" onclick="toggleFaq(this)">Puis-je transférer ma session à un autre écoutant ?<span class="arrow">+</span></button><div class="faq-answer">Oui, l'écoutant peut transférer votre conversation à un collègue disponible si nécessaire, via la plateforme de chat. Vous en serez informé dans le chat.</div></div>
   </div>
@@ -1215,19 +1206,6 @@
   </div>
 </section>
 
-<!-- PARRAINAGE -->
-<section class="referral-banner" id="parrainage">
-  <h2>🎁 Parrainez un ami, gagnez 10 min offertes</h2>
-  <p>Partagez votre code personnel. Quand votre ami effectue sa première session, vous recevez 10 minutes gratuites sur votre prochain tchat.</p>
-  <div class="referral-code" id="referral-code" onclick="copyReferral()">PARLONS-XXXX</div>
-  <div class="referral-copied" id="referral-copied">✅ Code copié !</div>
-  <p style="font-size:.75rem;opacity:.65;margin-top:.5rem;">Votre code unique est généré à la première connexion.</p>
-  <div class="social-links">
-    <a href="https://instagram.com/parlons.ecoute" target="_blank" class="social-btn">📸 Instagram</a>
-    <a href="https://tiktok.com/@parlons.ecoute" target="_blank" class="social-btn">🎵 TikTok</a>
-    <a href="https://facebook.com/parlons.ecoute" target="_blank" class="social-btn">👥 Facebook</a>
-  </div>
-</section>
 
 <!-- DARK MODE TOGGLE -->
 <button class="dark-toggle" id="dark-toggle" onclick="toggleDark()" title="Mode sombre / clair">🌙</button>
@@ -2174,8 +2152,8 @@ function showAgentPage(){
     '.emergency-bar','.disclaimer-bar','.avail-bar',
     '.hero','#comment','#tarifs','#fidelite','#groupes',
     '#notif','#ressources','.quality-banner','.testimonials',
-    '.faq-section','#retours','#ecoutants','.referral-banner',
-    '.cta-section','#parrainage','footer'
+    '.faq-section','#retours','#ecoutants',
+    '.cta-section','footer'
   ];
   toHide.forEach(sel => {
     const el = document.querySelector(sel);
@@ -2193,8 +2171,8 @@ function hideAgentPage(){
     '.emergency-bar','.disclaimer-bar','.avail-bar',
     '.hero','#comment','#tarifs','#fidelite','#groupes',
     '#notif','#ressources','.quality-banner','.testimonials',
-    '.faq-section','#retours','#ecoutants','.referral-banner',
-    '.cta-section','#parrainage','footer'
+    '.faq-section','#retours','#ecoutants',
+    '.cta-section','footer'
   ];
   toShow.forEach(sel => {
     const el = document.querySelector(sel);
@@ -2774,27 +2752,6 @@ function toggleDark(){
   });
 })();
 
-// ── PARRAINAGE ──
-function generateReferralCode(){
-  const stored=localStorage.getItem('parlons_referral');
-  if(stored)return stored;
-  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code='PARLONS-';
-  for(let i=0;i<4;i++)code+=chars[Math.floor(Math.random()*chars.length)];
-  localStorage.setItem('parlons_referral',code);
-  return code;
-}
-window.addEventListener('load',()=>{
-  const el=document.getElementById('referral-code');
-  if(el)el.textContent=generateReferralCode();
-});
-function copyReferral(){
-  const code=document.getElementById('referral-code').textContent;
-  navigator.clipboard&&navigator.clipboard.writeText(`Mon code Parlons : ${code} — Utilisez-le pour obtenir 10 min offertes sur parlons.fr`).then(()=>{
-    const c=document.getElementById('referral-copied');
-    if(c){c.style.display='block';setTimeout(()=>c.style.display='none',2500);}
-  }).catch(()=>alert(`Votre code : ${code}`));
-}
 </script>
 
 <script>
