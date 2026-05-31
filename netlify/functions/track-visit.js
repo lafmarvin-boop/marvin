@@ -8,18 +8,18 @@ const CORS = {
 };
 
 async function getGeoData(ip) {
-  if (!ip || ip === '127.0.0.1' || ip.startsWith('192.168') || ip.startsWith('10.')) return {};
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168') || ip.startsWith('10.') || ip.startsWith('fe80')) return {};
   try {
-    const res = await fetch(`https://ipwho.is/${ip}`, {
+    const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,city,regionName,isp&lang=fr`, {
       signal: AbortSignal.timeout(3500)
     });
     if (!res.ok) return {};
     const d = await res.json();
-    if (!d.success) return {};
+    if (d.status !== 'success') return {};
     const city = d.city || null;
-    const region = d.region || null;
-    // Fallback : si pas de ville (mobile/IPv6), utiliser l'opérateur FAI
-    const isp = (!city && d.connection?.isp) ? d.connection.isp : null;
+    const region = d.regionName || null;
+    // Si pas de ville (mobile/IPv6), afficher l'opérateur FAI
+    const isp = (!city && d.isp) ? d.isp : null;
     return { city: city || isp, region };
   } catch { return {}; }
 }
