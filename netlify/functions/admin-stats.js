@@ -2,24 +2,7 @@ const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_PWD = process.env.ADMIN_PASSWORD;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
-const CRISP_WEBSITE_ID = process.env.CRISP_WEBSITE_ID || 'fd20e23d-059a-4552-9aae-6df05f653d02';
-const CRISP_API_ID = process.env.CRISP_API_IDENTIFIER;
-const CRISP_API_KEY = process.env.CRISP_API_KEY || process.env.CRISP_API_TOKEN;
 const crypto = require('crypto');
-
-async function getCrispOperators() {
-  if (!CRISP_API_ID || !CRISP_API_KEY) return [];
-  try {
-    const auth = Buffer.from(`${CRISP_API_ID}:${CRISP_API_KEY}`).toString('base64');
-    const res = await fetch(
-      `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operators/list`,
-      { headers: { Authorization: `Basic ${auth}`, 'X-Crisp-Tier': 'plugin' } }
-    );
-    if (!res.ok) return [];
-    const json = await res.json();
-    return Array.isArray(json.data) ? json.data : [];
-  } catch { return []; }
-}
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -69,7 +52,6 @@ exports.handler = async (event) => {
       if (!agentPrenom || !agentNom)
         return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Prénom et nom requis.' }) };
 
-      const crypto = require('crypto');
       const salt = crypto.randomBytes(32).toString('hex');
       const hash = crypto.pbkdf2Sync(agentPassword, salt, 100000, 64, 'sha512').toString('hex');
 
@@ -86,21 +68,7 @@ exports.handler = async (event) => {
         })
       ]);
 
-      // Inviter dans Crisp si configuré
-      let crispInvited = false;
-      if (CRISP_API_ID && CRISP_API_KEY) {
-        try {
-          const auth = Buffer.from(`${CRISP_API_ID}:${CRISP_API_KEY}`).toString('base64');
-          const r = await fetch(`https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operators/invite`, {
-            method: 'POST',
-            headers: { Authorization: `Basic ${auth}`, 'X-Crisp-Tier': 'plugin', 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: agentEmail, role: 'operator' })
-          });
-          crispInvited = r.ok;
-        } catch {}
-      }
-
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, crispInvited }) };
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
     }
 
     // ── Action : retirer un agent ──
@@ -120,37 +88,13 @@ exports.handler = async (event) => {
         })
       ]);
 
-      // Supprimer de Crisp si configuré
-      let crispRemoved = false;
-      if (CRISP_API_ID && CRISP_API_KEY) {
-        try {
-          const auth = Buffer.from(`${CRISP_API_ID}:${CRISP_API_KEY}`).toString('base64');
-          // Trouver l'opérateur par email pour obtenir son user_id Crisp
-          const listRes = await fetch(`https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operators/list`, {
-            headers: { Authorization: `Basic ${auth}`, 'X-Crisp-Tier': 'plugin' }
-          });
-          if (listRes.ok) {
-            const listJson = await listRes.json();
-            const ops = Array.isArray(listJson.data) ? listJson.data : [];
-            const op = ops.find(o => (o.email || '').toLowerCase() === agentEmail);
-            if (op && op.operator_id) {
-              const delRes = await fetch(`https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operator/${op.operator_id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Basic ${auth}`, 'X-Crisp-Tier': 'plugin' }
-              });
-              crispRemoved = delRes.ok;
-            }
-          }
-        } catch {}
-      }
-
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, crispRemoved }) };
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
     }
 
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows, crispOperators, ipLogs] = await Promise.all([
+    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows, ipLogs] = await Promise.all([
       sbGet('sessions?statut=eq.paid&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
       sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
       sbGet('group_messages?select=room_id,created_at,author&order=created_at.desc&limit=2000'),
@@ -159,7 +103,6 @@ exports.handler = async (event) => {
       sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors,total_chats'),
       sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,visited_at&order=visited_at.desc&limit=50000`),
       sbGet(`chats?started_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=started_at&order=started_at.desc&limit=10000`),
-      getCrispOperators(),
       sbGet('visits?select=ip_address,country,city,region,visited_at,visitor_id,is_new&order=visited_at.desc&limit=200')
     ]);
     const siteStats = siteStatsRows[0] || { total_visits: 0, unique_visitors: 0, total_chats: 0 };
@@ -236,51 +179,25 @@ exports.handler = async (event) => {
       delete a.ratingSum;
     });
 
-    // Synchroniser avec les opérateurs Crisp (source de vérité)
-    if (crispOperators.length > 0) {
-      // Construire un set des emails et noms autorisés
-      const authorizedEmails = new Set(crispOperators.map(op => (op.email || '').toLowerCase()));
-      const authorizedNames = new Set(crispOperators.map(op => op.user?.nickname || op.user?.first_name).filter(Boolean));
-
-      // Supprimer les agents non présents dans Crisp
-      Object.keys(byAgent).forEach(name => {
-        const a = byAgent[name];
-        const emailOk = a.email && authorizedEmails.has(a.email.toLowerCase());
-        const nameOk = authorizedNames.has(name);
-        if (!emailOk && !nameOk) delete byAgent[name];
-      });
-
-      // Ajouter les opérateurs Crisp sans session
-      crispOperators.forEach(op => {
-        const name = op.user?.nickname || op.user?.first_name || op.email;
-        if (!name || byAgent[name]) return;
-        byAgent[name] = {
-          name, email: op.email || null,
-          sessions: 0, revenue: 0, plans: {},
-          ratingCount: 0, avgRating: null, reviews: []
-        };
-      });
-    } else {
-      // Crisp non configuré : fallback sur la table agent_passwords + profils
-      const [agentPwdRows, agentProfileRows] = await Promise.all([
-        sbGet('agent_passwords?select=email&limit=100'),
-        sbGet('agent_profiles?select=email,prenom,nom&limit=100')
-      ]);
-      const profileMap = {};
-      agentProfileRows.forEach(p => { if (p.email) profileMap[p.email.toLowerCase()] = p; });
-      agentPwdRows.forEach(row => {
-        if (!row.email) return;
-        const alreadyIn = Object.values(byAgent).some(a => (a.email || '').toLowerCase() === row.email.toLowerCase());
-        if (alreadyIn) return;
-        const profile = profileMap[row.email.toLowerCase()];
-        const name = profile && profile.prenom ? `${profile.prenom} ${profile.nom || ''}`.trim() : row.email.split('@')[0];
-        byAgent[name] = {
-          name, email: row.email,
-          sessions: 0, revenue: 0, plans: {},
-          ratingCount: 0, avgRating: null, reviews: []
-        };
-      });
-    }
+    // Agents enregistrés (source de vérité : agent_passwords + profils)
+    const [agentPwdRows, agentProfileRows] = await Promise.all([
+      sbGet('agent_passwords?select=email&limit=100'),
+      sbGet('agent_profiles?select=email,prenom,nom&limit=100')
+    ]);
+    const profileMap = {};
+    agentProfileRows.forEach(p => { if (p.email) profileMap[p.email.toLowerCase()] = p; });
+    agentPwdRows.forEach(row => {
+      if (!row.email) return;
+      const alreadyIn = Object.values(byAgent).some(a => (a.email || '').toLowerCase() === row.email.toLowerCase());
+      if (alreadyIn) return;
+      const profile = profileMap[row.email.toLowerCase()];
+      const name = profile && profile.prenom ? `${profile.prenom} ${profile.nom || ''}`.trim() : row.email.split('@')[0];
+      byAgent[name] = {
+        name, email: row.email,
+        sessions: 0, revenue: 0, plans: {},
+        ratingCount: 0, avgRating: null, reviews: []
+      };
+    });
 
     // Enrichir les agents avec leur profil (prenom + nom) si disponible
     const allProfileRows = await sbGet('agent_profiles?select=email,prenom,nom&limit=100');

@@ -1,9 +1,5 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const CRISP_WEBSITE_ID = process.env.CRISP_WEBSITE_ID || 'fd20e23d-059a-4552-9aae-6df05f653d02';
-const CRISP_API_ID = process.env.CRISP_API_IDENTIFIER;
-const CRISP_API_KEY = process.env.CRISP_API_KEY || process.env.CRISP_API_TOKEN;
-const AGENT_EMAILS = (process.env.AGENT_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 const crypto = require('crypto');
 
 const CORS = {
@@ -14,21 +10,6 @@ const CORS = {
 
 function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
-}
-
-async function isCrispOperator(email) {
-  if (!CRISP_API_ID || !CRISP_API_KEY) return false;
-  try {
-    const auth = Buffer.from(`${CRISP_API_ID}:${CRISP_API_KEY}`).toString('base64');
-    const res = await fetch(
-      `https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operators/list`,
-      { headers: { Authorization: `Basic ${auth}`, 'X-Crisp-Tier': 'plugin' } }
-    );
-    if (!res.ok) return false;
-    const json = await res.json();
-    const ops = Array.isArray(json.data) ? json.data : [];
-    return ops.some(op => (op.email || '').toLowerCase() === email.toLowerCase());
-  } catch { return false; }
 }
 
 async function sbGet(path) {
@@ -153,18 +134,8 @@ exports.handler = async (event) => {
   // ── Connexion ──
   const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
 
-  if (!pwdRows.length) {
-    // Première connexion : vérifier l'autorisation
-    let authorized = false;
-    if (CRISP_API_ID && CRISP_API_KEY) {
-      authorized = await isCrispOperator(email);
-    } else if (AGENT_EMAILS.length > 0) {
-      authorized = AGENT_EMAILS.includes(email);
-    }
-    if (!authorized)
-      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Email non autorisé comme agent Parlons' }) };
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ role: 'agent', needs_password_setup: true }) };
-  }
+  if (!pwdRows.length)
+    return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Compte non trouvé. Contactez l\'administrateur.' }) };
 
   if (!password)
     return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };

@@ -446,13 +446,44 @@
     #session-timer{font-size:1.7rem;font-family:'Playfair Display',serif;color:var(--terracotta);font-weight:700;}
     #end-warning{display:none;margin-top:.7rem;background:#FFF0F0;border-radius:9px;padding:.7rem .9rem;border:1px solid #f8c8c8;font-size:.78rem;color:#a02020;text-align:center;}
     #session-ended{display:none;margin-top:.7rem;background:var(--cream);border-radius:9px;padding:.9rem;border:1px solid var(--sand);text-align:center;font-size:.84rem;color:var(--mid);}
-    /* Timer overlay sur la fenêtre Crisp */
-    #crisp-chat-timer-bar{display:none;position:fixed;bottom:572px;right:16px;width:370px;z-index:399998;background:rgba(44,31,20,.92);color:white;padding:.42rem 1rem;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;align-items:center;justify-content:space-between;gap:.5rem;backdrop-filter:blur(4px);}
-    #crisp-chat-timer-bar .ctb-label{opacity:.75;font-weight:400;}
-    #crisp-chat-timer-bar .ctb-time{font-family:'Playfair Display',serif;font-size:1rem;letter-spacing:.03em;}
-    #crisp-chat-timer-bar.ctb-urgent{background:rgba(194,20,14,.92);}
-    #crisp-launcher-badge{display:none;position:fixed;bottom:82px;right:12px;z-index:399998;background:#C1440E;color:white;border-radius:50px;padding:.28rem .65rem;font-size:.82rem;font-family:'Playfair Display',serif;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.25);pointer-events:none;}
-    @media(max-width:640px){#crisp-chat-timer-bar{display:none!important;}}
+    /* ══ WIDGET CHAT ══ */
+    #parlons-chat-btn{position:fixed;bottom:1.4rem;right:1.4rem;z-index:1000;width:56px;height:56px;border-radius:50%;background:var(--terracotta);color:white;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 18px rgba(0,0,0,.25);transition:transform .2s,box-shadow .2s;}
+    #parlons-chat-btn:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(0,0,0,.3);}
+    #chat-unread-badge{position:absolute;top:-3px;right:-3px;background:#e74c3c;color:white;font-size:.6rem;font-weight:700;min-width:17px;height:17px;border-radius:50%;padding:0 3px;display:flex;align-items:center;justify-content:center;}
+    #parlons-chat-panel{position:fixed;bottom:5rem;right:1rem;z-index:1000;width:360px;max-width:calc(100vw - 1.5rem);height:520px;max-height:calc(100vh - 6rem);background:white;border-radius:20px;box-shadow:0 12px 40px rgba(0,0,0,.18);display:none;flex-direction:column;font-family:'DM Sans',sans-serif;overflow:hidden;border:1px solid rgba(0,0,0,.06);}
+    #parlons-chat-panel.pcp-open{display:flex;}
+    .pcp-header{background:var(--terracotta);padding:.85rem 1rem;display:flex;align-items:center;justify-content:space-between;color:white;flex-shrink:0;}
+    .pcp-header-left{display:flex;flex-direction:column;gap:.1rem;}
+    .pcp-logo{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;line-height:1;}
+    .pcp-subtitle{font-size:.67rem;opacity:.8;}
+    .pcp-header-right{display:flex;align-items:center;gap:.5rem;}
+    .pcp-timer{font-size:.8rem;font-weight:700;background:rgba(0,0,0,.2);border-radius:20px;padding:.12rem .5rem;}
+    .pcp-close{background:none;border:none;color:rgba(255,255,255,.8);font-size:1.05rem;cursor:pointer;padding:0;line-height:1;}
+    .pcp-close:hover{color:white;}
+    .pcp-msgs{flex:1;overflow-y:auto;padding:.8rem;display:flex;flex-direction:column;gap:.45rem;}
+    .pcp-msg{max-width:82%;padding:.5rem .75rem;border-radius:14px;font-size:.81rem;line-height:1.5;word-break:break-word;}
+    .pcp-msg.visitor{align-self:flex-end;background:var(--terracotta);color:white;border-bottom-right-radius:3px;}
+    .pcp-msg.agent{align-self:flex-start;background:#f0ece8;color:var(--dark);border-bottom-left-radius:3px;}
+    .pcp-msg.system{align-self:center;background:#f5f0ea;color:#7a6050;font-size:.7rem;border-radius:8px;text-align:center;padding:.28rem .65rem;max-width:92%;}
+    .pcp-waiting{padding:1.1rem;display:flex;flex-direction:column;gap:.7rem;flex-shrink:0;}
+    .pcp-spinner{display:flex;justify-content:center;margin:.3rem 0;}
+    .pcp-spinner::after{content:'';width:26px;height:26px;border:3px solid #f0e8e0;border-top-color:var(--terracotta);border-radius:50%;animation:pcp-spin .8s linear infinite;}
+    @keyframes pcp-spin{to{transform:rotate(360deg)}}
+    .pcp-waiting-lbl{text-align:center;font-size:.79rem;color:var(--mid);}
+    .pcp-pretopic-lbl{font-size:.78rem;color:var(--dark);font-weight:500;}
+    .pcp-pretopic-ta{width:100%;box-sizing:border-box;border:1.5px solid #e0d8d0;border-radius:10px;padding:.55rem .75rem;font-size:.8rem;font-family:'DM Sans',sans-serif;resize:none;height:65px;color:var(--dark);}
+    .pcp-pretopic-ta:focus{outline:none;border-color:var(--terracotta);}
+    .pcp-pretopic-btn{background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.45rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;align-self:flex-end;}
+    .pcp-offline{padding:1.5rem;text-align:center;display:flex;flex-direction:column;gap:.75rem;align-items:center;}
+    .pcp-offline-icon{font-size:1.8rem;}
+    .pcp-offline-txt{font-size:.79rem;color:var(--mid);line-height:1.55;}
+    .pcp-request-btn{background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.55rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.79rem;font-weight:600;cursor:pointer;}
+    .pcp-input{padding:.6rem;border-top:1px solid #f0e8e0;display:flex;align-items:flex-end;gap:.45rem;flex-shrink:0;}
+    .pcp-input-ta{flex:1;border:1.5px solid #e0d8d0;border-radius:11px;padding:.5rem .75rem;font-size:.8rem;font-family:'DM Sans',sans-serif;resize:none;max-height:90px;color:var(--dark);overflow-y:auto;}
+    .pcp-input-ta:focus{outline:none;border-color:var(--terracotta);}
+    .pcp-send-btn{background:var(--terracotta);color:white;border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
+    .pcp-send-btn:hover{background:var(--rust);}
+    @media(max-width:640px){#parlons-chat-panel{bottom:0;right:0;width:100vw;max-width:100vw;border-radius:20px 20px 0 0;height:82vh;max-height:82vh;}#parlons-chat-btn{bottom:1rem;right:1rem;}}
     /* rating modal */
     .rating-zone{display:none;margin-top:1.2rem;background:var(--warm);border-radius:11px;padding:1.2rem;text-align:center;border:1px solid var(--sand);}
     .rating-zone p{font-size:.85rem;color:var(--dark);margin-bottom:.8rem;}
@@ -1490,35 +1521,13 @@
 <!-- TAWK TRIGGER -->
 <button class="chat-trigger" onclick="openModal()">💬 Discuter maintenant</button>
 
-<!-- CRISP CHAT -->
+<!-- DISPONIBILITÉ AGENTS -->
 <script>
-  window.$crisp=[];
-  window.CRISP_WEBSITE_ID="fd20e23d-059a-4552-9aae-6df05f653d02";
-  (function(){var d=document,s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();
-  $crisp.push(["safe", true]);
-  $crisp.push(["config", "locale", "fr"]);
-  $crisp.push(["do", "chat:hide"]);
-  // Disponibilité en temps réel via l'événement Crisp natif
-  $crisp.push(["on", "website:availability:changed", function(is_available){
-    if(typeof window.setAvailability==='function') window.setAvailability(is_available);
-  }]);
-  // Vérification initiale + polling toutes les 10s (Crisp peut mettre du temps à répondre)
-  function _syncCrispAvail(){
-    try{
-      var avail = !!$crisp.is("website:available");
-      var dbg = document.getElementById('_crisp_debug');
-      if(dbg) dbg.textContent = 'Crisp: ' + (avail ? '✅ online' : '❌ offline');
-      if(typeof window.setAvailability==='function') window.setAvailability(avail);
-    }catch(e){ var dbg=document.getElementById('_crisp_debug'); if(dbg) dbg.textContent='erreur: '+e.message; }
+  async function _syncAvail(){
+    try{const r=await fetch('/.netlify/functions/availability',{cache:'no-store'});const d=await r.json();if(typeof window.setAvailability==='function')window.setAvailability(!!d.online);}catch(e){}
   }
-  $crisp.push(["on", "session:loaded", function(){ _syncCrispAvail(); }]);
-  // Polling indépendant — démarre dès que la page est prête
-  window.addEventListener('load', function(){
-    setTimeout(_syncCrispAvail, 1000);
-    setTimeout(_syncCrispAvail, 3000);
-    setTimeout(_syncCrispAvail, 6000);
-    setInterval(_syncCrispAvail, 10000);
-    // Vérifier si une session est en cours (reconnexion après fermeture de page)
+  window.addEventListener('load',function(){
+    _syncAvail();setInterval(_syncAvail,10000);
     setTimeout(function(){
       var sess=JSON.parse(localStorage.getItem('parlons_active_session')||'null');
       if(!sess||!sess.startedAt)return;
@@ -1527,8 +1536,11 @@
       if(remaining<=0){localStorage.removeItem('parlons_active_session');return;}
       if(typeof showReconnectBanner==='function')showReconnectBanner(sess,remaining);
     },800);
+    setTimeout(function(){
+      var sid=sessionStorage.getItem('parlons_chat_session_id');
+      if(sid&&!chatSessionId){chatSessionId=sid;document.getElementById('parlons-chat-btn').style.display='flex';setChatState('active');startChatPolling();}
+    },900);
   });
-  // Sauvegarder l'état quand l'utilisateur quitte la page
   window.addEventListener('pagehide',function(){
     var sess=JSON.parse(localStorage.getItem('parlons_active_session')||'null');
     if(!sess||!sess.startedAt)return;
@@ -1536,36 +1548,11 @@
     if(elapsed>=sess.duration)return;
     sess.disconnectedAt=Date.now();
     localStorage.setItem('parlons_active_session',JSON.stringify(sess));
-    try{$crisp.push(["set","session:event",[[["⚪ Utilisateur a quitté la page",{},"grey"]]]]);}catch(e){}
   });
-  // Afficher/masquer le timer overlay selon l'état du chat
-  $crisp.push(["on", "chat:opened", function(){
-    const bar=document.getElementById('crisp-chat-timer-bar');
-    const badge=document.getElementById('crisp-launcher-badge');
-    if(sessionTimer!==null){
-      if(bar){bar.style.display='flex';}
-      if(badge){badge.style.display='none';}
-    }
-  }]);
-  $crisp.push(["on", "chat:closed", function(){
-    const bar=document.getElementById('crisp-chat-timer-bar');
-    const badge=document.getElementById('crisp-launcher-badge');
-    if(bar){bar.style.display='none';}
-    if(sessionTimer!==null&&badge){badge.style.display='block';}
-  }]);
-  // Timer auto au 1er message de l'agent
-  window.parlonsWaiting=false;
-  $crisp.push(["on", "message:received", function(){
-    if(window.parlonsWaiting && typeof agentConnected==='function') agentConnected();
-  }]);
-  // Détection réveil téléphone : vérifier immédiatement si la session est terminée
-  document.addEventListener('visibilitychange', function(){
-    if(document.visibilityState!=='visible') return;
-    if(sessionTimer!==null && sessionEndAt>0 && Date.now()>=sessionEndAt) endSession();
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState!=='visible')return;
+    if(sessionTimer!==null&&sessionEndAt>0&&Date.now()>=sessionEndAt)endSession();
   });
-  function openCrisp(){
-    try{$crisp.push(["do","chat:show"]);$crisp.push(["do","chat:open"]);}catch(e){console.warn('Crisp:',e);}
-  }
 </script>
 
 <script>
@@ -1688,10 +1675,7 @@ function goToPayment(){
   // ── CAS TEST : 1 min gratuite, bypass total ──
   if(selectedAmount==='test'){
     closeModal();
-    openCrisp();
-    setTimeout(()=>{
-      try{$crisp.push(["do","message:send",["text","🧪 Session TEST 1 min — la session démarrera dès qu'un écoutant vous répond."]]);}catch(e){}
-    },800);
+    startChatSession(name,'test','Test 1 min',60);
     startWaitTimer();
     return;
   }
@@ -1713,7 +1697,7 @@ function goToPayment(){
     let theme=themeSelect?themeSelect.value:'Discussion libre';
     if(theme==='Autre (libre)'&&customInput&&customInput.value.trim()) theme=customInput.value.trim();
     closeModal();
-    openCrisp();
+    startChatSession(name,'group','Session groupe',300);
     startFreeGroupTimer(theme,name);
     return;
   }
@@ -1751,12 +1735,9 @@ function startWaitTimer(){
     if(waitSeconds>=140&&!reportShown){
       reportShown=true;
       const rz=document.getElementById('report-zone');if(rz)rz.style.display='block';
-      try{$crisp.push(["do","chat:show"]);$crisp.push(["do","chat:open"]);
-        $crisp.push(["do","message:send",["text","⚠️ Aucune réponse depuis 2min20. Fermez ce chat et cliquez sur 'Signaler' dans le modal pour demander un remboursement."]]);}catch(e){}
     }
     if(waitSeconds>=600){
       clearInterval(waitTimer);
-      try{$crisp.push(["do","chat:close"]);$crisp.push(["do","chat:hide"]);}catch(e){}
       if(!reportShown) reportSlowAgent();
       const wzName=document.getElementById('user-name')?document.getElementById('user-name').value.trim():'';
       const wz=document.getElementById('waiting-zone');
@@ -1785,14 +1766,13 @@ function endSession(){
   document.getElementById('session-timer').textContent='0:00';
   const mbar2=document.getElementById('mobile-session-bar');
   if(mbar2){mbar2.style.display='none';}
-  const badge=document.getElementById('crisp-launcher-badge');
-  if(badge){badge.style.display='none';}
-  const bar=document.getElementById('crisp-chat-timer-bar');
-  if(bar){bar.style.display='none';}
-  try{
-    $crisp.push(["do","message:send",["text","⏰ Session terminée. Merci pour cet échange !"]]);
-    setTimeout(()=>{$crisp.push(["do","chat:close"]);$crisp.push(["do","chat:hide"]);},1500);
-  }catch(e){}
+  // Fermer la session côté serveur
+  if(chatSessionId){
+    fetch('/.netlify/functions/chat-close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,closedBy:'visitor'})}).catch(()=>{});
+    sessionStorage.removeItem('parlons_chat_session_id');
+    chatSessionId=null;
+  }
+  clearInterval(chatPollingInterval);chatPollingInterval=null;
   const se=document.getElementById('session-ended');
   if(se){
     se.style.display='block';
@@ -1810,7 +1790,6 @@ function agentConnected(){
   window.parlonsWaiting=false;
   try{localStorage.removeItem('parlons_waiting');}catch(e){}
   clearInterval(waitTimer); waitTimer=null;
-  openCrisp();
   document.getElementById('waiting-zone').style.display='none';
   document.getElementById('session-zone').style.display='block';
   sessionEndAt=Date.now()+sessionDurationSec*1000;
@@ -1818,13 +1797,7 @@ function agentConnected(){
   try{localStorage.setItem('parlons_active_session',JSON.stringify({paymentId:sessionStorage.getItem('parlons_payment_id'),startedAt:Date.now(),duration:sessionDurationSec,label:selectedLabel}));}catch(e){}
   const mbar=document.getElementById('mobile-session-bar');
   if(mbar){mbar.style.display='flex';}
-  // Message de démarrage dans le chat (visible client + agent)
-  try{
-    const endStr=new Date(sessionEndAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    $crisp.push(["do","message:send",["text",`⏱ Session ${selectedLabel} démarrée — fin à ${endStr}`]]);
-  }catch(e){}
-  const badge0=document.getElementById('crisp-launcher-badge');
-  if(badge0){badge0.style.display='block';}
+  // Message de démarrage envoyé par le backend via chat-start
   // Timer basé sur l'horodatage (résiste au verrouillage du téléphone)
   sessionTimer=setInterval(()=>{
     sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
@@ -1842,18 +1815,9 @@ function updateSessionUI(){
   if(el){el.textContent=timeStr;if(red)el.style.color='#e74c3c';}
   const mel=document.getElementById('mobile-timer-display');
   if(mel){mel.textContent=timeStr;if(red)mel.style.color='#e74c3c';}
-  // Badge au-dessus du bouton launcher (chat fermé)
-  const badge=document.getElementById('crisp-launcher-badge');
-  if(badge){badge.textContent=timeStr;badge.style.background=red?'#e74c3c':'#C1440E';}
-  // Barre overlay sur la fenêtre Crisp (chat ouvert)
-  const bar=document.getElementById('crisp-chat-timer-bar');
-  if(bar){
-    const tEl=bar.querySelector('.ctb-time');
-    if(tEl)tEl.textContent=timeStr;
-    bar.classList.toggle('ctb-urgent',red);
-  }
-  // Sous-titre dans le header Crisp (toujours visible)
-  try{$crisp.push(["config","chatbox:description",["⏱ "+timeStr+" restantes"]]);}catch(e){}
+  // Timer dans le panel chat
+  const pcpTimer=document.getElementById('pcp-timer');
+  if(pcpTimer){pcpTimer.textContent=timeStr;pcpTimer.style.background=red?'rgba(220,40,40,.35)':'rgba(0,0,0,.2)';}
 }
 function retrySession(){
   sessionStorage.removeItem('parlons_payment_id');
@@ -1882,7 +1846,6 @@ function showReconnectBanner(sess,remaining){
   reconnectBarTimer=setInterval(tick,1000);
   // Notifier l'agent de la reconnexion
   if(sess.disconnectedAt){
-    try{$crisp.push(["set","session:event",[[["🟢 Utilisateur de retour",{},"green"]]]]);}catch(e){}
     delete sess.disconnectedAt;
     localStorage.setItem('parlons_active_session',JSON.stringify(sess));
   }
@@ -1915,7 +1878,6 @@ function resumeSession(){
   if(sessionTimer){clearInterval(sessionTimer);sessionTimer=null;}
   sessionSeconds=remaining;updateSessionUI();
   const mbar=document.getElementById('mobile-session-bar');if(mbar)mbar.style.display='flex';
-  const badge1=document.getElementById('crisp-launcher-badge');if(badge1)badge1.style.display='block';
   sessionTimer=setInterval(()=>{
     sessionSeconds--;updateSessionUI();
     if(sessionSeconds===120){const ew2=document.getElementById('end-warning');if(ew2)ew2.style.display='block';}
@@ -1925,16 +1887,14 @@ function resumeSession(){
       localStorage.removeItem('parlons_active_session');
       document.getElementById('session-timer').textContent='0:00';
       const mbar2=document.getElementById('mobile-session-bar');if(mbar2)mbar2.style.display='none';
-      const badge2=document.getElementById('crisp-launcher-badge');if(badge2)badge2.style.display='none';
-      const bar2=document.getElementById('crisp-chat-timer-bar');if(bar2)bar2.style.display='none';
-      try{$crisp.push(["do","message:send",["text","⏰ Session terminée. Merci pour cet échange !"]]);setTimeout(()=>{$crisp.push(["do","chat:close"]);$crisp.push(["do","chat:hide"]);},1500);}catch(e){}
       const se2=document.getElementById('session-ended');
       if(se2){se2.style.display='block';se2.innerHTML=`<strong style="color:var(--dark);font-size:.88rem;">⏰ Session de ${selectedLabel} écoulée</strong><br><span style="font-size:.78rem;color:var(--mid);font-weight:300;">Merci pour cet échange.</span>`;}
       setTimeout(()=>{const rz2=document.getElementById('rating-zone');if(rz2)rz2.style.display='block';},1500);
     }
   },1000);
-  // Ouvrir Crisp
-  try{$crisp.push(["do","chat:show"]);$crisp.push(["do","chat:open"]);}catch(e){}
+  // Rouvrir le widget chat si session en cours
+  const sid2=sessionStorage.getItem('parlons_chat_session_id');
+  if(sid2){chatSessionId=sid2;document.getElementById('parlons-chat-btn').style.display='flex';showChatPanel(true);setChatState('active');startChatPolling();}
 }
 
 // ── SIGNALEMENT ──
@@ -2073,16 +2033,7 @@ async function handlePayment(){
     label.style.display='inline';spinner.style.display='none';btn.disabled=false;
     document.getElementById('payment-form').style.display='none';
     document.getElementById('payment-success').style.display='block';
-    try{
-      $crisp.push(["set","user:nickname",[document.getElementById('user-name').value.trim()||'Client']]);
-      $crisp.push(["set","session:data",[[["parlons_id",paymentIntent.id],["formule",selectedLabel]]]]);
-      $crisp.push(["do","chat:show"]);
-      $crisp.push(["do","chat:open"]);
-      // Message initial → crée la conversation dans la boîte Crisp des agents
-      setTimeout(()=>{
-        try{$crisp.push(["do","message:send",["text",`Session de ${selectedLabel} — la session commencera dès qu'un écoutant commencera à parler avec vous.`]]);}catch(e){}
-      },800);
-    }catch(e){}
+    startChatSession(document.getElementById('user-name').value.trim()||'Client','paid',selectedLabel,sessionDurationSec);
     startWaitTimer();
 
   } catch(err){
@@ -2371,18 +2322,14 @@ function submitCreateGroup(){
   groups.unshift({name,title,desc,date:new Date().toLocaleDateString('fr-FR'),members:1});
   localStorage.setItem('parlons_custom_groups',JSON.stringify(groups));
   closeCreateGroupModal();
-  // Simulation : ouvre le chat Crisp avec le thème
-  alert(`✅ Groupe "${title}" créé !\n\nVos 5 minutes gratuites démarrent maintenant. Partagez le lien du site pour inviter d'autres membres dans votre groupe.`);
-  openCrisp();
+  alert(`✅ Groupe "${title}" créé !\n\nVos 5 minutes gratuites démarrent maintenant.`);
 }
 
 function joinGroup(){
   const name=document.getElementById('gm-name').value.trim();
   if(!name){document.getElementById('gm-name').focus();return;}
   closeGroupModal();
-  // Démarre les 5 min gratuites, puis propose le paiement
   startFreeGroupTimer();
-  openCrisp();
 }
 
 // ── FREE GROUP TIMER (5 min) ──
@@ -2437,10 +2384,6 @@ function startFreeGroupTimer(theme,name){
   // Stocker et démarrer directement la session sans paiement
   const subPayId='sub_'+subToken.substring(0,20);
   sessionStorage.setItem('parlons_payment_id',subPayId);
-  try{
-    $crisp.push(['set','user:nickname',[subName]]);
-    $crisp.push(['set','session:data',[[['parlons_id',subPayId],['formule','Pass mensuel']]]]);
-  }catch(e){}
   // Ouvrir le modal en mode "succès" (session déjà créée)
   const modal=document.getElementById('modal');
   if(modal) modal.classList.add('active');
@@ -2451,13 +2394,7 @@ function startFreeGroupTimer(theme,name){
   const pf=document.getElementById('payment-form'),ps=document.getElementById('payment-success');
   if(pf) pf.style.display='none';
   if(ps) ps.style.display='block';
-  try{
-    $crisp.push(['do','chat:show']);
-    $crisp.push(['do','chat:open']);
-    setTimeout(()=>{
-      try{$crisp.push(["do","message:send",["text","Session Pass mensuel (30 min) — la session commencera dès qu'un écoutant commencera à parler avec vous."]]);}catch(e){}
-    },800);
-  }catch(e){}
+  startChatSession(subName,'sub','Pass mensuel',1800);
   startWaitTimer();
 })();
 </script>
@@ -2609,7 +2546,7 @@ function startFreeGroupTimer(theme,name){
     <h2>6. Cookies tiers</h2>
     <ul>
       <li><strong>Stripe</strong> — nécessaire au traitement des paiements. <a href="https://stripe.com/fr/privacy" target="_blank" style="color:var(--terracotta)">Politique Stripe</a></li>
-      <li><strong>Crisp</strong> — nécessaire au fonctionnement du chat. <a href="https://crisp.chat/fr/privacy/" target="_blank" style="color:var(--terracotta)">Politique Crisp</a></li>
+      <li><strong>Chat Parlons</strong> — nécessaire au fonctionnement du chat en direct. Les messages transitent via notre infrastructure propre (Supabase).</li>
     </ul>
     <div class="lb-info">Aucun cookie publicitaire ou de tracking n'est utilisé sur Parlons.</div>
 
@@ -2820,13 +2757,42 @@ window.addEventListener('resize', stackBanners);
 document.fonts && document.fonts.ready.then(stackBanners);
 </script>
 
-<!-- BADGE TIMER AU-DESSUS DU BOUTON CRISP (chat fermé) -->
-<div id="crisp-launcher-badge">--:--</div>
-<!-- BARRE TIMER SUR LA FENÊTRE CRISP (chat ouvert, desktop) -->
-<div id="crisp-chat-timer-bar">
-  <span class="ctb-label">⏱ Session en cours</span>
-  <span class="ctb-time">--:--</span>
-  <span class="ctb-label">restantes</span>
+<!-- WIDGET CHAT CUSTOM -->
+<button id="parlons-chat-btn" onclick="toggleChatPanel()" title="Ouvrir le chat Parlons" aria-label="Chat">
+  💬<span id="chat-unread-badge" style="display:none">1</span>
+</button>
+<div id="parlons-chat-panel">
+  <div class="pcp-header">
+    <div class="pcp-header-left">
+      <span class="pcp-logo">Parlons</span>
+      <span class="pcp-subtitle" id="pcp-subtitle">En ligne</span>
+    </div>
+    <div class="pcp-header-right">
+      <span class="pcp-timer" id="pcp-timer" style="display:none"></span>
+      <button class="pcp-close" onclick="toggleChatPanel()" aria-label="Fermer">✕</button>
+    </div>
+  </div>
+  <div class="pcp-msgs" id="pcp-msgs"></div>
+  <div class="pcp-waiting" id="pcp-waiting" style="display:none">
+    <div class="pcp-spinner"></div>
+    <p class="pcp-waiting-lbl">En attente d'un écoutant…</p>
+    <div id="pcp-pretopic-zone">
+      <p class="pcp-pretopic-lbl" style="margin-bottom:.4rem">De quoi souhaitez-vous parler ?</p>
+      <textarea class="pcp-pretopic-ta" id="pcp-pretopic-input" placeholder="Décrivez brièvement ce qui vous amène…"></textarea>
+      <button class="pcp-pretopic-btn" onclick="sendPreTopic()">Envoyer →</button>
+    </div>
+  </div>
+  <div class="pcp-offline" id="pcp-offline" style="display:none">
+    <div class="pcp-offline-icon">🔴</div>
+    <p class="pcp-offline-txt">Aucun écoutant disponible en ce moment.<br>Laissez une demande et vous serez alerté(e) dès qu'un écoutant se connecte.</p>
+    <button class="pcp-request-btn" onclick="openAgentRequestForm()">Demander un écoutant</button>
+  </div>
+  <div class="pcp-input" id="pcp-input" style="display:none">
+    <textarea class="pcp-input-ta" id="pcp-input-msg" placeholder="Votre message…" rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,90)+'px'"></textarea>
+    <button class="pcp-send-btn" onclick="sendChatMessage()" aria-label="Envoyer">➤</button>
+  </div>
 </div>
 
 <!-- BARRE SESSION MOBILE (fixe, toujours visible pendant la session) -->
@@ -2844,5 +2810,108 @@ document.fonts && document.fonts.ready.then(stackBanners);
   </div>
   <button onclick="resumeSession()" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.42rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;">💬 Reprendre la discussion →</button>
 </div>
+
+<script>
+// ── WIDGET CHAT PARLONS ──
+let chatSessionId=null,chatPollingInterval=null,chatLastMsgTime=null;
+let chatPanelOpen=false,chatUnreadCount=0,chatPreTopicSent=false,chatState='idle';
+
+function toggleChatPanel(){
+  chatPanelOpen=!chatPanelOpen;
+  const p=document.getElementById('parlons-chat-panel');
+  if(chatPanelOpen){p.classList.add('pcp-open');chatUnreadCount=0;updateChatBadge();setTimeout(()=>{const m=document.getElementById('pcp-msgs');if(m)m.scrollTop=m.scrollHeight;},50);}
+  else{p.classList.remove('pcp-open');}
+}
+function showChatPanel(open){
+  chatPanelOpen=open;
+  const p=document.getElementById('parlons-chat-panel');
+  if(open)p.classList.add('pcp-open');else p.classList.remove('pcp-open');
+}
+function updateChatBadge(){
+  const b=document.getElementById('chat-unread-badge');
+  if(b){b.style.display=chatUnreadCount>0?'flex':'none';b.textContent=chatUnreadCount;}
+}
+function setChatState(state){
+  chatState=state;
+  const waiting=document.getElementById('pcp-waiting');
+  const offline=document.getElementById('pcp-offline');
+  const input=document.getElementById('pcp-input');
+  const sub=document.getElementById('pcp-subtitle');
+  const timerEl=document.getElementById('pcp-timer');
+  if(waiting)waiting.style.display=state==='waiting'?'flex':'none';
+  if(offline)offline.style.display=state==='offline'?'flex':'none';
+  if(input)input.style.display=state==='active'?'flex':'none';
+  if(timerEl)timerEl.style.display=state==='active'?'inline':'none';
+  if(sub){if(state==='waiting')sub.textContent='En attente…';else if(state==='active')sub.textContent='Session en cours';else if(state==='offline')sub.textContent='Hors ligne';else if(state==='ended')sub.textContent='Session terminée';}
+}
+function appendChatMsg(msg){
+  const area=document.getElementById('pcp-msgs');
+  if(!area)return;
+  const div=document.createElement('div');
+  div.className='pcp-msg '+msg.sender_type;
+  div.textContent=msg.content;
+  area.appendChild(div);
+  area.scrollTop=area.scrollHeight;
+  if(msg.created_at)chatLastMsgTime=msg.created_at;
+  if(!chatPanelOpen&&msg.sender_type==='agent'){chatUnreadCount++;updateChatBadge();}
+}
+async function startChatSession(name,sessionType,sessionLabel,durationSec){
+  const visitorId=localStorage.getItem('parlons_visitor_id')||'';
+  try{
+    const r=await fetch('/.netlify/functions/chat-start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId,name,sessionType,sessionLabel,durationSec})});
+    const d=await r.json();
+    if(!d.sessionId)return;
+    chatSessionId=d.sessionId;
+    sessionStorage.setItem('parlons_chat_session_id',chatSessionId);
+    document.getElementById('parlons-chat-btn').style.display='flex';
+    showChatPanel(true);
+    setChatState(d.agentAssigned?'active':'waiting');
+    if(d.agentAssigned)agentConnected();
+    startChatPolling();
+  }catch(e){console.error('startChatSession:',e);}
+}
+function startChatPolling(){
+  if(chatPollingInterval)clearInterval(chatPollingInterval);
+  chatPollingInterval=setInterval(pollChat,2500);
+}
+async function pollChat(){
+  if(!chatSessionId)return;
+  try{
+    const since=chatLastMsgTime||new Date(Date.now()-15000).toISOString();
+    const r=await fetch('/.netlify/functions/chat-poll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'visitor',sessionId:chatSessionId,since})});
+    const d=await r.json();
+    if(d.messages)d.messages.forEach(m=>appendChatMsg(m));
+    if(d.status==='active'&&chatState==='waiting'&&d.agentConnected){setChatState('active');agentConnected();}
+    if(d.status==='closed'&&chatState!=='ended'){setChatState('ended');clearInterval(chatPollingInterval);chatPollingInterval=null;}
+  }catch(e){}
+}
+async function sendPreTopic(){
+  const ta=document.getElementById('pcp-pretopic-input');
+  const content=(ta&&ta.value.trim())||'';
+  if(!content||!chatSessionId||chatPreTopicSent)return;
+  chatPreTopicSent=true;ta.disabled=true;
+  try{
+    await fetch('/.netlify/functions/chat-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,content,senderType:'visitor'})});
+    appendChatMsg({sender_type:'visitor',content,created_at:new Date().toISOString()});
+    const pz=document.getElementById('pcp-pretopic-zone');if(pz)pz.style.display='none';
+  }catch(e){chatPreTopicSent=false;ta.disabled=false;}
+}
+async function sendChatMessage(){
+  const ta=document.getElementById('pcp-input-msg');
+  const content=(ta&&ta.value.trim())||'';
+  if(!content||!chatSessionId)return;
+  ta.value='';ta.style.height='auto';
+  appendChatMsg({sender_type:'visitor',content,created_at:new Date().toISOString()});
+  try{
+    await fetch('/.netlify/functions/chat-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,content,senderType:'visitor'})});
+  }catch(e){}
+}
+function openAgentRequestForm(){
+  const name=document.getElementById('user-name')?document.getElementById('user-name').value.trim():'Visiteur';
+  fetch('/.netlify/functions/chat-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}).catch(()=>{});
+  const btn=document.querySelector('.pcp-request-btn');
+  if(btn){btn.textContent='✅ Demande envoyée';btn.disabled=true;}
+}
+</script>
 </body>
 </html>

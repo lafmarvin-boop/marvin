@@ -130,6 +130,29 @@
     .agent-period-table th{text-align:left;padding:.55rem .8rem;color:var(--light);font-weight:500;font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--sand);}
     .agent-period-table td{padding:.6rem .8rem;border-bottom:1px solid var(--warm);}
     .agent-period-table tr:last-child td{border-bottom:none;}
+    /* Chat agent */
+    .agent-chat-card{background:white;border:1px solid var(--sand);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem;}
+    .agent-chat-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);margin-bottom:.9rem;display:flex;align-items:center;gap:.6rem;}
+    .agent-presence-row{display:flex;align-items:center;gap:.8rem;margin-bottom:.9rem;flex-wrap:wrap;}
+    .agent-presence-btn{padding:.45rem 1.1rem;border:none;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .15s;}
+    .btn-go-online{background:#5CB85C;color:white;}
+    .btn-go-online:hover{background:#4aa04a;}
+    .btn-go-offline{background:#e5e7eb;color:#374151;}
+    .btn-go-offline:hover{background:#d1d5db;}
+    .agent-presence-status{font-size:.78rem;font-weight:500;}
+    .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;}
+    .agent-chat-msgs{height:260px;overflow-y:auto;border:1px solid #f0e8e0;border-radius:10px;padding:.65rem;display:flex;flex-direction:column;gap:.4rem;background:#fafaf9;margin-bottom:.7rem;}
+    .agent-msg{max-width:82%;padding:.45rem .7rem;border-radius:13px;font-size:.79rem;line-height:1.5;word-break:break-word;}
+    .agent-msg.visitor{align-self:flex-start;background:#f0ece8;color:#2C1F14;}
+    .agent-msg.agent{align-self:flex-end;background:var(--tc);color:white;}
+    .agent-msg.system{align-self:center;background:#f5f0ea;color:#7a6050;font-size:.7rem;border-radius:8px;text-align:center;padding:.25rem .6rem;max-width:92%;}
+    .agent-chat-input-row{display:flex;gap:.5rem;}
+    .agent-chat-ta{flex:1;border:1.5px solid #e0d8d0;border-radius:10px;padding:.5rem .7rem;font-size:.8rem;font-family:'DM Sans',sans-serif;resize:none;height:42px;max-height:80px;overflow-y:auto;}
+    .agent-chat-ta:focus{outline:none;border-color:var(--tc);}
+    .agent-chat-send-btn{background:var(--tc);color:white;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .agent-chat-end-btn{background:#ef4444;color:white;border:none;border-radius:50px;padding:.38rem .85rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+    .agent-chat-waiting{text-align:center;padding:1.5rem;color:var(--mid);font-size:.8rem;}
+    .agent-visitor-info{background:#f5f0ea;border-radius:9px;padding:.6rem .8rem;font-size:.78rem;color:var(--dark);margin-bottom:.7rem;line-height:1.55;}
   </style>
 </head>
 <body>
@@ -383,6 +406,35 @@
       📋 <strong>Complétez votre profil</strong> pour pouvoir générer vos factures (SIRET, adresse, IBAN requis).
     </div>
 
+    <!-- Chat en direct -->
+    <div class="agent-chat-card" id="agent-live-chat">
+      <div class="agent-chat-title">💬 Chat en direct <span id="agent-status-badge" style="font-size:.72rem;padding:.15rem .7rem;border-radius:50px;background:#f3f4f6;color:#6b7280;font-family:'DM Sans',sans-serif;font-weight:500;">Hors ligne</span></div>
+      <div class="agent-presence-row">
+        <button id="btn-go-online" class="agent-presence-btn btn-go-online" onclick="agentGoOnline()">Se mettre en ligne</button>
+        <button id="btn-go-offline" class="agent-presence-btn btn-go-offline" style="display:none" onclick="agentGoOffline()">Se mettre hors ligne</button>
+        <span id="agent-pres-status" class="agent-presence-status"><span class="status-dot" style="background:#9ca3af"></span><span style="color:var(--light)">Hors ligne</span></span>
+      </div>
+      <div id="agent-chat-err" style="color:#ef4444;font-size:.78rem;min-height:1rem;margin-bottom:.3rem;"></div>
+      <div id="agent-waiting-queue" style="display:none;margin-bottom:.7rem;">
+        <div style="font-size:.72rem;font-weight:600;color:var(--mid);margin-bottom:.35rem;">File d'attente</div>
+        <div id="agent-waiting-list" style="display:flex;flex-direction:column;gap:.3rem;"></div>
+      </div>
+      <div id="agent-chat-idle" style="display:none;text-align:center;padding:1.2rem .5rem;color:var(--mid);font-size:.82rem;">⏳ En attente d'un visiteur…</div>
+      <div id="agent-active-chat" style="display:none;">
+        <div class="agent-visitor-info" id="agent-visitor-info"></div>
+        <div class="agent-chat-msgs" id="agent-chat-msgs"></div>
+        <div class="agent-chat-input-row">
+          <textarea class="agent-chat-ta" id="agent-chat-ta" placeholder="Votre message…"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentMessage();}"
+            oninput="this.style.height='42px';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+          <button class="agent-chat-send-btn" onclick="sendAgentMessage()">➤</button>
+        </div>
+        <div style="margin-top:.55rem;text-align:right;">
+          <button class="agent-chat-end-btn" onclick="endAgentSession()">Terminer la session</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Facture du mois -->
     <div style="background:white;border:1px solid var(--sand);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;">
@@ -471,6 +523,12 @@ const API = '/.netlify/functions';
 let subEmailStored = '';
 let agentData = {};
 let agentEmailStored = '';
+let agentChatToken = null;
+let agentChatSessionId = null;
+let agentPollingInterval = null;
+let agentLastMsgTime = null;
+let agentPrevSessionId = null;
+let agentRenderedIds = new Set();
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -509,6 +567,11 @@ function showScreen(id) {
 }
 
 function logout() {
+  if (agentPollingInterval) { clearInterval(agentPollingInterval); agentPollingInterval = null; }
+  if (agentChatToken) {
+    fetch(`${API}/chat-presence`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agentEmail: agentEmailStored, agentToken: agentChatToken, status: 'offline' }) }).catch(() => {});
+    agentChatToken = null;
+  }
   localStorage.removeItem('parlons_espace_session');
   showScreen('login');
   subEmailStored = '';
@@ -904,7 +967,7 @@ function renderDashboard(d) {
   const note = unassigned > 0 ? `<div style="font-size:.72rem;color:var(--light);margin-top:.8rem">${unassigned} session${unassigned>1?'s':''} sans agent enregistré</div>` : '';
   window._agentList = agentList;
   if (agentList.length === 0) {
-    document.getElementById('agent-section').innerHTML = '<div style="color:var(--light);font-size:.82rem">Aucune session assignée à un agent pour l\'instant.<br><span style="font-size:.72rem">Les agents apparaîtront ici dès leur première réponse dans Crisp.</span></div>';
+    document.getElementById('agent-section').innerHTML = '<div style="color:var(--light);font-size:.82rem">Aucune session assignée à un agent pour l\'instant.</div>';
   } else if (window.innerWidth < 640) {
     // ── Affichage mobile : cartes ──
     const cards = agentList.map((a, idx) => {
@@ -1501,6 +1564,174 @@ function generateGlobalPDF() {
   doc.save(`Parlons_recap_URSSAF_${year}-${String(month + 1).padStart(2, '0')}.pdf`);
 }
 
+// ── AGENT CHAT EN DIRECT ──
+function updateAgentPresenceUI(online) {
+  document.getElementById('btn-go-online').style.display = online ? 'none' : 'inline-block';
+  document.getElementById('btn-go-offline').style.display = online ? 'inline-block' : 'none';
+  const badge = document.getElementById('agent-status-badge');
+  const pres  = document.getElementById('agent-pres-status');
+  if (online) {
+    badge.textContent = 'En ligne'; badge.style.background = '#dcfce7'; badge.style.color = '#16a34a';
+    pres.innerHTML = '<span class="status-dot" style="background:#22c55e"></span><span style="color:#16a34a;font-weight:600">En ligne</span>';
+    document.getElementById('agent-chat-idle').style.display = 'block';
+  } else {
+    badge.textContent = 'Hors ligne'; badge.style.background = '#f3f4f6'; badge.style.color = '#6b7280';
+    pres.innerHTML = '<span class="status-dot" style="background:#9ca3af"></span><span style="color:var(--light)">Hors ligne</span>';
+    document.getElementById('agent-chat-idle').style.display = 'none';
+    document.getElementById('agent-active-chat').style.display = 'none';
+    document.getElementById('agent-waiting-queue').style.display = 'none';
+  }
+}
+
+async function agentGoOnline() {
+  const btn = document.getElementById('btn-go-online');
+  const err = document.getElementById('agent-chat-err');
+  err.textContent = '';
+  btn.disabled = true; btn.textContent = 'Connexion…';
+  try {
+    const res = await fetch(`${API}/chat-presence`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentEmail: agentEmailStored, password: agentPasswordCache, status: 'online' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    agentChatToken = data.token;
+    updateAgentPresenceUI(true);
+    startAgentPolling();
+  } catch(e) {
+    err.textContent = e.message;
+    btn.disabled = false; btn.textContent = 'Se mettre en ligne';
+  }
+}
+
+async function agentGoOffline() {
+  const btn = document.getElementById('btn-go-offline');
+  btn.disabled = true; btn.textContent = 'Déconnexion…';
+  try {
+    await fetch(`${API}/chat-presence`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentEmail: agentEmailStored, agentToken: agentChatToken, status: 'offline' })
+    });
+  } catch {}
+  clearInterval(agentPollingInterval);
+  agentPollingInterval = null; agentChatToken = null; agentChatSessionId = null;
+  agentLastMsgTime = null; agentPrevSessionId = null; agentRenderedIds = new Set();
+  updateAgentPresenceUI(false);
+  btn.disabled = false; btn.textContent = 'Se mettre hors ligne';
+}
+
+function startAgentPolling() {
+  if (agentPollingInterval) clearInterval(agentPollingInterval);
+  pollAgentChat();
+  agentPollingInterval = setInterval(pollAgentChat, 3000);
+}
+
+async function pollAgentChat() {
+  if (!agentChatToken) return;
+  try {
+    const res = await fetch(`${API}/chat-poll`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'agent', agentEmail: agentEmailStored, agentToken: agentChatToken, since: agentLastMsgTime })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (res.status === 401) { clearInterval(agentPollingInterval); agentPollingInterval = null; agentChatToken = null; updateAgentPresenceUI(false); }
+      return;
+    }
+
+    agentChatSessionId = data.currentSessionId || null;
+
+    // File d'attente
+    const queueEl = document.getElementById('agent-waiting-queue');
+    const listEl  = document.getElementById('agent-waiting-list');
+    const waiting = data.waitingSessions || [];
+    if (waiting.length) {
+      queueEl.style.display = 'block';
+      listEl.innerHTML = waiting.map(s => {
+        const name  = escHtml(s.pre_name || 'Anonyme');
+        const hm    = new Date(s.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const topic = s.pre_topic ? ` — <em style="color:var(--light)">${escHtml(s.pre_topic.substring(0, 55))}</em>` : '';
+        return `<div style="background:var(--warm);border-radius:8px;padding:.35rem .65rem;font-size:.77rem;display:flex;align-items:center;gap:.4rem;">
+          <span style="color:#f59e0b">●</span> <strong>${name}</strong>${topic}
+          <span style="color:var(--light);font-size:.68rem;margin-left:auto">${hm}</span></div>`;
+      }).join('');
+    } else {
+      queueEl.style.display = 'none';
+    }
+
+    const idleEl   = document.getElementById('agent-chat-idle');
+    const activeEl = document.getElementById('agent-active-chat');
+
+    if (agentChatSessionId && data.currentSession) {
+      // Nouvelle session assignée — réinitialiser l'affichage
+      if (agentChatSessionId !== agentPrevSessionId) {
+        agentPrevSessionId = agentChatSessionId;
+        agentLastMsgTime   = null;
+        agentRenderedIds   = new Set();
+        document.getElementById('agent-chat-msgs').innerHTML = '';
+        const s = data.currentSession;
+        document.getElementById('agent-visitor-info').innerHTML =
+          `<strong>${escHtml(s.pre_name || 'Anonyme')}</strong> · ${escHtml(s.session_label || '')}` +
+          (s.pre_topic ? `<br><em style="color:var(--mid)">"${escHtml(s.pre_topic)}"</em>` : '');
+      }
+      idleEl.style.display = 'none';
+      activeEl.style.display = 'block';
+
+      if (data.messages && data.messages.length) {
+        const msgsEl = document.getElementById('agent-chat-msgs');
+        data.messages.forEach(m => {
+          if (m.id && agentRenderedIds.has(m.id)) return;
+          if (m.id) agentRenderedIds.add(m.id);
+          const div = document.createElement('div');
+          div.className = 'agent-msg ' + (m.sender_type === 'agent' ? 'agent' : m.sender_type === 'system' ? 'system' : 'visitor');
+          div.textContent = m.content;
+          msgsEl.appendChild(div);
+        });
+        agentLastMsgTime = data.messages[data.messages.length - 1].created_at;
+        const msgsEl2 = document.getElementById('agent-chat-msgs');
+        msgsEl2.scrollTop = msgsEl2.scrollHeight;
+      }
+    } else {
+      idleEl.style.display = 'block';
+      activeEl.style.display = 'none';
+      if (agentPrevSessionId && !agentChatSessionId) {
+        agentPrevSessionId = null; agentLastMsgTime = null; agentRenderedIds = new Set();
+        document.getElementById('agent-chat-msgs').innerHTML = '';
+      }
+    }
+  } catch {}
+}
+
+async function sendAgentMessage() {
+  const ta = document.getElementById('agent-chat-ta');
+  const content = (ta.value || '').trim();
+  if (!content || !agentChatSessionId || !agentChatToken) return;
+  ta.value = ''; ta.style.height = '42px';
+  try {
+    await fetch(`${API}/chat-send`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: agentChatSessionId, content, senderType: 'agent', agentEmail: agentEmailStored, agentToken: agentChatToken })
+    });
+  } catch {}
+}
+
+async function endAgentSession() {
+  if (!agentChatSessionId || !confirm('Terminer cette session ?')) return;
+  try {
+    await fetch(`${API}/chat-close`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: agentChatSessionId, agentEmail: agentEmailStored, agentToken: agentChatToken, closedBy: 'agent' })
+    });
+  } catch {}
+  agentChatSessionId = null; agentPrevSessionId = null; agentLastMsgTime = null;
+  agentRenderedIds = new Set();
+  document.getElementById('agent-chat-msgs').innerHTML = '';
+  document.getElementById('agent-active-chat').style.display = 'none';
+  const idleEl = document.getElementById('agent-chat-idle');
+  idleEl.style.display = 'block';
+  idleEl.textContent = '✓ Session terminée — en attente d\'un nouveau visiteur…';
+}
+
 async function agentSetPassword() {
   const pwd1 = document.getElementById('agent-pwd1').value;
   const pwd2 = document.getElementById('agent-pwd2').value;
@@ -1601,7 +1832,7 @@ async function submitAddAgent() {
     const data = await res.json();
     if (!res.ok) { err.textContent = data.error || 'Erreur serveur.'; return; }
     ok.style.display = 'block';
-    ok.innerHTML = `✅ Agent créé.${data.crispInvited ? ' Invitation Crisp envoyée.' : ' (Crisp non configuré — invitation manuelle requise.)'}`;
+    ok.innerHTML = '✅ Agent créé. Identifiants envoyés par email si configuré.';
     document.getElementById('add-agent-prenom').value = '';
     document.getElementById('add-agent-nom').value = '';
     document.getElementById('add-agent-email').value = '';
