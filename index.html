@@ -1613,7 +1613,7 @@ function updateAvailUI(){
 updateAvailUI();
 
 // ── STRIPE ──
-try{stripe=Stripe(STRIPE_KEY);const el=stripe.elements();cardElement=el.create('card',{style:{base:{fontFamily:"'DM Sans',sans-serif",fontSize:'15px',color:'#2C1F14','::placeholder':{color:'#B09070'}}}});}catch(e){console.warn('Stripe:',e.message);}
+try{stripe=Stripe(STRIPE_KEY);const el=stripe.elements();cardElement=el.create('card',{hidePostalCode:true,style:{base:{fontFamily:"'DM Sans',sans-serif",fontSize:'15px',color:'#2C1F14','::placeholder':{color:'#B09070'}}}});}catch(e){console.warn('Stripe:',e.message);}
 
 // ── FIDÉLITÉ (Option A — localStorage) ──
 function getLoyaltyInfo() {
