@@ -1818,7 +1818,6 @@ function agentConnected(pseudo, assignedAt){
   document.getElementById('waiting-zone').style.display='none';
   if(sz)sz.style.display='block';
   sessionSeconds=sessionDurationSec; updateSessionUI();
-  startSessionCountdown(assignedAt);
   const mbar=document.getElementById('mobile-session-bar');
   if(mbar){mbar.style.display='flex';}
   const sub=document.getElementById('pcp-subtitle');
@@ -2895,7 +2894,7 @@ function appendChatMsg(msg){
   area.scrollTop=area.scrollHeight;
   if(msg.created_at)chatLastMsgTime=msg.created_at;
   if(!chatPanelOpen&&msg.sender_type==='agent'){chatUnreadCount++;updateChatBadge();}
-  if(msg.sender_type==='agent'&&sessionTimer===null&&chatState==='active')startSessionCountdown(null);
+  if(msg.sender_type==='agent'&&sessionTimer===null&&chatState==='active')startSessionCountdown(msg.created_at||null);
 }
 async function startChatSession(name,sessionType,sessionLabel,durationSec,paymentId){
   chatRenderedIds=new Set();chatLastMsgTime=null;
@@ -2918,15 +2917,16 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
 async function extendChatSession(newDurationSec,paymentId,label){
   try{
     const remainingSec=sessionTimer!==null?Math.max(0,Math.round((sessionEndAt-Date.now())/1000)):0;
-    const r=await fetch('/.netlify/functions/chat-extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,newDurationSec,paymentId,label,remainingSec})});
-    const d=await r.json();
-    if(!d.ok)return;
+    // Set pending flag BEFORE await to prevent endSession racing during the API call
     chatExtensionPending=true;
     chatExtensionNewDuration=newDurationSec;
     const sub=document.getElementById('pcp-subtitle');
     if(sub)sub.textContent='En attente de l\'agent…';
     closeModal();
-  }catch(e){console.error('extendChatSession:',e);}
+    const r=await fetch('/.netlify/functions/chat-extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,newDurationSec,paymentId,label,remainingSec})});
+    const d=await r.json();
+    if(!d.ok){chatExtensionPending=false;chatExtensionNewDuration=0;}
+  }catch(e){chatExtensionPending=false;chatExtensionNewDuration=0;console.error('extendChatSession:',e);}
 }
 function startChatPolling(){
   if(chatPollingInterval)clearInterval(chatPollingInterval);

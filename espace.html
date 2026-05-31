@@ -2052,23 +2052,27 @@ function updateAgentExtBar() {
     const mins = Math.floor((sess.extensionPending.newDurationSec || 0) / 60);
     const textEl = document.getElementById('afloat-ext-text');
     if (textEl) textEl.textContent = `⏳ Prolongation demandée : +${mins} min`;
+    bar.dataset.sessionId = sess.id;
     bar.style.display = 'block';
   } else {
+    bar.dataset.sessionId = '';
     bar.style.display = 'none';
   }
 }
 
 function respondExtensionBar(accept) {
-  if (!agentActiveTabId) return;
-  respondExtension(agentActiveTabId, accept);
+  const bar = document.getElementById('afloat-ext-bar');
+  const sid = bar && bar.dataset.sessionId;
+  if (!sid) return;
+  respondExtension(sid, accept);
 }
 
 function updateAgentFloatTimer() {
   const timerEl = document.getElementById('afloat-timer');
   if (!timerEl) return;
   const sess = agentSessions.get(agentActiveTabId);
-  if (!sess || !sess.assignedAt) { timerEl.style.display = 'none'; return; }
-  const elapsed = (Date.now() - new Date(sess.assignedAt).getTime()) / 1000;
+  if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; return; }
+  const elapsed = (Date.now() - sess.timerStartedAt) / 1000;
   const remaining = Math.max(0, sess.durationSec - elapsed);
   const m = Math.floor(remaining / 60), s = Math.floor(remaining % 60);
   timerEl.style.display = 'inline';
@@ -2082,6 +2086,11 @@ async function sendAgentFloatMsg() {
   const content = (ta && ta.value.trim()) || '';
   if (!content || !agentActiveTabId || !agentChatToken) return;
   ta.value = ''; ta.style.height = 'auto';
+  const sess = agentSessions.get(agentActiveTabId);
+  if (sess && !sess.timerStartedAt) {
+    sess.timerStartedAt = Date.now();
+    startAgentFloatTimer();
+  }
   try {
     await fetch(`${API}/chat-send`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
