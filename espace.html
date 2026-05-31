@@ -11,7 +11,12 @@
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--dark);min-height:100vh;}
 
-    nav{background:white;border-bottom:1px solid var(--sand);padding:.85rem 1.5rem;display:flex;align-items:center;justify-content:space-between;}
+    nav{background:white;border-bottom:1px solid var(--sand);padding:.85rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+    #admin-tabs{display:none;background:white;border-bottom:2px solid var(--sand);padding:.45rem 1.5rem;position:sticky;top:57px;z-index:99;}
+    .admin-tab-wrap{max-width:1060px;margin:0 auto;display:flex;gap:.35rem;}
+    .atab{background:none;border:none;padding:.38rem 1.1rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:500;cursor:pointer;color:var(--mid);transition:all .15s;}
+    .atab:hover:not(.atab-active){background:var(--warm);}
+    .atab.atab-active{background:var(--tc);color:white;font-weight:600;}
     .nav-logo{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--tc);text-decoration:none;}
     .nav-right{display:flex;gap:.8rem;align-items:center;}
     .nav-link{font-size:.8rem;color:var(--mid);text-decoration:none;}
@@ -165,6 +170,14 @@
   </div>
 </nav>
 
+<!-- Onglets Admin / Agent (admin uniquement) -->
+<div id="admin-tabs">
+  <div class="admin-tab-wrap">
+    <button id="tab-admin" class="atab atab-active" onclick="switchTab('admin')">📊 Admin</button>
+    <button id="tab-agent" class="atab" onclick="switchTab('agent')">💬 Agent</button>
+  </div>
+</div>
+
 <!-- ══ LOGIN ══ -->
 <div data-screen="login" class="active">
   <div class="login-wrap">
@@ -287,35 +300,6 @@
         <div class="stat-label">Abonnés actifs</div>
         <div class="stat-value" id="s-active-subs">—</div>
         <div class="stat-sub" id="s-total-subs"></div>
-      </div>
-    </div>
-
-    <!-- Chat en direct (admin) -->
-    <div class="agent-chat-card" id="admin-live-chat" style="margin-bottom:1.8rem;">
-      <div class="agent-chat-title">💬 Permanence chat <span id="agent-status-badge" style="font-size:.72rem;padding:.15rem .7rem;border-radius:50px;background:#f3f4f6;color:#6b7280;font-family:'DM Sans',sans-serif;font-weight:500;">Hors ligne</span></div>
-      <div class="agent-presence-row">
-        <button id="btn-go-online" class="agent-presence-btn btn-go-online" onclick="agentGoOnline()">Se mettre en ligne</button>
-        <button id="btn-go-offline" class="agent-presence-btn btn-go-offline" style="display:none" onclick="agentGoOffline()">Se mettre hors ligne</button>
-        <span id="agent-pres-status" class="agent-presence-status"><span class="status-dot" style="background:#9ca3af"></span><span style="color:var(--light)">Hors ligne</span></span>
-      </div>
-      <div id="agent-chat-err" style="color:#ef4444;font-size:.78rem;min-height:1rem;margin-bottom:.3rem;"></div>
-      <div id="agent-waiting-queue" style="display:none;margin-bottom:.7rem;">
-        <div style="font-size:.72rem;font-weight:600;color:var(--mid);margin-bottom:.35rem;">File d'attente</div>
-        <div id="agent-waiting-list" style="display:flex;flex-direction:column;gap:.3rem;"></div>
-      </div>
-      <div id="agent-chat-idle" style="display:none;text-align:center;padding:1.2rem .5rem;color:var(--mid);font-size:.82rem;">⏳ En attente d'un visiteur…</div>
-      <div id="agent-active-chat" style="display:none;">
-        <div class="agent-visitor-info" id="agent-visitor-info"></div>
-        <div class="agent-chat-msgs" id="agent-chat-msgs"></div>
-        <div class="agent-chat-input-row">
-          <textarea class="agent-chat-ta" id="agent-chat-ta" placeholder="Votre message…"
-            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentMessage();}"
-            oninput="this.style.height='42px';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
-          <button class="agent-chat-send-btn" onclick="sendAgentMessage()">➤</button>
-        </div>
-        <div style="margin-top:.55rem;text-align:right;">
-          <button class="agent-chat-end-btn" onclick="endAgentSession()">Terminer la session</button>
-        </div>
       </div>
     </div>
 
@@ -553,16 +537,51 @@ let subEmailStored = '';
 let agentData = {};
 let agentEmailStored = '';
 let agentChatToken = null;
-// Cherche l'élément dans l'écran actif (admin-dash ou agent-dash partagent les mêmes IDs de chat)
-function chatEl(id) {
-  const active = document.querySelector('[data-screen].active');
-  return (active && active.querySelector('#' + id)) || document.getElementById(id);
-}
 let agentChatSessionId = null;
 let agentPollingInterval = null;
 let agentLastMsgTime = null;
 let agentPrevSessionId = null;
 let agentRenderedIds = new Set();
+let adminAgentDataCache = null;
+let currentAdminTab = 'admin';
+
+// Cherche l'élément dans l'écran actif (admin-dash ou agent-dash partagent les mêmes IDs de chat)
+function chatEl(id) {
+  const active = document.querySelector('[data-screen].active');
+  return (active && active.querySelector('#' + id)) || document.getElementById(id);
+}
+
+async function switchTab(tab) {
+  if (currentAdminTab === tab) return;
+  currentAdminTab = tab;
+  document.getElementById('tab-admin').classList.toggle('atab-active', tab === 'admin');
+  document.getElementById('tab-agent').classList.toggle('atab-active', tab === 'agent');
+
+  if (tab === 'admin') {
+    showScreen('admin-dash');
+    document.getElementById('admin-tabs').style.display = 'block';
+  } else {
+    const btn = document.getElementById('tab-agent');
+    if (!adminAgentDataCache) {
+      btn.textContent = '⏳ Chargement…'; btn.disabled = true;
+      try {
+        const res = await fetch(`${API}/agent-stats`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache })
+        });
+        adminAgentDataCache = await res.json();
+      } catch {
+        adminAgentDataCache = { role: 'agent', sessions: [], periods: {}, byPlan: {}, avgRating: null, ratingCount: 0 };
+      }
+      btn.textContent = '💬 Agent'; btn.disabled = false;
+    }
+    if (agentChatToken && agentChatSessionId) { agentLastMsgTime = null; agentRenderedIds = new Set(); }
+    renderAgentDash(agentEmailStored, adminAgentDataCache);
+    showScreen('agent-dash');
+    document.getElementById('admin-tabs').style.display = 'block';
+    updateAgentPresenceUI(!!agentChatToken);
+  }
+}
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -606,6 +625,9 @@ function logout() {
     fetch(`${API}/chat-presence`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agentEmail: agentEmailStored, agentToken: agentChatToken, status: 'offline' }) }).catch(() => {});
     agentChatToken = null;
   }
+  document.getElementById('admin-tabs').style.display = 'none';
+  adminAgentDataCache = null;
+  currentAdminTab = 'admin';
   localStorage.removeItem('parlons_espace_session');
   showScreen('login');
   subEmailStored = '';
@@ -661,6 +683,11 @@ async function login() {
       localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
       agentEmailStored = email;
       agentPasswordCache = password;
+      currentAdminTab = 'admin';
+      adminAgentDataCache = null;
+      document.getElementById('tab-admin').classList.add('atab-active');
+      document.getElementById('tab-agent').classList.remove('atab-active');
+      document.getElementById('admin-tabs').style.display = 'block';
       renderDashboard(data);
       showScreen('admin-dash');
     } else if (data.role === 'subscriber') {
