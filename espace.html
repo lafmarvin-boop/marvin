@@ -163,6 +163,33 @@
     .agent-chat-end-btn{background:#ef4444;color:white;border:none;border-radius:50px;padding:.38rem .85rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
     .agent-chat-waiting{text-align:center;padding:1.5rem;color:var(--mid);font-size:.8rem;}
     .agent-visitor-info{background:#f5f0ea;border-radius:9px;padding:.6rem .8rem;font-size:.78rem;color:var(--dark);margin-bottom:.7rem;line-height:1.55;}
+
+    /* ── Agent float panel ── */
+    .afloat-bubble{position:fixed;bottom:1.5rem;right:1.5rem;z-index:9000;cursor:pointer;display:none;}
+    .afloat-bubble-btn{width:58px;height:58px;background:var(--tc);border-radius:50%;box-shadow:0 4px 16px rgba(193,68,14,.35);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:none;cursor:pointer;transition:transform .15s;}
+    .afloat-bubble-btn:hover{transform:scale(1.07);}
+    .afloat-bubble-badge{position:absolute;top:-4px;right:-4px;background:#ef4444;color:white;border-radius:50%;min-width:20px;height:20px;font-size:.68rem;font-weight:700;display:none;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;padding:0 4px;}
+    .afloat-panel{position:fixed;bottom:5rem;right:1rem;z-index:9000;width:360px;max-width:calc(100vw - 1.5rem);height:500px;max-height:calc(100dvh - 6rem);background:white;border-radius:20px;box-shadow:0 12px 40px rgba(0,0,0,.18);display:none;flex-direction:column;font-family:'DM Sans',sans-serif;overflow:hidden;border:1px solid rgba(0,0,0,.06);}
+    .afloat-panel.open{display:flex;}
+    .afloat-header{background:var(--tc);padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;color:white;flex-shrink:0;gap:.5rem;}
+    .afloat-header-title{font-family:'Playfair Display',serif;font-size:.95rem;flex:1;}
+    .afloat-timer{background:rgba(0,0,0,.2);border-radius:50px;padding:.15rem .6rem;font-size:.8rem;font-weight:700;display:none;white-space:nowrap;}
+    .afloat-close{background:none;border:none;color:rgba(255,255,255,.8);font-size:1.05rem;cursor:pointer;padding:0;line-height:1;}
+    .afloat-tabs{display:none;background:#f8f4f0;border-bottom:1px solid #e8e0d8;padding:.3rem .5rem;gap:.3rem;flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+    .afloat-tabs::-webkit-scrollbar{display:none;}
+    .afloat-tab{border:none;background:transparent;border-radius:8px;padding:.25rem .65rem;font-size:.76rem;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--mid);white-space:nowrap;position:relative;display:flex;align-items:center;gap:.3rem;}
+    .afloat-tab.active{background:var(--tc);color:white;}
+    .afloat-tab-badge{background:#ef4444;color:white;border-radius:50%;min-width:16px;height:16px;font-size:.62rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 3px;}
+    .afloat-info{padding:.45rem .85rem;background:#fef9f5;border-bottom:1px solid #f0e8e0;font-size:.76rem;color:var(--mid);flex-shrink:0;line-height:1.5;}
+    .afloat-msgs{flex:1;overflow-y:auto;padding:.8rem;display:flex;flex-direction:column;gap:.45rem;}
+    .afloat-input-row{padding:.55rem;border-top:1px solid #f0e8e0;display:flex;align-items:flex-end;gap:.4rem;flex-shrink:0;}
+    .afloat-ta{flex:1;border:1.5px solid #e0d8d0;border-radius:11px;padding:.5rem .7rem;font-size:.8rem;font-family:'DM Sans',sans-serif;resize:none;max-height:80px;overflow-y:auto;}
+    .afloat-ta:focus{outline:none;border-color:var(--tc);}
+    .afloat-send{background:var(--tc);color:white;border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:1rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+    .afloat-footer{padding:.35rem .85rem;border-top:1px solid #f0e8e0;display:flex;justify-content:flex-end;gap:.5rem;flex-shrink:0;}
+    .afloat-end-btn{background:none;border:1px solid #e5e7eb;border-radius:50px;padding:.2rem .75rem;font-size:.72rem;color:var(--light);cursor:pointer;font-family:'DM Sans',sans-serif;}
+    .afloat-end-btn:hover{border-color:#ef4444;color:#ef4444;}
+    @media(max-width:640px){.afloat-panel{bottom:0;right:0;width:100vw;max-width:100vw;border-radius:20px 20px 0 0;height:82dvh;max-height:82dvh;}.afloat-bubble{bottom:1rem;right:1rem;}}
   </style>
 </head>
 <body>
@@ -438,20 +465,7 @@
         <div style="font-size:.72rem;font-weight:600;color:var(--mid);margin-bottom:.35rem;">File d'attente</div>
         <div id="agent-waiting-list" style="display:flex;flex-direction:column;gap:.3rem;"></div>
       </div>
-      <div id="agent-chat-idle" style="display:none;text-align:center;padding:1.2rem .5rem;color:var(--mid);font-size:.82rem;">⏳ En attente d'un visiteur…</div>
-      <div id="agent-active-chat" style="display:none;">
-        <div class="agent-visitor-info" id="agent-visitor-info"></div>
-        <div class="agent-chat-msgs" id="agent-chat-msgs"></div>
-        <div class="agent-chat-input-row">
-          <textarea class="agent-chat-ta" id="agent-chat-ta" placeholder="Votre message…"
-            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentMessage();}"
-            oninput="this.style.height='42px';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
-          <button class="agent-chat-send-btn" onclick="sendAgentMessage()">➤</button>
-        </div>
-        <div style="margin-top:.55rem;text-align:right;">
-          <button class="agent-chat-end-btn" onclick="endAgentSession()">Terminer la session</button>
-        </div>
-      </div>
+      <div id="agent-chat-status" style="font-size:.8rem;color:var(--light);padding:.4rem 0;display:none;">⏳ En attente d'un visiteur…</div>
     </div>
 
     <!-- Facture du mois -->
@@ -543,10 +557,16 @@ let subEmailStored = '';
 let agentData = {};
 let agentEmailStored = '';
 let agentChatToken = null;
-let agentChatSessionId = null;
 let agentPollingInterval = null;
-let agentLastMsgTime = null;
+let agentSessions = new Map(); // sessionId -> {id, name, topic, label, durationSec, assignedAt, messages, renderedIds, unread}
+let agentActiveTabId = null;
+let agentFloatOpen = false;
+let agentFloatTimerInterval = null;
+let agentPollSince = null; // global since for all sessions
+// Compat aliases used by other code
+let agentChatSessionId = null;
 let agentPrevSessionId = null;
+let agentLastMsgTime = null;
 let agentRenderedIds = new Set();
 let adminAgentDataCache = null;
 let currentAdminTab = 'admin';
@@ -1642,13 +1662,19 @@ function updateAgentPresenceUI(online) {
   if (online) {
     badge.textContent = 'En ligne'; badge.style.background = '#dcfce7'; badge.style.color = '#16a34a';
     pres.innerHTML = '<span class="status-dot" style="background:#22c55e"></span><span style="color:#16a34a;font-weight:600">En ligne</span>';
-    chatEl('agent-chat-idle').style.display = 'block';
+    chatEl('agent-chat-idle') && (chatEl('agent-chat-idle').style.display = 'block');
+    const statusEl = document.getElementById('agent-chat-status');
+    if (statusEl) statusEl.style.display = 'block';
+    document.getElementById('afloat-bubble').style.display = 'block';
   } else {
     badge.textContent = 'Hors ligne'; badge.style.background = '#fee2e2'; badge.style.color = '#ef4444';
     pres.innerHTML = '<span class="status-dot" style="background:#ef4444"></span><span style="color:#ef4444;font-weight:600">Hors ligne</span>';
-    chatEl('agent-chat-idle').style.display = 'none';
-    chatEl('agent-active-chat').style.display = 'none';
-    chatEl('agent-waiting-queue').style.display = 'none';
+    chatEl('agent-chat-idle') && (chatEl('agent-chat-idle').style.display = 'none');
+    const statusEl = document.getElementById('agent-chat-status');
+    if (statusEl) statusEl.style.display = 'none';
+    document.getElementById('afloat-bubble').style.display = 'none';
+    document.getElementById('afloat-panel').classList.remove('open');
+    agentFloatOpen = false;
   }
 }
 
@@ -1686,9 +1712,12 @@ async function agentGoOffline() {
       body: JSON.stringify({ agentEmail: agentEmailStored, agentToken: agentChatToken, status: 'offline' })
     });
   } catch {}
-  clearInterval(agentPollingInterval);
-  agentPollingInterval = null; agentChatToken = null; agentChatSessionId = null;
-  agentLastMsgTime = null; agentPrevSessionId = null; agentRenderedIds = new Set();
+  clearInterval(agentPollingInterval); clearInterval(agentFloatTimerInterval);
+  agentPollingInterval = null; agentChatToken = null;
+  agentSessions.clear(); agentActiveTabId = null; agentFloatOpen = false;
+  agentPollSince = null; agentChatSessionId = null; agentPrevSessionId = null;
+  agentLastMsgTime = null; agentRenderedIds = new Set();
+  document.getElementById('afloat-panel').classList.remove('open');
   updateAgentPresenceUI(false);
 }
 
@@ -1703,7 +1732,7 @@ async function pollAgentChat() {
   try {
     const res = await fetch(`${API}/chat-poll`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'agent', agentEmail: agentEmailStored, agentToken: agentChatToken, since: agentLastMsgTime })
+      body: JSON.stringify({ role: 'agent', agentEmail: agentEmailStored, agentToken: agentChatToken, since: agentPollSince })
     });
     const data = await res.json();
     if (!res.ok) {
@@ -1711,96 +1740,258 @@ async function pollAgentChat() {
       return;
     }
 
-    agentChatSessionId = data.currentSessionId || null;
-
-    // File d'attente
+    // ── File d'attente ──
+    const listEl = chatEl('agent-waiting-list');
     const queueEl = chatEl('agent-waiting-queue');
-    const listEl  = chatEl('agent-waiting-list');
     const waiting = data.waitingSessions || [];
-    if (waiting.length) {
+    const maxSessions = 3;
+    if (waiting.length && agentSessions.size < maxSessions) {
       queueEl.style.display = 'block';
       listEl.innerHTML = waiting.map(s => {
+        const canAccept = agentSessions.size < maxSessions;
         const name  = escHtml(s.pre_name || 'Anonyme');
         const hm    = new Date(s.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        const topic = s.pre_topic ? ` — <em style="color:var(--light)">${escHtml(s.pre_topic.substring(0, 55))}</em>` : '';
+        const topic = s.pre_topic ? ` — <em style="color:var(--light)">${escHtml(s.pre_topic.substring(0,50))}</em>` : '';
         return `<div style="background:var(--warm);border-radius:8px;padding:.35rem .65rem;font-size:.77rem;display:flex;align-items:center;gap:.4rem;">
           <span style="color:#f59e0b">●</span> <strong>${name}</strong>${topic}
-          <span style="color:var(--light);font-size:.68rem;margin-left:auto">${hm}</span></div>`;
+          <span style="color:var(--light);font-size:.68rem;margin-left:auto">${hm}</span>
+          ${canAccept ? `<button onclick="agentAcceptFromQueue('${escHtml(s.id)}')" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.15rem .55rem;font-size:.68rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;flex-shrink:0;">Accepter</button>` : ''}
+        </div>`;
       }).join('');
     } else {
       queueEl.style.display = 'none';
     }
 
-    const idleEl   = chatEl('agent-chat-idle');
-    const activeEl = chatEl('agent-active-chat');
+    // ── Sessions actives ──
+    const sessions = data.sessions || [];
+    let anyNew = false;
 
-    if (agentChatSessionId && data.currentSession) {
-      // Nouvelle session assignée — réinitialiser l'affichage
-      if (agentChatSessionId !== agentPrevSessionId) {
-        agentPrevSessionId = agentChatSessionId;
-        agentLastMsgTime   = null;
-        agentRenderedIds   = new Set();
-        chatEl('agent-chat-msgs').innerHTML = '';
-        const s = data.currentSession;
-        chatEl('agent-visitor-info').innerHTML =
-          `<strong>${escHtml(s.pre_name || 'Anonyme')}</strong> · ${escHtml(s.session_label || '')}` +
-          (s.pre_topic ? `<br><em style="color:var(--mid)">"${escHtml(s.pre_topic)}"</em>` : '');
-      }
-      idleEl.style.display = 'none';
-      activeEl.style.display = 'block';
-
-      if (data.messages && data.messages.length) {
-        const msgsEl = chatEl('agent-chat-msgs');
-        data.messages.forEach(m => {
-          if (m.id && agentRenderedIds.has(m.id)) return;
-          if (m.id) agentRenderedIds.add(m.id);
-          const div = document.createElement('div');
-          div.className = 'agent-msg ' + (m.sender_type === 'agent' ? 'agent' : m.sender_type === 'system' ? 'system' : 'visitor');
-          div.textContent = m.content;
-          msgsEl.appendChild(div);
+    sessions.forEach(s => {
+      const existing = agentSessions.get(s.id);
+      if (!existing) {
+        // Nouvelle session
+        anyNew = true;
+        agentSessions.set(s.id, {
+          id: s.id, name: s.pre_name || 'Anonyme', topic: s.pre_topic || null,
+          label: s.session_label || '', durationSec: s.duration_sec || 1800,
+          assignedAt: s.assigned_at, messages: [], renderedIds: new Set(), unread: 0
         });
-        agentLastMsgTime = data.messages[data.messages.length - 1].created_at;
-        msgsEl.scrollTop = msgsEl.scrollHeight;
       }
-    } else {
-      idleEl.style.display = 'block';
-      activeEl.style.display = 'none';
-      if (agentPrevSessionId && !agentChatSessionId) {
-        agentPrevSessionId = null; agentLastMsgTime = null; agentRenderedIds = new Set();
-        chatEl('agent-chat-msgs').innerHTML = '';
-      }
+      // Append new messages
+      const sess = agentSessions.get(s.id);
+      (s.messages || []).forEach(m => {
+        if (sess.renderedIds.has(m.id)) return;
+        sess.renderedIds.add(m.id);
+        sess.messages.push(m);
+        if (m.id) {
+          const lastTs = m.created_at;
+          if (!agentPollSince || lastTs > agentPollSince) agentPollSince = lastTs;
+        }
+        // Unread: count if not this tab or panel closed
+        if (!agentFloatOpen || agentActiveTabId !== s.id) {
+          if (m.sender_type !== 'agent') sess.unread++;
+        }
+      });
+    });
+
+    // Remove sessions that are no longer active
+    const activeIds = new Set(sessions.map(s => s.id));
+    for (const [sid] of agentSessions) {
+      if (!activeIds.has(sid)) agentSessions.delete(sid);
+    }
+
+    // Update active tab
+    if (agentSessions.size > 0 && (!agentActiveTabId || !agentSessions.has(agentActiveTabId))) {
+      agentActiveTabId = agentSessions.keys().next().value;
+    }
+    if (agentSessions.size === 0) { agentActiveTabId = null; }
+
+    // Update compat aliases
+    agentChatSessionId = agentActiveTabId;
+
+    // Render
+    renderAgentFloatTabs();
+    if (agentFloatOpen) renderAgentFloatMessages();
+    updateAgentFloatBubble();
+    updateAgentFloatTimer();
+
+    // Auto-open panel if new session arrived and panel is closed
+    if (anyNew && !agentFloatOpen) {
+      toggleAgentFloat();
+    }
+
+    // Update inline "status" indicator
+    const statusEl = document.getElementById('agent-chat-status');
+    if (statusEl) {
+      statusEl.style.display = agentSessions.size === 0 ? 'block' : 'none';
     }
   } catch {}
 }
 
 async function sendAgentMessage() {
-  const ta = chatEl('agent-chat-ta');
-  const content = (ta.value || '').trim();
-  if (!content || !agentChatSessionId || !agentChatToken) return;
-  ta.value = ''; ta.style.height = '42px';
+  // Delegate to float send
+  await sendAgentFloatMsg();
+}
+
+async function endAgentSession() {
+  await endAgentFloatSession();
+}
+
+function toggleAgentFloat() {
+  agentFloatOpen = !agentFloatOpen;
+  const panel = document.getElementById('afloat-panel');
+  if (agentFloatOpen) {
+    panel.classList.add('open');
+    // Clear unread for active tab
+    if (agentActiveTabId && agentSessions.has(agentActiveTabId)) {
+      agentSessions.get(agentActiveTabId).unread = 0;
+    }
+    renderAgentFloatTabs();
+    renderAgentFloatMessages();
+    updateAgentFloatBubble();
+    startAgentFloatTimer();
+  } else {
+    panel.classList.remove('open');
+    clearInterval(agentFloatTimerInterval); agentFloatTimerInterval = null;
+  }
+}
+
+function renderAgentFloatTabs() {
+  const tabsEl = document.getElementById('afloat-tabs');
+  if (!tabsEl) return;
+  if (agentSessions.size <= 1) {
+    tabsEl.style.display = 'none'; return;
+  }
+  tabsEl.style.display = 'flex';
+  tabsEl.innerHTML = '';
+  agentSessions.forEach((sess, sid) => {
+    const btn = document.createElement('button');
+    btn.className = 'afloat-tab' + (sid === agentActiveTabId ? ' active' : '');
+    btn.onclick = () => switchAgentTab(sid);
+    let html = escHtml(sess.name);
+    if (sess.unread > 0) html += `<span class="afloat-tab-badge">${sess.unread}</span>`;
+    btn.innerHTML = html;
+    tabsEl.appendChild(btn);
+  });
+}
+
+function switchAgentTab(sessionId) {
+  agentActiveTabId = sessionId;
+  agentChatSessionId = sessionId;
+  if (agentSessions.has(sessionId)) agentSessions.get(sessionId).unread = 0;
+  renderAgentFloatTabs();
+  renderAgentFloatMessages();
+  updateAgentFloatBubble();
+  startAgentFloatTimer();
+}
+
+function renderAgentFloatMessages() {
+  const sess = agentSessions.get(agentActiveTabId);
+  const msgsEl = document.getElementById('afloat-msgs');
+  const infoEl = document.getElementById('afloat-info');
+  const titleEl = document.getElementById('afloat-title');
+  if (!msgsEl) return;
+  if (!sess) {
+    msgsEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--light);font-size:.82rem;">⏳ En attente d\'un visiteur…</div>';
+    if (infoEl) infoEl.textContent = '';
+    if (titleEl) titleEl.textContent = '💬 Chat';
+    return;
+  }
+  msgsEl.innerHTML = '';
+  sess.messages.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'agent-msg ' + (m.sender_type === 'agent' ? 'agent' : m.sender_type === 'system' ? 'system' : 'visitor');
+    div.textContent = m.content;
+    msgsEl.appendChild(div);
+  });
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+  if (infoEl) infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong> · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
+  if (titleEl) titleEl.textContent = `💬 ${sess.name}`;
+}
+
+function updateAgentFloatBubble() {
+  const bubble = document.getElementById('afloat-bubble');
+  const badge = document.getElementById('afloat-badge');
+  if (!bubble) return;
+  bubble.style.display = agentChatToken ? 'block' : 'none';
+  let totalUnread = 0;
+  agentSessions.forEach(s => { totalUnread += s.unread; });
+  if (badge) {
+    badge.style.display = totalUnread > 0 ? 'flex' : 'none';
+    badge.textContent = totalUnread > 9 ? '9+' : String(totalUnread);
+  }
+}
+
+function startAgentFloatTimer() {
+  clearInterval(agentFloatTimerInterval); agentFloatTimerInterval = null;
+  if (!agentActiveTabId || !agentSessions.has(agentActiveTabId)) return;
+  updateAgentFloatTimer();
+  agentFloatTimerInterval = setInterval(updateAgentFloatTimer, 1000);
+}
+
+function updateAgentFloatTimer() {
+  const timerEl = document.getElementById('afloat-timer');
+  if (!timerEl) return;
+  const sess = agentSessions.get(agentActiveTabId);
+  if (!sess || !sess.assignedAt) { timerEl.style.display = 'none'; return; }
+  const elapsed = (Date.now() - new Date(sess.assignedAt).getTime()) / 1000;
+  const remaining = Math.max(0, sess.durationSec - elapsed);
+  const m = Math.floor(remaining / 60), s = Math.floor(remaining % 60);
+  timerEl.style.display = 'inline';
+  timerEl.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  timerEl.style.background = remaining <= 120 ? 'rgba(239,68,68,.35)' : 'rgba(0,0,0,.2)';
+  if (remaining <= 0) { clearInterval(agentFloatTimerInterval); agentFloatTimerInterval = null; }
+}
+
+async function sendAgentFloatMsg() {
+  const ta = document.getElementById('afloat-ta');
+  const content = (ta && ta.value.trim()) || '';
+  if (!content || !agentActiveTabId || !agentChatToken) return;
+  ta.value = ''; ta.style.height = 'auto';
+  // Optimistic render
+  const sess = agentSessions.get(agentActiveTabId);
+  if (sess) {
+    const tempId = 'tmp_' + Date.now();
+    sess.messages.push({ id: tempId, content, sender_type: 'agent', created_at: new Date().toISOString() });
+    sess.renderedIds.add(tempId);
+    renderAgentFloatMessages();
+  }
   try {
     await fetch(`${API}/chat-send`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: agentChatSessionId, content, senderType: 'agent', agentEmail: agentEmailStored, agentToken: agentChatToken })
+      body: JSON.stringify({ sessionId: agentActiveTabId, content, senderType: 'agent', agentEmail: agentEmailStored, agentToken: agentChatToken })
     });
   } catch {}
 }
 
-async function endAgentSession() {
-  if (!agentChatSessionId || !confirm('Terminer cette session ?')) return;
+async function endAgentFloatSession() {
+  if (!agentActiveTabId || !confirm('Terminer cette session ?')) return;
   try {
     await fetch(`${API}/chat-close`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: agentChatSessionId, agentEmail: agentEmailStored, agentToken: agentChatToken, closedBy: 'agent' })
+      body: JSON.stringify({ sessionId: agentActiveTabId, agentEmail: agentEmailStored, agentToken: agentChatToken, closedBy: 'agent' })
     });
   } catch {}
-  agentChatSessionId = null; agentPrevSessionId = null; agentLastMsgTime = null;
-  agentRenderedIds = new Set();
-  chatEl('agent-chat-msgs').innerHTML = '';
-  chatEl('agent-active-chat').style.display = 'none';
-  const idleEl = chatEl('agent-chat-idle');
-  idleEl.style.display = 'block';
-  idleEl.textContent = '✓ Session terminée — en attente d\'un nouveau visiteur…';
+  agentSessions.delete(agentActiveTabId);
+  agentActiveTabId = agentSessions.size > 0 ? agentSessions.keys().next().value : null;
+  agentChatSessionId = agentActiveTabId;
+  renderAgentFloatTabs();
+  renderAgentFloatMessages();
+  updateAgentFloatBubble();
+}
+
+async function agentAcceptFromQueue(sessionId) {
+  if (agentSessions.size >= 3) return;
+  try {
+    const res = await fetch(`${API}/chat-take`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, agentEmail: agentEmailStored, agentToken: agentChatToken })
+    });
+    const data = await res.json();
+    if (!data.ok) return;
+    // Session will appear in next poll; open float panel now
+    if (!agentFloatOpen) toggleAgentFloat();
+  } catch {}
 }
 
 async function agentSetPassword() {
@@ -1925,6 +2116,32 @@ async function submitAddAgent() {
       <button onclick="closeRemoveAgentModal()" style="flex:1;padding:.75rem;background:none;border:1.5px solid var(--sand);border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.88rem;cursor:pointer;color:var(--mid);">Annuler</button>
       <button id="remove-agent-btn" onclick="confirmRemoveAgent()" style="flex:1;padding:.75rem;background:#c0392b;color:white;border:none;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;">Retirer</button>
     </div>
+  </div>
+</div>
+
+<!-- ══ AGENT FLOAT CHAT ══ -->
+<div class="afloat-bubble" id="afloat-bubble">
+  <button class="afloat-bubble-btn" onclick="toggleAgentFloat()">💬</button>
+  <div class="afloat-bubble-badge" id="afloat-badge"></div>
+</div>
+
+<div class="afloat-panel" id="afloat-panel">
+  <div class="afloat-header">
+    <span class="afloat-header-title" id="afloat-title">💬 Chat</span>
+    <span class="afloat-timer" id="afloat-timer"></span>
+    <button class="afloat-close" onclick="toggleAgentFloat()">✕</button>
+  </div>
+  <div class="afloat-tabs" id="afloat-tabs"></div>
+  <div class="afloat-info" id="afloat-info"></div>
+  <div class="afloat-msgs" id="afloat-msgs"></div>
+  <div class="afloat-input-row" id="afloat-input">
+    <textarea class="afloat-ta" id="afloat-ta" placeholder="Votre message…" rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentFloatMsg();}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+    <button class="afloat-send" onclick="sendAgentFloatMsg()">↑</button>
+  </div>
+  <div class="afloat-footer" id="afloat-footer">
+    <button class="afloat-end-btn" onclick="endAgentFloatSession()">Terminer la session</button>
   </div>
 </div>
 

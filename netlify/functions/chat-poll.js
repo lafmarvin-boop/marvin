@@ -79,22 +79,41 @@ exports.handler = async (event) => {
         `chat_sessions?status=eq.waiting&select=id,pre_name,pre_topic,created_at&order=created_at.asc&limit=10`
       );
 
-      // Session courante + messages depuis last poll
+      // Toutes les sessions actives de cet agent
+      const activeSessions = await sbGet(
+        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at&order=assigned_at.asc&limit=3`
+      );
+
+      // Pour chaque session active, récupérer les messages depuis sinceIso
+      const sessions = await Promise.all(activeSessions.map(async (s) => {
+        const msgs = await sbGet(
+          `chat_messages?session_id=eq.${encodeURIComponent(s.id)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=100`
+        );
+        return { ...s, messages: msgs };
+      }));
+
+      // Compat: session courante + messages (basé sur current_session_id)
       let currentSession = null;
       let messages = [];
-
       if (currentSessionId) {
-        const [sessRows, msgs] = await Promise.all([
-          sbGet(`chat_sessions?id=eq.${encodeURIComponent(currentSessionId)}&select=id,pre_name,pre_topic,status,created_at,session_label,duration_sec,assigned_at&limit=1`),
-          sbGet(`chat_messages?session_id=eq.${encodeURIComponent(currentSessionId)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=100`)
-        ]);
-        currentSession = sessRows[0] || null;
-        messages = msgs;
+        const found = sessions.find(s => s.id === currentSessionId);
+        if (found) {
+          currentSession = found;
+          messages = found.messages;
+        } else {
+          // currentSessionId présent mais pas dans les sessions actives — charger quand même
+          const [sessRows, msgs] = await Promise.all([
+            sbGet(`chat_sessions?id=eq.${encodeURIComponent(currentSessionId)}&select=id,pre_name,pre_topic,status,created_at,session_label,duration_sec,assigned_at&limit=1`),
+            sbGet(`chat_messages?session_id=eq.${encodeURIComponent(currentSessionId)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=100`)
+          ]);
+          currentSession = sessRows[0] || null;
+          messages = msgs;
+        }
       }
 
       return {
         statusCode: 200, headers: CORS,
-        body: JSON.stringify({ agentStatus, currentSessionId, currentSession, messages, waitingSessions })
+        body: JSON.stringify({ agentStatus, currentSessionId, currentSession, messages, sessions, waitingSessions })
       };
     }
 
