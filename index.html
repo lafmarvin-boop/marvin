@@ -469,6 +469,7 @@
     .pcp-spinner{display:flex;justify-content:center;margin:.3rem 0;}
     .pcp-spinner::after{content:'';width:26px;height:26px;border:3px solid #f0e8e0;border-top-color:var(--terracotta);border-radius:50%;animation:pcp-spin .8s linear infinite;}
     @keyframes pcp-spin{to{transform:rotate(360deg)}}
+    @keyframes pulse-btn{from{opacity:1;}to{opacity:.7;}}
     .pcp-waiting-lbl{text-align:center;font-size:.79rem;color:var(--mid);}
     .pcp-pretopic-lbl{font-size:.78rem;color:var(--dark);font-weight:500;}
     .pcp-pretopic-ta{width:100%;box-sizing:border-box;border:1.5px solid #e0d8d0;border-radius:10px;padding:.55rem .75rem;font-size:.8rem;font-family:'DM Sans',sans-serif;resize:none;height:65px;color:var(--dark);}
@@ -483,7 +484,7 @@
     .pcp-input-ta:focus{outline:none;border-color:var(--terracotta);}
     .pcp-send-btn{background:var(--terracotta);color:white;border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
     .pcp-send-btn:hover{background:var(--rust);}
-    @media(max-width:640px){#parlons-chat-panel{bottom:0;right:0;width:100vw;max-width:100vw;border-radius:20px 20px 0 0;height:82vh;max-height:82vh;}#parlons-chat-btn{bottom:1rem;right:1rem;}}
+    @media(max-width:640px){#parlons-chat-panel{bottom:0;right:0;width:100vw;max-width:100vw;border-radius:20px 20px 0 0;height:82dvh;max-height:82dvh;}#parlons-chat-btn{bottom:1rem;right:1rem;}}
     /* rating modal */
     .rating-zone{display:none;margin-top:1.2rem;background:var(--warm);border-radius:11px;padding:1.2rem;text-align:center;border:1px solid var(--sand);}
     .rating-zone p{font-size:.85rem;color:var(--dark);margin-bottom:.8rem;}
@@ -1770,6 +1771,7 @@ function endSession(){
   document.getElementById('session-timer').textContent='0:00';
   const mbar2=document.getElementById('mobile-session-bar');
   if(mbar2){mbar2.style.display='none';}
+  const rb=document.getElementById('mobile-renew-btn');if(rb)rb.style.display='none';
   // Fermer la session côté serveur
   if(chatSessionId){
     fetch('/.netlify/functions/chat-close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,closedBy:'visitor'})}).catch(()=>{});
@@ -1777,16 +1779,10 @@ function endSession(){
     chatSessionId=null;
   }
   clearInterval(chatPollingInterval);chatPollingInterval=null;
-  const se=document.getElementById('session-ended');
-  if(se){
-    se.style.display='block';
-    se.innerHTML=`<strong style="color:var(--dark);font-size:.88rem;">⏰ Session de ${selectedLabel} écoulée</strong><br><span style="font-size:.78rem;color:var(--mid);font-weight:300;">Merci pour cet échange.</span>`;
-  }
-  if(selectedAmount==='sub'){
-    showEndOfSubSessionChoice();
-  } else {
-    setTimeout(()=>document.getElementById('rating-zone').style.display='block',1500);
-  }
+  // Fermer le widget chat et rouvrir le modal de sélection
+  showChatPanel(false);
+  const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
+  setTimeout(()=>openModal(),600);
 }
 
 function agentConnected(){
@@ -1810,6 +1806,7 @@ function startSessionCountdown(){
     updateSessionUI();
     if(sessionSeconds===120)document.getElementById('end-warning').style.display='block';
     if(sessionSeconds<=120){const ec=document.getElementById('end-countdown');if(ec){const m=Math.floor(sessionSeconds/60),s=sessionSeconds%60;ec.textContent=`${m}:${String(s).padStart(2,'0')}`;ec.style.color=sessionSeconds<=30?'#e74c3c':'inherit';}}
+    if(sessionSeconds===30){const rb=document.getElementById('mobile-renew-btn');if(rb)rb.style.display='inline-block';}
     if(sessionSeconds<=0) endSession();
   },1000);
 }
@@ -2805,7 +2802,10 @@ document.fonts && document.fonts.ready.then(stackBanners);
 <div id="mobile-session-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#e8f8e8;border-top:2px solid #5CB85C;padding:.55rem 1rem;flex-direction:row;justify-content:space-between;align-items:center;font-family:'DM Sans',sans-serif;box-shadow:0 -2px 8px rgba(0,0,0,.08);">
   <div style="font-size:.74rem;color:#2d7a2d;font-weight:600;">✅ Session en cours</div>
   <div id="mobile-timer-display" style="font-size:1.05rem;font-family:'Playfair Display',serif;color:#C1440E;font-weight:700;">--:--</div>
-  <button onclick="openModal()" style="background:#C1440E;color:white;border:none;border-radius:50px;padding:.3rem .75rem;font-size:.72rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;">Voir →</button>
+  <div style="display:flex;gap:.4rem;align-items:center;">
+    <button id="mobile-renew-btn" onclick="openModal()" style="display:none;background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.3rem .75rem;font-size:.72rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;animation:pulse-btn .8s ease-in-out infinite alternate;">🔁 Relancer</button>
+    <button onclick="openModal()" style="background:#C1440E;color:white;border:none;border-radius:50px;padding:.3rem .75rem;font-size:.72rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;">Voir →</button>
+  </div>
 </div>
 
 <!-- ══ BANNIÈRE RECONNEXION SESSION ══ -->
@@ -2891,7 +2891,12 @@ async function pollChat(){
     const d=await r.json();
     if(d.messages)d.messages.forEach(m=>appendChatMsg(m));
     if(d.status==='active'&&chatState==='waiting'&&d.agentConnected){setChatState('active');agentConnected();}
-    if(d.status==='closed'&&chatState!=='ended'){setChatState('ended');clearInterval(chatPollingInterval);chatPollingInterval=null;}
+    if(d.status==='closed'&&chatState!=='ended'){
+      setChatState('ended');clearInterval(chatPollingInterval);chatPollingInterval=null;
+      showChatPanel(false);
+      const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
+      setTimeout(()=>openModal(),600);
+    }
   }catch(e){}
 }
 async function sendPreTopic(){
@@ -2901,7 +2906,6 @@ async function sendPreTopic(){
   chatPreTopicSent=true;ta.disabled=true;
   try{
     await fetch('/.netlify/functions/chat-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,content,senderType:'visitor'})});
-    appendChatMsg({sender_type:'visitor',content,created_at:new Date().toISOString()});
     const pz=document.getElementById('pcp-pretopic-zone');if(pz)pz.style.display='none';
   }catch(e){chatPreTopicSent=false;ta.disabled=false;}
 }
@@ -2910,7 +2914,6 @@ async function sendChatMessage(){
   const content=(ta&&ta.value.trim())||'';
   if(!content||!chatSessionId)return;
   ta.value='';ta.style.height='auto';
-  appendChatMsg({sender_type:'visitor',content,created_at:new Date().toISOString()});
   try{
     await fetch('/.netlify/functions/chat-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,content,senderType:'visitor'})});
   }catch(e){}
