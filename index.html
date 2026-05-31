@@ -111,6 +111,17 @@
        - Avail     : ~30px  (top:192px)
     ══════════════════════════════════ */
 
+    /* 0. BANDEAU OUVERTURE */
+    .launch-bar{
+      position:fixed;top:0;left:0;right:0;z-index:401;
+      background:linear-gradient(90deg,#C4714A,#a05530);
+      color:white;padding:.45rem 2.5rem .45rem .8rem;
+      text-align:center;font-size:.74rem;font-weight:500;line-height:1.4;
+    }
+    .launch-bar strong{font-weight:700;}
+    .launch-bar-close{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.75);cursor:pointer;font-size:1.1rem;padding:0;line-height:1;}
+    .launch-bar-close:hover{color:white;}
+
     /* 1. URGENCES */
     .emergency-bar{
       position:fixed;top:0;left:0;right:0;z-index:400;
@@ -624,6 +635,12 @@
   </style>
 </head>
 <body>
+
+<!-- BANDEAU OUVERTURE -->
+<div class="launch-bar" id="launch-bar">
+  🗓️ <strong>Ouverture officielle le 19 juin 2026</strong> — Nous ouvrons nos portes le 19 juin. En attendant, explorez la plateforme en avant-première !
+  <button class="launch-bar-close" onclick="dismissLaunchBar()" title="Fermer">×</button>
+</div>
 
 <!-- EMERGENCY BANNER -->
 <div class="emergency-bar">
@@ -2758,6 +2775,7 @@ function toggleDark(){
 // ── POSITIONNEMENT DYNAMIQUE DES BANDEAUX ──
 // Mesure la hauteur réelle de chaque bandeau et empile proprement
 function stackBanners() {
+  const launch      = document.getElementById('launch-bar');
   const emergency   = document.querySelector('.emergency-bar');
   const disclaimer  = document.querySelector('.disclaimer-bar');
   const nav         = document.querySelector('nav');
@@ -2766,16 +2784,33 @@ function stackBanners() {
 
   if (!emergency || !disclaimer || !nav || !avail) return;
 
+  const h0 = (launch && launch.offsetParent !== null) ? launch.offsetHeight : 0;
   const h1 = emergency.offsetHeight;
   const h2 = disclaimer.offsetHeight;
   const h3 = nav.offsetHeight;
 
-  disclaimer.style.top  = h1 + 'px';
-  nav.style.top         = (h1 + h2) + 'px';
-  avail.style.top       = (h1 + h2 + h3) + 'px';
+  emergency.style.top   = h0 + 'px';
+  disclaimer.style.top  = (h0 + h1) + 'px';
+  nav.style.top         = (h0 + h1 + h2) + 'px';
+  avail.style.top       = (h0 + h1 + h2 + h3) + 'px';
 
-  const totalHeight = h1 + h2 + h3 + avail.offsetHeight;
+  const totalHeight = h0 + h1 + h2 + h3 + avail.offsetHeight;
   if (hero) hero.style.paddingTop = (totalHeight + 40) + 'px';
+}
+
+// Bandeau ouverture : masquer après le 19 juin ou si fermé
+(function(){
+  const bar = document.getElementById('launch-bar');
+  if (!bar) return;
+  if (localStorage.getItem('launch_bar_dismissed') || new Date() >= new Date('2026-06-19')) {
+    bar.style.display = 'none';
+  }
+})();
+function dismissLaunchBar() {
+  const bar = document.getElementById('launch-bar');
+  if (bar) bar.style.display = 'none';
+  localStorage.setItem('launch_bar_dismissed', '1');
+  stackBanners();
 }
 
 // Lancer au chargement et au resize
