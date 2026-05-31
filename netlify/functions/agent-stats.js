@@ -104,10 +104,13 @@ exports.handler = async (event) => {
 
   // ── Sauvegarder le profil ──
   if (action === 'save_profile') {
-    const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
-    if (!pwdRows.length) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
-    const hash = hashPassword(password, pwdRows[0].password_salt);
-    if (hash !== pwdRows[0].password_hash) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
+    const isAdminSave = ADMIN_EMAIL && email === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD;
+    if (!isAdminSave) {
+      const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
+      if (!pwdRows.length) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
+      const hash = hashPassword(password, pwdRows[0].password_salt);
+      if (hash !== pwdRows[0].password_hash) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
+    }
 
     const { nom, prenom, adresse, code_postal, ville, siret, iban } = body.profile || {};
     await fetch(`${SB_URL}/rest/v1/agent_profiles`, {
