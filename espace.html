@@ -1783,7 +1783,13 @@ async function pollAgentChat() {
         });
       } else {
         if (s.duration_sec && s.duration_sec > existing.durationSec) existing.durationSec = s.duration_sec;
+        const hadExtension = !!existing.extensionPending;
         existing.extensionPending = s.extension_pending || null;
+        if (!hadExtension && existing.extensionPending) {
+          agentActiveTabId = s.id;
+          agentChatSessionId = s.id;
+          anyNew = true;
+        }
       }
       // Append new messages
       const sess = agentSessions.get(s.id);
@@ -1952,8 +1958,8 @@ function updateAgentFloatTimer() {
   const timerEl = document.getElementById('afloat-timer');
   if (!timerEl) return;
   const sess = agentSessions.get(agentActiveTabId);
-  if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; return; }
-  const elapsed = (Date.now() - sess.timerStartedAt) / 1000;
+  if (!sess || !sess.assignedAt) { timerEl.style.display = 'none'; return; }
+  const elapsed = (Date.now() - new Date(sess.assignedAt).getTime()) / 1000;
   const remaining = Math.max(0, sess.durationSec - elapsed);
   const m = Math.floor(remaining / 60), s = Math.floor(remaining % 60);
   timerEl.style.display = 'inline';
@@ -1968,10 +1974,6 @@ async function sendAgentFloatMsg() {
   if (!content || !agentActiveTabId || !agentChatToken) return;
   ta.value = ''; ta.style.height = 'auto';
   const sess = agentSessions.get(agentActiveTabId);
-  if (sess && !sess.timerStartedAt) {
-    sess.timerStartedAt = Date.now();
-    startAgentFloatTimer();
-  }
   try {
     await fetch(`${API}/chat-send`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

@@ -54,6 +54,7 @@ exports.handler = async (event) => {
           status: s.status,
           agentConnected: s.status === 'active' && !!s.agent_email,
           agentPseudo,
+          assignedAt: s.assigned_at || null,
           extensionPending: s.extension_pending || null,
           transferSessionId: s.transfer_session_id || null,
           messages
