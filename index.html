@@ -2031,6 +2031,10 @@ async function handlePayment(){
       $crisp.push(["set","session:data",[[["parlons_id",paymentIntent.id],["formule",selectedLabel]]]]);
       $crisp.push(["do","chat:show"]);
       $crisp.push(["do","chat:open"]);
+      // Message initial → crée la conversation dans la boîte Crisp des agents
+      setTimeout(()=>{
+        try{$crisp.push(["do","message:send",["text",`Bonjour ! Je viens de payer ma session (${selectedLabel}). Je suis prêt(e) quand vous l'êtes. 🙂`]]);}catch(e){}
+      },800);
     }catch(e){}
     startWaitTimer();
 
@@ -2400,7 +2404,13 @@ function startFreeGroupTimer(theme,name){
   const pf=document.getElementById('payment-form'),ps=document.getElementById('payment-success');
   if(pf) pf.style.display='none';
   if(ps) ps.style.display='block';
-  try{$crisp.push(['do','chat:show']);$crisp.push(['do','chat:open']);}catch(e){}
+  try{
+    $crisp.push(['do','chat:show']);
+    $crisp.push(['do','chat:open']);
+    setTimeout(()=>{
+      try{$crisp.push(["do","message:send",["text","Bonjour ! Je viens de démarrer une session avec mon Pass mensuel. Je suis prêt(e) quand vous l'êtes. 🙂"]]);}catch(e){}
+    },800);
+  }catch(e){}
   startWaitTimer();
 })();
 </script>
