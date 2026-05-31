@@ -161,12 +161,11 @@
 
     /* Tablette (640px–1280px) : nav compacte, liens secondaires masqués */
     @media(min-width:641px) and (max-width:1280px){
-      nav{padding:.7rem 1.2rem;}
-      nav ul{gap:.6rem;flex-wrap:nowrap;overflow:hidden;}
-      nav ul a{font-size:.75rem;}
-      .logo{font-size:1.2rem;}
-      .nav-cta{padding:.4rem .9rem;font-size:.75rem;}
-      .nav-agent{padding:.4rem .9rem;font-size:.75rem;}
+      nav{padding:.75rem 1.5rem;}
+      nav ul{gap:1rem;flex-wrap:nowrap;}
+      nav ul a{font-size:.82rem;}
+      .logo{font-size:1.25rem;}
+      .nav-cta{padding:.45rem 1.1rem;font-size:.82rem;white-space:nowrap;}
       .nav-tab-hide{display:none;}
     }
     .avail-bar{
@@ -670,7 +669,7 @@
     <li class="nav-tab-hide"><a href="#avis">Avis</a></li>
     <li><a href="#ecoutants">Nos écoutants</a></li>
     <li class="nav-tab-hide"><a href="#contact">Contact</a></li>
-    <li><a href="#" class="nav-agent" onclick="showAgentPage();return false;">🎙️ Devenir écoutant</a></li>
+    <li class="nav-tab-hide"><a href="#" class="nav-agent" onclick="showAgentPage();return false;">🎙️ Devenir écoutant</a></li>
     <li><a href="/espace.html" style="font-size:.75rem;color:white;background:var(--mid);border-radius:50px;padding:.4rem .9rem;font-weight:500;">🔑 Espace</a></li>
     <li><a href="#" class="nav-cta" onclick="openModal();return false;">Commencer →</a></li>
   </ul>
