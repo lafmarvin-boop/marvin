@@ -902,9 +902,9 @@ function renderDashboard(d) {
     { key: 'Groupe 30min',label: 'Groupe',   price: '1,50 €', alt: 'Chat de groupe' },
   ];
   const note = unassigned > 0 ? `<div style="font-size:.72rem;color:var(--light);margin-top:.8rem">${unassigned} session${unassigned>1?'s':''} sans agent enregistré</div>` : '';
+  window._agentList = agentList;
   if (agentList.length === 0) {
     document.getElementById('agent-section').innerHTML = '<div style="color:var(--light);font-size:.82rem">Aucune session assignée à un agent pour l\'instant.<br><span style="font-size:.72rem">Les agents apparaîtront ici dès leur première réponse dans Crisp.</span></div>';
-  window._agentList = agentList;
   } else if (window.innerWidth < 640) {
     // ── Affichage mobile : cartes ──
     const cards = agentList.map((a, idx) => {
@@ -1327,7 +1327,9 @@ function generateAgentPDF(idx) {
   const monthName = new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
   const agentObj = typeof idx === 'number' ? (window._agentList||[])[idx] : null;
-  const agentName = agentObj ? (agentObj.displayName || agentObj.name) : idx;
+  if (!agentObj) { alert('Agent introuvable.'); return; }
+  const agentName = agentObj.name; // clé interne pour filtrer les sessions
+  const agentDisplayName = agentObj.displayName || agentObj.name;
 
   const allSessions = window._adminSessions || [];
   const agentSessions = allSessions.filter(s => {
@@ -1362,7 +1364,7 @@ function generateAgentPDF(idx) {
   doc.setFontSize(10);
   doc.setTextColor(100);
   doc.text(`Période : ${monthName}`, 20, 60);
-  doc.text(`Agent : ${agentName}`, 20, 67);
+  doc.text(`Agent : ${agentDisplayName}`, 20, 67);
   doc.text(`Généré le : ${new Date().toLocaleDateString('fr-FR')}`, 20, 74);
 
   // Tableau
@@ -1408,7 +1410,7 @@ function generateAgentPDF(idx) {
   doc.text('Envoyez votre facture avant le 5 du mois suivant — règlement par virement sous 10 jours ouvrés.', 20, 283);
   doc.text('Parlons · SIRET 105 179 360 000 18', 20, 288);
 
-  const safeName = agentName.replace(/[^a-z0-9]/gi, '_');
+  const safeName = agentDisplayName.replace(/[^a-z0-9]/gi, '_');
   doc.save(`Parlons_${safeName}_${year}-${String(month + 1).padStart(2, '0')}.pdf`);
 }
 
