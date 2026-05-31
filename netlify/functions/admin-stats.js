@@ -107,6 +107,8 @@ exports.handler = async (event) => {
     if (body.action === 'remove_agent') {
       const agentEmail = (body.agentEmail || '').toLowerCase().trim();
       if (!agentEmail) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Email manquant' }) };
+
+      // Supprimer de Supabase
       await Promise.all([
         fetch(`${SB_URL}/rest/v1/agent_passwords?email=eq.${encodeURIComponent(agentEmail)}`, {
           method: 'DELETE',
@@ -117,7 +119,32 @@ exports.handler = async (event) => {
           headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Prefer: 'return=minimal' }
         })
       ]);
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
+
+      // Supprimer de Crisp si configuré
+      let crispRemoved = false;
+      if (CRISP_API_ID && CRISP_API_KEY) {
+        try {
+          const auth = Buffer.from(`${CRISP_API_ID}:${CRISP_API_KEY}`).toString('base64');
+          // Trouver l'opérateur par email pour obtenir son user_id Crisp
+          const listRes = await fetch(`https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operators/list`, {
+            headers: { Authorization: `Basic ${auth}`, 'X-Crisp-Tier': 'plugin' }
+          });
+          if (listRes.ok) {
+            const listJson = await listRes.json();
+            const ops = Array.isArray(listJson.data) ? listJson.data : [];
+            const op = ops.find(o => (o.email || '').toLowerCase() === agentEmail);
+            if (op && op.operator_id) {
+              const delRes = await fetch(`https://api.crisp.chat/v1/website/${CRISP_WEBSITE_ID}/operator/${op.operator_id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Basic ${auth}`, 'X-Crisp-Tier': 'plugin' }
+              });
+              crispRemoved = delRes.ok;
+            }
+          }
+        } catch {}
+      }
+
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, crispRemoved }) };
     }
 
     const now = new Date();
