@@ -159,7 +159,21 @@
     .nav-agent{border:1.5px solid var(--terracotta)!important;color:var(--terracotta)!important;padding:.5rem 1.2rem;border-radius:50px;}
     .nav-agent:hover{background:var(--terracotta)!important;color:white!important;}
 
-    /* 5. AVAIL BAR */
+    /* Tablette (640px–1080px) : nav compacte, liens secondaires masqués */
+    @media(min-width:641px) and (max-width:1080px){
+      nav{padding:.7rem 1.2rem;}
+      nav ul{gap:.6rem;}
+      nav ul a{font-size:.75rem;}
+      .logo{font-size:1.2rem;}
+      .nav-cta{padding:.4rem .9rem;font-size:.75rem;}
+      .nav-agent{padding:.4rem .9rem;font-size:.75rem;}
+      /* Masquer les liens les moins prioritaires pour gagner de la place */
+      nav ul li:has(a[href="#comment"]),
+      nav ul li:has(a[href="#ressources"]),
+      nav ul li:has(a[href="#groupes"]),
+      nav ul li:has(a[href="#avis"]),
+      nav ul li:has(a[href="#contact"]){display:none;}
+    }
     .avail-bar{
       position:fixed;left:0;right:0;z-index:199;
       padding:.38rem 2rem;
