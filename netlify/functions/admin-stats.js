@@ -60,20 +60,31 @@ exports.handler = async (event) => {
     if (body.action === 'add_agent') {
       const agentEmail = (body.agentEmail || '').toLowerCase().trim();
       const agentPassword = body.agentPassword || '';
+      const agentPrenom = (body.agentPrenom || '').trim();
+      const agentNom = (body.agentNom || '').trim();
       if (!agentEmail || !agentEmail.includes('@'))
         return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Email invalide' }) };
       if (!agentPassword || agentPassword.length < 8)
         return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Mot de passe trop court (8 car. min.)' }) };
+      if (!agentPrenom || !agentNom)
+        return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Prénom et nom requis.' }) };
 
       const crypto = require('crypto');
       const salt = crypto.randomBytes(32).toString('hex');
       const hash = crypto.pbkdf2Sync(agentPassword, salt, 100000, 64, 'sha512').toString('hex');
 
-      await fetch(`${SB_URL}/rest/v1/agent_passwords`, {
-        method: 'POST',
-        headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-        body: JSON.stringify({ email: agentEmail, password_hash: hash, password_salt: salt })
-      });
+      await Promise.all([
+        fetch(`${SB_URL}/rest/v1/agent_passwords`, {
+          method: 'POST',
+          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+          body: JSON.stringify({ email: agentEmail, password_hash: hash, password_salt: salt })
+        }),
+        fetch(`${SB_URL}/rest/v1/agent_profiles`, {
+          method: 'POST',
+          headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+          body: JSON.stringify({ email: agentEmail, prenom: agentPrenom, nom: agentNom, updated_at: new Date().toISOString() })
+        })
+      ]);
 
       // Inviter dans Crisp si configuré
       let crispInvited = false;
@@ -206,13 +217,19 @@ exports.handler = async (event) => {
         };
       });
     } else {
-      // Crisp non configuré : fallback sur la table agent_passwords
-      const agentPwdRows = await sbGet('agent_passwords?select=email&limit=100');
+      // Crisp non configuré : fallback sur la table agent_passwords + profils
+      const [agentPwdRows, agentProfileRows] = await Promise.all([
+        sbGet('agent_passwords?select=email&limit=100'),
+        sbGet('agent_profiles?select=email,prenom,nom&limit=100')
+      ]);
+      const profileMap = {};
+      agentProfileRows.forEach(p => { if (p.email) profileMap[p.email.toLowerCase()] = p; });
       agentPwdRows.forEach(row => {
         if (!row.email) return;
-        const name = row.email.split('@')[0];
         const alreadyIn = Object.values(byAgent).some(a => (a.email || '').toLowerCase() === row.email.toLowerCase());
         if (alreadyIn) return;
+        const profile = profileMap[row.email.toLowerCase()];
+        const name = profile && profile.prenom ? `${profile.prenom} ${profile.nom || ''}`.trim() : row.email.split('@')[0];
         byAgent[name] = {
           name, email: row.email,
           sessions: 0, revenue: 0, plans: {},
@@ -220,6 +237,16 @@ exports.handler = async (event) => {
         };
       });
     }
+
+    // Enrichir les agents avec leur profil (prenom + nom) si disponible
+    const allProfileRows = await sbGet('agent_profiles?select=email,prenom,nom&limit=100');
+    const profileByEmail = {};
+    allProfileRows.forEach(p => { if (p.email) profileByEmail[p.email.toLowerCase()] = p; });
+    Object.values(byAgent).forEach(a => {
+      if (!a.email) return;
+      const p = profileByEmail[a.email.toLowerCase()];
+      if (p && p.prenom) a.displayName = `${p.prenom} ${p.nom || ''}`.trim();
+    });
 
     const unassigned = sessions.filter(s => !s.agent_name).length;
 

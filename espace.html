@@ -917,9 +917,9 @@ function renderDashboard(d) {
       return `<div style="background:white;border:1px solid var(--sand);border-radius:12px;padding:1rem;margin-bottom:.8rem;" onclick="openAgentReviews(${JSON.stringify(a.name)})">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;">
           <div style="display:flex;align-items:center;gap:.6rem;">
-            <div style="width:34px;height:34px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.85rem;flex-shrink:0">${escHtml(a.name.charAt(0).toUpperCase())}</div>
+            <div style="width:34px;height:34px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.85rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
             <div>
-              <div style="font-weight:600;font-size:.88rem">${escHtml(a.name)}</div>
+              <div style="font-weight:600;font-size:.88rem">${escHtml(a.displayName||a.name)}</div>
               <div style="font-size:.72rem;color:var(--light)">${avg} · ${a.ratingCount||0} avis</div>
             </div>
           </div>
@@ -946,8 +946,8 @@ function renderDashboard(d) {
       return `<tr class="agent-row" onclick="openAgentReviews(${JSON.stringify(a.name)})">
         <td>
           <div style="display:flex;align-items:center;gap:.5rem">
-            <div style="width:28px;height:28px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.75rem;flex-shrink:0">${escHtml(a.name.charAt(0).toUpperCase())}</div>
-            <span style="font-weight:600;font-size:.84rem">${escHtml(a.name)}</span>
+            <div style="width:28px;height:28px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.75rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
+            <span style="font-weight:600;font-size:.84rem">${escHtml(a.displayName||a.name)}</span>
           </div>
         </td>
         <td><span class="stars-gold" title="${a.ratingCount||0} avis">${avg}</span></td>
@@ -1547,15 +1547,19 @@ async function submitAddAgent() {
   btn.disabled = true; btn.textContent = 'Création…';
   try {
     const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
+    const agentPrenom = document.getElementById('add-agent-prenom').value.trim();
+    const agentNom = document.getElementById('add-agent-nom').value.trim();
     const res = await fetch(`${API}/admin-stats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'add_agent', agentEmail, agentPassword })
+      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'add_agent', agentEmail, agentPassword, agentPrenom, agentNom })
     });
     const data = await res.json();
     if (!res.ok) { err.textContent = data.error || 'Erreur serveur.'; return; }
     ok.style.display = 'block';
     ok.innerHTML = `✅ Agent créé.${data.crispInvited ? ' Invitation Crisp envoyée.' : ' (Crisp non configuré — invitation manuelle requise.)'}`;
+    document.getElementById('add-agent-prenom').value = '';
+    document.getElementById('add-agent-nom').value = '';
     document.getElementById('add-agent-email').value = '';
     document.getElementById('add-agent-pwd').value = '';
   } catch (e) {
@@ -1571,6 +1575,16 @@ async function submitAddAgent() {
     <button onclick="closeAddAgentModal()" style="position:absolute;top:.8rem;right:.8rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--light);">✕</button>
     <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:.3rem;">Ajouter un agent</h3>
     <p style="font-size:.8rem;color:var(--light);margin-bottom:1.2rem;">L'agent pourra modifier son mot de passe depuis son espace personnel.</p>
+    <div style="display:flex;gap:.6rem;margin-bottom:.9rem;">
+      <div style="flex:1;">
+        <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Prénom</label>
+        <input id="add-agent-prenom" type="text" placeholder="Prénom" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;">
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Nom</label>
+        <input id="add-agent-nom" type="text" placeholder="Nom" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;">
+      </div>
+    </div>
     <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Email de l'agent</label>
     <input id="add-agent-email" type="email" placeholder="agent@email.com" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;margin-bottom:.9rem;">
     <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Mot de passe temporaire</label>
