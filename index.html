@@ -2033,7 +2033,7 @@ async function handlePayment(){
       $crisp.push(["do","chat:open"]);
       // Message initial → crée la conversation dans la boîte Crisp des agents
       setTimeout(()=>{
-        try{$crisp.push(["do","message:send",["text",`Bonjour ! Je viens de payer ma session (${selectedLabel}). Je suis prêt(e) quand vous l'êtes. 🙂`]]);}catch(e){}
+        try{$crisp.push(["do","message:send",["text",`Session de ${selectedLabel} — la session commencera dès qu'un écoutant commencera à parler avec vous.`]]);}catch(e){}
       },800);
     }catch(e){}
     startWaitTimer();
@@ -2408,7 +2408,7 @@ function startFreeGroupTimer(theme,name){
     $crisp.push(['do','chat:show']);
     $crisp.push(['do','chat:open']);
     setTimeout(()=>{
-      try{$crisp.push(["do","message:send",["text","Bonjour ! Je viens de démarrer une session avec mon Pass mensuel. Je suis prêt(e) quand vous l'êtes. 🙂"]]);}catch(e){}
+      try{$crisp.push(["do","message:send",["text","Session Pass mensuel (30 min) — la session commencera dès qu'un écoutant commencera à parler avec vous."]]);}catch(e){}
     },800);
   }catch(e){}
   startWaitTimer();
