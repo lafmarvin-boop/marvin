@@ -44,7 +44,7 @@ exports.handler = async (event) => {
     const mins = Math.floor(addSec / 60);
 
     // Stocker la demande de prolongation dans la session (sans étendre encore)
-    await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+    const patchRes = await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
       method: 'PATCH',
       headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({
@@ -58,6 +58,11 @@ exports.handler = async (event) => {
         }
       })
     });
+    if (!patchRes.ok) {
+      const errText = await patchRes.text().catch(() => '');
+      console.error('chat-extend PATCH failed:', patchRes.status, errText);
+      return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Erreur enregistrement prolongation', detail: errText }) };
+    }
 
     // Message système dans le tchat courant
     await fetch(`${SB_URL}/rest/v1/chat_messages`, {

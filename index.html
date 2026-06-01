@@ -1574,7 +1574,11 @@
   });
   document.addEventListener('visibilitychange',function(){
     if(document.visibilityState!=='visible')return;
-    if(sessionTimer!==null&&sessionEndAt>0&&Date.now()>=sessionEndAt&&!chatExtensionPending)endSession();
+    if(sessionTimer!==null&&sessionEndAt>0){
+      sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
+      updateSessionUI();
+      if(sessionSeconds<=0&&!chatExtensionPending)endSession();
+    }
   });
 </script>
 
@@ -2925,7 +2929,12 @@ async function extendChatSession(newDurationSec,paymentId,label){
     closeModal();
     const r=await fetch('/.netlify/functions/chat-extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,newDurationSec,paymentId,label,remainingSec})});
     const d=await r.json();
-    if(!d.ok){chatExtensionPending=false;chatExtensionNewDuration=0;}
+    if(!d.ok){
+      chatExtensionPending=false;chatExtensionNewDuration=0;
+      const sub=document.getElementById('pcp-subtitle');
+      if(sub)sub.textContent='Session en cours';
+      console.error('extendChatSession error:',d.error,d.detail);
+    }
   }catch(e){chatExtensionPending=false;chatExtensionNewDuration=0;console.error('extendChatSession:',e);}
 }
 function startChatPolling(){
@@ -2943,17 +2952,16 @@ async function pollChat(){
     // Gestion prolongation en attente
     if(chatExtensionPending){
       const sub=document.getElementById('pcp-subtitle');
-      if(d.extensionPending){
-        if(sub)sub.textContent='En attente de l\'agent…';
-      } else if(d.status==='active'){
-        // Accepté
+      if(d.durationSec && d.durationSec > sessionDurationSec){
+        // L'agent a accepté — la durée DB a augmenté, c'est le signal fiable
+        const added=d.durationSec-sessionDurationSec;
         chatExtensionPending=false;
-        sessionEndAt+=chatExtensionNewDuration*1000;
-        sessionDurationSec+=chatExtensionNewDuration;
+        sessionDurationSec=d.durationSec;
+        sessionEndAt+=added*1000;
         updateSessionUI();
         const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
         const mobileRenew=document.getElementById('mobile-renew-btn');if(mobileRenew)mobileRenew.style.display='none';
-        const m=Math.floor(chatExtensionNewDuration/60);
+        const m=Math.floor(added/60);
         chatExtensionNewDuration=0;
         if(sub){sub.textContent='+ '+m+' min ajoutées !';setTimeout(()=>{if(sub)sub.textContent='Session en cours';},3000);}
       } else if(d.status==='closed'&&d.transferSessionId){
@@ -2966,8 +2974,10 @@ async function pollChat(){
         if(sub)sub.textContent='Transfert en cours…';
         return;
       } else if(d.status==='closed'){
-        // Session fermée sans transfert (fermeture externe) : sortir du mode extension
+        // Session fermée sans transfert
         chatExtensionPending=false;chatExtensionNewDuration=0;
+      } else {
+        if(sub)sub.textContent='En attente de l\'agent…';
       }
     }
     if(d.status==='closed'&&chatState!=='ended'&&!chatExtensionPending){

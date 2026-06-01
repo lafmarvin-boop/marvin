@@ -35,7 +35,7 @@ exports.handler = async (event) => {
       const sinceIso = since ? new Date(since).toISOString() : new Date(0).toISOString();
 
       const [sessions, messages] = await Promise.all([
-        sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email,assigned_at,extension_pending,transfer_session_id&limit=1`),
+        sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email,assigned_at,extension_pending,transfer_session_id,duration_sec&limit=1`),
         sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=50`)
       ]);
 
@@ -57,6 +57,7 @@ exports.handler = async (event) => {
           assignedAt: s.assigned_at || null,
           extensionPending: s.extension_pending || null,
           transferSessionId: s.transfer_session_id || null,
+          durationSec: s.duration_sec || null,
           messages
         })
       };

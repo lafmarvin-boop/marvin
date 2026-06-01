@@ -1874,12 +1874,16 @@ async function pollAgentChat() {
         agentSessions.set(s.id, {
           id: s.id, name: s.pre_name || 'Anonyme', topic: s.pre_topic || null,
           label: s.session_label || '', durationSec: s.duration_sec || 1800,
-          assignedAt: s.assigned_at, timerStartedAt: null,
+          assignedAt: s.assigned_at, timerStartedAt: null, agentSessionEndAt: null,
           extensionPending: s.extension_pending || null,
           messages: [], renderedIds: new Set(), unread: 0
         });
       } else {
-        if (s.duration_sec && s.duration_sec > existing.durationSec) existing.durationSec = s.duration_sec;
+        if (s.duration_sec && s.duration_sec > existing.durationSec) {
+          const added = s.duration_sec - existing.durationSec;
+          existing.durationSec = s.duration_sec;
+          if (existing.agentSessionEndAt) existing.agentSessionEndAt += added * 1000;
+        }
         const hadExtension = !!existing.extensionPending;
         existing.extensionPending = s.extension_pending || null;
         if (!hadExtension && existing.extensionPending) {
@@ -2044,14 +2048,34 @@ function startAgentFloatTimer() {
   agentFloatTimerInterval = setInterval(updateAgentFloatTimer, 1000);
 }
 
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') updateAgentFloatTimer();
+});
+
 function updateAgentExtBar() {
   const bar = document.getElementById('afloat-ext-bar');
   if (!bar) return;
   const sess = agentSessions.get(agentActiveTabId);
-  if (sess && sess.extensionPending) {
+  if (!sess) { bar.dataset.sessionId = ''; bar.style.display = 'none'; return; }
+
+  let extLabel = null;
+
+  if (sess.extensionPending) {
     const mins = Math.floor((sess.extensionPending.newDurationSec || 0) / 60);
+    extLabel = `⏳ Prolongation demandée : +${mins} min`;
+  } else {
+    // Fallback: detect from system message content when JSONB is unavailable
+    let lastExtMsg = null, resolved = false;
+    sess.messages.forEach(m => {
+      if (m.sender_type === 'system' && m.content.includes('souhaite prolonger')) lastExtMsg = m;
+      if (m.sender_type === 'system' && (m.content.includes('prolongée') || m.content.includes("n'a pas pu"))) resolved = true;
+    });
+    if (lastExtMsg && !resolved) extLabel = lastExtMsg.content;
+  }
+
+  if (extLabel) {
     const textEl = document.getElementById('afloat-ext-text');
-    if (textEl) textEl.textContent = `⏳ Prolongation demandée : +${mins} min`;
+    if (textEl) textEl.textContent = extLabel;
     bar.dataset.sessionId = sess.id;
     bar.style.display = 'block';
   } else {
@@ -2072,8 +2096,9 @@ function updateAgentFloatTimer() {
   if (!timerEl) return;
   const sess = agentSessions.get(agentActiveTabId);
   if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; return; }
-  const elapsed = (Date.now() - sess.timerStartedAt) / 1000;
-  const remaining = Math.max(0, sess.durationSec - elapsed);
+  const remaining = sess.agentSessionEndAt
+    ? Math.max(0, (sess.agentSessionEndAt - Date.now()) / 1000)
+    : Math.max(0, sess.durationSec - (Date.now() - sess.timerStartedAt) / 1000);
   const m = Math.floor(remaining / 60), s = Math.floor(remaining % 60);
   timerEl.style.display = 'inline';
   timerEl.textContent = `${m}:${String(s).padStart(2,'0')}`;
@@ -2089,6 +2114,7 @@ async function sendAgentFloatMsg() {
   const sess = agentSessions.get(agentActiveTabId);
   if (sess && !sess.timerStartedAt) {
     sess.timerStartedAt = Date.now();
+    sess.agentSessionEndAt = Date.now() + sess.durationSec * 1000;
     startAgentFloatTimer();
   }
   try {
