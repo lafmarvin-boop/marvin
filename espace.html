@@ -174,6 +174,16 @@
     .afloat-header{background:var(--tc);padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;color:white;flex-shrink:0;gap:.5rem;}
     .afloat-header-title{font-family:'Playfair Display',serif;font-size:.95rem;flex:1;}
     .afloat-timer{background:rgba(0,0,0,.2);border-radius:50px;padding:.15rem .6rem;font-size:.8rem;font-weight:700;display:none;white-space:nowrap;}
+    .afloat-transfer-btn{background:none;border:1.5px solid rgba(255,255,255,.55);border-radius:50%;width:26px;height:26px;color:rgba(255,255,255,.9);font-size:.82rem;cursor:pointer;display:none;align-items:center;justify-content:center;flex-shrink:0;padding:0;line-height:1;}
+    .afloat-transfer-btn:hover{background:rgba(255,255,255,.2);}
+    .afloat-transfer-wrap{position:relative;display:none;align-items:center;}
+    .afloat-transfer-wrap.visible{display:flex;}
+    .afloat-transfer-menu{position:absolute;top:calc(100% + 8px);right:0;background:white;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16);min-width:190px;z-index:9999;overflow:hidden;display:none;flex-direction:column;}
+    .afloat-transfer-menu.open{display:flex;}
+    .afloat-transfer-item{padding:.55rem .9rem;font-size:.8rem;font-family:'DM Sans',sans-serif;cursor:pointer;color:#2d2016;border-bottom:1px solid #f0e8e0;}
+    .afloat-transfer-item:last-child{border-bottom:none;}
+    .afloat-transfer-item:hover{background:#fef9f5;}
+    .afloat-transfer-empty{padding:.6rem .9rem;font-size:.78rem;color:#9a8778;font-style:italic;}
     .afloat-close{background:none;border:none;color:rgba(255,255,255,.8);font-size:1.05rem;cursor:pointer;padding:0;line-height:1;}
     .afloat-tabs{display:none;background:#f8f4f0;border-bottom:1px solid #e8e0d8;padding:.3rem .5rem;gap:.3rem;flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
     .afloat-tabs::-webkit-scrollbar{display:none;}
@@ -2136,6 +2146,75 @@ function updateAgentExtBar() {
   if (bar) { bar.dataset.sessionId = ''; bar.style.display = 'none'; }
 }
 
+function updateTransferBtnVisibility() {
+  const wrap = document.getElementById('afloat-transfer-wrap');
+  if (!wrap) return;
+  const sess = agentSessions.get(agentActiveTabId);
+  const visible = !!(sess && sess.timerStartedAt);
+  wrap.classList.toggle('visible', visible);
+  if (!visible) closeTransferMenu();
+}
+
+function closeTransferMenu() {
+  const menu = document.getElementById('afloat-transfer-menu');
+  if (menu) menu.classList.remove('open');
+}
+
+async function toggleTransferMenu() {
+  const menu = document.getElementById('afloat-transfer-menu');
+  if (!menu) return;
+  if (menu.classList.contains('open')) { closeTransferMenu(); return; }
+
+  menu.innerHTML = '<div class="afloat-transfer-empty">Chargement…</div>';
+  menu.classList.add('open');
+
+  try {
+    const res = await fetch(`${API}/chat-transfer`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'list', agentEmail: agentEmailStored, agentToken: agentChatToken })
+    });
+    const data = await res.json();
+    if (!data.ok || !data.agents.length) {
+      menu.innerHTML = '<div class="afloat-transfer-empty">Aucun agent disponible</div>';
+      return;
+    }
+    menu.innerHTML = data.agents.map(a =>
+      `<div class="afloat-transfer-item" onclick="doTransfer('${agentActiveTabId}','${a.email.replace(/'/g,"\\'")}')">↗ ${a.name}</div>`
+    ).join('');
+  } catch(e) {
+    menu.innerHTML = '<div class="afloat-transfer-empty">Erreur de chargement</div>';
+  }
+}
+
+async function doTransfer(sessionId, targetEmail) {
+  closeTransferMenu();
+  if (!sessionId || !targetEmail) return;
+  try {
+    const res = await fetch(`${API}/chat-transfer`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'transfer', agentEmail: agentEmailStored, agentToken: agentChatToken, sessionId, targetEmail })
+    });
+    const data = await res.json();
+    if (!data.ok) { alert(data.error || 'Transfert échoué'); return; }
+    // Retirer la session transférée de la map locale
+    agentSessions.delete(sessionId);
+    if (agentActiveTabId === sessionId) {
+      agentActiveTabId = agentSessions.size > 0 ? agentSessions.keys().next().value : null;
+      agentChatSessionId = agentActiveTabId;
+    }
+    renderAgentFloatTabs();
+    renderAgentFloatMessages();
+    updateAgentFloatBubble();
+    updateTransferBtnVisibility();
+  } catch(e) { console.error('doTransfer:', e); }
+}
+
+// Fermer le menu si clic en dehors
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('afloat-transfer-wrap');
+  if (wrap && !wrap.contains(e.target)) closeTransferMenu();
+});
+
 function respondExtensionBar(accept) {
   const bar = document.getElementById('afloat-ext-bar');
   const sid = bar && bar.dataset.sessionId;
@@ -2147,7 +2226,8 @@ function updateAgentFloatTimer() {
   const timerEl = document.getElementById('afloat-timer');
   if (!timerEl) return;
   const sess = agentSessions.get(agentActiveTabId);
-  if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; return; }
+  if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; updateTransferBtnVisibility(); return; }
+  updateTransferBtnVisibility();
   // Geler l'affichage si une demande de prolongation est en cours
   if (sess.extensionPending && sess.frozenRemainingMs !== undefined) {
     const rem = sess.frozenRemainingMs / 1000;
@@ -2380,6 +2460,10 @@ async function submitAddAgent() {
   <div class="afloat-header">
     <span class="afloat-header-title" id="afloat-title">💬 Chat</span>
     <span class="afloat-timer" id="afloat-timer"></span>
+    <div class="afloat-transfer-wrap" id="afloat-transfer-wrap">
+      <button class="afloat-transfer-btn" id="afloat-transfer-btn" onclick="toggleTransferMenu()" title="Transférer à un autre agent">⇄</button>
+      <div class="afloat-transfer-menu" id="afloat-transfer-menu"></div>
+    </div>
     <button class="afloat-close" onclick="toggleAgentFloat()">✕</button>
   </div>
   <div class="afloat-tabs" id="afloat-tabs"></div>
