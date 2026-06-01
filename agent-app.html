@@ -60,16 +60,17 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 .nav-badge.visible{display:flex;}
 
 /* ── VIEW HOME ── */
-.status-toggle{background:var(--white);border-radius:var(--radius);padding:1.1rem 1.2rem;display:flex;align-items:center;gap:1rem;cursor:pointer;border:2px solid var(--sand);transition:border-color .2s;user-select:none;}
-.status-toggle.online{border-color:var(--green);}
-.status-toggle.busy{border-color:#f59e0b;}
-.status-toggle-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;background:var(--sand);}
-.status-toggle.online .status-toggle-icon{background:#dcfce7;}
-.status-toggle.busy .status-toggle-icon{background:#fef9c3;}
-.status-toggle-text{flex:1;}
-.status-toggle-label{font-size:1rem;font-weight:700;}
-.status-toggle-sub{font-size:.78rem;color:var(--mid);margin-top:.1rem;}
-.status-toggle-btn{font-size:.75rem;font-weight:600;padding:.35rem .8rem;border-radius:50px;border:1.5px solid var(--sand);background:none;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--mid);white-space:nowrap;}
+.status-toggle{background:var(--white);border-radius:var(--radius);padding:1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border:2px solid var(--sand);transition:border-color .25s,background .25s;user-select:none;}
+.status-toggle.online{border-color:var(--green);background:#f0fdf4;}
+.status-toggle.busy{border-color:#f59e0b;background:#fffbeb;}
+.status-toggle-text{display:flex;flex-direction:column;gap:.15rem;}
+.status-toggle-label{font-size:.95rem;font-weight:700;color:var(--dark);}
+.status-toggle-sub{font-size:.74rem;color:var(--mid);}
+/* pill switch */
+.sw-pill{width:54px;height:30px;border-radius:15px;background:#e74c3c;position:relative;transition:background .25s;flex-shrink:0;box-shadow:inset 0 1px 3px rgba(0,0,0,.15);}
+.sw-pill.on{background:var(--green);}
+.sw-pill::after{content:'';position:absolute;width:22px;height:22px;background:white;border-radius:50%;top:4px;left:4px;transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 4px rgba(0,0,0,.25);}
+.sw-pill.on::after{transform:translateX(24px);}
 .push-banner{background:#fff7ed;border:1.5px solid #fdba74;border-radius:12px;padding:.85rem 1rem;display:flex;align-items:center;gap:.75rem;}
 .push-banner-text{flex:1;font-size:.8rem;color:#92400e;line-height:1.4;}
 .push-banner-btn{font-size:.75rem;font-weight:600;background:var(--tc);color:var(--white);border:none;border-radius:50px;padding:.35rem .85rem;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
@@ -189,12 +190,11 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 
       <!-- Status toggle -->
       <div class="status-toggle" id="status-toggle" onclick="toggleOnline()">
-        <div class="status-toggle-icon" id="status-icon">😴</div>
         <div class="status-toggle-text">
           <div class="status-toggle-label" id="status-label">Hors ligne</div>
           <div class="status-toggle-sub" id="status-sub">Appuyez pour vous mettre en ligne</div>
         </div>
-        <button class="status-toggle-btn" id="status-btn" onclick="event.stopPropagation();toggleOnline()">Activer</button>
+        <div class="sw-pill" id="sw-pill"></div>
       </div>
 
       <!-- Push notification banner -->
@@ -419,20 +419,28 @@ async function goOffline(){
 
 function updateStatusUI(){
   const toggle=document.getElementById('status-toggle');
-  const icon=document.getElementById('status-icon');
+  const pill=document.getElementById('sw-pill');
   const label=document.getElementById('status-label');
   const sub=document.getElementById('status-sub');
-  const btn=document.getElementById('status-btn');
   const dot=document.getElementById('hdr-dot');
   const busy=[...appSessions.values()].some(s=>s.timerStartedAt);
   if(!appOnline){
-    toggle.className='status-toggle'; icon.textContent='😴'; label.textContent='Hors ligne'; sub.textContent='Appuyez pour vous mettre en ligne'; btn.textContent='Activer';
+    toggle.className='status-toggle';
+    pill.className='sw-pill';
+    label.textContent='Hors ligne';
+    sub.textContent='Appuyez pour vous mettre en ligne';
     dot.className='status-dot';
   } else if(busy){
-    toggle.className='status-toggle busy'; icon.textContent='💬'; label.textContent='En session'; sub.textContent='Tchat en cours'; btn.textContent='Terminer';
+    toggle.className='status-toggle busy';
+    pill.className='sw-pill on';
+    label.textContent='En session';
+    sub.textContent='Tchat en cours';
     dot.className='status-dot busy';
   } else {
-    toggle.className='status-toggle online'; icon.textContent='✅'; label.textContent='En ligne'; sub.textContent='En attente de tchat'; btn.textContent='Passer hors ligne';
+    toggle.className='status-toggle online';
+    pill.className='sw-pill on';
+    label.textContent='En ligne';
+    sub.textContent='En attente de tchat';
     dot.className='status-dot online';
   }
 }
