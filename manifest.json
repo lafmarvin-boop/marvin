@@ -1,0 +1,35 @@
+{
+  "name": "Parlons — Espace Agent",
+  "short_name": "Agent Parlons",
+  "description": "Interface agent pour recevoir et gérer les tchats Parlons",
+  "start_url": "/agent-app.html?pwa=1",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fdf8f3",
+  "theme_color": "#C4714A",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='38' fill='%23C4714A'/%3E%3Ctext y='.88em' font-size='128' x='50%25' text-anchor='middle' dominant-baseline='top' font-family='Georgia,serif' fill='white'%3EP%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='102' fill='%23C4714A'/%3E%3Ctext y='.88em' font-size='340' x='50%25' text-anchor='middle' dominant-baseline='top' font-family='Georgia,serif' fill='white'%3EP%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Me mettre en ligne",
+      "short_name": "En ligne",
+      "description": "Passer en ligne pour recevoir des tchats",
+      "url": "/agent-app.html?action=online&pwa=1"
+    }
+  ],
+  "categories": ["productivity", "communication"]
+}

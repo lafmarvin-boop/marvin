@@ -85,3 +85,17 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS visitor_ip TEXT;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS extension_pending JSONB;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS transfer_session_id TEXT;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
+
+-- ============================================
+-- Push Subscriptions (notifications PWA agent)
+-- ============================================
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id           UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  agent_email  TEXT        NOT NULL,
+  endpoint     TEXT        NOT NULL UNIQUE,
+  subscription JSONB       NOT NULL,
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_push_subs_email ON push_subscriptions (agent_email);
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no_public_read" ON push_subscriptions FOR ALL TO anon USING (false);

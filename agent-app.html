@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Parlons Agent">
+<meta name="theme-color" content="#C4714A">
+<title>Parlons — Agent</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--tc:#C4714A;--tc2:#a85c38;--dark:#2d1f14;--mid:#7a5a42;--light:#b09880;--sand:#e8ddd4;--bg:#fdf8f3;--white:#fff;--green:#16a34a;--red:#ef4444;--radius:16px;--shadow:0 4px 20px rgba(0,0,0,.1);}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--dark);overscroll-behavior:none;}
+body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative;}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.screen.active{display:flex;}
+
+/* ── LOGIN ── */
+#screen-login{align-items:center;justify-content:center;padding:2rem 1.5rem;background:var(--bg);}
+.login-logo{text-align:center;margin-bottom:2.5rem;}
+.login-logo h1{font-family:'Playfair Display',serif;font-size:2.2rem;color:var(--tc);line-height:1;}
+.login-logo p{font-size:.85rem;color:var(--mid);margin-top:.4rem;}
+.login-card{background:var(--white);border-radius:var(--radius);padding:1.75rem 1.5rem;width:100%;box-shadow:var(--shadow);}
+.field-label{font-size:.75rem;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem;}
+.field-input{width:100%;border:1.5px solid var(--sand);border-radius:10px;padding:.75rem 1rem;font-size:.95rem;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--dark);outline:none;transition:border-color .2s;margin-bottom:1rem;}
+.field-input:focus{border-color:var(--tc);}
+.btn-primary{width:100%;background:var(--tc);color:var(--white);border:none;border-radius:50px;padding:.9rem;font-size:1rem;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .2s;margin-top:.25rem;}
+.btn-primary:active{background:var(--tc2);}
+.btn-primary:disabled{opacity:.5;cursor:default;}
+.login-error{font-size:.8rem;color:var(--red);text-align:center;margin-top:.75rem;min-height:1.2em;}
+
+/* ── APP SHELL ── */
+#app-shell{display:none;flex-direction:column;height:100%;overflow:hidden;}
+#app-shell.visible{display:flex;}
+.app-header{background:var(--white);padding:.85rem 1.1rem;padding-top:max(.85rem, env(safe-area-inset-top));display:flex;align-items:center;gap:.75rem;border-bottom:1px solid var(--sand);flex-shrink:0;}
+.app-header-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--tc);flex:1;}
+.app-header-agent{font-size:.75rem;color:var(--mid);text-align:right;line-height:1.3;}
+.status-dot{width:9px;height:9px;border-radius:50%;background:#ccc;flex-shrink:0;}
+.status-dot.online{background:var(--green);}
+.status-dot.busy{background:#f59e0b;}
+.views{flex:1;overflow:hidden;position:relative;}
+.view{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1rem;display:none;flex-direction:column;gap:.85rem;}
+.view.active{display:flex;}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{display:flex;background:var(--white);border-top:1px solid var(--sand);flex-shrink:0;padding-bottom:max(.4rem,env(safe-area-inset-bottom));}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:.18rem;padding:.55rem .5rem;font-size:.65rem;font-weight:500;color:var(--light);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .2s;position:relative;}
+.nav-btn.active{color:var(--tc);}
+.nav-btn svg{width:22px;height:22px;stroke-width:1.8;}
+.nav-badge{position:absolute;top:.3rem;right:calc(50% - 14px);background:var(--red);color:var(--white);border-radius:50%;min-width:16px;height:16px;font-size:.6rem;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 3px;}
+.nav-badge.visible{display:flex;}
+
+/* ── VIEW HOME ── */
+.status-toggle{background:var(--white);border-radius:var(--radius);padding:1.1rem 1.2rem;display:flex;align-items:center;gap:1rem;cursor:pointer;border:2px solid var(--sand);transition:border-color .2s;user-select:none;}
+.status-toggle.online{border-color:var(--green);}
+.status-toggle.busy{border-color:#f59e0b;}
+.status-toggle-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;background:var(--sand);}
+.status-toggle.online .status-toggle-icon{background:#dcfce7;}
+.status-toggle.busy .status-toggle-icon{background:#fef9c3;}
+.status-toggle-text{flex:1;}
+.status-toggle-label{font-size:1rem;font-weight:700;}
+.status-toggle-sub{font-size:.78rem;color:var(--mid);margin-top:.1rem;}
+.status-toggle-btn{font-size:.75rem;font-weight:600;padding:.35rem .8rem;border-radius:50px;border:1.5px solid var(--sand);background:none;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--mid);white-space:nowrap;}
+.push-banner{background:#fff7ed;border:1.5px solid #fdba74;border-radius:12px;padding:.85rem 1rem;display:flex;align-items:center;gap:.75rem;}
+.push-banner-text{flex:1;font-size:.8rem;color:#92400e;line-height:1.4;}
+.push-banner-btn{font-size:.75rem;font-weight:600;background:var(--tc);color:var(--white);border:none;border-radius:50px;padding:.35rem .85rem;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.section-head{font-size:.72rem;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:.05em;margin-top:.25rem;}
+.empty-state{text-align:center;padding:1.5rem;color:var(--light);font-size:.85rem;background:var(--white);border-radius:var(--radius);border:1.5px dashed var(--sand);}
+.queue-card{background:var(--white);border-radius:12px;padding:.85rem 1rem;display:flex;align-items:center;gap:.85rem;border:1.5px solid var(--sand);cursor:pointer;transition:border-color .15s;}
+.queue-card:active{border-color:var(--tc);}
+.queue-card-avatar{width:38px;height:38px;border-radius:50%;background:var(--sand);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.queue-card-info{flex:1;min-width:0;}
+.queue-card-name{font-weight:600;font-size:.9rem;}
+.queue-card-topic{font-size:.76rem;color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem;}
+.queue-card-wait{font-size:.7rem;color:var(--light);}
+.queue-take-btn{background:var(--tc);color:var(--white);border:none;border-radius:50px;padding:.35rem .9rem;font-size:.76rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;}
+.session-card{background:var(--white);border-radius:12px;padding:.85rem 1rem;display:flex;align-items:center;gap:.85rem;border:1.5px solid #fde68a;cursor:pointer;transition:background .15s;}
+.session-card:active{background:#fef9f5;}
+.session-card-avatar{width:38px;height:38px;border-radius:50%;background:#fef9c3;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.session-card-info{flex:1;min-width:0;}
+.session-card-name{font-weight:600;font-size:.9rem;}
+.session-card-label{font-size:.76rem;color:var(--mid);margin-top:.1rem;}
+.session-card-timer{font-size:.8rem;font-weight:700;color:var(--tc);background:#fff7ed;border-radius:50px;padding:.2rem .6rem;flex-shrink:0;}
+.session-unread{background:var(--red);color:var(--white);border-radius:50%;min-width:20px;height:20px;font-size:.68rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0;}
+
+/* ── VIEW CHAT ── */
+.chat-header{background:var(--tc);color:var(--white);padding:.75rem 1rem;display:flex;align-items:center;gap:.75rem;flex-shrink:0;}
+.chat-back{background:none;border:none;color:rgba(255,255,255,.85);font-size:1.2rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;}
+.chat-header-info{flex:1;min-width:0;}
+.chat-header-name{font-weight:700;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chat-header-label{font-size:.72rem;opacity:.8;margin-top:.05rem;}
+.chat-header-timer{font-size:.82rem;font-weight:700;background:rgba(0,0,0,.2);border-radius:50px;padding:.18rem .65rem;flex-shrink:0;}
+.chat-header-end{background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.5);border-radius:50px;color:var(--white);font-size:.72rem;font-weight:600;padding:.28rem .7rem;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;}
+.chat-view{display:none;flex-direction:column;position:absolute;inset:0;background:var(--bg);}
+.chat-view.active{display:flex;}
+.chat-msgs{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:.85rem .9rem;display:flex;flex-direction:column;gap:.5rem;}
+.msg{max-width:82%;display:flex;flex-direction:column;gap:.18rem;}
+.msg.visitor{align-self:flex-start;}
+.msg.agent{align-self:flex-end;}
+.msg.system{align-self:center;max-width:90%;}
+.bubble{padding:.6rem .85rem;border-radius:16px;font-size:.88rem;line-height:1.45;}
+.msg.visitor .bubble{background:var(--white);border:1px solid var(--sand);border-bottom-left-radius:4px;color:var(--dark);}
+.msg.agent .bubble{background:var(--tc);color:var(--white);border-bottom-right-radius:4px;}
+.msg.system .bubble{background:#f0e8e0;color:var(--mid);font-size:.78rem;text-align:center;border-radius:50px;padding:.3rem .9rem;}
+.msg-time{font-size:.62rem;color:var(--light);}
+.msg.agent .msg-time{text-align:right;}
+.chat-input-row{background:var(--white);border-top:1px solid var(--sand);padding:.6rem .7rem;padding-bottom:max(.6rem,env(safe-area-inset-bottom));display:flex;align-items:flex-end;gap:.5rem;flex-shrink:0;}
+.chat-ta{flex:1;border:1.5px solid var(--sand);border-radius:12px;padding:.55rem .75rem;font-size:.88rem;font-family:'DM Sans',sans-serif;resize:none;max-height:100px;outline:none;background:var(--bg);}
+.chat-ta:focus{border-color:var(--tc);}
+.chat-send{background:var(--tc);color:var(--white);border:none;border-radius:50%;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ext-bar{background:#fff7ed;border-top:2px solid #fbbf24;padding:.65rem .9rem;display:none;flex-direction:column;gap:.45rem;flex-shrink:0;}
+.ext-bar.visible{display:flex;}
+.ext-bar-text{font-size:.8rem;color:#92400e;font-weight:600;}
+.ext-bar-btns{display:flex;gap:.5rem;}
+.ext-btn{flex:1;border:none;border-radius:50px;padding:.45rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.ext-btn.accept{background:#22c55e;color:var(--white);}
+.ext-btn.pass{background:#f59e0b;color:var(--white);}
+
+/* ── VIEW STATS ── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;}
+.stat-card{background:var(--white);border-radius:12px;padding:1rem 1.1rem;border:1px solid var(--sand);}
+.stat-card-label{font-size:.68rem;color:var(--light);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:.3rem;}
+.stat-card-value{font-family:'Playfair Display',serif;font-size:1.7rem;color:var(--dark);line-height:1;}
+.stat-card-sub{font-size:.72rem;color:var(--mid);margin-top:.25rem;}
+.period-tabs{display:flex;gap:.4rem;background:var(--white);border-radius:50px;padding:.25rem;border:1px solid var(--sand);}
+.period-tab{flex:1;text-align:center;padding:.4rem .2rem;font-size:.75rem;font-weight:500;border-radius:50px;border:none;background:none;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--mid);transition:all .15s;}
+.period-tab.active{background:var(--tc);color:var(--white);font-weight:700;}
+.rating-row{display:flex;gap:.2rem;font-size:1rem;}
+.session-row{background:var(--white);border-radius:10px;padding:.75rem .9rem;border:1px solid var(--sand);font-size:.82rem;}
+.session-row-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;}
+.session-row-name{font-weight:600;}
+.session-row-amount{font-weight:700;color:var(--tc);}
+.session-row-meta{font-size:.72rem;color:var(--mid);margin-top:.2rem;}
+
+/* ── LOADING OVERLAY ── */
+.loading-overlay{position:fixed;inset:0;background:rgba(253,248,243,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:1rem;}
+.spinner{width:38px;height:38px;border:3px solid var(--sand);border-top-color:var(--tc);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{font-size:.85rem;color:var(--mid);}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="screen-login" class="screen active">
+  <div class="login-logo">
+    <h1>Parlons</h1>
+    <p>Espace écoutant</p>
+  </div>
+  <div class="login-card">
+    <div class="field-label">Email</div>
+    <input id="login-email" class="field-input" type="email" inputmode="email" autocomplete="email" placeholder="votre@email.fr">
+    <div class="field-label">Mot de passe</div>
+    <input id="login-password" class="field-input" type="password" autocomplete="current-password" placeholder="••••••••">
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">Se connecter</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ══ APP SHELL ══ -->
+<div id="app-shell">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="status-dot" id="hdr-dot"></div>
+    <div class="app-header-title">Parlons</div>
+    <div class="app-header-agent" id="hdr-agent"></div>
+    <button style="background:none;border:none;color:var(--light);font-size:.75rem;cursor:pointer;font-family:'DM Sans',sans-serif;" onclick="doLogout()">Déco.</button>
+  </div>
+
+  <!-- Views container -->
+  <div class="views">
+
+    <!-- HOME VIEW -->
+    <div class="view active" id="view-home">
+
+      <!-- Status toggle -->
+      <div class="status-toggle" id="status-toggle" onclick="toggleOnline()">
+        <div class="status-toggle-icon" id="status-icon">😴</div>
+        <div class="status-toggle-text">
+          <div class="status-toggle-label" id="status-label">Hors ligne</div>
+          <div class="status-toggle-sub" id="status-sub">Appuyez pour vous mettre en ligne</div>
+        </div>
+        <button class="status-toggle-btn" id="status-btn" onclick="event.stopPropagation();toggleOnline()">Activer</button>
+      </div>
+
+      <!-- Push notification banner -->
+      <div class="push-banner" id="push-banner" style="display:none">
+        <div class="push-banner-text">🔔 Activez les notifications pour être alerté des nouveaux tchats, même en arrière-plan.</div>
+        <button class="push-banner-btn" onclick="subscribePush()">Activer</button>
+      </div>
+
+      <!-- Queue -->
+      <div class="section-head">File d'attente <span id="queue-count-badge"></span></div>
+      <div id="queue-list"><div class="empty-state">Aucun visiteur en attente</div></div>
+
+      <!-- Active sessions -->
+      <div class="section-head">Mes sessions actives</div>
+      <div id="sessions-list"><div class="empty-state">Aucune session active</div></div>
+
+    </div>
+
+    <!-- CHAT VIEW (overlay sur les views) -->
+    <div class="chat-view" id="chat-view">
+      <div class="chat-header">
+        <button class="chat-back" onclick="closeChatView()">←</button>
+        <div class="chat-header-info">
+          <div class="chat-header-name" id="chat-name">—</div>
+          <div class="chat-header-label" id="chat-label"></div>
+        </div>
+        <div class="chat-header-timer" id="chat-timer" style="display:none"></div>
+        <button class="chat-header-end" onclick="endCurrentSession()">Terminer</button>
+      </div>
+      <div class="ext-bar" id="ext-bar">
+        <div class="ext-bar-text" id="ext-bar-text">⏳ Prolongation demandée</div>
+        <div class="ext-bar-btns">
+          <button class="ext-btn accept" onclick="respondExt(true)">✓ Prolonger</button>
+          <button class="ext-btn pass" onclick="respondExt(false)">↗ Passer</button>
+        </div>
+      </div>
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-input-row">
+        <textarea class="chat-ta" id="chat-ta" rows="1" placeholder="Votre message…" oninput="autoResize(this)" onkeydown="taKeydown(event)"></textarea>
+        <button class="chat-send" onclick="sendMsg()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- STATS VIEW -->
+    <div class="view" id="view-stats">
+      <div class="period-tabs" id="period-tabs">
+        <button class="period-tab active" data-period="today" onclick="setPeriod('today')">Auj.</button>
+        <button class="period-tab" data-period="week" onclick="setPeriod('week')">Semaine</button>
+        <button class="period-tab" data-period="month" onclick="setPeriod('month')">Mois</button>
+        <button class="period-tab" data-period="allTime" onclick="setPeriod('allTime')">Total</button>
+      </div>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-card-label">Sessions</div><div class="stat-card-value" id="st-sessions">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">Gains</div><div class="stat-card-value" id="st-revenue">—</div><div class="stat-card-sub">€ nets</div></div>
+        <div class="stat-card" style="grid-column:1/-1"><div class="stat-card-label">Note moyenne</div><div class="stat-card-value" id="st-rating">—</div><div id="st-rating-stars" class="rating-row" style="margin-top:.3rem"></div></div>
+      </div>
+      <div class="section-head">Sessions récentes</div>
+      <div id="recent-sessions"></div>
+    </div>
+
+  </div>
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="showView('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Accueil
+    </button>
+    <button class="nav-btn" id="nav-chat" onclick="showView('chat')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="nav-badge" id="nav-badge"></span>
+      Chat
+    </button>
+    <button class="nav-btn" id="nav-stats" onclick="showView('stats')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Stats
+    </button>
+  </nav>
+
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading" style="display:none">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Connexion…</div>
+</div>
+
+<script>
+const API = '/.netlify/functions';
+
+// ── STATE ──
+let appEmail = '', appPassword = '', appToken = null, appOnline = false;
+let appSessions = new Map();   // sessionId → session state
+let appStats = null;
+let activeChatId = null;       // session currently open in chat view
+let pollTimer = null;
+let pollSince = null;
+let chatTimerInterval = null;
+let renderedIds = {};           // sessionId → Set of rendered message ids
+let statsData = null;
+let currentPeriod = 'today';
+const respondingExt = new Set();
+
+// ── UTILS ──
+function fmt(n){ return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtDate(iso){ const d=new Date(iso); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
+function elapsed(iso){ const s=Math.round((Date.now()-new Date(iso))/1000); if(s<60)return s+'s'; if(s<3600)return Math.floor(s/60)+'min'; return Math.floor(s/3600)+'h'; }
+function fmtTime(sec){ const m=Math.floor(sec/60),s=Math.floor(sec%60); return m+':'+String(s).padStart(2,'0'); }
+function urlBase64ToUint8Array(b64){ const p=(b64+'='.repeat((4-b64.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'); const raw=atob(p); return Uint8Array.from([...raw].map(c=>c.charCodeAt(0))); }
+
+// ── LOADING ──
+function showLoading(txt='Chargement…'){ const l=document.getElementById('loading'); l.style.display='flex'; document.getElementById('loading-text').textContent=txt; }
+function hideLoading(){ document.getElementById('loading').style.display='none'; }
+
+// ── SCREEN: LOGIN → APP ──
+function showApp(){ document.getElementById('screen-login').classList.remove('active'); document.getElementById('app-shell').style.display='flex'; document.getElementById('app-shell').style.flexDirection='column'; document.getElementById('app-shell').style.height='100%'; document.getElementById('app-shell').style.overflow='hidden'; }
+function showLogin(){ document.getElementById('screen-login').classList.add('active'); document.getElementById('app-shell').style.display='none'; stopPoll(); }
+
+// ── VIEW SWITCHING ──
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  if(v==='chat'){
+    // Show the first active session or stay on home if none
+    const first=[...appSessions.values()].find(s=>s.timerStartedAt)||[...appSessions.values()][0];
+    if(first){ openChatView(first.id); return; }
+    document.getElementById('view-home').classList.add('active');
+    document.getElementById('nav-home').classList.add('active');
+    return;
+  }
+  document.getElementById('view-'+v)?.classList.add('active');
+  document.getElementById('nav-'+v)?.classList.add('active');
+  if(v==='stats') renderStats();
+}
+
+// ── LOGIN ──
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim().toLowerCase();
+  const pwd=document.getElementById('login-password').value;
+  const err=document.getElementById('login-error');
+  const btn=document.getElementById('login-btn');
+  if(!email||!pwd){ err.textContent='Email et mot de passe requis'; return; }
+  err.textContent=''; btn.disabled=true; btn.textContent='Connexion…';
+  try{
+    const res=await fetch(`${API}/agent-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pwd})});
+    const data=await res.json();
+    if(!res.ok||data.error){ err.textContent=data.error||'Erreur de connexion'; btn.disabled=false; btn.textContent='Se connecter'; return; }
+    appEmail=email; appPassword=pwd;
+    statsData=data;
+    localStorage.setItem('parlons_agent_email',email);
+    localStorage.setItem('parlons_agent_pwd',pwd);
+    renderHeader();
+    showApp();
+    showView('home');
+    updatePushBanner();
+    // Auto-passer en ligne si action=online dans l'URL
+    if(new URLSearchParams(location.search).get('action')==='online') toggleOnline();
+  }catch(e){ err.textContent='Erreur réseau'; }
+  btn.disabled=false; btn.textContent='Se connecter';
+}
+
+async function doLogout(){
+  if(appToken) await goOffline();
+  appEmail=''; appPassword=''; appToken=null;
+  localStorage.removeItem('parlons_agent_email');
+  localStorage.removeItem('parlons_agent_pwd');
+  appSessions.clear();
+  showLogin();
+}
+
+function renderHeader(){
+  document.getElementById('hdr-agent').textContent=appEmail.split('@')[0];
+  updateStatusUI();
+}
+
+// ── ONLINE / OFFLINE ──
+async function toggleOnline(){
+  if(appOnline) await goOffline(); else await goOnline();
+}
+
+async function goOnline(){
+  showLoading('Mise en ligne…');
+  try{
+    const res=await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,password:appPassword,status:'online'})});
+    const data=await res.json();
+    if(!data.ok){ alert(data.error||'Erreur'); hideLoading(); return; }
+    appToken=data.token;
+    appOnline=true;
+    updateStatusUI();
+    startPoll();
+    if(data.assignedSession){ await refreshSessions(); openChatView(data.assignedSession); }
+  }catch(e){ alert('Erreur réseau'); }
+  hideLoading();
+}
+
+async function goOffline(){
+  if(!appToken) return;
+  showLoading('Déconnexion…');
+  try{
+    await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,status:'offline'})});
+  }catch{}
+  appToken=null; appOnline=false;
+  stopPoll();
+  appSessions.clear();
+  activeChatId=null;
+  closeChatView();
+  updateStatusUI();
+  renderQueue([]);
+  renderSessions();
+  hideLoading();
+}
+
+function updateStatusUI(){
+  const toggle=document.getElementById('status-toggle');
+  const icon=document.getElementById('status-icon');
+  const label=document.getElementById('status-label');
+  const sub=document.getElementById('status-sub');
+  const btn=document.getElementById('status-btn');
+  const dot=document.getElementById('hdr-dot');
+  const busy=[...appSessions.values()].some(s=>s.timerStartedAt);
+  if(!appOnline){
+    toggle.className='status-toggle'; icon.textContent='😴'; label.textContent='Hors ligne'; sub.textContent='Appuyez pour vous mettre en ligne'; btn.textContent='Activer';
+    dot.className='status-dot';
+  } else if(busy){
+    toggle.className='status-toggle busy'; icon.textContent='💬'; label.textContent='En session'; sub.textContent='Tchat en cours'; btn.textContent='Terminer';
+    dot.className='status-dot busy';
+  } else {
+    toggle.className='status-toggle online'; icon.textContent='✅'; label.textContent='En ligne'; sub.textContent='En attente de tchat'; btn.textContent='Passer hors ligne';
+    dot.className='status-dot online';
+  }
+}
+
+// ── POLL ──
+function startPoll(){ stopPoll(); poll(); pollTimer=setInterval(poll,3000); }
+function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+
+async function poll(){
+  if(!appToken) return;
+  try{
+    const res=await fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken,since:pollSince})});
+    if(res.status===401){ appToken=null; appOnline=false; updateStatusUI(); stopPoll(); return; }
+    const d=await res.json();
+    if(d.error) return;
+    pollSince=new Date().toISOString();
+    processPoll(d);
+  }catch{}
+}
+
+function processPoll(d){
+  renderQueue(d.waitingSessions||[]);
+
+  // Merge sessions
+  const incoming=d.sessions||[];
+  const newIds=new Set(incoming.map(s=>s.id));
+
+  // Remove closed sessions
+  [...appSessions.keys()].forEach(id=>{ if(!newIds.has(id)) appSessions.delete(id); });
+
+  incoming.forEach(s=>{
+    if(!renderedIds[s.id]) renderedIds[s.id]=new Set();
+    if(!appSessions.has(s.id)){
+      appSessions.set(s.id,{ id:s.id, name:s.pre_name||'Visiteur', topic:s.pre_topic||'', label:s.session_label||'', durationSec:s.duration_sec||1800, assignedAt:s.assigned_at, timerStartedAt:null, sessionEndAt:0, extensionPending:s.extension_pending||null, frozenRemMs:undefined, messages:[], unread:0 });
+    }
+    const sess=appSessions.get(s.id);
+    if(s.duration_sec&&s.duration_sec>sess.durationSec){
+      const added=s.duration_sec-sess.durationSec;
+      sess.durationSec=s.duration_sec;
+      if(sess.frozenRemMs!==undefined){ sess.sessionEndAt=Date.now()+sess.frozenRemMs+added*1000; delete sess.frozenRemMs; }
+      else if(sess.sessionEndAt) sess.sessionEndAt+=added*1000;
+    }
+    const hadExt=!!sess.extensionPending;
+    sess.extensionPending=s.extension_pending||null;
+    if(!hadExt&&sess.extensionPending&&sess.timerStartedAt){
+      sess.frozenRemMs=sess.sessionEndAt?Math.max(0,sess.sessionEndAt-Date.now()):Math.max(0,sess.durationSec*1000-(Date.now()-sess.timerStartedAt));
+    }
+
+    // Append messages
+    (s.messages||[]).forEach(m=>{
+      if(renderedIds[s.id].has(m.id)) return;
+      renderedIds[s.id].add(m.id);
+      sess.messages.push(m);
+      if(s.id!==activeChatId||(document.getElementById('chat-view')&&!document.getElementById('chat-view').classList.contains('active'))) sess.unread++;
+      // Start timer on first agent/system msg
+      if(!sess.timerStartedAt&&(m.sender_type==='agent'||m.content?.includes('peut commencer'))){
+        sess.timerStartedAt=Date.now();
+        sess.sessionEndAt=Date.now()+sess.durationSec*1000;
+      }
+    });
+  });
+
+  renderSessions();
+  updateStatusUI();
+  updateNavBadge();
+  if(activeChatId&&appSessions.has(activeChatId)) renderChatMessages(activeChatId);
+}
+
+async function refreshSessions(){
+  await poll();
+}
+
+// ── QUEUE RENDER ──
+function renderQueue(waiting){
+  const el=document.getElementById('queue-list');
+  const badge=document.getElementById('queue-count-badge');
+  badge.textContent=waiting.length?`(${waiting.length})`:'';
+  if(!waiting.length){ el.innerHTML='<div class="empty-state">Aucun visiteur en attente</div>'; return; }
+  el.innerHTML=waiting.map(s=>`
+    <div class="queue-card">
+      <div class="queue-card-avatar">👤</div>
+      <div class="queue-card-info">
+        <div class="queue-card-name">${esc(s.pre_name||'Visiteur')}</div>
+        <div class="queue-card-topic">${esc(s.pre_topic||'Aucun sujet précisé')}</div>
+        <div class="queue-card-wait">Attend depuis ${elapsed(s.created_at)}</div>
+      </div>
+      <button class="queue-take-btn" onclick="takeSession('${s.id}')">Prendre</button>
+    </div>`).join('');
+}
+
+// ── SESSIONS RENDER ──
+function renderSessions(){
+  const el=document.getElementById('sessions-list');
+  if(!appSessions.size){ el.innerHTML='<div class="empty-state">Aucune session active</div>'; return; }
+  el.innerHTML=[...appSessions.values()].map(s=>{
+    const rem=sessionRemaining(s);
+    return `<div class="session-card" onclick="openChatView('${s.id}')">
+      <div class="session-card-avatar">💬</div>
+      <div class="session-card-info">
+        <div class="session-card-name">${esc(s.name)}</div>
+        <div class="session-card-label">${esc(s.label)||'Session'}</div>
+      </div>
+      ${s.timerStartedAt?`<div class="session-card-timer">${fmtTime(rem)}</div>`:``}
+      ${s.unread?`<div class="session-unread">${s.unread}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function sessionRemaining(sess){
+  if(!sess.timerStartedAt) return sess.durationSec;
+  if(sess.extensionPending&&sess.frozenRemMs!==undefined) return Math.max(0,sess.frozenRemMs/1000);
+  return Math.max(0,(sess.sessionEndAt-Date.now())/1000);
+}
+
+// ── NAV BADGE ──
+function updateNavBadge(){
+  let total=0; appSessions.forEach(s=>{ total+=s.unread; });
+  const badge=document.getElementById('nav-badge');
+  badge.textContent=total>9?'9+':String(total);
+  badge.classList.toggle('visible',total>0);
+}
+
+// ── TAKE SESSION ──
+async function takeSession(sessionId){
+  if(!appToken) return;
+  showLoading('Prise en charge…');
+  try{
+    const res=await fetch(`${API}/chat-take`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,agentEmail:appEmail,agentToken:appToken})});
+    const data=await res.json();
+    if(!data.ok){ alert(data.error||'Erreur'); hideLoading(); return; }
+    await refreshSessions();
+    openChatView(sessionId);
+  }catch(e){ alert('Erreur réseau'); }
+  hideLoading();
+}
+
+// ── CHAT VIEW ──
+function openChatView(sessionId){
+  activeChatId=sessionId;
+  const sess=appSessions.get(sessionId);
+  if(!sess) return;
+  sess.unread=0; updateNavBadge();
+  document.getElementById('chat-name').textContent=sess.name;
+  document.getElementById('chat-label').textContent=sess.label||'Session en cours';
+  document.getElementById('chat-view').classList.add('active');
+  renderChatMessages(sessionId);
+  startChatTimer(sessionId);
+  renderExtBar(sessionId);
+  document.getElementById('nav-chat').classList.add('active');
+}
+
+function closeChatView(){
+  document.getElementById('chat-view').classList.remove('active');
+  activeChatId=null;
+  clearInterval(chatTimerInterval); chatTimerInterval=null;
+  document.getElementById('chat-timer').style.display='none';
+}
+
+function renderChatMessages(sessionId){
+  const sess=appSessions.get(sessionId); if(!sess) return;
+  const el=document.getElementById('chat-msgs');
+  const wasAtBottom=el.scrollHeight-el.scrollTop-el.clientHeight<80;
+  el.innerHTML=sess.messages.map(m=>{
+    const type=m.sender_type==='agent'?'agent':m.sender_type==='system'?'system':'visitor';
+    const time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
+    return `<div class="msg ${type}"><div class="bubble">${esc(m.content)}</div>${type!=='system'?`<div class="msg-time">${time}</div>`:''}</div>`;
+  }).join('');
+  if(wasAtBottom||el.scrollHeight===el.clientHeight) el.scrollTop=el.scrollHeight;
+  renderExtBar(sessionId);
+}
+
+function renderExtBar(sessionId){
+  const sess=appSessions.get(sessionId); if(!sess) return;
+  const bar=document.getElementById('ext-bar');
+  if(sess.extensionPending){
+    const mins=Math.floor((sess.extensionPending.newDurationSec||600)/60);
+    document.getElementById('ext-bar-text').textContent=`⏳ ${sess.name} souhaite prolonger de ${mins} min`;
+    bar.classList.add('visible');
+    bar.dataset.sessionId=sessionId;
+  } else {
+    bar.classList.remove('visible');
+    bar.dataset.sessionId='';
+  }
+}
+
+// ── CHAT TIMER ──
+function startChatTimer(sessionId){
+  clearInterval(chatTimerInterval); chatTimerInterval=null;
+  const timerEl=document.getElementById('chat-timer');
+  function tick(){
+    const sess=appSessions.get(sessionId);
+    if(!sess||!sess.timerStartedAt){ timerEl.style.display='none'; return; }
+    const rem=sessionRemaining(sess);
+    const frozen=sess.extensionPending&&sess.frozenRemMs!==undefined;
+    timerEl.style.display='inline';
+    timerEl.textContent=(frozen?'⏸ ':'')+fmtTime(rem);
+    timerEl.style.background=(!frozen&&rem<=120)?'rgba(239,68,68,.35)':'rgba(0,0,0,.2)';
+  }
+  tick();
+  chatTimerInterval=setInterval(tick,1000);
+}
+
+// ── SEND MESSAGE ──
+async function sendMsg(){
+  const ta=document.getElementById('chat-ta');
+  const content=(ta.value||'').trim();
+  if(!content||!activeChatId||!appToken) return;
+  const sessionId=activeChatId;
+  ta.value=''; ta.style.height='auto';
+  const sess=appSessions.get(sessionId);
+  if(sess&&!sess.timerStartedAt){
+    sess.timerStartedAt=Date.now();
+    sess.sessionEndAt=Date.now()+sess.durationSec*1000;
+    startChatTimer(sessionId);
+    updateStatusUI();
+  }
+  // Optimistic render
+  if(sess){ sess.messages.push({id:'tmp'+Date.now(),content,sender_type:'agent',created_at:new Date().toISOString()}); renderChatMessages(sessionId); }
+  try{
+    await fetch(`${API}/chat-send`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,content,senderType:'agent',agentEmail:appEmail,agentToken:appToken})});
+  }catch{}
+}
+
+function taKeydown(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(); } }
+function autoResize(ta){ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,100)+'px'; }
+
+// ── EXTENSION ──
+async function respondExt(accept){
+  const sessionId=document.getElementById('ext-bar').dataset.sessionId;
+  if(!sessionId||respondingExt.has(sessionId)) return;
+  respondingExt.add(sessionId);
+  try{
+    const res=await fetch(`${API}/chat-extension-respond`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,agentEmail:appEmail,agentToken:appToken,accept})});
+    const data=await res.json();
+    if(!data.ok){ alert(data.error||'Erreur'); return; }
+    const sess=appSessions.get(sessionId);
+    if(sess){ sess.extensionPending=null; delete sess.frozenRemMs; }
+    document.getElementById('ext-bar').classList.remove('visible');
+    if(!accept){
+      appSessions.delete(sessionId);
+      if(activeChatId===sessionId) closeChatView();
+      renderSessions();
+    }
+  }catch(e){ console.error(e); }
+  finally{ respondingExt.delete(sessionId); }
+}
+
+// ── END SESSION ──
+async function endCurrentSession(){
+  if(!activeChatId||!appToken) return;
+  if(!confirm('Terminer la session ?')) return;
+  const sessionId=activeChatId;
+  try{
+    await fetch(`${API}/chat-close`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,agentEmail:appEmail,agentToken:appToken,closedBy:'agent'})});
+  }catch{}
+  appSessions.delete(sessionId);
+  delete renderedIds[sessionId];
+  closeChatView();
+  renderSessions();
+  updateStatusUI();
+}
+
+// ── STATS ──
+function setPeriod(p){
+  currentPeriod=p;
+  document.querySelectorAll('.period-tab').forEach(el=>el.classList.toggle('active',el.dataset.period===p));
+  renderStats();
+}
+
+function renderStats(){
+  if(!statsData) return;
+  const p=statsData.periods?.[currentPeriod]||{sessions:0,revenue:0};
+  document.getElementById('st-sessions').textContent=p.sessions;
+  document.getElementById('st-revenue').textContent=fmt(p.revenue)+'€';
+  const rating=statsData.avgRating;
+  document.getElementById('st-rating').textContent=rating?rating.toFixed(1)+' / 5':'—';
+  const stars=document.getElementById('st-rating-stars');
+  stars.innerHTML=rating?'★'.repeat(Math.round(rating))+'☆'.repeat(5-Math.round(rating)):'';
+  const recEl=document.getElementById('recent-sessions');
+  const recent=(statsData.sessions||[]).slice(0,15);
+  recEl.innerHTML=recent.length?recent.map(s=>`
+    <div class="session-row">
+      <div class="session-row-top">
+        <div class="session-row-name">${esc(s.pseudo||'Visiteur')}</div>
+        <div class="session-row-amount">${s.montant?fmt(s.montant)+'€':''}</div>
+      </div>
+      <div class="session-row-meta">${esc(s.formule||'')}${s.started_at?' · '+fmtDate(s.started_at):''}${s.rating?' · '+'★'.repeat(s.rating):''}</div>
+    </div>`).join(''):'<div class="empty-state">Aucune session pour l\'instant</div>';
+}
+
+// ── PUSH NOTIFICATIONS ──
+function updatePushBanner(){
+  const banner=document.getElementById('push-banner');
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)){ banner.style.display='none'; return; }
+  if(Notification.permission==='granted'){ banner.style.display='none'; return; }
+  if(Notification.permission==='denied'){ banner.style.display='none'; return; }
+  banner.style.display='flex';
+}
+
+async function subscribePush(){
+  if(!appToken){ alert('Mettez-vous en ligne d\'abord'); return; }
+  const permission=await Notification.requestPermission();
+  if(permission!=='granted'){ document.getElementById('push-banner').style.display='none'; return; }
+  try{
+    const keyRes=await fetch(`${API}/push-vapid-key`);
+    const {key}=await keyRes.json();
+    if(!key){ document.getElementById('push-banner').style.display='none'; return; }
+    const sw=await navigator.serviceWorker.ready;
+    const sub=await sw.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(key)});
+    await fetch(`${API}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,subscription:sub.toJSON()})});
+    document.getElementById('push-banner').style.display='none';
+  }catch(e){ console.error('push subscribe:',e); }
+}
+
+// ── ESCAPE HTML ──
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── SERVICE WORKER ──
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
+
+// ── AUTO-RECONNECT ──
+(function init(){
+  const savedEmail=localStorage.getItem('parlons_agent_email');
+  const savedPwd=localStorage.getItem('parlons_agent_pwd');
+  if(savedEmail&&savedPwd){
+    document.getElementById('login-email').value=savedEmail;
+    document.getElementById('login-password').value=savedPwd;
+    // Auto-login silently
+    appEmail=savedEmail; appPassword=savedPwd;
+    showLoading('Reconnexion…');
+    fetch(`${API}/agent-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:savedEmail,password:savedPwd})})
+      .then(r=>r.json())
+      .then(data=>{
+        if(data.error){ hideLoading(); return; }
+        statsData=data;
+        renderHeader();
+        showApp();
+        showView('home');
+        updatePushBanner();
+        hideLoading();
+      })
+      .catch(()=>hideLoading());
+  }
+})();
+</script>
+</body>
+</html>

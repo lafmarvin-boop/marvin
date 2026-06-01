@@ -104,6 +104,20 @@ exports.handler = async (event) => {
       })
     });
 
+    // Push notification aux agents si personne n'était disponible
+    if (!assignedAgent) {
+      const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.netlify.app';
+      fetch(`${siteUrl}/.netlify/functions/push-notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: '💬 Nouveau tchat en attente',
+          message: `${name} attend votre aide`,
+          url: '/agent-app.html'
+        })
+      }).catch(() => {});
+    }
+
     return {
       statusCode: 200, headers: CORS,
       body: JSON.stringify({ sessionId, status: assignedAgent ? 'active' : 'waiting', agentAssigned: !!assignedAgent })
