@@ -2956,6 +2956,7 @@ async function extendChatSession(newDurationSec,paymentId,label,_retry){
     const sub=document.getElementById('pcp-subtitle');
     if(sub)sub.textContent='En attente de l\'agent…';
     closeModal();
+    showChatPanel(true);
     const r=await fetch('/.netlify/functions/chat-extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,newDurationSec,paymentId,label,remainingSec})});
     const d=await r.json();
     if(!d.ok){
@@ -2995,6 +2996,8 @@ async function pollChat(){
         sessionEndAt=sessionEndAt>0?sessionEndAt+added*1000:Date.now()+added*1000;
         if(sessionTimer===null) startSessionCountdown(null);
         updateSessionUI();
+        setChatState('active');
+        showChatPanel(true);
         const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
         const mobileRenew=document.getElementById('mobile-renew-btn');if(mobileRenew)mobileRenew.style.display='none';
         const m=Math.floor(added/60);
@@ -3007,7 +3010,9 @@ async function pollChat(){
         sessionStorage.setItem('parlons_chat_session_id',d.transferSessionId);
         localStorage.setItem('parlons_chat_session_id',d.transferSessionId);
         chatRenderedIds=new Set();chatLastMsgTime=null;
-        if(sub)sub.textContent='Transfert en cours…';
+        setChatState('waiting');
+        showChatPanel(true);
+        if(sub)sub.textContent='En attente d\'un nouvel écoutant…';
         return;
       } else if(d.status==='closed'){
         // Session fermée sans transfert
