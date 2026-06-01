@@ -1902,8 +1902,10 @@ async function pollAgentChat() {
           const lastTs = m.created_at;
           if (!agentPollSince || lastTs > agentPollSince) agentPollSince = lastTs;
         }
+        console.log('[poll] new msg:', m.sender_type, (m.content||'').substring(0,60));
         // Auto-open panel on new extension request
-        if (m.sender_type === 'system' && m.content.includes('souhaite prolonger')) {
+        if (m.sender_type === 'system' && m.content && m.content.includes('souhaite prolonger')) {
+          console.log('[poll] extension request detected, opening panel');
           agentActiveTabId = s.id; agentChatSessionId = s.id; anyNew = true;
         }
         // Unread: count if not this tab or panel closed
@@ -2020,8 +2022,9 @@ function renderAgentFloatMessages() {
   // Find the last extension request and whether it's already resolved
   let lastExtIdx = -1;
   sess.messages.forEach((m, i) => {
-    if (m.sender_type === 'system' && m.content.includes('souhaite prolonger')) lastExtIdx = i;
+    if (m.sender_type === 'system' && m.content && m.content.includes('souhaite prolonger')) lastExtIdx = i;
   });
+  console.log('[render] messages:', sess.messages.length, 'lastExtIdx:', lastExtIdx, 'msgs:', sess.messages.map(m=>(m.sender_type||'?')+':'+(m.content||'').substring(0,30)));
   const extResolved = lastExtIdx >= 0 && sess.messages.slice(lastExtIdx + 1).some(m =>
     m.sender_type === 'system' && (m.content.includes('prolongée') || m.content.includes("n'a pas pu"))
   );

@@ -2931,15 +2931,17 @@ async function extendChatSession(newDurationSec,paymentId,label){
     const sub=document.getElementById('pcp-subtitle');
     if(sub)sub.textContent='En attente de l\'agent…';
     closeModal();
+    console.log('[extend] calling chat-extend, sessionId=',chatSessionId,'newDurationSec=',newDurationSec);
     const r=await fetch('/.netlify/functions/chat-extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,newDurationSec,paymentId,label,remainingSec})});
     const d=await r.json();
+    console.log('[extend] response:', d);
     if(!d.ok){
       chatExtensionPending=false;chatExtensionNewDuration=0;
       const sub=document.getElementById('pcp-subtitle');
       if(sub)sub.textContent='Session en cours';
-      console.error('extendChatSession error:',d.error,d.detail);
+      console.error('[extend] FAILED:',d.error,d.detail);
     }
-  }catch(e){chatExtensionPending=false;chatExtensionNewDuration=0;console.error('extendChatSession:',e);}
+  }catch(e){chatExtensionPending=false;chatExtensionNewDuration=0;console.error('[extend] EXCEPTION:',e);}
 }
 function startChatPolling(){
   if(chatPollingInterval)clearInterval(chatPollingInterval);
