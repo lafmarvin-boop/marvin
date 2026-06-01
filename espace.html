@@ -2073,11 +2073,18 @@ function renderAgentFloatMessages() {
   }
 
   msgsEl.scrollTop = msgsEl.scrollHeight;
+  const extPending = (lastExtIdx >= 0 && !extResolved) || (sess.extensionPending && lastExtIdx === -1);
   if (infoEl) {
     const ipBtn = sess.visitorIp
       ? ` <button onclick="(function(btn,ip){navigator.clipboard.writeText(ip).then(()=>{btn.textContent='✓';setTimeout(()=>{btn.textContent='IP'},1200)}).catch(()=>{btn.textContent='IP'});})(this,'${escHtml(sess.visitorIp)}')" title="${escHtml(sess.visitorIp)}" style="background:#e8e0d8;border:none;border-radius:4px;padding:1px 5px;font-size:.68rem;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;color:var(--mid);vertical-align:middle;line-height:1.4;">IP</button>`
       : '';
-    infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong>${ipBtn} · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
+    const extBtns = extPending
+      ? ` <span style="display:inline-flex;gap:.3rem;vertical-align:middle;margin-left:.2rem;">` +
+        `<button onclick="respondExtension('${escHtml(sess.id)}',true)" style="background:#22c55e;color:white;border:none;border-radius:4px;padding:1px 7px;font-size:.68rem;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;line-height:1.4;">✓ Prolonger</button>` +
+        `<button onclick="respondExtension('${escHtml(sess.id)}',false)" style="background:#f59e0b;color:white;border:none;border-radius:4px;padding:1px 7px;font-size:.68rem;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;line-height:1.4;">↗ Passer</button>` +
+        `</span>`
+      : '';
+    infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong>${ipBtn}${extBtns} · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
   }
   // Hide legacy bar — buttons are now inline
   const bar = document.getElementById('afloat-ext-bar');
