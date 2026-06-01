@@ -1902,6 +1902,10 @@ async function pollAgentChat() {
           const lastTs = m.created_at;
           if (!agentPollSince || lastTs > agentPollSince) agentPollSince = lastTs;
         }
+        // Auto-open panel on new extension request
+        if (m.sender_type === 'system' && m.content.includes('souhaite prolonger')) {
+          agentActiveTabId = s.id; agentChatSessionId = s.id; anyNew = true;
+        }
         // Unread: count if not this tab or panel closed
         if (!agentFloatOpen || agentActiveTabId !== s.id) {
           if (m.sender_type !== 'agent') sess.unread++;
@@ -1927,7 +1931,6 @@ async function pollAgentChat() {
     // Render
     renderAgentFloatTabs();
     if (agentFloatOpen) renderAgentFloatMessages();
-    else updateAgentExtBar();
     updateAgentFloatBubble();
     updateAgentFloatTimer();
 
@@ -2013,18 +2016,53 @@ function renderAgentFloatMessages() {
     if (titleEl) titleEl.textContent = '💬 Chat';
     return;
   }
+
+  // Find the last extension request and whether it's already resolved
+  let lastExtIdx = -1;
+  sess.messages.forEach((m, i) => {
+    if (m.sender_type === 'system' && m.content.includes('souhaite prolonger')) lastExtIdx = i;
+  });
+  const extResolved = lastExtIdx >= 0 && sess.messages.slice(lastExtIdx + 1).some(m =>
+    m.sender_type === 'system' && (m.content.includes('prolongée') || m.content.includes("n'a pas pu"))
+  );
+
   msgsEl.innerHTML = '';
-  sess.messages.forEach(m => {
+  sess.messages.forEach((m, i) => {
     const div = document.createElement('div');
-    div.className = 'agent-msg ' + (m.sender_type === 'agent' ? 'agent' : m.sender_type === 'system' ? 'system' : 'visitor');
-    div.textContent = m.content;
+    const isActiveExt = (i === lastExtIdx && !extResolved);
+    if (isActiveExt) {
+      div.className = 'agent-msg system';
+      div.style.cssText = 'border:1.5px solid #fbbf24;background:#fff7ed;border-radius:12px;padding:.55rem .75rem;';
+      const txt = document.createElement('div');
+      txt.textContent = m.content;
+      div.appendChild(txt);
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:.45rem;margin-top:.5rem;';
+      const btnA = document.createElement('button');
+      btnA.textContent = '✓ Accepter';
+      btnA.style.cssText = 'flex:1;background:#22c55e;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
+      btnA.onclick = () => respondExtension(sess.id, true);
+      const btnR = document.createElement('button');
+      btnR.textContent = '✗ Refuser';
+      btnR.style.cssText = 'flex:1;background:#ef4444;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
+      btnR.onclick = () => respondExtension(sess.id, false);
+      row.appendChild(btnA);
+      row.appendChild(btnR);
+      div.appendChild(row);
+    } else {
+      div.className = 'agent-msg ' + (m.sender_type === 'agent' ? 'agent' : m.sender_type === 'system' ? 'system' : 'visitor');
+      div.textContent = m.content;
+    }
     msgsEl.appendChild(div);
   });
+
   msgsEl.scrollTop = msgsEl.scrollHeight;
   if (infoEl) {
     infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong> · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
   }
-  updateAgentExtBar();
+  // Hide legacy bar — buttons are now inline
+  const bar = document.getElementById('afloat-ext-bar');
+  if (bar) bar.style.display = 'none';
   if (titleEl) titleEl.textContent = `💬 ${sess.name}`;
 }
 
@@ -2053,35 +2091,9 @@ document.addEventListener('visibilitychange', function() {
 });
 
 function updateAgentExtBar() {
+  // Buttons are now inline in renderAgentFloatMessages — keep bar hidden
   const bar = document.getElementById('afloat-ext-bar');
-  if (!bar) return;
-  const sess = agentSessions.get(agentActiveTabId);
-  if (!sess) { bar.dataset.sessionId = ''; bar.style.display = 'none'; return; }
-
-  let extLabel = null;
-
-  if (sess.extensionPending) {
-    const mins = Math.floor((sess.extensionPending.newDurationSec || 0) / 60);
-    extLabel = `⏳ Prolongation demandée : +${mins} min`;
-  } else {
-    // Fallback: detect from system message content when JSONB is unavailable
-    let lastExtMsg = null, resolved = false;
-    sess.messages.forEach(m => {
-      if (m.sender_type === 'system' && m.content.includes('souhaite prolonger')) lastExtMsg = m;
-      if (m.sender_type === 'system' && (m.content.includes('prolongée') || m.content.includes("n'a pas pu"))) resolved = true;
-    });
-    if (lastExtMsg && !resolved) extLabel = lastExtMsg.content;
-  }
-
-  if (extLabel) {
-    const textEl = document.getElementById('afloat-ext-text');
-    if (textEl) textEl.textContent = extLabel;
-    bar.dataset.sessionId = sess.id;
-    bar.style.display = 'block';
-  } else {
-    bar.dataset.sessionId = '';
-    bar.style.display = 'none';
-  }
+  if (bar) { bar.dataset.sessionId = ''; bar.style.display = 'none'; }
 }
 
 function respondExtensionBar(accept) {
