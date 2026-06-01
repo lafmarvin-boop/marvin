@@ -2869,14 +2869,6 @@ document.fonts && document.fonts.ready.then(stackBanners);
 </div>
 
 <!-- BARRE SESSION MOBILE (fixe, toujours visible pendant la session) -->
-<div id="mobile-session-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#e8f8e8;border-top:2px solid #5CB85C;padding:.55rem 1rem;flex-direction:row;justify-content:space-between;align-items:center;font-family:'DM Sans',sans-serif;box-shadow:0 -2px 8px rgba(0,0,0,.08);">
-  <div style="font-size:.74rem;color:#2d7a2d;font-weight:600;">✅ Session en cours</div>
-  <div id="mobile-timer-display" style="font-size:1.05rem;font-family:'Playfair Display',serif;color:#C1440E;font-weight:700;">--:--</div>
-  <div style="display:flex;gap:.4rem;align-items:center;">
-    <button id="mobile-renew-btn" onclick="openModal()" style="display:none;background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.3rem .75rem;font-size:.72rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;animation:pulse-btn .8s ease-in-out infinite alternate;">🔁 Relancer</button>
-    <button onclick="openModal()" style="background:#C1440E;color:white;border:none;border-radius:50px;padding:.3rem .75rem;font-size:.72rem;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;">Voir →</button>
-  </div>
-</div>
 
 <!-- ══ BANNIÈRE RECONNEXION SESSION ══ -->
 <div id="reconnect-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--dark);color:white;padding:.7rem 1.2rem;z-index:500;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap;border-top:2px solid var(--tc);">
