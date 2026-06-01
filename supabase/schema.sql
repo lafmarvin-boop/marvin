@@ -82,3 +82,6 @@ CREATE INDEX IF NOT EXISTS idx_signalements_payment ON signalements (stripe_paym
 -- Migrations
 -- ============================================
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS visitor_ip TEXT;
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS extension_pending JSONB;
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS transfer_session_id TEXT;
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;

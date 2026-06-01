@@ -1438,7 +1438,7 @@
             <div><strong>✅ Session en cours</strong><br><span>Temps restant de votre session</span></div>
             <div id="session-timer">--:--</div>
           </div>
-          <div id="end-warning">⏰ <strong>Il vous reste <span id="end-countdown">2:00</span></strong> — continuez à discuter jusqu'au bout. <button onclick="closeModal();openModal()" style="background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.35rem .9rem;font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;margin-left:.5rem;">Prolonger →</button></div>
+          <div id="end-warning">⏰ <strong>Il vous reste <span id="end-countdown">2:00</span></strong> — continuez à discuter jusqu'au bout. <button onclick="openModal()" style="background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.35rem .9rem;font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;margin-left:.5rem;">Prolonger →</button></div>
           <div id="session-ended" style="display:none;"></div>
           <!-- NOTATION FIN DE SESSION -->
           <div class="rating-zone" id="rating-zone">
@@ -1856,7 +1856,6 @@ function updateSessionUI(){
 function retrySession(){
   sessionStorage.removeItem('parlons_payment_id');
   localStorage.removeItem('parlons_active_session');
-  closeModal();
   setTimeout(()=>openModal(),300);
 }
 
@@ -2090,6 +2089,7 @@ async function handlePayment(){
 
 // ── MODAL ──
 function openModal(amount){
+  if(cardElement)try{cardElement.unmount();}catch(e){}
   const offMsg=document.getElementById('offline-msg'),btn=document.querySelector('#step-1 .btn-primary');
   if(!isOnline){offMsg.style.display='block';if(btn){btn.disabled=true;btn.style.opacity='.4';}}
   else{offMsg.style.display='none';if(btn){btn.disabled=false;btn.style.opacity='1';}}
@@ -2106,15 +2106,11 @@ function closeModal(){
   document.getElementById('modal').classList.remove('active');document.body.style.overflow='';
   if(cardElement)try{cardElement.unmount();}catch(e){}
   const paid=document.getElementById('payment-success')&&document.getElementById('payment-success').style.display==='block';
-  if(!paid&&chatExtensionPending&&chatSessionId&&chatState==='active'){
-    if(sessionTimer===null){
-      // Le timer a expiré et l'utilisateur refuse de renouveler — fermer la session maintenant
-      chatExtensionPending=false;
-      _closeSessionNow();
-    } else {
-      // Session encore en cours, juste débloquer le timer
-      chatExtensionPending=false;
-    }
+  if(!paid&&chatExtensionPending){
+    // Ne jamais fermer la session depuis closeModal : l'extension est peut-être en cours
+    // ou l'utilisateur veut juste rouvrir le modal. La session reste active jusqu'à action explicite.
+    chatExtensionPending=false;
+    chatExtensionNewDuration=0;
   }
 }
 function handleOverlayClick(e){if(e.target===document.getElementById('modal'))closeModal();}
