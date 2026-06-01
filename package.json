@@ -1,0 +1,14 @@
+{
+  "name": "parlons-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend Netlify Functions pour Parlons",
+  "dependencies": {
+    "@netlify/blobs": "^8.0.0",
+    "@supabase/supabase-js": "^2.106.1",
+    "stripe": "^15.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

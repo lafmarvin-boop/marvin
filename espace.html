@@ -1,0 +1,2380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Espace Parlons</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root{--tc:#C4714A;--rust:#A84F2E;--dark:#2C1F14;--mid:#7A5C42;--light:#B09070;--sand:#E8D5B0;--cream:#FBF6EF;--warm:#F5EDE0;--green:#5CB85C;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--dark);min-height:100vh;}
+
+    nav{background:white;border-bottom:1px solid var(--sand);padding:.85rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+    #admin-tabs{display:none;background:white;border-bottom:2px solid var(--sand);padding:.45rem 1.5rem;position:sticky;top:57px;z-index:99;}
+    .admin-tab-wrap{max-width:1060px;margin:0 auto;display:flex;gap:.35rem;}
+    .atab{background:none;border:none;padding:.38rem 1.1rem;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:500;cursor:pointer;color:var(--mid);transition:all .15s;}
+    .atab:hover:not(.atab-active){background:var(--warm);}
+    .atab.atab-active{background:var(--tc);color:white;font-weight:600;}
+    .nav-logo{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--tc);text-decoration:none;}
+    .nav-right{display:flex;gap:.8rem;align-items:center;}
+    .nav-link{font-size:.8rem;color:var(--mid);text-decoration:none;}
+    .nav-link:hover{color:var(--tc);}
+    #nav-logout{display:none;background:none;border:1px solid var(--sand);border-radius:20px;padding:.3rem .8rem;font-size:.75rem;color:var(--mid);cursor:pointer;font-family:'DM Sans',sans-serif;}
+    #nav-logout:hover{border-color:var(--tc);color:var(--tc);}
+
+    /* ── LOGIN ── */
+    .login-wrap{max-width:380px;margin:0 auto;padding:4rem 1.5rem 2rem;}
+    .login-logo{text-align:center;margin-bottom:2rem;}
+    .login-logo span{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--tc);}
+    .login-logo p{font-size:.8rem;color:var(--light);margin-top:.25rem;font-weight:300;}
+    .flabel{display:block;font-size:.77rem;font-weight:500;color:var(--mid);margin-bottom:.35rem;}
+    .finput{width:100%;padding:.8rem 1rem;border:1.5px solid var(--sand);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--dark);background:white;outline:none;transition:border-color .2s;margin-bottom:1rem;}
+    .finput:focus{border-color:var(--tc);}
+    .btn-prim{width:100%;background:var(--tc);color:white;border:none;border-radius:50px;padding:.88rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
+    .btn-prim:hover{background:var(--rust);}
+    .btn-prim:disabled{opacity:.6;cursor:not-allowed;}
+    .login-err{color:#ef4444;font-size:.78rem;margin-bottom:.7rem;min-height:1.1rem;text-align:center;}
+    .login-hint{font-size:.72rem;color:var(--light);text-align:center;margin-top:1.1rem;line-height:1.65;}
+    .login-hint a{color:var(--tc);text-decoration:none;}
+    .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:white;border-radius:50%;animation:rot .6s linear infinite;}
+    @keyframes rot{to{transform:rotate(360deg);}}
+
+    /* ── SUBSCRIBER DASHBOARD ── */
+    .sub-wrap{max-width:460px;margin:0 auto;padding:2.5rem 1.5rem;}
+    .sub-hero{background:white;border-radius:18px;border:1px solid var(--sand);padding:2rem;text-align:center;margin-bottom:1.5rem;}
+    .sub-badge{display:inline-block;border-radius:50px;padding:.4rem 1.2rem;font-size:.8rem;font-weight:600;margin-bottom:.9rem;}
+    .sub-badge.active{background:#f0fdf4;border:1px solid #86efac;color:#16a34a;}
+    .sub-badge.expired{background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;}
+    .sub-name{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--dark);margin-bottom:.3rem;}
+    .sub-expiry{font-size:.8rem;color:var(--mid);font-weight:300;}
+    .sub-section-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);margin-bottom:.7rem;}
+    .sub-desc{font-size:.82rem;color:var(--mid);font-weight:300;line-height:1.7;margin-bottom:1.1rem;}
+    .pseudo-row{display:flex;gap:.6rem;margin-bottom:1rem;}
+    .pseudo-row .finput{margin-bottom:0;}
+    .btn-session{width:100%;background:var(--tc);color:white;border:none;border-radius:50px;padding:.9rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
+    .btn-session:hover{background:var(--rust);}
+    .btn-session:disabled{opacity:.6;cursor:not-allowed;}
+    .sub-foot{font-size:.72rem;color:var(--light);text-align:center;margin-top:.7rem;line-height:1.6;}
+    .sub-foot a{color:var(--tc);text-decoration:none;}
+
+    /* ── ADMIN DASHBOARD ── */
+    .dash-wrap{max-width:1060px;margin:0 auto;padding:2rem 1.5rem 3rem;}
+    .dash-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--dark);margin-bottom:1.6rem;}
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.8rem;}
+    @media(max-width:680px){.stats-grid{grid-template-columns:1fr 1fr;}}
+    .stat-card{background:white;border-radius:14px;padding:1.2rem 1.4rem;border:1px solid var(--sand);}
+    .stat-label{font-size:.7rem;color:var(--light);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;}
+    .stat-value{font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--dark);line-height:1;}
+    .stat-sub{font-size:.72rem;color:var(--mid);margin-top:.3rem;}
+    .stat-up{color:var(--green);font-weight:600;}
+    .stat-down{color:#ef4444;font-weight:600;}
+    .section-title{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--dark);margin-bottom:.9rem;}
+    .card{background:white;border-radius:14px;border:1px solid var(--sand);padding:1.4rem;margin-bottom:1.5rem;overflow-x:auto;}
+    table{width:100%;border-collapse:collapse;font-size:.82rem;}
+    th{text-align:left;padding:.6rem .8rem;color:var(--light);font-weight:500;font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--sand);}
+    td{padding:.65rem .8rem;border-bottom:1px solid var(--warm);color:var(--dark);vertical-align:middle;}
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:var(--warm);}
+    .badge{display:inline-block;padding:.2rem .6rem;border-radius:50px;font-size:.68rem;font-weight:600;}
+    .badge.ok{background:#f0fdf4;color:#16a34a;border:1px solid #86efac;}
+    .badge.ko{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;}
+    .plan-row{display:flex;align-items:center;gap:.8rem;padding:.55rem 0;border-bottom:1px solid var(--warm);}
+    .plan-row:last-child{border-bottom:none;}
+    .plan-name{flex:1;font-size:.82rem;color:var(--dark);}
+    .plan-bar-wrap{flex:2;background:var(--warm);border-radius:50px;height:7px;overflow:hidden;}
+    .plan-bar{height:100%;background:var(--tc);border-radius:50px;}
+    .plan-count{min-width:56px;text-align:right;font-size:.78rem;color:var(--mid);font-weight:500;}
+    .plan-rev{min-width:58px;text-align:right;font-size:.78rem;font-weight:700;color:var(--dark);}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
+    @media(max-width:680px){.two-col{grid-template-columns:1fr;}}
+    .room-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.8rem;}
+    @media(max-width:500px){.room-grid{grid-template-columns:1fr 1fr;}}
+    .room-mini{background:var(--warm);border-radius:10px;padding:.7rem;text-align:center;}
+    .room-mini-name{font-size:.68rem;color:var(--mid);margin-bottom:.2rem;}
+    .room-mini-count{font-size:1.05rem;font-weight:700;color:var(--dark);}
+    .group-nums{display:flex;gap:.8rem;margin-bottom:.8rem;}
+    .group-num{flex:1;text-align:center;}
+    .group-num-val{font-size:1.3rem;font-weight:700;color:var(--dark);}
+    .group-num-lbl{font-size:.68rem;color:var(--light);}
+
+    [data-screen]{display:none;}
+    [data-screen].active{display:block;}
+
+    /* ── AGENT TABLE ── */
+    .agent-row{cursor:pointer;}
+    .stars-gold{color:#FFD700;font-size:.82rem;}
+    .ipl-btn{background:none;border:1.5px solid var(--sand);border-radius:50px;padding:.2rem .65rem;font-size:.72rem;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--mid);transition:all .15s;}
+    .ipl-btn.ipl-active{background:var(--dark);border-color:var(--dark);color:white;font-weight:600;}
+
+    /* ── REVIEWS OVERLAY ── */
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:1000;overflow-y:auto;padding:2rem 1rem;}
+    .overlay.active{display:flex;align-items:flex-start;justify-content:center;}
+    .overlay-box{background:white;border-radius:20px;padding:2rem;width:100%;max-width:580px;position:relative;margin:auto;}
+    .overlay-close{position:absolute;top:1rem;right:1.2rem;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--mid);line-height:1;}
+    .review-card{background:var(--warm);border-radius:12px;padding:.9rem 1rem;margin-bottom:.7rem;}
+    .review-stars{color:#FFD700;font-size:1rem;margin-bottom:.3rem;letter-spacing:.05em;}
+    .review-comment{font-size:.84rem;color:var(--dark);line-height:1.6;margin-bottom:.4rem;}
+    .review-meta{font-size:.7rem;color:var(--light);}
+
+    /* ── SUGGESTIONS ── */
+    .sugg-card{background:var(--warm);border-radius:12px;padding:.85rem 1rem;margin-bottom:.6rem;}
+    .sugg-text{font-size:.84rem;color:var(--dark);line-height:1.65;}
+    .sugg-meta{font-size:.7rem;color:var(--light);margin-top:.3rem;}
+
+    /* ── AGENT DASHBOARD ── */
+    .agent-wrap{max-width:820px;margin:0 auto;padding:2rem 1.5rem 3rem;}
+    .agent-hero{background:linear-gradient(135deg,var(--tc),var(--rust));border-radius:18px;padding:1.8rem 2rem;color:white;margin-bottom:1.8rem;display:flex;align-items:center;gap:1.2rem;}
+    .agent-avatar{width:52px;height:52px;background:rgba(255,255,255,.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;flex-shrink:0;}
+    .agent-hero-name{font-family:'Playfair Display',serif;font-size:1.2rem;}
+    .agent-hero-sub{font-size:.78rem;opacity:.8;margin-top:.2rem;}
+    .agent-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.8rem;}
+    @media(max-width:600px){.agent-stats{grid-template-columns:1fr 1fr;}}
+    .agent-period-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+    .agent-period-table th{text-align:left;padding:.55rem .8rem;color:var(--light);font-weight:500;font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--sand);}
+    .agent-period-table td{padding:.6rem .8rem;border-bottom:1px solid var(--warm);}
+    .agent-period-table tr:last-child td{border-bottom:none;}
+    /* Chat agent */
+    .agent-chat-card{background:white;border:1px solid var(--sand);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem;}
+    .agent-chat-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);margin-bottom:.9rem;display:flex;align-items:center;gap:.6rem;}
+    .agent-presence-row{display:flex;align-items:center;gap:.8rem;margin-bottom:.9rem;flex-wrap:wrap;}
+    .agent-presence-status{font-size:.78rem;font-weight:500;}
+    /* ── Toggle présence ── */
+    .presence-toggle{display:flex;align-items:center;gap:.85rem;cursor:pointer;user-select:none;transition:opacity .15s;}
+    .presence-toggle.loading{opacity:.7;pointer-events:none;}
+    .presence-toggle:hover .presence-track{filter:brightness(1.06);}
+    .presence-track{position:relative;display:inline-flex;width:60px;height:30px;border-radius:50px;background:#ef4444;transition:background .35s cubic-bezier(.4,0,.2,1);flex-shrink:0;align-items:center;padding:3px;box-shadow:inset 0 1px 3px rgba(0,0,0,.1);}
+    .presence-thumb{width:24px;height:24px;border-radius:50%;background:white;box-shadow:0 2px 5px rgba(0,0,0,.2);transition:transform .35s cubic-bezier(.4,0,.2,1);}
+    .presence-toggle.online .presence-track{background:#22c55e;}
+    .presence-toggle.online .presence-thumb{transform:translateX(30px);}
+    @keyframes toggle-pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+    .presence-toggle.loading .presence-track{animation:toggle-pulse .65s ease-in-out infinite;}
+    .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;}
+    .agent-chat-msgs{height:260px;overflow-y:auto;border:1px solid #f0e8e0;border-radius:10px;padding:.65rem;display:flex;flex-direction:column;gap:.4rem;background:#fafaf9;margin-bottom:.7rem;}
+    .agent-msg{max-width:82%;padding:.45rem .7rem;border-radius:13px;font-size:.79rem;line-height:1.5;word-break:break-word;}
+    .agent-msg.visitor{align-self:flex-start;background:#f0ece8;color:#2C1F14;}
+    .agent-msg.agent{align-self:flex-end;background:var(--tc);color:white;}
+    .agent-msg.system{align-self:center;background:#f5f0ea;color:#7a6050;font-size:.7rem;border-radius:8px;text-align:center;padding:.25rem .6rem;max-width:92%;}
+    .agent-chat-input-row{display:flex;gap:.5rem;}
+    .agent-chat-ta{flex:1;border:1.5px solid #e0d8d0;border-radius:10px;padding:.5rem .7rem;font-size:.8rem;font-family:'DM Sans',sans-serif;resize:none;height:42px;max-height:80px;overflow-y:auto;}
+    .agent-chat-ta:focus{outline:none;border-color:var(--tc);}
+    .agent-chat-send-btn{background:var(--tc);color:white;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .agent-chat-end-btn{background:#ef4444;color:white;border:none;border-radius:50px;padding:.38rem .85rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+    .agent-chat-waiting{text-align:center;padding:1.5rem;color:var(--mid);font-size:.8rem;}
+    .agent-visitor-info{background:#f5f0ea;border-radius:9px;padding:.6rem .8rem;font-size:.78rem;color:var(--dark);margin-bottom:.7rem;line-height:1.55;}
+
+    /* ── Agent float panel ── */
+    .afloat-bubble{position:fixed;bottom:1.5rem;right:1.5rem;z-index:9000;cursor:pointer;display:none;}
+    .afloat-bubble-btn{width:58px;height:58px;background:var(--tc);border-radius:50%;box-shadow:0 4px 16px rgba(193,68,14,.35);display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:none;cursor:pointer;transition:transform .15s;}
+    .afloat-bubble-btn:hover{transform:scale(1.07);}
+    .afloat-bubble-badge{position:absolute;top:-4px;right:-4px;background:#ef4444;color:white;border-radius:50%;min-width:20px;height:20px;font-size:.68rem;font-weight:700;display:none;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;padding:0 4px;}
+    .afloat-panel{position:fixed;bottom:5rem;right:1rem;z-index:9000;width:360px;max-width:calc(100vw - 1.5rem);height:500px;max-height:calc(100dvh - 6rem);background:white;border-radius:20px;box-shadow:0 12px 40px rgba(0,0,0,.18);display:none;flex-direction:column;font-family:'DM Sans',sans-serif;overflow:hidden;border:1px solid rgba(0,0,0,.06);}
+    .afloat-panel.open{display:flex;}
+    .afloat-header{background:var(--tc);padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;color:white;flex-shrink:0;gap:.5rem;}
+    .afloat-header-title{font-family:'Playfair Display',serif;font-size:.95rem;flex:1;}
+    .afloat-timer{background:rgba(0,0,0,.2);border-radius:50px;padding:.15rem .6rem;font-size:.8rem;font-weight:700;display:none;white-space:nowrap;}
+    .afloat-close{background:none;border:none;color:rgba(255,255,255,.8);font-size:1.05rem;cursor:pointer;padding:0;line-height:1;}
+    .afloat-tabs{display:none;background:#f8f4f0;border-bottom:1px solid #e8e0d8;padding:.3rem .5rem;gap:.3rem;flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+    .afloat-tabs::-webkit-scrollbar{display:none;}
+    .afloat-tab{border:none;background:transparent;border-radius:8px;padding:.25rem .65rem;font-size:.76rem;font-family:'DM Sans',sans-serif;cursor:pointer;color:var(--mid);white-space:nowrap;position:relative;display:flex;align-items:center;gap:.3rem;}
+    .afloat-tab.active{background:var(--tc);color:white;}
+    .afloat-tab-badge{background:#ef4444;color:white;border-radius:50%;min-width:16px;height:16px;font-size:.62rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 3px;}
+    .afloat-info{padding:.45rem .85rem;background:#fef9f5;border-bottom:1px solid #f0e8e0;font-size:.76rem;color:var(--mid);flex-shrink:0;line-height:1.5;}
+    .afloat-msgs{flex:1;overflow-y:auto;padding:.8rem;display:flex;flex-direction:column;gap:.45rem;}
+    .afloat-input-row{padding:.55rem;border-top:1px solid #f0e8e0;display:flex;align-items:flex-end;gap:.4rem;flex-shrink:0;}
+    .afloat-ta{flex:1;border:1.5px solid #e0d8d0;border-radius:11px;padding:.5rem .7rem;font-size:.8rem;font-family:'DM Sans',sans-serif;resize:none;max-height:80px;overflow-y:auto;}
+    .afloat-ta:focus{outline:none;border-color:var(--tc);}
+    .afloat-send{background:var(--tc);color:white;border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:1rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+    .afloat-footer{padding:.35rem .85rem;border-top:1px solid #f0e8e0;display:flex;justify-content:flex-end;gap:.5rem;flex-shrink:0;}
+    .afloat-end-btn{background:none;border:1px solid #e5e7eb;border-radius:50px;padding:.2rem .75rem;font-size:.72rem;color:var(--light);cursor:pointer;font-family:'DM Sans',sans-serif;}
+    .afloat-end-btn:hover{border-color:#ef4444;color:#ef4444;}
+    .afloat-ext-card{background:#fff7ed;border:1.5px solid #fbbf24;border-radius:12px;padding:.6rem .8rem;font-size:.78rem;color:#92400e;font-weight:600;align-self:stretch;margin:.2rem 0;}
+    @media(max-width:640px){.afloat-panel{bottom:0;right:0;width:100vw;max-width:100vw;border-radius:20px 20px 0 0;height:82dvh;max-height:82dvh;}.afloat-bubble{bottom:1rem;right:1rem;}}
+    /* ── Archives ── */
+    .archive-card{background:white;border-radius:12px;border:1.5px solid var(--sand);padding:.85rem 1rem;margin-bottom:.65rem;cursor:pointer;transition:border-color .15s;}
+    .archive-card:hover{border-color:var(--tc);}
+    .archive-card-header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;}
+    .archive-card-info{font-size:.82rem;color:var(--dark);font-weight:500;}
+    .archive-card-meta{font-size:.72rem;color:var(--light);margin-top:.2rem;}
+    .archive-chevron{font-size:.8rem;color:var(--light);transition:transform .2s;flex-shrink:0;}
+    .archive-card.open .archive-chevron{transform:rotate(180deg);}
+    .archive-msgs{display:none;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--sand);}
+    .archive-card.open .archive-msgs{display:flex;flex-direction:column;gap:.35rem;}
+    .archive-msg{padding:.4rem .7rem;border-radius:10px;font-size:.78rem;line-height:1.5;max-width:80%;word-break:break-word;}
+    .archive-msg.visitor{background:var(--warm);color:var(--dark);align-self:flex-start;}
+    .archive-msg.agent{background:var(--tc);color:white;align-self:flex-end;}
+    .archive-msg.system{background:#f1f5f9;color:var(--light);text-align:center;align-self:center;font-size:.7rem;max-width:92%;}
+    .archive-loading{color:var(--light);font-size:.78rem;text-align:center;padding:.5rem;}
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">Parlons</a>
+  <div class="nav-right">
+    <a href="/" class="nav-link">← Site</a>
+    <button id="nav-logout" onclick="logout()">Se déconnecter</button>
+  </div>
+</nav>
+
+<!-- Onglets Admin / Agent (admin uniquement) -->
+<div id="admin-tabs">
+  <div class="admin-tab-wrap">
+    <button id="tab-admin" class="atab atab-active" onclick="switchTab('admin')">📊 Admin</button>
+    <button id="tab-agent" class="atab" onclick="switchTab('agent')">💬 Agent</button>
+    <button id="tab-archives" class="atab" onclick="switchTab('archives')" style="display:none;">📁 Archives</button>
+  </div>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div data-screen="login" class="active">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <span>Parlons</span>
+      <p>Espace membres</p>
+    </div>
+    <label class="flabel" for="login-email">Email</label>
+    <input type="email" id="login-email" class="finput" placeholder="vous@email.com" onkeydown="if(event.key==='Enter')login()">
+    <label class="flabel" for="login-pwd">Mot de passe <span style="font-weight:300;color:var(--light)">(abonnés : laissez vide)</span></label>
+    <input type="password" id="login-pwd" class="finput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+    <div class="login-err" id="login-err"></div>
+    <button class="btn-prim" id="login-btn" onclick="login()">Accéder à mon espace</button>
+    <p class="login-hint">
+      Pas encore abonné ? <a href="/#tarifs">Découvrir le Pass mensuel →</a>
+    </p>
+  </div>
+</div>
+
+<!-- ══ SUBSCRIBER DASHBOARD ══ -->
+<div data-screen="sub-dash">
+  <div class="sub-wrap">
+    <div class="sub-hero">
+      <div class="sub-badge active" id="sub-badge">✓ Abonnement actif</div>
+      <div class="sub-name" id="sub-email-display"></div>
+      <div class="sub-expiry" id="sub-expiry"></div>
+    </div>
+    <div class="sub-section-title">Démarrer une session</div>
+    <p class="sub-desc">Votre abonnement inclut des sessions illimitées de 30 minutes — sans frais supplémentaires.</p>
+    <div class="pseudo-row">
+      <input type="text" id="sub-pseudo" class="finput" placeholder="Votre prénom ou pseudo" maxlength="30">
+    </div>
+    <button class="btn-session" id="sub-start-btn" onclick="startSubSession()">💬 Démarrer une session maintenant</button>
+    <p class="sub-foot">
+      Un écoutant disponible vous rejoindra dans les prochaines minutes.<br>
+      <a href="/">Vérifier la disponibilité →</a>
+    </p>
+
+    <!-- Définir/changer mot de passe -->
+    <div id="pwd-setup-alert" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:1rem 1.2rem;font-size:.82rem;color:#1e40af;margin-bottom:1.5rem;line-height:1.6;">
+      🔑 <strong>Définissez votre mot de passe</strong> pour sécuriser votre espace. Vous en aurez besoin à chaque connexion.
+    </div>
+
+    <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--sand);">
+      <div class="sub-section-title" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="togglePwdForm()">
+        <span>🔑 Changer mon mot de passe</span>
+        <span id="pwd-chevron" style="color:var(--light);font-size:.85rem;">▼</span>
+      </div>
+      <div id="pwd-form" style="display:none;margin-top:1rem;">
+        <div id="pwd-setup-note" style="display:none;font-size:.78rem;color:var(--mid);margin-bottom:.8rem;">Laissez "Mot de passe actuel" vide si c'est votre première connexion sans mot de passe.</div>
+        <label class="flabel">Mot de passe actuel</label>
+        <input type="password" id="pwd-current" class="finput" placeholder="Laissez vide si premier accès">
+        <label class="flabel">Nouveau mot de passe <span style="font-weight:300;color:var(--light)">(8 caractères min.)</span></label>
+        <input type="password" id="pwd-new" class="finput" placeholder="Choisissez un mot de passe">
+        <label class="flabel">Confirmer le nouveau mot de passe</label>
+        <input type="password" id="pwd-confirm" class="finput" placeholder="Répétez le mot de passe">
+        <div id="pwd-err" style="color:#ef4444;font-size:.78rem;margin-bottom:.6rem;min-height:1rem;"></div>
+        <button onclick="changePassword()" style="width:100%;background:var(--dark);color:white;border:none;border-radius:50px;padding:.75rem;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;">Enregistrer le nouveau mot de passe</button>
+        <div id="pwd-ok" style="display:none;color:#16a34a;font-size:.8rem;text-align:center;margin-top:.6rem;">✓ Mot de passe mis à jour avec succès !</div>
+      </div>
+    </div>
+
+    <!-- Historique des sessions -->
+    <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--sand);">
+      <div class="sub-section-title" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="toggleSubHistory()">
+        <span>📋 Mes sessions passées</span>
+        <span id="sub-history-chevron" style="color:var(--light);font-size:.85rem;">▼</span>
+      </div>
+      <div id="sub-history" style="display:none;margin-top:1rem;">
+        <table style="width:100%;border-collapse:collapse;font-family:'DM Sans',sans-serif;">
+          <thead><tr style="border-bottom:2px solid var(--sand);">
+            <th style="text-align:left;font-size:.75rem;color:var(--light);font-weight:600;padding:.4rem .3rem;">Date</th>
+            <th style="text-align:left;font-size:.75rem;color:var(--light);font-weight:600;padding:.4rem .3rem;">Formule</th>
+            <th style="text-align:left;font-size:.75rem;color:var(--light);font-weight:600;padding:.4rem .3rem;">Agent</th>
+            <th style="text-align:center;font-size:.75rem;color:var(--light);font-weight:600;padding:.4rem .3rem;">Note</th>
+          </tr></thead>
+          <tbody id="sub-sessions-tbody"></tbody>
+        </table>
+        <div id="sub-sessions-empty" style="display:none;color:var(--light);font-size:.82rem;text-align:center;padding:1.2rem 0;">Aucune session pour l'instant.</div>
+      </div>
+    </div>
+
+    <!-- Gestion résiliation -->
+    <div id="cancel-zone" style="margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--sand);">
+      <div id="cancel-pending" style="display:none;background:#fef9ec;border:1px solid #f0d060;border-radius:12px;padding:1rem 1.2rem;font-size:.82rem;color:#92630a;line-height:1.65;margin-bottom:1rem;">
+        ⏳ <strong>Résiliation programmée</strong> — votre accès reste actif jusqu'à la date indiquée ci-dessus. Aucun renouvellement ne sera prélevé.
+      </div>
+      <button id="cancel-btn" onclick="cancelSubscription()" style="background:none;border:1px solid #fca5a5;color:#dc2626;border-radius:50px;padding:.6rem 1.2rem;font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;width:100%;transition:background .2s;">
+        Résilier mon abonnement
+      </button>
+      <p style="font-size:.7rem;color:var(--light);text-align:center;margin-top:.5rem;line-height:1.5;">
+        Aucun remboursement. Votre accès reste ouvert jusqu'à la fin de la période payée.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADMIN DASHBOARD ══ -->
+<div data-screen="admin-dash">
+  <div class="dash-wrap">
+    <div class="dash-title">📊 Tableau de bord</div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Revenus totaux</div>
+        <div class="stat-value" id="s-total-rev">—</div>
+        <div class="stat-sub">toutes formules</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Ce mois-ci</div>
+        <div class="stat-value" id="s-month-rev">—</div>
+        <div class="stat-sub" id="s-month-comp"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sessions payées</div>
+        <div class="stat-value" id="s-total-sess">—</div>
+        <div class="stat-sub" id="s-month-sess"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Abonnés actifs</div>
+        <div class="stat-value" id="s-active-subs">—</div>
+        <div class="stat-sub" id="s-total-subs"></div>
+      </div>
+    </div>
+
+    <div class="section-title">Trafic du site</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table id="traffic-table">
+        <thead><tr><th>Période</th><th>Visites</th><th>Visiteurs uniques</th><th>Tchats</th></tr></thead>
+        <tbody id="traffic-tbody"><tr><td colspan="4" style="color:var(--light);text-align:center;padding:1.2rem">Chargement…</td></tr></tbody>
+      </table>
+      <!-- Journaux IP intégrés -->
+      <div style="border-top:1px solid var(--sand);padding:.75rem 1rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.7rem;">
+          <span style="font-size:.78rem;font-weight:600;color:var(--mid);">🔍 Connexions <span style="font-weight:400;color:var(--light)">(30 j max · RGPD)</span></span>
+          <div style="display:flex;gap:.3rem;">
+            <button onclick="filterIpLogs('today')"   id="ipl-btn-today"  class="ipl-btn ipl-active">Aujourd'hui</button>
+            <button onclick="filterIpLogs('week')"    id="ipl-btn-week"   class="ipl-btn">Semaine</button>
+            <button onclick="filterIpLogs('month')"   id="ipl-btn-month"  class="ipl-btn">Mois</button>
+          </div>
+        </div>
+        <div id="country-breakdown" style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.6rem;min-height:1.2rem;"></div>
+        <div style="overflow-x:auto;max-height:260px;overflow-y:auto;">
+          <table id="ip-logs-table" style="font-size:.75rem;">
+            <thead><tr>
+              <th>Date / heure</th><th>Adresse IP</th><th>Pays</th><th>Ville</th><th>Type</th>
+            </tr></thead>
+            <tbody id="ip-logs-tbody"><tr><td colspan="5" style="color:var(--light);text-align:center;padding:1rem">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="section-title">Sessions par formule</div>
+        <div class="card" id="plan-breakdown"><div style="color:var(--light);font-size:.82rem">Chargement…</div></div>
+
+        <div class="section-title">Activité des groupes</div>
+        <div class="card">
+          <div class="group-nums">
+            <div class="group-num"><div class="group-num-val" id="s-group-total">—</div><div class="group-num-lbl">messages total</div></div>
+            <div class="group-num"><div class="group-num-val" id="s-group-today" style="color:var(--tc)">—</div><div class="group-num-lbl">aujourd'hui</div></div>
+            <div class="group-num"><div class="group-num-val" id="s-group-users">—</div><div class="group-num-lbl">utilisateurs actifs</div></div>
+          </div>
+          <div class="room-grid" id="room-grid"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">Abonnés</div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table>
+            <thead><tr><th>Email</th><th>Statut</th><th>Expire le</th></tr></thead>
+            <tbody id="sub-tbody"><tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.5rem">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats par agent -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:.9rem">
+      <div class="section-title" style="margin-bottom:0">Activité par agent</div>
+      <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
+        <button onclick="openAddAgentModal()" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.4rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Ajouter un agent</button>
+        <select id="pdf-month" style="border:1.5px solid var(--sand);border-radius:8px;padding:.35rem .7rem;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--dark);background:white;cursor:pointer;"></select>
+        <button onclick="generateGlobalPDF()" style="background:var(--dark);color:white;border:none;border-radius:50px;padding:.4rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📄 Récap URSSAF</button>
+      </div>
+    </div>
+    <div class="card" id="agent-section">
+      <div style="color:var(--light);font-size:.82rem">Chargement…</div>
+    </div>
+
+    <div class="section-title">Sessions récentes</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table>
+        <thead><tr><th>Pseudo</th><th>Formule</th><th>Montant</th><th>Date</th></tr></thead>
+        <tbody id="sessions-tbody"><tr><td colspan="4" style="color:var(--light);text-align:center;padding:1.5rem">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="section-title" style="margin-top:.5rem">💡 Suggestions d'amélioration</div>
+    <div class="card" id="suggestions-section">
+      <div style="color:var(--light);font-size:.82rem">Chargement…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ARCHIVES ══ -->
+<div data-screen="archives-dash">
+  <div style="max-width:860px;margin:0 auto;padding:1.5rem 1rem;">
+    <div class="section-title">📁 Conversations archivées <span style="font-weight:400;font-size:.78rem;color:var(--light)">(30 derniers jours)</span></div>
+    <div id="archives-list"><div style="color:var(--light);font-size:.82rem;padding:.5rem 0;">Chargement…</div></div>
+  </div>
+</div>
+
+<!-- ══ AGENT PASSWORD SETUP ══ -->
+<div data-screen="agent-setup">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <span>Parlons</span>
+      <p>Première connexion agent</p>
+    </div>
+    <p style="font-size:.82rem;color:var(--mid);margin-bottom:1.4rem;line-height:1.7;text-align:center;">Bienvenue ! Définissez un mot de passe pour sécuriser votre espace agent. Vous l'utiliserez à chaque connexion.</p>
+    <label class="flabel">Nouveau mot de passe <span style="font-weight:300;color:var(--light)">(8 caractères min.)</span></label>
+    <input type="password" id="agent-pwd1" class="finput" placeholder="Choisissez un mot de passe">
+    <label class="flabel">Confirmer le mot de passe</label>
+    <input type="password" id="agent-pwd2" class="finput" placeholder="Répétez le mot de passe" onkeydown="if(event.key==='Enter')agentSetPassword()">
+    <div class="login-err" id="agent-setup-err"></div>
+    <button class="btn-prim" id="agent-setup-btn" onclick="agentSetPassword()">Créer mon mot de passe</button>
+  </div>
+</div>
+
+<!-- ══ AGENT DASHBOARD ══ -->
+<div data-screen="agent-dash">
+  <div class="agent-wrap">
+    <div class="agent-hero">
+      <div class="agent-avatar" id="agent-avatar">?</div>
+      <div style="flex:1">
+        <div class="agent-hero-name" id="agent-hero-name">Agent</div>
+        <div class="agent-hero-sub" id="agent-hero-sub">Tableau de bord personnel</div>
+      </div>
+    </div>
+
+    <!-- Alerte profil incomplet -->
+    <div id="agent-profile-alert" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:1rem 1.2rem;font-size:.82rem;color:#1e40af;margin-bottom:1.5rem;line-height:1.6;">
+      📋 <strong>Complétez votre profil</strong> pour pouvoir générer vos factures (SIRET, adresse, IBAN requis).
+    </div>
+
+    <!-- Chat en direct -->
+    <div class="agent-chat-card" id="agent-live-chat">
+      <div class="agent-chat-title">💬 Chat en direct <span id="agent-status-badge" style="font-size:.72rem;padding:.15rem .7rem;border-radius:50px;background:#f3f4f6;color:#6b7280;font-family:'DM Sans',sans-serif;font-weight:500;">Hors ligne</span></div>
+      <div class="agent-presence-row">
+        <div id="agent-toggle" class="presence-toggle" onclick="agentTogglePresence()" title="Cliquer pour changer de statut">
+          <span class="presence-track"><span class="presence-thumb"></span></span>
+          <span id="agent-pres-status" class="agent-presence-status"><span class="status-dot" style="background:#ef4444"></span><span style="color:#ef4444;font-weight:600">Hors ligne</span></span>
+        </div>
+      </div>
+      <div id="agent-chat-err" style="color:#ef4444;font-size:.78rem;min-height:1rem;margin-bottom:.3rem;"></div>
+      <div id="agent-waiting-queue" style="display:none;margin-bottom:.7rem;">
+        <div style="font-size:.72rem;font-weight:600;color:var(--mid);margin-bottom:.35rem;">File d'attente</div>
+        <div id="agent-waiting-list" style="display:flex;flex-direction:column;gap:.3rem;"></div>
+      </div>
+      <div id="agent-chat-status" style="font-size:.8rem;color:var(--light);padding:.4rem 0;display:none;">⏳ En attente d'un visiteur…</div>
+    </div>
+
+    <!-- Facture du mois -->
+    <div style="background:white;border:1px solid var(--sand);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);">Ma facture mensuelle</div>
+          <div style="font-size:.75rem;color:var(--light);margin-top:.2rem;">Mise à jour automatique le 1er de chaque mois</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
+          <select id="agent-pdf-month" style="border:1.5px solid var(--sand);border-radius:8px;padding:.35rem .7rem;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--dark);background:white;cursor:pointer;"></select>
+          <button onclick="downloadAgentInvoice()" id="agent-invoice-btn" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.5rem 1.1rem;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📄 Télécharger ma facture</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Activité par période</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="agent-period-table">
+        <thead><tr><th>Période</th><th>Sessions</th><th>Honoraires</th></tr></thead>
+        <tbody id="agent-periods-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="section-title">Par formule</div>
+        <div class="card" id="agent-byplan"></div>
+      </div>
+      <div>
+        <div class="section-title">Notes reçues</div>
+        <div class="card" id="agent-rating"></div>
+      </div>
+    </div>
+
+    <div class="section-title">Sessions récentes</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table>
+        <thead><tr><th>Pseudo</th><th>Formule</th><th>Honoraires</th><th>Note</th><th>Date</th></tr></thead>
+        <tbody id="agent-sessions-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Profil auto-entrepreneur -->
+    <div style="margin-top:1rem;">
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:white;border:1px solid var(--sand);border-radius:14px;padding:1rem 1.4rem;" onclick="toggleAgentProfile()">
+        <span>👤 Mon profil auto-entrepreneur</span>
+        <span id="agent-profile-chevron" style="color:var(--light);font-size:.85rem;">▼</span>
+      </div>
+      <div id="agent-profile-form" style="display:none;background:white;border:1px solid var(--sand);border-top:none;border-radius:0 0 14px 14px;padding:1.4rem;">
+        <label class="flabel">Pseudo d'écoute <span style="color:var(--tc);font-weight:600;">(visible par le visiteur)</span></label>
+        <input type="text" id="ap-pseudo" class="finput" placeholder="Ex : Sophie" style="margin-bottom:.9rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;">
+          <div><label class="flabel">Prénom</label><input type="text" id="ap-prenom" class="finput" placeholder="Prénom"></div>
+          <div><label class="flabel">Nom</label><input type="text" id="ap-nom" class="finput" placeholder="Nom"></div>
+        </div>
+        <label class="flabel">Adresse</label>
+        <input type="text" id="ap-adresse" class="finput" placeholder="Numéro et rue">
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:.8rem;">
+          <div><label class="flabel">Code postal</label><input type="text" id="ap-cp" class="finput" placeholder="75000"></div>
+          <div><label class="flabel">Ville</label><input type="text" id="ap-ville" class="finput" placeholder="Paris"></div>
+        </div>
+        <label class="flabel">SIRET auto-entrepreneur</label>
+        <input type="text" id="ap-siret" class="finput" placeholder="000 000 000 00000">
+        <label class="flabel">IBAN (pour les virements)</label>
+        <input type="text" id="ap-iban" class="finput" placeholder="FR76 0000 0000 0000 0000 0000 000">
+        <div id="ap-err" style="color:#ef4444;font-size:.78rem;margin-bottom:.6rem;min-height:1rem;"></div>
+        <div id="ap-ok" style="display:none;color:#16a34a;font-size:.8rem;margin-bottom:.6rem;">✓ Profil enregistré !</div>
+        <button onclick="saveAgentProfile()" style="background:var(--dark);color:white;border:none;border-radius:50px;padding:.75rem 1.5rem;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;">Enregistrer</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ REVIEWS OVERLAY ══ -->
+<div id="reviews-overlay" class="overlay" onclick="if(event.target===this)closeReviews()">
+  <div class="overlay-box">
+    <button class="overlay-close" onclick="closeReviews()">✕</button>
+    <div id="reviews-overlay-title" style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--dark);margin-bottom:.25rem;padding-right:2rem;"></div>
+    <div id="reviews-overlay-avg" style="margin-bottom:1.3rem;font-size:.85rem;color:var(--mid);"></div>
+    <div id="reviews-overlay-list"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+const API = '/.netlify/functions';
+let subEmailStored = '';
+let agentData = {};
+let agentEmailStored = '';
+let agentChatToken = null;
+let agentPollingInterval = null;
+let agentSessions = new Map(); // sessionId -> {id, name, topic, label, durationSec, assignedAt, messages, renderedIds, unread}
+let agentActiveTabId = null;
+let agentFloatOpen = false;
+let agentFloatTimerInterval = null;
+let agentPollSince = null; // global since for all sessions
+// Compat aliases used by other code
+let agentChatSessionId = null;
+let agentPrevSessionId = null;
+let agentLastMsgTime = null;
+let agentRenderedIds = new Set();
+let adminAgentDataCache = null;
+let currentAdminTab = 'admin';
+
+// Cherche l'élément dans l'écran actif (admin-dash ou agent-dash partagent les mêmes IDs de chat)
+function chatEl(id) {
+  const active = document.querySelector('[data-screen].active');
+  return (active && active.querySelector('#' + id)) || document.getElementById(id);
+}
+
+async function switchTab(tab) {
+  if (currentAdminTab === tab) return;
+  currentAdminTab = tab;
+  document.getElementById('tab-admin').classList.toggle('atab-active', tab === 'admin');
+  document.getElementById('tab-agent').classList.toggle('atab-active', tab === 'agent');
+  const archTab = document.getElementById('tab-archives');
+  if (archTab) archTab.classList.toggle('atab-active', tab === 'archives');
+
+  if (tab === 'admin') {
+    showScreen('admin-dash');
+    document.getElementById('admin-tabs').style.display = 'block';
+  } else if (tab === 'archives') {
+    showScreen('archives-dash');
+    document.getElementById('admin-tabs').style.display = 'block';
+    renderArchives();
+  } else {
+    const btn = document.getElementById('tab-agent');
+    if (!adminAgentDataCache) {
+      btn.textContent = '⏳ Chargement…'; btn.disabled = true;
+      try {
+        const res = await fetch(`${API}/agent-stats`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache })
+        });
+        adminAgentDataCache = await res.json();
+      } catch {
+        adminAgentDataCache = { role: 'agent', sessions: [], periods: {}, byPlan: {}, avgRating: null, ratingCount: 0 };
+      }
+      btn.textContent = '💬 Agent'; btn.disabled = false;
+    }
+    if (agentChatToken && agentChatSessionId) { agentLastMsgTime = null; agentRenderedIds = new Set(); }
+    renderAgentDash(agentEmailStored, adminAgentDataCache);
+    showScreen('agent-dash');
+    document.getElementById('admin-tabs').style.display = 'block';
+    updateAgentPresenceUI(!!agentChatToken);
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openAgentReviews(idx) {
+  const a = typeof idx === 'number' ? (window._agentList||[])[idx] : agentData[idx];
+  if (!a) return;
+  const avg = a.avgRating
+    ? `<span style="color:#FFD700;font-size:1.1rem">${'★'.repeat(Math.round(a.avgRating))}${'☆'.repeat(5-Math.round(a.avgRating))}</span> ${a.avgRating.toFixed(1)}/5 · ${a.ratingCount} avis`
+    : 'Aucune note';
+  document.getElementById('reviews-overlay-title').textContent = a.name;
+  document.getElementById('reviews-overlay-avg').innerHTML = avg;
+  const reviews = a.reviews || [];
+  document.getElementById('reviews-overlay-list').innerHTML = reviews.length
+    ? reviews.map(r => `<div class="review-card">
+        <div class="review-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</div>
+        ${r.comment ? `<div class="review-comment">"${escHtml(r.comment)}"</div>` : '<div style="font-size:.8rem;color:var(--light);font-style:italic;margin-bottom:.4rem">Sans commentaire</div>'}
+        <div class="review-meta">${escHtml(r.pseudo||'Anonyme')} · ${escHtml(r.formule||'')} · ${fmtDate(r.date)}</div>
+      </div>`).join('')
+    : '<div style="color:var(--light);font-size:.84rem">Aucun commentaire pour cet agent.</div>';
+  document.getElementById('reviews-overlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeReviews() {
+  document.getElementById('reviews-overlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function showScreen(id) {
+  document.querySelectorAll('[data-screen]').forEach(el => el.classList.remove('active'));
+  document.querySelector('[data-screen="' + id + '"]').classList.add('active');
+  document.getElementById('nav-logout').style.display = id !== 'login' ? 'block' : 'none';
+  window.scrollTo(0, 0);
+}
+
+function logout() {
+  if (agentPollingInterval) { clearInterval(agentPollingInterval); agentPollingInterval = null; }
+  if (agentChatToken) {
+    fetch(`${API}/chat-presence`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agentEmail: agentEmailStored, agentToken: agentChatToken, status: 'offline' }) }).catch(() => {});
+    agentChatToken = null;
+  }
+  document.getElementById('admin-tabs').style.display = 'none';
+  adminAgentDataCache = null;
+  currentAdminTab = 'admin';
+  localStorage.removeItem('parlons_espace_session');
+  showScreen('login');
+  subEmailStored = '';
+}
+
+// Auto-login from saved 24h session
+(async function tryAutoLogin() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || 'null');
+    if (!saved || Date.now() > saved.expires) return;
+    document.getElementById('login-email').value = saved.email;
+    document.getElementById('login-pwd').value = saved.password || '';
+    if (saved.role === 'agent') agentEmailStored = saved.email;
+    await login();
+  } catch {}
+})();
+
+// ── LOGIN ──
+async function login() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-pwd').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-err');
+  err.textContent = '';
+
+  if (!email || !email.includes('@')) { err.textContent = 'Entrez un email valide.'; return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Vérification…';
+
+  try {
+    // Essayer admin-stats en premier, puis agent-stats
+    let res = await fetch(`${API}/admin-stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    let data = await res.json();
+
+    // Si admin-stats refuse, tenter agent-stats
+    if (!res.ok || (!data.role)) {
+      res = await fetch(`${API}/agent-stats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      data = await res.json();
+    }
+
+    if (!res.ok) throw new Error(data.error || 'Accès refusé');
+
+    if (data.role === 'admin') {
+      localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
+      agentEmailStored = email;
+      agentPasswordCache = password;
+      currentAdminTab = 'admin';
+      adminAgentDataCache = null;
+      const archTab = document.getElementById('tab-archives');
+      if (archTab) archTab.style.display = '';
+      document.getElementById('tab-admin').classList.add('atab-active');
+      document.getElementById('tab-agent').classList.remove('atab-active');
+      document.getElementById('admin-tabs').style.display = 'block';
+      renderDashboard(data);
+      showScreen('admin-dash');
+    } else if (data.role === 'subscriber') {
+      localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
+      subEmailStored = email;
+      renderSubDash(email, data.expires_at, data.active, data.pseudo, data.cancel_at_period_end, data.needs_password_setup, data.sessions);
+      showScreen('sub-dash');
+    } else if (data.role === 'agent') {
+      agentEmailStored = email;
+      if (data.needs_password_setup) {
+        showScreen('agent-setup');
+      } else {
+        localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, role: 'agent', expires: Date.now() + 86400000 }));
+        renderAgentDash(email, data);
+        showScreen('agent-dash');
+      }
+    } else {
+      throw new Error('Rôle inconnu');
+    }
+  } catch (e) {
+    err.textContent = e.message;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Accéder à mon espace';
+}
+
+// ── SUBSCRIBER DASHBOARD ──
+function togglePwdForm() {
+  const f = document.getElementById('pwd-form');
+  const c = document.getElementById('pwd-chevron');
+  const open = f.style.display !== 'none';
+  f.style.display = open ? 'none' : 'block';
+  c.textContent = open ? '▼' : '▲';
+}
+
+async function changePassword() {
+  const current = document.getElementById('pwd-current').value;
+  const newPwd = document.getElementById('pwd-new').value;
+  const confirm = document.getElementById('pwd-confirm').value;
+  const err = document.getElementById('pwd-err');
+  const ok = document.getElementById('pwd-ok');
+  err.textContent = '';
+  ok.style.display = 'none';
+
+  if (!newPwd || newPwd.length < 8) { err.textContent = 'Le mot de passe doit faire au moins 8 caractères.'; return; }
+  if (newPwd !== confirm) { err.textContent = 'Les mots de passe ne correspondent pas.'; return; }
+
+  try {
+    const res = await fetch(`${API}/change-password`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: subEmailStored, currentPassword: current || undefined, newPassword: newPwd })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    ok.style.display = 'block';
+    document.getElementById('pwd-current').value = '';
+    document.getElementById('pwd-new').value = '';
+    document.getElementById('pwd-confirm').value = '';
+    // Masquer l'alerte setup si elle était affichée
+    const alert = document.getElementById('pwd-setup-alert');
+    if (alert) alert.style.display = 'none';
+  } catch (e) {
+    err.textContent = e.message;
+  }
+}
+
+function toggleSubHistory() {
+  const h = document.getElementById('sub-history');
+  const c = document.getElementById('sub-history-chevron');
+  const open = h.style.display !== 'none';
+  h.style.display = open ? 'none' : 'block';
+  c.textContent = open ? '▼' : '▲';
+}
+
+function renderSubDash(email, expiresAt, active, pseudo, cancelAtPeriodEnd, needsPasswordSetup, sessions) {
+  const badge = document.getElementById('sub-badge');
+  if (!active) {
+    badge.textContent = 'Abonnement expiré';
+    badge.className = 'sub-badge expired';
+  } else if (cancelAtPeriodEnd) {
+    badge.textContent = '⏳ Résiliation en cours';
+    badge.className = 'sub-badge expired';
+  } else {
+    badge.textContent = '✓ Abonnement actif';
+    badge.className = 'sub-badge active';
+  }
+  document.getElementById('sub-email-display').textContent = email;
+  if (expiresAt) {
+    const d = new Date(expiresAt);
+    const label = cancelAtPeriodEnd ? 'Accès jusqu\'au ' : 'Renouvellement le ';
+    document.getElementById('sub-expiry').textContent = label + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+  if (pseudo) document.getElementById('sub-pseudo').value = pseudo;
+  const startBtn = document.getElementById('sub-start-btn');
+  if (!active) { startBtn.disabled = true; startBtn.textContent = 'Abonnement expiré'; }
+
+  // Alerte si pas encore de mot de passe défini
+  if (needsPasswordSetup) {
+    const alert = document.getElementById('pwd-setup-alert');
+    const setupNote = document.getElementById('pwd-setup-note');
+    if (alert) alert.style.display = 'block';
+    if (setupNote) setupNote.style.display = 'block';
+    togglePwdForm(); // ouvrir le formulaire automatiquement
+  }
+
+  // Zone résiliation
+  if (cancelAtPeriodEnd) {
+    const pending = document.getElementById('cancel-pending');
+    const cancelBtn = document.getElementById('cancel-btn');
+    if (pending) pending.style.display = 'block';
+    if (cancelBtn) { cancelBtn.disabled = true; cancelBtn.textContent = 'Résiliation déjà programmée'; cancelBtn.style.opacity = '.5'; }
+  }
+
+  // Historique des sessions
+  const tbody = document.getElementById('sub-sessions-tbody');
+  const empty = document.getElementById('sub-sessions-empty');
+  if (tbody) {
+    const list = sessions || [];
+    if (!list.length) {
+      if (empty) empty.style.display = 'block';
+    } else {
+      tbody.innerHTML = list.map(s => {
+        const stars = s.rating ? `<span style="color:#FFD700;font-size:.8rem">${'★'.repeat(s.rating)}</span>` : '—';
+        return `<tr style="border-bottom:1px solid var(--sand);">
+          <td style="font-size:.75rem;color:var(--mid);padding:.5rem .3rem;">${fmtDate(s.started_at)}</td>
+          <td style="font-size:.78rem;padding:.5rem .3rem;">${escHtml(s.formule||'—')}</td>
+          <td style="font-size:.75rem;color:var(--mid);padding:.5rem .3rem;">${escHtml(s.agent_name||'—')}</td>
+          <td style="text-align:center;padding:.5rem .3rem;">${stars}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+}
+
+async function startSubSession() {
+  const pseudo = document.getElementById('sub-pseudo').value.trim() || 'Abonné';
+  const btn = document.getElementById('sub-start-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:white"></span> Création…';
+  try {
+    const res = await fetch(`${API}/subscriber-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: subEmailStored, pseudo })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    window.location.href = '/?sub_t=' + data.token + '&sub_n=' + encodeURIComponent(pseudo);
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '💬 Démarrer une session maintenant';
+  }
+}
+
+async function cancelSubscription() {
+  if (!confirm('Voulez-vous vraiment résilier votre abonnement ?\n\nAucun remboursement ne sera effectué. Votre accès reste actif jusqu\'à la date de renouvellement prévue.')) return;
+  const btn = document.getElementById('cancel-btn');
+  btn.disabled = true;
+  btn.textContent = 'Résiliation en cours…';
+  try {
+    const res = await fetch(`${API}/cancel-subscription`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: subEmailStored })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    document.getElementById('cancel-pending').style.display = 'block';
+    btn.textContent = 'Résiliation programmée';
+    btn.style.opacity = '.5';
+    // Mettre à jour le badge
+    const badge = document.getElementById('sub-badge');
+    badge.textContent = '⏳ Résiliation en cours';
+    badge.className = 'sub-badge expired';
+    const expiry = document.getElementById('sub-expiry');
+    if (expiry && data.cancel_at) {
+      expiry.textContent = 'Accès jusqu\'au ' + new Date(data.cancel_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    alert(data.message || 'Résiliation confirmée.');
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Résilier mon abonnement';
+  }
+}
+
+// ── ADMIN DASHBOARD ──
+const ROOM_LABELS = { anxiete: '😮‍💨 Anxiété', deuil: '🕊️ Deuil', couple: '💔 Relations', travail: '🔥 Travail', solitude: '🌙 Solitude', confiance: '🌱 Confiance' };
+function fmt(v) { return (v || 0).toFixed(2).replace('.', ',') + ' €'; }
+
+function countryFlag(code) {
+  if (!code || code.length !== 2) return '🌍';
+  try { return String.fromCodePoint(...[...code.toUpperCase()].map(c => c.charCodeAt(0) + 127397)); } catch { return '🌍'; }
+}
+function countryName(code) {
+  try { return new Intl.DisplayNames(['fr'], { type: 'region' }).of(code) || code; } catch { return code; }
+}
+
+let _allIpLogs = [];
+
+function renderIpLogs(logs, breakdown) {
+  _allIpLogs = logs || [];
+  filterIpLogs('today');
+}
+
+function filterIpLogs(period) {
+  // Mettre à jour les boutons actifs
+  ['today','week','month'].forEach(p => {
+    const btn = document.getElementById('ipl-btn-' + p);
+    if (btn) btn.classList.toggle('ipl-active', p === period);
+  });
+
+  const now = new Date();
+  const startOfDay  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dow = now.getDay();
+  const startOfWeek = new Date(startOfDay);
+  startOfWeek.setDate(startOfDay.getDate() - (dow === 0 ? 6 : dow - 1));
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const from = period === 'today' ? startOfDay : period === 'week' ? startOfWeek : startOfMonth;
+  const filtered = _allIpLogs.filter(v => v.visited_at && new Date(v.visited_at) >= from);
+
+  // Breakdown pays sur la période filtrée
+  const byCountry = {};
+  filtered.forEach(v => { if (v.country && v.country !== '—') byCountry[v.country] = (byCountry[v.country] || 0) + 1; });
+  const total = filtered.length;
+  const bd = document.getElementById('country-breakdown');
+  if (bd) {
+    const sorted = Object.entries(byCountry).sort((a, b) => b[1] - a[1]);
+    bd.innerHTML = sorted.length
+      ? sorted.map(([code, count]) =>
+          `<span style="background:var(--warm);border:1px solid var(--sand);border-radius:50px;padding:.18rem .6rem;font-size:.72rem;white-space:nowrap;">
+            ${countryFlag(code)} ${countryName(code)} <strong>${count}</strong>
+            <span style="color:var(--light);font-size:.65rem">${total ? Math.round(count/total*100) : 0}%</span>
+          </span>`
+        ).join('')
+      : '<span style="color:var(--light);font-size:.75rem">Aucune donnée pour cette période.</span>';
+  }
+
+  // Table
+  const tbody = document.getElementById('ip-logs-tbody');
+  if (!tbody) return;
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--light);text-align:center;padding:1rem">Aucune connexion sur cette période.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(v => {
+    const d = new Date(v.visited_at);
+    const dateStr = d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const badge = v.is_new
+      ? '<span style="background:#dcfce7;color:#166534;border-radius:50px;padding:.1rem .45rem;font-size:.65rem;font-weight:600">Nouveau</span>'
+      : '<span style="background:var(--warm);color:var(--mid);border-radius:50px;padding:.1rem .45rem;font-size:.65rem;">Retour</span>';
+    const cityStr = v.city ? escHtml(v.city) + (v.region ? `<span style="color:var(--light)"> · ${escHtml(v.region)}</span>` : '') : '<span style="color:var(--light)">—</span>';
+    return `<tr>
+      <td style="white-space:nowrap;color:var(--mid)">${dateStr}</td>
+      <td style="font-family:monospace">${escHtml(v.ip || '—')}</td>
+      <td>${countryFlag(v.country)} ${countryName(v.country)}</td>
+      <td style="font-size:.7rem">${cityStr}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+}
+function fmtDate(s) { return s ? new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'; }
+
+function renderDashboard(d) {
+  window._adminSessions = d.sessions.list || [];
+  initPdfMonthSelector();
+  const { sessions, subscribers, group } = d;
+
+  document.getElementById('s-total-rev').textContent = fmt(sessions.totalRevenue);
+  document.getElementById('s-month-rev').textContent = fmt(sessions.monthRevenue);
+
+  const diff = sessions.monthRevenue - sessions.lastMonthRevenue;
+  const pct = sessions.lastMonthRevenue > 0 ? Math.round(diff / sessions.lastMonthRevenue * 100) : null;
+  document.getElementById('s-month-comp').innerHTML = pct !== null
+    ? `<span class="${diff >= 0 ? 'stat-up' : 'stat-down'}">${diff >= 0 ? '+' : ''}${pct}%</span> vs mois dernier`
+    : fmt(sessions.lastMonthRevenue) + ' mois dernier';
+
+  document.getElementById('s-total-sess').textContent = sessions.total;
+  document.getElementById('s-month-sess').textContent = sessions.monthCount + ' ce mois · ' + sessions.lastMonthCount + ' le mois dernier';
+  document.getElementById('s-active-subs').textContent = subscribers.active;
+  document.getElementById('s-total-subs').textContent = subscribers.total + ' abonné' + (subscribers.total > 1 ? 's' : '') + ' au total';
+
+  // Tableau trafic
+  const tr = d.traffic || {};
+  const periods = [
+    ["Aujourd'hui",    tr.today],
+    ['Cette semaine',  tr.week],
+    ['Ce mois',        tr.month],
+    ['Cette année',    tr.year],
+    ['Depuis toujours',tr.allTime],
+  ];
+  document.getElementById('traffic-tbody').innerHTML = periods.map(([label, s]) =>
+    `<tr>
+      <td style="font-weight:500">${label}</td>
+      <td style="font-weight:700;color:var(--tc)">${((s&&s.visits)||0).toLocaleString('fr-FR')}</td>
+      <td>${((s&&s.unique)||0).toLocaleString('fr-FR')}</td>
+      <td>${((s&&s.chats)||0).toLocaleString('fr-FR')}</td>
+    </tr>`
+  ).join('');
+
+  // Plan breakdown
+  const byPlan = sessions.byPlan || {};
+  const maxCount = Math.max(1, ...Object.values(byPlan).map(p => p.count));
+  const planIcons = { '10 min': '💬', '30 min': '💬', '1 heure': '💬', 'Pass mensuel': '♾', 'Groupe 30min': '👥', 'Chat de groupe': '👥' };
+  document.getElementById('plan-breakdown').innerHTML = Object.entries(byPlan).map(([k, v]) => `
+    <div class="plan-row">
+      <div class="plan-name">${planIcons[k] || '•'} ${k}</div>
+      <div class="plan-bar-wrap"><div class="plan-bar" style="width:${Math.round(v.count / maxCount * 100)}%"></div></div>
+      <div class="plan-count">${v.count}×</div>
+      <div class="plan-rev">${fmt(v.revenue)}</div>
+    </div>`).join('') || '<div style="color:var(--light);font-size:.82rem">Aucune session enregistrée</div>';
+
+  // Group
+  document.getElementById('s-group-total').textContent = group.totalMessages;
+  document.getElementById('s-group-today').textContent = group.todayMessages;
+  document.getElementById('s-group-users').textContent = group.activeUsers;
+  document.getElementById('room-grid').innerHTML = Object.entries(group.byRoom || {}).map(([r, c]) =>
+    `<div class="room-mini"><div class="room-mini-name">${ROOM_LABELS[r] || r}</div><div class="room-mini-count">${c}</div></div>`
+  ).join('') || '<div style="color:var(--light);font-size:.75rem">Aucun message de groupe</div>';
+
+  // Subscribers table
+  document.getElementById('sub-tbody').innerHTML = (subscribers.list || []).map(s => {
+    const ok = s.status === 'active' && (!s.expires_at || new Date(s.expires_at) > new Date());
+    return `<tr><td style="font-size:.8rem">${s.email || '—'}</td><td><span class="badge ${ok ? 'ok' : 'ko'}">${ok ? 'Actif' : 'Expiré'}</span></td><td style="font-size:.78rem;color:var(--mid)">${fmtDate(s.expires_at)}</td></tr>`;
+  }).join('') || '<tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.2rem">Aucun abonné</td></tr>';
+
+  // Agent stats — table with per-plan columns
+  const byAgent = sessions.byAgent || {};
+  const agentList = Object.values(byAgent).sort((a, b) => b.revenue - a.revenue);
+  const unassigned = sessions.unassigned || 0;
+  const PLAN_COLS = [
+    { key: '10 min',      label: '10 min',   price: '2 €' },
+    { key: '30 min',      label: '30 min',   price: '5 €' },
+    { key: '1 heure',     label: '1 heure',  price: '9 €' },
+    { key: 'Pass mensuel',label: 'Mensuel',  price: '15 €' },
+    { key: 'Groupe 30min',label: 'Groupe',   price: '1,50 €', alt: 'Chat de groupe' },
+  ];
+  const note = unassigned > 0 ? `<div style="font-size:.72rem;color:var(--light);margin-top:.8rem">${unassigned} session${unassigned>1?'s':''} sans agent enregistré</div>` : '';
+  window._agentList = agentList;
+  if (agentList.length === 0) {
+    document.getElementById('agent-section').innerHTML = '<div style="color:var(--light);font-size:.82rem">Aucune session assignée à un agent pour l\'instant.</div>';
+  } else if (window.innerWidth < 640) {
+    // ── Affichage mobile : cartes ──
+    const cards = agentList.map((a, idx) => {
+      agentData[a.name] = a;
+      const avg = a.avgRating ? `<span style="color:#FFD700">${'★'.repeat(Math.round(a.avgRating))}</span> ${a.avgRating.toFixed(1)}` : '—';
+      const planBadges = PLAN_COLS.map(c => {
+        const cnt = (a.plans[c.key] || 0) + (c.alt ? (a.plans[c.alt] || 0) : 0);
+        if (!cnt) return '';
+        return `<span style="background:var(--warm);border:1px solid var(--sand);border-radius:50px;padding:.15rem .55rem;font-size:.7rem;white-space:nowrap;">${c.label} <strong>${cnt}</strong></span>`;
+      }).join('');
+      return `<div style="background:white;border:1px solid var(--sand);border-radius:12px;padding:1rem;margin-bottom:.8rem;" onclick="openAgentReviews(${idx})">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;">
+          <div style="display:flex;align-items:center;gap:.6rem;">
+            <div style="width:34px;height:34px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.85rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
+            <div>
+              <div style="font-weight:600;font-size:.88rem">${escHtml(a.displayName||a.name)}</div>
+              <div style="font-size:.72rem;color:var(--light)">${avg} · ${a.ratingCount||0} avis</div>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;color:var(--tc);font-size:.95rem">${fmt(a.revenue)}</div>
+            <div style="font-size:.72rem;color:var(--light)">${a.sessions} session${a.sessions>1?'s':''}</div>
+          </div>
+        </div>
+        ${planBadges ? `<div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.7rem;">${planBadges}</div>` : ''}
+        <div style="display:flex;gap:.5rem;">
+          <button onclick="event.stopPropagation();generateAgentPDF(${idx})" style="flex:1;background:none;border:1px solid var(--sand);border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:var(--mid);">📄 Générer la fiche</button>
+          <button onclick="event.stopPropagation();removeAgent(${idx})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:#c0392b;">✕ Retirer</button>
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('agent-section').innerHTML = cards + note;
+  } else {
+    // ── Affichage desktop : tableau ──
+    const thCols = PLAN_COLS.map(c => `<th style="text-align:center">${c.label}<br><span style="font-weight:400;color:var(--light);font-size:.62rem">${c.price}</span></th>`).join('');
+    const rows = agentList.map((a, idx) => {
+      agentData[a.name] = a;
+      const avg = a.avgRating ? a.avgRating.toFixed(1) + ' ★' : '—';
+      const planCells = PLAN_COLS.map(c => {
+        const cnt = (a.plans[c.key] || 0) + (c.alt ? (a.plans[c.alt] || 0) : 0);
+        return `<td style="text-align:center">${cnt > 0 ? `<strong>${cnt}</strong>` : '<span style="color:var(--sand)">—</span>'}</td>`;
+      }).join('');
+      return `<tr class="agent-row" onclick="openAgentReviews(${idx})">
+        <td>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <div style="width:28px;height:28px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.75rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
+            <span style="font-weight:600;font-size:.84rem">${escHtml(a.displayName||a.name)}</span>
+          </div>
+        </td>
+        <td><span class="stars-gold" title="${a.ratingCount||0} avis">${avg}</span></td>
+        ${planCells}
+        <td style="text-align:center;font-weight:700">${a.sessions}</td>
+        <td style="font-weight:700;color:var(--tc);white-space:nowrap">${fmt(a.revenue)}</td>
+        <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+          <button onclick="generateAgentPDF(${idx})" style="background:none;border:1px solid var(--sand);border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:var(--mid);">📄 Fiche</button>
+          <button onclick="removeAgent(${idx})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:#c0392b;margin-left:.3rem;">✕ Retirer</button>
+        </td>
+      </tr>`;
+    }).join('');
+    document.getElementById('agent-section').innerHTML =
+      `<div style="overflow-x:auto"><table><thead><tr><th>Agent</th><th>Note</th>${thCols}<th style="text-align:center">Total</th><th>CA</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${note}`;
+  }
+
+  // Journaux IP
+  renderIpLogs(d.ipLogs || [], d.countryBreakdown || {});
+
+  // Suggestions
+  const suggestions = d.suggestions || [];
+  document.getElementById('suggestions-section').innerHTML = suggestions.length
+    ? suggestions.map(s => `<div class="sugg-card"><div class="sugg-text">${escHtml(s.content)}</div><div class="sugg-meta">${fmtDate(s.created_at)}</div></div>`).join('')
+    : '<div style="color:var(--light);font-size:.82rem">Aucune suggestion pour l\'instant.</div>';
+
+  // Recent sessions
+  document.getElementById('sessions-tbody').innerHTML = (sessions.recent || []).map(s =>
+    `<tr><td style="font-size:.8rem;font-weight:500">${s.client_pseudo || '—'}</td><td style="font-size:.78rem">${s.formule || '—'}</td><td style="font-size:.8rem;font-weight:700;color:var(--tc)">${fmt(s.montant)}</td><td style="font-size:.75rem;color:var(--mid)">${fmtDate(s.started_at)}</td></tr>`
+  ).join('') || '<tr><td colspan="4" style="color:var(--light);text-align:center;padding:1.2rem">Aucune session</td></tr>';
+}
+
+// ── AGENT DASHBOARD ──
+let agentSessionsCache = [];
+let agentPasswordCache = '';
+
+async function renderArchives() {
+  const container = document.getElementById('archives-list');
+  if (!container) return;
+  container.innerHTML = '<div style="color:var(--light);font-size:.82rem;padding:.5rem 0;">Chargement…</div>';
+  try {
+    const res = await fetch(`${API}/admin-chat-archive`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache, action: 'list' })
+    });
+    const data = await res.json();
+    const sessions = data.sessions || [];
+    if (!sessions.length) {
+      container.innerHTML = '<div style="color:var(--light);font-size:.82rem;padding:.5rem 0;">Aucune conversation archivée sur les 30 derniers jours.</div>';
+      return;
+    }
+    container.innerHTML = '';
+    sessions.forEach(s => {
+      const closedAt = s.closed_at ? new Date(s.closed_at) : null;
+      const dateStr = closedAt ? closedAt.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+      const dur = s.duration_sec ? `${Math.round(s.duration_sec/60)} min` : '—';
+      const card = document.createElement('div');
+      card.className = 'archive-card';
+      card.innerHTML = `
+        <div class="archive-card-header">
+          <div>
+            <div class="archive-card-info">${escHtml(s.pre_name||'Anonyme')}${s.pre_topic?` — <em style="font-weight:400;font-style:italic;color:var(--mid)">"${escHtml(s.pre_topic.substring(0,60))}"</em>`:''}</div>
+            <div class="archive-card-meta">${escHtml(s.session_label||s.session_type||'—')} · ${dur} · ${s.agentName?escHtml(s.agentName):'Sans agent'} · ${dateStr}</div>
+          </div>
+          <span class="archive-chevron">▼</span>
+        </div>
+        <div class="archive-msgs" id="archive-msgs-${escHtml(s.id)}"></div>`;
+      card.addEventListener('click', async () => {
+        const isOpen = card.classList.contains('open');
+        card.classList.toggle('open');
+        if (!isOpen) {
+          const msgsEl = document.getElementById(`archive-msgs-${s.id}`);
+          if (msgsEl && !msgsEl.dataset.loaded) {
+            msgsEl.innerHTML = '<div class="archive-loading">Chargement des messages…</div>';
+            try {
+              const mr = await fetch(`${API}/admin-chat-archive`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache, action: 'messages', sessionId: s.id })
+              });
+              const md = await mr.json();
+              msgsEl.innerHTML = '';
+              (md.messages || []).forEach(m => {
+                const d = document.createElement('div');
+                d.className = `archive-msg ${m.sender_type}`;
+                d.textContent = m.content;
+                msgsEl.appendChild(d);
+              });
+              if (!(md.messages||[]).length) msgsEl.innerHTML = '<div class="archive-loading">Aucun message.</div>';
+              msgsEl.dataset.loaded = '1';
+            } catch { msgsEl.innerHTML = '<div class="archive-loading">Erreur de chargement.</div>'; }
+          }
+        }
+      });
+      container.appendChild(card);
+    });
+  } catch {
+    container.innerHTML = '<div style="color:#ef4444;font-size:.82rem;">Erreur de chargement.</div>';
+  }
+}
+
+function renderAgentDash(email, d) {
+  agentSessionsCache = d.sessions || [];
+  agentPasswordCache = localStorage.getItem('parlons_espace_session')
+    ? (JSON.parse(localStorage.getItem('parlons_espace_session')).password || '') : '';
+
+  const profile = d.profile || {};
+  const profileComplete = profile.nom && profile.prenom && profile.siret && profile.iban && profile.adresse;
+  document.getElementById('agent-profile-alert').style.display = profileComplete ? 'none' : 'block';
+
+  // Remplir le formulaire profil
+  ['pseudo','prenom','nom','adresse','ville','siret','iban'].forEach(f => {
+    const el = document.getElementById('ap-' + f);
+    if (el && profile[f]) el.value = profile[f];
+  });
+  if (profile.code_postal) document.getElementById('ap-cp').value = profile.code_postal;
+
+  const initial = (profile.prenom || email).charAt(0).toUpperCase();
+  const displayName = profile.prenom && profile.nom ? `${profile.prenom} ${profile.nom}` : email;
+  document.getElementById('agent-avatar').textContent = initial;
+  document.getElementById('agent-hero-name').textContent = displayName;
+  document.getElementById('agent-hero-sub').textContent = 'Espace agent · ' + new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  initAgentMonthSelector();
+
+  // Calcul honoraires par période
+  const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+  function calcHonoraires(sessions) {
+    return sessions.reduce((s, r) => {
+      for (const [k, v] of Object.entries(RATES)) { if ((r.formule||'').includes(k)) return s + v; }
+      return s;
+    }, 0);
+  }
+
+  const now = new Date();
+  const startOfDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dow = now.getDay();
+  const startOfWeek  = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - (dow===0?6:dow-1));
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  function filterFrom(from) { return agentSessionsCache.filter(s => s.started_at && new Date(s.started_at) >= from); }
+
+  const periodRows = [
+    ["Aujourd'hui",    filterFrom(startOfDay)],
+    ['Cette semaine',  filterFrom(startOfWeek)],
+    ['Ce mois',        filterFrom(startOfMonth)],
+    ['Depuis toujours', agentSessionsCache],
+  ];
+  document.getElementById('agent-periods-tbody').innerHTML = periodRows.map(([label, rows]) =>
+    `<tr>
+      <td style="font-weight:500">${label}</td>
+      <td style="font-weight:700;color:var(--tc)">${rows.length}</td>
+      <td style="font-weight:700">${calcHonoraires(rows).toFixed(2)} €</td>
+    </tr>`
+  ).join('');
+
+  const byPlan = d.byPlan || {};
+  const maxCount = Math.max(1, ...Object.values(byPlan).map(p => p.count));
+  document.getElementById('agent-byplan').innerHTML = Object.keys(byPlan).length
+    ? Object.entries(byPlan).sort((a,b) => b[1].count - a[1].count).map(([k, p]) =>
+        `<div class="plan-row">
+          <div class="plan-name">${escHtml(k)}</div>
+          <div class="plan-bar-wrap"><div class="plan-bar" style="width:${Math.round(p.count/maxCount*100)}%"></div></div>
+          <div class="plan-count">${p.count}</div>
+        </div>`).join('')
+    : '<div style="color:var(--light);font-size:.82rem">Aucune session pour l\'instant.</div>';
+
+  const avg = d.avgRating;
+  document.getElementById('agent-rating').innerHTML = avg
+    ? `<div style="text-align:center;padding:.5rem 0">
+        <div style="font-size:2rem;color:#FFD700">${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))}</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--dark);margin:.4rem 0">${avg.toFixed(1)}<span style="font-size:.9rem;color:var(--light)">/5</span></div>
+        <div style="font-size:.75rem;color:var(--light)">${d.ratingCount} avis reçu${d.ratingCount>1?'s':''}</div>
+      </div>`
+    : '<div style="color:var(--light);font-size:.82rem;text-align:center;padding:1rem">Aucune note pour l\'instant.</div>';
+
+  document.getElementById('agent-sessions-tbody').innerHTML = agentSessionsCache.slice(0,50).map(s => {
+    const hon = (() => { for (const [k,v] of Object.entries(RATES)) { if ((s.formule||'').includes(k)) return v.toFixed(2)+' €'; } return '—'; })();
+    const stars = s.rating ? `<span style="color:#FFD700">${'★'.repeat(s.rating)}</span>` : '—';
+    return `<tr>
+      <td style="font-size:.8rem;font-weight:500">${escHtml(s.pseudo||'—')}</td>
+      <td style="font-size:.78rem">${escHtml(s.formule||'—')}</td>
+      <td style="font-size:.8rem;font-weight:700;color:var(--tc)">${hon}</td>
+      <td style="font-size:.8rem">${stars}</td>
+      <td style="font-size:.75rem;color:var(--mid)">${fmtDate(s.started_at)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="color:var(--light);text-align:center;padding:1.2rem">Aucune session</td></tr>';
+}
+
+function initAgentMonthSelector() {
+  const sel = document.getElementById('agent-pdf-month');
+  if (!sel || sel.options.length > 0) return;
+  const now = new Date();
+  for (let i = 1; i <= 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const opt = document.createElement('option');
+    opt.value = `${d.getFullYear()}-${d.getMonth()}`;
+    opt.textContent = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    if (i === 1) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function toggleAgentProfile() {
+  const f = document.getElementById('agent-profile-form');
+  const c = document.getElementById('agent-profile-chevron');
+  const open = f.style.display !== 'none';
+  f.style.display = open ? 'none' : 'block';
+  c.textContent = open ? '▼' : '▲';
+}
+
+async function saveAgentProfile() {
+  const err = document.getElementById('ap-err');
+  const ok = document.getElementById('ap-ok');
+  err.textContent = ''; ok.style.display = 'none';
+
+  const profile = {
+    pseudo:      document.getElementById('ap-pseudo').value.trim(),
+    nom:         document.getElementById('ap-nom').value.trim(),
+    prenom:      document.getElementById('ap-prenom').value.trim(),
+    adresse:     document.getElementById('ap-adresse').value.trim(),
+    code_postal: document.getElementById('ap-cp').value.trim(),
+    ville:       document.getElementById('ap-ville').value.trim(),
+    siret:       document.getElementById('ap-siret').value.trim(),
+    iban:        document.getElementById('ap-iban').value.trim(),
+  };
+
+  if (!profile.nom || !profile.prenom) { err.textContent = 'Nom et prénom requis.'; return; }
+  if (!profile.siret) { err.textContent = 'SIRET requis.'; return; }
+
+  try {
+    const res = await fetch(`${API}/agent-stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache, action: 'save_profile', profile })
+    });
+    if (!res.ok) throw new Error('Erreur serveur');
+    ok.style.display = 'block';
+    document.getElementById('agent-profile-alert').style.display = 'none';
+  } catch(e) { err.textContent = e.message; }
+}
+
+function downloadAgentInvoice() {
+  if (!window.jspdf) { alert('PDF non disponible, rechargez la page.'); return; }
+
+  const profile = {
+    nom:     document.getElementById('ap-nom')?.value.trim() || '',
+    prenom:  document.getElementById('ap-prenom')?.value.trim() || '',
+    adresse: document.getElementById('ap-adresse')?.value.trim() || '',
+    cp:      document.getElementById('ap-cp')?.value.trim() || '',
+    ville:   document.getElementById('ap-ville')?.value.trim() || '',
+    siret:   document.getElementById('ap-siret')?.value.trim() || '',
+    iban:    document.getElementById('ap-iban')?.value.trim() || '',
+  };
+
+  if (!profile.siret || !profile.nom) {
+    alert('Complétez votre profil (nom, SIRET) avant de générer la facture.');
+    document.getElementById('agent-profile-form').style.display = 'block';
+    document.getElementById('agent-profile-chevron').textContent = '▲';
+    return;
+  }
+
+  const sel = document.getElementById('agent-pdf-month');
+  const [year, month] = (sel?.value || '').split('-').map(Number);
+  const monthName = new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  const monthSessions = agentSessionsCache.filter(s => {
+    if (!s.started_at) return false;
+    const d = new Date(s.started_at);
+    return d.getMonth() === month && d.getFullYear() === year;
+  });
+
+  const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+  function getRate(formule) {
+    for (const [k,v] of Object.entries(RATES)) { if ((formule||'').includes(k)) return v; }
+    return null;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Numéro de facture
+  const initiales = (profile.prenom.charAt(0) + profile.nom.charAt(0)).toUpperCase();
+  const invoiceNum = `PARL-${year}-${String(month+1).padStart(2,'0')}-${initiales}`;
+  // Date de facturation : 1er du mois suivant
+  const invoiceDate = new Date(year, month + 1, 1).toLocaleDateString('fr-FR');
+
+  // ── En-tête agent (gauche) ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(44, 31, 20);
+  doc.text(`${profile.prenom} ${profile.nom}`, 20, 25);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  if (profile.adresse) doc.text(profile.adresse, 20, 31);
+  if (profile.cp || profile.ville) doc.text(`${profile.cp} ${profile.ville}`.trim(), 20, 36);
+  doc.text(agentEmailStored, 20, 41);
+  if (profile.siret) doc.text(`SIRET : ${profile.siret}`, 20, 46);
+
+  // ── Numéro et date (droite) ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(196, 113, 74);
+  doc.text('FACTURE', 190, 25, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text(`N° ${invoiceNum}`, 190, 32, { align: 'right' });
+  doc.text(`Date : ${invoiceDate}`, 190, 38, { align: 'right' });
+
+  // ── Destinataire ──
+  doc.setDrawColor(232, 213, 176);
+  doc.line(20, 54, 190, 54);
+  doc.setFontSize(8);
+  doc.setTextColor(150);
+  doc.text('DESTINATAIRE', 20, 61);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(44, 31, 20);
+  doc.text('PARLONS', 20, 67);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text('SIRET : 105 179 360 000 18', 20, 73);
+
+  // ── Objet ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(44, 31, 20);
+  doc.text(`Objet : Missions d'écoute — ${monthName}`, 20, 83);
+
+  // ── Tableau ──
+  let totalHonoraires = 0;
+  let passCount = 0;
+  const rows = monthSessions.map(s => {
+    const date = new Date(s.started_at).toLocaleDateString('fr-FR');
+    const rate = getRate(s.formule);
+    const isPass = (s.formule||'').includes('Pass mensuel');
+    if (isPass) passCount++;
+    if (rate !== null) totalHonoraires += rate;
+    return [date, s.pseudo || 'Anonyme', s.formule || '—', rate !== null ? `${rate.toFixed(2)} €` : 'Au prorata*'];
+  });
+
+  doc.autoTable({
+    startY: 90,
+    head: [['Date', 'Pseudo client', 'Prestation', 'Honoraires']],
+    body: rows.length ? rows : [['—', '—', 'Aucune session ce mois', '0,00 €']],
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [196, 113, 74], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [251, 246, 239] },
+    columnStyles: { 3: { halign: 'right' } }
+  });
+
+  const y = doc.lastAutoTable.finalY + 8;
+
+  // ── Total ──
+  doc.setDrawColor(196, 113, 74);
+  doc.line(130, y, 190, y);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(44, 31, 20);
+  doc.text('Total HT :', 130, y + 7);
+  doc.text(`${totalHonoraires.toFixed(2)} €`, 190, y + 7, { align: 'right' });
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8.5);
+  doc.setTextColor(100);
+  doc.text('TVA non applicable — art. 293 B du CGI', 130, y + 14);
+
+  if (passCount > 0) {
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(`* ${passCount} session(s) Pass mensuel à régler au prorata — montant à confirmer avec Parlons.`, 20, y + 22);
+  }
+
+  // ── IBAN ──
+  const yIban = passCount > 0 ? y + 30 : y + 22;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(44, 31, 20);
+  doc.text('Coordonnées bancaires pour règlement :', 20, yIban);
+  doc.setFont('helvetica', 'bold');
+  doc.text(profile.iban || '— (IBAN non renseigné)', 20, yIban + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(100);
+  doc.text('Règlement attendu avant le 15 du mois en cours — virement bancaire.', 20, yIban + 13);
+
+  // ── Pied de page ──
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(160);
+  doc.text(`${profile.prenom} ${profile.nom} · SIRET ${profile.siret} · Facture ${invoiceNum}`, 105, 288, { align: 'center' });
+
+  const safeName = (profile.nom || 'agent').replace(/[^a-z0-9]/gi, '_');
+  doc.save(`Facture_Parlons_${safeName}_${year}-${String(month+1).padStart(2,'0')}.pdf`);
+}
+
+// ── PDF GENERATION ──
+const AGENT_RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+
+function agentRate(formule) {
+  if (!formule) return 0;
+  for (const [k, v] of Object.entries(AGENT_RATES)) {
+    if (formule.includes(k)) return v;
+  }
+  return 0;
+}
+
+function initPdfMonthSelector() {
+  const sel = document.getElementById('pdf-month');
+  if (!sel) return;
+  sel.innerHTML = '';
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const label = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const opt = document.createElement('option');
+    opt.value = `${d.getFullYear()}-${d.getMonth()}`;
+    opt.textContent = label;
+    if (i === 1) opt.selected = true; // mois précédent par défaut
+    sel.appendChild(opt);
+  }
+}
+
+function getSelectedMonth() {
+  const sel = document.getElementById('pdf-month');
+  if (!sel || !sel.value) {
+    const now = new Date();
+    return { month: now.getMonth() - 1 < 0 ? 11 : now.getMonth() - 1, year: now.getFullYear() };
+  }
+  const [year, month] = sel.value.split('-').map(Number);
+  return { month, year };
+}
+
+function generateAgentPDF(idx) {
+  if (!window.jspdf) { alert('PDF non disponible, rechargez la page.'); return; }
+  const { jsPDF } = window.jspdf;
+  const { month, year } = getSelectedMonth();
+  const monthName = new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  const agentObj = typeof idx === 'number' ? (window._agentList||[])[idx] : null;
+  if (!agentObj) { alert('Agent introuvable.'); return; }
+  const agentName = agentObj.name; // clé interne pour filtrer les sessions
+  const agentDisplayName = agentObj.displayName || agentObj.name;
+
+  const allSessions = window._adminSessions || [];
+  const agentSessions = allSessions.filter(s => {
+    if (s.agent_name !== agentName || !s.started_at) return false;
+    const d = new Date(s.started_at);
+    return d.getMonth() === month && d.getFullYear() === year;
+  });
+
+  const doc = new jsPDF();
+
+  // En-tête
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(196, 113, 74);
+  doc.text('PARLONS', 20, 26);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(120, 100, 90);
+  doc.text('SIRET : 105 179 360 000 18', 20, 33);
+  doc.text('parlonsecoute.netlify.app', 20, 38);
+
+  doc.setDrawColor(232, 213, 176);
+  doc.line(20, 43, 190, 43);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(44, 31, 20);
+  doc.text('Relevé de missions mensuel', 20, 52);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Période : ${monthName}`, 20, 60);
+  doc.text(`Agent : ${agentDisplayName}`, 20, 67);
+  doc.text(`Généré le : ${new Date().toLocaleDateString('fr-FR')}`, 20, 74);
+
+  // Tableau
+  let totalEarnings = 0;
+  let passCount = 0;
+  const rows = agentSessions.map(s => {
+    const date = new Date(s.started_at).toLocaleDateString('fr-FR');
+    const rate = agentRate(s.formule);
+    const isPass = (s.formule || '').includes('Pass mensuel');
+    if (isPass) passCount++;
+    totalEarnings += rate;
+    return [date, s.client_pseudo || 'Anonyme', s.formule || '—', isPass ? '—*' : `${rate.toFixed(2)} €`];
+  });
+
+  doc.autoTable({
+    startY: 82,
+    head: [['Date', 'Pseudo', 'Formule', 'Honoraires']],
+    body: rows.length ? rows : [['—', '—', 'Aucune session ce mois', '0,00 €']],
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [196, 113, 74], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [251, 246, 239] },
+    columnStyles: { 3: { halign: 'right' } }
+  });
+
+  const y = doc.lastAutoTable.finalY + 8;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(44, 31, 20);
+  doc.text(`Total sessions : ${agentSessions.length}`, 20, y);
+  doc.text(`Honoraires fixes : ${totalEarnings.toFixed(2)} €`, 20, y + 8);
+
+  if (passCount > 0) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8.5);
+    doc.setTextColor(120);
+    doc.text(`* ${passCount} session(s) Pass mensuel : rémunération au prorata entre agents actifs — à confirmer avec Parlons.`, 20, y + 18);
+  }
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(160);
+  doc.text('Ce relevé est fourni à titre informatif pour établir votre facture mensuelle.', 20, 278);
+  doc.text('Envoyez votre facture avant le 5 du mois suivant — règlement par virement sous 10 jours ouvrés.', 20, 283);
+  doc.text('Parlons · SIRET 105 179 360 000 18', 20, 288);
+
+  const safeName = agentDisplayName.replace(/[^a-z0-9]/gi, '_');
+  doc.save(`Parlons_${safeName}_${year}-${String(month + 1).padStart(2, '0')}.pdf`);
+}
+
+function generateGlobalPDF() {
+  if (!window.jspdf) { alert('PDF non disponible, rechargez la page.'); return; }
+  const { jsPDF } = window.jspdf;
+  const { month, year } = getSelectedMonth();
+  const monthName = new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  const allSessions = window._adminSessions || [];
+  const monthSessions = allSessions.filter(s => {
+    if (!s.started_at) return false;
+    const d = new Date(s.started_at);
+    return d.getMonth() === month && d.getFullYear() === year;
+  });
+
+  const byAgent = {};
+  monthSessions.forEach(s => {
+    const name = s.agent_name || 'Non assigné';
+    if (!byAgent[name]) byAgent[name] = { sessions: 0, earnings: 0, passCount: 0 };
+    byAgent[name].sessions++;
+    byAgent[name].earnings += agentRate(s.formule);
+    if ((s.formule || '').includes('Pass mensuel')) byAgent[name].passCount++;
+  });
+
+  const doc = new jsPDF();
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(196, 113, 74);
+  doc.text('PARLONS', 20, 26);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(120, 100, 90);
+  doc.text('SIRET : 105 179 360 000 18', 20, 33);
+
+  doc.setDrawColor(232, 213, 176);
+  doc.line(20, 38, 190, 38);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(44, 31, 20);
+  doc.text('Récapitulatif mensuel — Honoraires agents', 20, 47);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Période : ${monthName}`, 20, 55);
+  doc.text(`Généré le : ${new Date().toLocaleDateString('fr-FR')}`, 20, 62);
+  doc.text('Usage : comptabilité / déclaration URSSAF', 20, 69);
+
+  const rows = Object.entries(byAgent)
+    .sort((a, b) => b[1].sessions - a[1].sessions)
+    .map(([name, d]) => [
+      name,
+      d.sessions,
+      `${d.earnings.toFixed(2)} €`,
+      d.passCount > 0 ? `${d.passCount} session(s)` : '—'
+    ]);
+
+  const totalSess = monthSessions.length;
+  const totalEarn = Object.values(byAgent).reduce((s, a) => s + a.earnings, 0);
+
+  doc.autoTable({
+    startY: 76,
+    head: [['Agent', 'Sessions', 'Honoraires fixes', 'Pass mensuel']],
+    body: rows.length ? rows : [['—', '0', '0,00 €', '—']],
+    foot: [['TOTAL', totalSess, `${totalEarn.toFixed(2)} €`, '']],
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [196, 113, 74], textColor: 255, fontStyle: 'bold' },
+    footStyles: { fillColor: [245, 237, 224], fontStyle: 'bold', textColor: [44, 31, 20] },
+    alternateRowStyles: { fillColor: [251, 246, 239] },
+    columnStyles: { 2: { halign: 'right' } }
+  });
+
+  const y = doc.lastAutoTable.finalY + 10;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8.5);
+  doc.setTextColor(120);
+  doc.text('Les honoraires du Pass mensuel sont à répartir équitablement entre les agents ayant réalisé 10+ sessions ce mois.', 20, y);
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(160);
+  doc.text(`Parlons · SIRET 105 179 360 000 18 · Document généré le ${new Date().toLocaleDateString('fr-FR')}`, 20, 288);
+
+  doc.save(`Parlons_recap_URSSAF_${year}-${String(month + 1).padStart(2, '0')}.pdf`);
+}
+
+// ── AGENT CHAT EN DIRECT ──
+function updateAgentPresenceUI(online) {
+  const toggle = chatEl('agent-toggle');
+  const badge  = chatEl('agent-status-badge');
+  const pres   = chatEl('agent-pres-status');
+  if (toggle) { toggle.classList.remove('loading'); toggle.classList.toggle('online', online); }
+  if (online) {
+    badge.textContent = 'En ligne'; badge.style.background = '#dcfce7'; badge.style.color = '#16a34a';
+    pres.innerHTML = '<span class="status-dot" style="background:#22c55e"></span><span style="color:#16a34a;font-weight:600">En ligne</span>';
+    chatEl('agent-chat-idle') && (chatEl('agent-chat-idle').style.display = 'block');
+    const statusEl = document.getElementById('agent-chat-status');
+    if (statusEl) statusEl.style.display = 'block';
+    document.getElementById('afloat-bubble').style.display = 'block';
+  } else {
+    badge.textContent = 'Hors ligne'; badge.style.background = '#fee2e2'; badge.style.color = '#ef4444';
+    pres.innerHTML = '<span class="status-dot" style="background:#ef4444"></span><span style="color:#ef4444;font-weight:600">Hors ligne</span>';
+    chatEl('agent-chat-idle') && (chatEl('agent-chat-idle').style.display = 'none');
+    const statusEl = document.getElementById('agent-chat-status');
+    if (statusEl) statusEl.style.display = 'none';
+    document.getElementById('afloat-bubble').style.display = 'none';
+    document.getElementById('afloat-panel').classList.remove('open');
+    agentFloatOpen = false;
+  }
+}
+
+function agentTogglePresence() {
+  if (agentChatToken) agentGoOffline(); else agentGoOnline();
+}
+
+async function agentGoOnline() {
+  const toggle = chatEl('agent-toggle');
+  const err    = chatEl('agent-chat-err');
+  err.textContent = '';
+  if (toggle) toggle.classList.add('loading');
+  try {
+    const res = await fetch(`${API}/chat-presence`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentEmail: agentEmailStored, password: agentPasswordCache, status: 'online' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    agentChatToken = data.token;
+    updateAgentPresenceUI(true);
+    startAgentPolling();
+  } catch(e) {
+    err.textContent = e.message;
+    updateAgentPresenceUI(false);
+  }
+}
+
+async function agentGoOffline() {
+  const toggle = chatEl('agent-toggle');
+  if (toggle) toggle.classList.add('loading');
+  try {
+    await fetch(`${API}/chat-presence`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentEmail: agentEmailStored, agentToken: agentChatToken, status: 'offline' })
+    });
+  } catch {}
+  clearInterval(agentPollingInterval); clearInterval(agentFloatTimerInterval);
+  agentPollingInterval = null; agentChatToken = null;
+  agentSessions.clear(); agentActiveTabId = null; agentFloatOpen = false;
+  agentPollSince = null; agentChatSessionId = null; agentPrevSessionId = null;
+  agentLastMsgTime = null; agentRenderedIds = new Set();
+  document.getElementById('afloat-panel').classList.remove('open');
+  updateAgentPresenceUI(false);
+}
+
+function startAgentPolling() {
+  if (agentPollingInterval) clearInterval(agentPollingInterval);
+  pollAgentChat();
+  agentPollingInterval = setInterval(pollAgentChat, 3000);
+}
+
+async function pollAgentChat() {
+  if (!agentChatToken) return;
+  try {
+    const res = await fetch(`${API}/chat-poll`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'agent', agentEmail: agentEmailStored, agentToken: agentChatToken, since: agentPollSince })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (res.status === 401) { clearInterval(agentPollingInterval); agentPollingInterval = null; agentChatToken = null; updateAgentPresenceUI(false); }
+      return;
+    }
+
+    // ── File d'attente ──
+    const listEl = chatEl('agent-waiting-list');
+    const queueEl = chatEl('agent-waiting-queue');
+    const waiting = data.waitingSessions || [];
+    const maxSessions = 3;
+    if (waiting.length && agentSessions.size < maxSessions) {
+      queueEl.style.display = 'block';
+      listEl.innerHTML = waiting.map(s => {
+        const canAccept = agentSessions.size < maxSessions;
+        const name  = escHtml(s.pre_name || 'Anonyme');
+        const hm    = new Date(s.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const topic = s.pre_topic ? ` — <em style="color:var(--light)">${escHtml(s.pre_topic.substring(0,50))}</em>` : '';
+        return `<div style="background:var(--warm);border-radius:8px;padding:.35rem .65rem;font-size:.77rem;display:flex;align-items:center;gap:.4rem;">
+          <span style="color:#f59e0b">●</span> <strong>${name}</strong>${topic}
+          <span style="color:var(--light);font-size:.68rem;margin-left:auto">${hm}</span>
+          ${canAccept ? `<button onclick="agentAcceptFromQueue('${escHtml(s.id)}')" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.15rem .55rem;font-size:.68rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;flex-shrink:0;">Accepter</button>` : ''}
+        </div>`;
+      }).join('');
+    } else {
+      queueEl.style.display = 'none';
+    }
+
+    // ── Sessions actives ──
+    const sessions = data.sessions || [];
+    let anyNew = false;
+
+    sessions.forEach(s => {
+      const existing = agentSessions.get(s.id);
+      if (!existing) {
+        // Nouvelle session
+        anyNew = true;
+        agentSessions.set(s.id, {
+          id: s.id, name: s.pre_name || 'Anonyme', topic: s.pre_topic || null,
+          label: s.session_label || '', durationSec: s.duration_sec || 1800,
+          assignedAt: s.assigned_at, timerStartedAt: null, agentSessionEndAt: null,
+          extensionPending: s.extension_pending || null,
+          messages: [], renderedIds: new Set(), unread: 0
+        });
+      } else {
+        if (s.duration_sec && s.duration_sec > existing.durationSec) {
+          const added = s.duration_sec - existing.durationSec;
+          existing.durationSec = s.duration_sec;
+          if (existing.agentSessionEndAt) existing.agentSessionEndAt += added * 1000;
+        }
+        const hadExtension = !!existing.extensionPending;
+        existing.extensionPending = s.extension_pending || null;
+        if (!hadExtension && existing.extensionPending) {
+          agentActiveTabId = s.id;
+          agentChatSessionId = s.id;
+          anyNew = true;
+        }
+      }
+      // Append new messages
+      const sess = agentSessions.get(s.id);
+      (s.messages || []).forEach(m => {
+        if (sess.renderedIds.has(m.id)) return;
+        sess.renderedIds.add(m.id);
+        sess.messages.push(m);
+        if (m.id) {
+          const lastTs = m.created_at;
+          if (!agentPollSince || lastTs > agentPollSince) agentPollSince = lastTs;
+        }
+        console.log('[poll] new msg:', m.sender_type, (m.content||'').substring(0,60));
+        // Auto-open panel on new extension request
+        if (m.sender_type === 'system' && m.content && m.content.includes('souhaite prolonger')) {
+          console.log('[poll] extension request detected, opening panel');
+          agentActiveTabId = s.id; agentChatSessionId = s.id; anyNew = true;
+        }
+        // Unread: count if not this tab or panel closed
+        if (!agentFloatOpen || agentActiveTabId !== s.id) {
+          if (m.sender_type !== 'agent') sess.unread++;
+        }
+      });
+    });
+
+    // Remove sessions that are no longer active
+    const activeIds = new Set(sessions.map(s => s.id));
+    for (const [sid] of agentSessions) {
+      if (!activeIds.has(sid)) agentSessions.delete(sid);
+    }
+
+    // Update active tab
+    if (agentSessions.size > 0 && (!agentActiveTabId || !agentSessions.has(agentActiveTabId))) {
+      agentActiveTabId = agentSessions.keys().next().value;
+    }
+    if (agentSessions.size === 0) { agentActiveTabId = null; }
+
+    // Update compat aliases
+    agentChatSessionId = agentActiveTabId;
+
+    // Render
+    renderAgentFloatTabs();
+    if (agentFloatOpen) renderAgentFloatMessages();
+    updateAgentFloatBubble();
+    updateAgentFloatTimer();
+
+    // Auto-open panel if new session arrived and panel is closed
+    if (anyNew && !agentFloatOpen) {
+      toggleAgentFloat();
+    }
+
+    // Update inline "status" indicator
+    const statusEl = document.getElementById('agent-chat-status');
+    if (statusEl) {
+      statusEl.style.display = agentSessions.size === 0 ? 'block' : 'none';
+    }
+  } catch {}
+}
+
+async function sendAgentMessage() {
+  // Delegate to float send
+  await sendAgentFloatMsg();
+}
+
+async function endAgentSession() {
+  await endAgentFloatSession();
+}
+
+function toggleAgentFloat() {
+  agentFloatOpen = !agentFloatOpen;
+  const panel = document.getElementById('afloat-panel');
+  if (agentFloatOpen) {
+    panel.classList.add('open');
+    // Clear unread for active tab
+    if (agentActiveTabId && agentSessions.has(agentActiveTabId)) {
+      agentSessions.get(agentActiveTabId).unread = 0;
+    }
+    renderAgentFloatTabs();
+    renderAgentFloatMessages();
+    updateAgentFloatBubble();
+    startAgentFloatTimer();
+  } else {
+    panel.classList.remove('open');
+    clearInterval(agentFloatTimerInterval); agentFloatTimerInterval = null;
+  }
+}
+
+function renderAgentFloatTabs() {
+  const tabsEl = document.getElementById('afloat-tabs');
+  if (!tabsEl) return;
+  if (agentSessions.size <= 1) {
+    tabsEl.style.display = 'none'; return;
+  }
+  tabsEl.style.display = 'flex';
+  tabsEl.innerHTML = '';
+  agentSessions.forEach((sess, sid) => {
+    const btn = document.createElement('button');
+    btn.className = 'afloat-tab' + (sid === agentActiveTabId ? ' active' : '');
+    btn.onclick = () => switchAgentTab(sid);
+    let html = escHtml(sess.name);
+    if (sess.unread > 0) html += `<span class="afloat-tab-badge">${sess.unread}</span>`;
+    btn.innerHTML = html;
+    tabsEl.appendChild(btn);
+  });
+}
+
+function switchAgentTab(sessionId) {
+  agentActiveTabId = sessionId;
+  agentChatSessionId = sessionId;
+  if (agentSessions.has(sessionId)) agentSessions.get(sessionId).unread = 0;
+  renderAgentFloatTabs();
+  renderAgentFloatMessages();
+  updateAgentFloatBubble();
+  startAgentFloatTimer();
+}
+
+function renderAgentFloatMessages() {
+  const sess = agentSessions.get(agentActiveTabId);
+  const msgsEl = document.getElementById('afloat-msgs');
+  const infoEl = document.getElementById('afloat-info');
+  const titleEl = document.getElementById('afloat-title');
+  if (!msgsEl) return;
+  if (!sess) {
+    msgsEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--light);font-size:.82rem;">⏳ En attente d\'un visiteur…</div>';
+    if (infoEl) infoEl.textContent = '';
+    if (titleEl) titleEl.textContent = '💬 Chat';
+    return;
+  }
+
+  // Find the last extension request and whether it's already resolved
+  let lastExtIdx = -1;
+  sess.messages.forEach((m, i) => {
+    if (m.sender_type === 'system' && m.content && m.content.includes('souhaite prolonger')) lastExtIdx = i;
+  });
+  console.log('[render] messages:', sess.messages.length, 'lastExtIdx:', lastExtIdx, 'msgs:', sess.messages.map(m=>(m.sender_type||'?')+':'+(m.content||'').substring(0,30)));
+  const extResolved = lastExtIdx >= 0 && sess.messages.slice(lastExtIdx + 1).some(m =>
+    m.sender_type === 'system' && (m.content.includes('prolongée') || m.content.includes("n'a pas pu"))
+  );
+
+  msgsEl.innerHTML = '';
+  sess.messages.forEach((m, i) => {
+    const div = document.createElement('div');
+    const isActiveExt = (i === lastExtIdx && !extResolved);
+    if (isActiveExt) {
+      div.className = 'agent-msg system';
+      div.style.cssText = 'border:1.5px solid #fbbf24;background:#fff7ed;border-radius:12px;padding:.55rem .75rem;';
+      const txt = document.createElement('div');
+      txt.textContent = m.content;
+      div.appendChild(txt);
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:.45rem;margin-top:.5rem;';
+      const btnA = document.createElement('button');
+      btnA.textContent = '✓ Prolonger';
+      btnA.style.cssText = 'flex:1;background:#22c55e;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
+      btnA.onclick = () => respondExtension(sess.id, true);
+      const btnR = document.createElement('button');
+      btnR.textContent = '↗ Passer à un autre';
+      btnR.style.cssText = 'flex:1;background:#f59e0b;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
+      btnR.onclick = () => respondExtension(sess.id, false);
+      row.appendChild(btnA);
+      row.appendChild(btnR);
+      div.appendChild(row);
+    } else {
+      div.className = 'agent-msg ' + (m.sender_type === 'agent' ? 'agent' : m.sender_type === 'system' ? 'system' : 'visitor');
+      div.textContent = m.content;
+    }
+    msgsEl.appendChild(div);
+  });
+
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+  if (infoEl) {
+    infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong> · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
+  }
+  // Hide legacy bar — buttons are now inline
+  const bar = document.getElementById('afloat-ext-bar');
+  if (bar) bar.style.display = 'none';
+  if (titleEl) titleEl.textContent = `💬 ${sess.name}`;
+}
+
+function updateAgentFloatBubble() {
+  const bubble = document.getElementById('afloat-bubble');
+  const badge = document.getElementById('afloat-badge');
+  if (!bubble) return;
+  bubble.style.display = agentChatToken ? 'block' : 'none';
+  let totalUnread = 0;
+  agentSessions.forEach(s => { totalUnread += s.unread; });
+  if (badge) {
+    badge.style.display = totalUnread > 0 ? 'flex' : 'none';
+    badge.textContent = totalUnread > 9 ? '9+' : String(totalUnread);
+  }
+}
+
+function startAgentFloatTimer() {
+  clearInterval(agentFloatTimerInterval); agentFloatTimerInterval = null;
+  if (!agentActiveTabId || !agentSessions.has(agentActiveTabId)) return;
+  updateAgentFloatTimer();
+  agentFloatTimerInterval = setInterval(updateAgentFloatTimer, 1000);
+}
+
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') updateAgentFloatTimer();
+});
+
+function updateAgentExtBar() {
+  // Buttons are now inline in renderAgentFloatMessages — keep bar hidden
+  const bar = document.getElementById('afloat-ext-bar');
+  if (bar) { bar.dataset.sessionId = ''; bar.style.display = 'none'; }
+}
+
+function respondExtensionBar(accept) {
+  const bar = document.getElementById('afloat-ext-bar');
+  const sid = bar && bar.dataset.sessionId;
+  if (!sid) return;
+  respondExtension(sid, accept);
+}
+
+function updateAgentFloatTimer() {
+  const timerEl = document.getElementById('afloat-timer');
+  if (!timerEl) return;
+  const sess = agentSessions.get(agentActiveTabId);
+  if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; return; }
+  const remaining = sess.agentSessionEndAt
+    ? Math.max(0, (sess.agentSessionEndAt - Date.now()) / 1000)
+    : Math.max(0, sess.durationSec - (Date.now() - sess.timerStartedAt) / 1000);
+  const m = Math.floor(remaining / 60), s = Math.floor(remaining % 60);
+  timerEl.style.display = 'inline';
+  timerEl.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  timerEl.style.background = remaining <= 120 ? 'rgba(239,68,68,.35)' : 'rgba(0,0,0,.2)';
+  if (remaining <= 0) { clearInterval(agentFloatTimerInterval); agentFloatTimerInterval = null; }
+}
+
+async function sendAgentFloatMsg() {
+  const ta = document.getElementById('afloat-ta');
+  const content = (ta && ta.value.trim()) || '';
+  if (!content || !agentActiveTabId || !agentChatToken) return;
+  ta.value = ''; ta.style.height = 'auto';
+  const sess = agentSessions.get(agentActiveTabId);
+  if (sess && !sess.timerStartedAt) {
+    sess.timerStartedAt = Date.now();
+    sess.agentSessionEndAt = Date.now() + sess.durationSec * 1000;
+    startAgentFloatTimer();
+  }
+  try {
+    await fetch(`${API}/chat-send`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: agentActiveTabId, content, senderType: 'agent', agentEmail: agentEmailStored, agentToken: agentChatToken })
+    });
+  } catch {}
+}
+
+async function endAgentFloatSession() {
+  if (!agentActiveTabId || !confirm('Terminer cette session ?')) return;
+  try {
+    await fetch(`${API}/chat-close`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: agentActiveTabId, agentEmail: agentEmailStored, agentToken: agentChatToken, closedBy: 'agent' })
+    });
+  } catch {}
+  agentSessions.delete(agentActiveTabId);
+  agentActiveTabId = agentSessions.size > 0 ? agentSessions.keys().next().value : null;
+  agentChatSessionId = agentActiveTabId;
+  renderAgentFloatTabs();
+  renderAgentFloatMessages();
+  updateAgentFloatBubble();
+}
+
+async function respondExtension(sessionId, accept) {
+  try {
+    const res = await fetch(`${API}/chat-extension-respond`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, agentEmail: agentEmailStored, agentToken: agentChatToken, accept })
+    });
+    const data = await res.json();
+    if (!data.ok) return;
+    if (!accept) {
+      // L'ancienne session est fermée : la retirer de la Map
+      agentSessions.delete(sessionId);
+      if (agentActiveTabId === sessionId) {
+        agentActiveTabId = agentSessions.size > 0 ? agentSessions.keys().next().value : null;
+        agentChatSessionId = agentActiveTabId;
+      }
+      renderAgentFloatTabs();
+      renderAgentFloatMessages();
+      updateAgentFloatBubble();
+    }
+    // Si accepté, le poll renverra duration_sec mis à jour et extensionPending=null
+  } catch(e) { console.error('respondExtension:', e); }
+}
+
+async function agentAcceptFromQueue(sessionId) {
+  if (agentSessions.size >= 3) return;
+  try {
+    const res = await fetch(`${API}/chat-take`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, agentEmail: agentEmailStored, agentToken: agentChatToken })
+    });
+    const data = await res.json();
+    if (!data.ok) return;
+    // Session will appear in next poll; open float panel now
+    if (!agentFloatOpen) toggleAgentFloat();
+  } catch {}
+}
+
+async function agentSetPassword() {
+  const pwd1 = document.getElementById('agent-pwd1').value;
+  const pwd2 = document.getElementById('agent-pwd2').value;
+  const err = document.getElementById('agent-setup-err');
+  const btn = document.getElementById('agent-setup-btn');
+  err.textContent = '';
+
+  if (pwd1.length < 8) { err.textContent = 'Minimum 8 caractères.'; return; }
+  if (pwd1 !== pwd2) { err.textContent = 'Les mots de passe ne correspondent pas.'; return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Enregistrement…';
+
+  try {
+    const res = await fetch(`${API}/agent-stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: agentEmailStored, password: pwd1, action: 'set_password' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur');
+    localStorage.setItem('parlons_espace_session', JSON.stringify({ email: agentEmailStored, password: pwd1, role: 'agent', expires: Date.now() + 86400000 }));
+    renderAgentDash(agentEmailStored, data);
+    showScreen('agent-dash');
+  } catch(e) {
+    err.textContent = e.message;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Créer mon mot de passe';
+}
+
+// ── RETIRER UN AGENT ──
+let _removeAgentEmail = '', _removeAgentName = '';
+function removeAgent(idx) {
+  const a = (window._agentList || [])[idx];
+  if (!a) return;
+  _removeAgentEmail = a.email || a.name;
+  _removeAgentName = a.displayName || a.name;
+  document.getElementById('remove-agent-label').textContent = _removeAgentName + (_removeAgentEmail !== _removeAgentName ? ' (' + _removeAgentEmail + ')' : '');
+  document.getElementById('remove-agent-err').textContent = '';
+  document.getElementById('remove-agent-modal').style.display = 'flex';
+}
+function closeRemoveAgentModal() {
+  document.getElementById('remove-agent-modal').style.display = 'none';
+}
+async function confirmRemoveAgent() {
+  const btn = document.getElementById('remove-agent-btn');
+  const err = document.getElementById('remove-agent-err');
+  btn.disabled = true; btn.textContent = 'Suppression…';
+  try {
+    const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
+    const res = await fetch(`${API}/admin-stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'remove_agent', agentEmail: _removeAgentEmail })
+    });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || 'Erreur serveur.'; btn.disabled = false; btn.textContent = 'Retirer'; return; }
+    closeRemoveAgentModal();
+    location.reload();
+  } catch { err.textContent = 'Erreur réseau.'; btn.disabled = false; btn.textContent = 'Retirer'; }
+}
+
+// ── AJOUTER UN AGENT ──
+function openAddAgentModal() {
+  document.getElementById('add-agent-modal').style.display = 'flex';
+  document.getElementById('add-agent-email').value = '';
+  document.getElementById('add-agent-pwd').value = '';
+  document.getElementById('add-agent-err').textContent = '';
+  document.getElementById('add-agent-ok').style.display = 'none';
+  setTimeout(() => document.getElementById('add-agent-email').focus(), 100);
+}
+function closeAddAgentModal() {
+  document.getElementById('add-agent-modal').style.display = 'none';
+}
+async function submitAddAgent() {
+  const agentEmail = document.getElementById('add-agent-email').value.trim();
+  const agentPassword = document.getElementById('add-agent-pwd').value;
+  const err = document.getElementById('add-agent-err');
+  const ok = document.getElementById('add-agent-ok');
+  const btn = document.getElementById('add-agent-btn');
+  err.textContent = ''; ok.style.display = 'none';
+
+  if (!agentEmail || !agentEmail.includes('@')) { err.textContent = 'Email invalide.'; return; }
+  if (!agentPassword || agentPassword.length < 8) { err.textContent = 'Mot de passe trop court (8 car. min.).'; return; }
+
+  btn.disabled = true; btn.textContent = 'Création…';
+  try {
+    const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
+    const agentPrenom = document.getElementById('add-agent-prenom').value.trim();
+    const agentNom = document.getElementById('add-agent-nom').value.trim();
+    const res = await fetch(`${API}/admin-stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'add_agent', agentEmail, agentPassword, agentPrenom, agentNom })
+    });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || 'Erreur serveur.'; return; }
+    ok.style.display = 'block';
+    ok.innerHTML = '✅ Agent créé. Identifiants envoyés par email si configuré.';
+    document.getElementById('add-agent-prenom').value = '';
+    document.getElementById('add-agent-nom').value = '';
+    document.getElementById('add-agent-email').value = '';
+    document.getElementById('add-agent-pwd').value = '';
+  } catch (e) {
+    err.textContent = 'Erreur réseau.';
+  }
+  btn.disabled = false; btn.textContent = 'Créer l\'agent';
+}
+</script>
+
+<!-- Modal retirer agent -->
+<div id="remove-agent-modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(44,31,20,.55);backdrop-filter:blur(5px);align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:20px;padding:2rem;width:92%;max-width:380px;position:relative;">
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:.6rem;">Retirer cet agent ?</h3>
+    <p style="font-size:.82rem;color:var(--light);margin-bottom:.5rem;">L'accès de <strong id="remove-agent-label"></strong> sera supprimé. Ses sessions passées restent dans l'historique.</p>
+    <div id="remove-agent-err" style="color:#c0392b;font-size:.78rem;min-height:1rem;margin-bottom:.6rem;"></div>
+    <div style="display:flex;gap:.7rem;">
+      <button onclick="closeRemoveAgentModal()" style="flex:1;padding:.75rem;background:none;border:1.5px solid var(--sand);border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.88rem;cursor:pointer;color:var(--mid);">Annuler</button>
+      <button id="remove-agent-btn" onclick="confirmRemoveAgent()" style="flex:1;padding:.75rem;background:#c0392b;color:white;border:none;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;">Retirer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ AGENT FLOAT CHAT ══ -->
+<div class="afloat-bubble" id="afloat-bubble">
+  <button class="afloat-bubble-btn" onclick="toggleAgentFloat()">💬</button>
+  <div class="afloat-bubble-badge" id="afloat-badge"></div>
+</div>
+
+<div class="afloat-panel" id="afloat-panel">
+  <div class="afloat-header">
+    <span class="afloat-header-title" id="afloat-title">💬 Chat</span>
+    <span class="afloat-timer" id="afloat-timer"></span>
+    <button class="afloat-close" onclick="toggleAgentFloat()">✕</button>
+  </div>
+  <div class="afloat-tabs" id="afloat-tabs"></div>
+  <div class="afloat-info" id="afloat-info"></div>
+  <div class="afloat-msgs" id="afloat-msgs"></div>
+  <div id="afloat-ext-bar" style="display:none;padding:.6rem .85rem;background:#fff7ed;border-top:1.5px solid #fbbf24;flex-shrink:0;">
+    <div id="afloat-ext-text" style="font-size:.78rem;color:#92400e;font-weight:600;margin-bottom:.4rem;">⏳ Prolongation demandée</div>
+    <div style="display:flex;gap:.5rem;">
+      <button onclick="respondExtensionBar(true)" style="flex:1;background:#22c55e;color:white;border:none;border-radius:50px;padding:.35rem .7rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">✓ Accepter</button>
+      <button onclick="respondExtensionBar(false)" style="flex:1;background:#ef4444;color:white;border:none;border-radius:50px;padding:.35rem .7rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">✗ Refuser</button>
+    </div>
+  </div>
+  <div class="afloat-input-row" id="afloat-input">
+    <textarea class="afloat-ta" id="afloat-ta" placeholder="Votre message…" rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentFloatMsg();}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+    <button class="afloat-send" onclick="sendAgentFloatMsg()">↑</button>
+  </div>
+  <div class="afloat-footer" id="afloat-footer">
+    <button class="afloat-end-btn" onclick="endAgentFloatSession()">Terminer la session</button>
+  </div>
+</div>
+
+<!-- Modal ajouter agent -->
+<div id="add-agent-modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(44,31,20,.55);backdrop-filter:blur(5px);align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:20px;padding:2rem;width:92%;max-width:400px;position:relative;">
+    <button onclick="closeAddAgentModal()" style="position:absolute;top:.8rem;right:.8rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--light);">✕</button>
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:.3rem;">Ajouter un agent</h3>
+    <p style="font-size:.8rem;color:var(--light);margin-bottom:1.2rem;">L'agent pourra modifier son mot de passe depuis son espace personnel.</p>
+    <div style="display:flex;gap:.6rem;margin-bottom:.9rem;">
+      <div style="flex:1;">
+        <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Prénom</label>
+        <input id="add-agent-prenom" type="text" placeholder="Prénom" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;">
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Nom</label>
+        <input id="add-agent-nom" type="text" placeholder="Nom" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;">
+      </div>
+    </div>
+    <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Email de l'agent</label>
+    <input id="add-agent-email" type="email" placeholder="agent@email.com" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;margin-bottom:.9rem;">
+    <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Mot de passe temporaire</label>
+    <input id="add-agent-pwd" type="password" placeholder="Min. 8 caractères" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;margin-bottom:.4rem;" onkeydown="if(event.key==='Enter')submitAddAgent()">
+    <div id="add-agent-err" style="color:#c0392b;font-size:.78rem;min-height:1.1rem;margin-bottom:.5rem;"></div>
+    <div id="add-agent-ok" style="display:none;color:#2d7a2d;font-size:.82rem;background:#e8f8e8;border-radius:8px;padding:.6rem .9rem;margin-bottom:.8rem;"></div>
+    <button id="add-agent-btn" onclick="submitAddAgent()" style="width:100%;padding:.85rem;background:var(--tc);color:white;border:none;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:600;cursor:pointer;">Créer l'agent</button>
+  </div>
+</div>
+</body>
+</html>

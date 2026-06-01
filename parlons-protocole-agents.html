@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Parlons — Protocole Écoutants</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:#FAF7F2;color:#2C1F14;padding:3rem 1.5rem 5rem;font-size:.95rem;line-height:1.75;}
+    .container{max-width:780px;margin:0 auto;background:white;border-radius:20px;padding:3.5rem 4rem;box-shadow:0 8px 40px rgba(44,31,20,.08);}
+    .logo{font-family:'Playfair Display',serif;font-size:1.4rem;color:#C4714A;}
+    .logo span{font-style:italic;color:#A8502E;}
+    .doc-meta{font-size:.78rem;color:#B09070;margin-bottom:2.2rem;padding-bottom:1.3rem;border-bottom:2px solid #F0E8D8;}
+    h1{font-family:'Playfair Display',serif;font-size:1.7rem;color:#2C1F14;margin-bottom:.5rem;}
+    h2{font-family:'Playfair Display',serif;font-size:1.1rem;color:#C4714A;margin:2.2rem 0 .7rem;padding-bottom:.35rem;border-bottom:1px solid #F0E8D8;}
+    h3{font-size:.93rem;font-weight:600;color:#2C1F14;margin:1.3rem 0 .4rem;}
+    p{margin-bottom:.85rem;color:#4A3828;font-weight:300;}
+    ul,ol{margin:.4rem 0 .9rem 1.4rem;}
+    li{margin-bottom:.35rem;color:#4A3828;font-weight:300;}
+    .warn{background:#FFF0F0;border-left:4px solid #e74c3c;border-radius:0 10px 10px 0;padding:1rem 1.1rem;margin:1.1rem 0;font-size:.88rem;}
+    .warn strong{color:#a02020;}
+    .ok{background:#E8F8E8;border-left:4px solid #5CB85C;border-radius:0 10px 10px 0;padding:1rem 1.1rem;margin:1.1rem 0;font-size:.88rem;}
+    .ok strong{color:#2d7a2d;}
+    .info{background:#FFF8E1;border-left:4px solid #C4714A;border-radius:0 10px 10px 0;padding:1rem 1.1rem;margin:1.1rem 0;font-size:.88rem;}
+    .info strong{color:#A8502E;}
+    .step-box{background:#FAF7F2;border-radius:12px;padding:1.3rem 1.5rem;margin:1rem 0;border:1px solid #F0E8D8;}
+    .step-box .num{display:inline-block;background:#C4714A;color:white;font-size:.65rem;font-weight:700;padding:.15rem .55rem;border-radius:50px;margin-right:.5rem;vertical-align:middle;}
+    .step-box h4{display:inline;font-size:.93rem;color:#2C1F14;}
+    .step-box p{margin:.5rem 0 0;font-size:.85rem;}
+    .phrase-box{background:#F0E8D8;border-radius:10px;padding:.9rem 1.1rem;margin:.6rem 0;font-style:italic;font-size:.88rem;color:#2C1F14;border-left:3px solid #C4714A;}
+    .footer-doc{margin-top:2.5rem;padding-top:1.3rem;border-top:1px solid #F0E8D8;font-size:.75rem;color:#B09070;text-align:center;}
+    .urgency-box{background:#e74c3c;color:white;border-radius:14px;padding:1.5rem;text-align:center;margin:1.5rem 0;}
+    .urgency-box h3{color:white;font-size:1.1rem;margin-bottom:.5rem;}
+    .urgency-box .nums{display:flex;justify-content:center;gap:2rem;flex-wrap:wrap;margin-top:.8rem;}
+    .urgency-box .num-badge{background:rgba(255,255,255,.2);border-radius:10px;padding:.6rem 1.2rem;font-size:1.1rem;font-weight:700;}
+    .urgency-box .num-label{font-size:.72rem;opacity:.85;margin-top:.2rem;}
+    @media(max-width:600px){.container{padding:2rem 1.4rem;}}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">Par<span>lons</span></div>
+  <div class="doc-meta">Protocole interne — Écoutants · Version 1.0 · 16 avril 2026 · Document confidentiel</div>
+
+  <h1>Protocole des Écoutants</h1>
+  <p>Ce document est votre guide de référence en tant qu'écoutant chez Parlons. Il couvre le déroulement normal d'une session, et surtout les procédures à suivre dans les situations délicates ou d'urgence. <strong>Lisez-le entièrement avant votre première session.</strong></p>
+
+  <div class="info"><strong>Rappel fondamental :</strong> Vous êtes un écoutant bienveillant, pas un thérapeute, ni un médecin, ni un service d'urgence. Votre rôle est d'écouter, d'accompagner et d'orienter — jamais de diagnostiquer ni de prendre en charge une crise médicale.</div>
+
+  <!-- SECTION 1 -->
+  <h2>1. Déroulement normal d'une session</h2>
+  <div class="step-box"><span class="num">1</span><h4>Accepter la conversation</h4><p>Répondez dans les <strong>2 minutes</strong> après attribution. Au-delà, le client peut signaler votre retard et demander un remboursement. Vérifiez que votre connexion est stable avant de prendre une session.</p></div>
+  <div class="step-box"><span class="num">2</span><h4>Message d'accueil</h4><p>Envoyez un premier message chaleureux et rassurant. Le chronomètre du client démarre à votre premier message.</p></div>
+  <div class="phrase-box">Exemple : "Bonjour ! Je suis là pour vous écouter, prenez le temps qu'il vous faut. Qu'est-ce qui vous amène aujourd'hui ?"</div>
+  <div class="step-box"><span class="num">3</span><h4>Pendant la session</h4><p>Écoutez activement : reformulez, posez des questions ouvertes, validez les émotions. Ne donnez pas de conseils non sollicités. Ne jugez pas.</p></div>
+  <div class="step-box"><span class="num">4</span><h4>Fin de session (alerte 2 min)</h4><p>Quand l'alerte de fin apparaît, informez le client : <em>"Votre session touche à sa fin dans 2 minutes. Si vous souhaitez continuer, vous pouvez souscrire une nouvelle session."</em></p></div>
+  <div class="step-box"><span class="num">5</span><h4>Clôture</h4><p>Terminez chaleureusement, même si le temps est écoulé. Un message de clôture bienveillant laisse une impression positive et donne envie de revenir.</p></div>
+  <div class="phrase-box">Exemple de clôture : "Merci de m'avoir accordé votre confiance aujourd'hui. Prenez soin de vous. La plateforme reste disponible si vous souhaitez revenir. 🤍"</div>
+
+  <!-- SECTION 2 -->
+  <h2>2. Règles fondamentales de conduite</h2>
+  <ul>
+    <li>Répondez toujours dans les <strong>2 minutes</strong> après attribution</li>
+    <li>Restez neutre, bienveillant et sans jugement en toutes circonstances</li>
+    <li>Ne partagez <strong>jamais</strong> d'informations personnelles vous concernant</li>
+    <li>Ne donnez pas de consultations médicales, juridiques ou financières</li>
+    <li>Ne promettez rien que vous ne pouvez pas tenir</li>
+    <li>Ne poursuivez pas de contact avec un client en dehors de la plateforme</li>
+    <li>Signalez immédiatement à l'administrateur toute situation préoccupante</li>
+  </ul>
+
+  <!-- SECTION 3 -->
+  <h2>3. Gestion des comportements irrespectueux</h2>
+  <p>Le respect mutuel est non négociable. Si un client adopte un comportement irrespectueux (insultes, harcèlement, propos obscènes, menaces) :</p>
+  <div class="step-box"><span class="num">1</span><h4>Avertissement clair et unique</h4><p>Signalez une seule fois calmement que le comportement n'est pas acceptable.</p></div>
+  <div class="phrase-box">"Je suis là pour vous écouter avec bienveillance, mais je ne peux pas continuer si les échanges ne sont pas respectueux. Je vous invite à changer de ton pour que nous puissions continuer."</div>
+  <div class="step-box"><span class="num">2</span><h4>Si ça continue : fin immédiate</h4><p>Mettez fin à la conversation sans explication supplémentaire. Aucun remboursement n'est dû. Notifiez l'administrateur via Crisp ou par message.</p></div>
+  <div class="warn"><strong>Vous n'avez jamais à subir d'irrespect.</strong> Vous êtes seul juge pour décider qu'une conversation dépasse les bornes. Faites confiance à votre ressenti.</div>
+
+  <!-- SECTION 4 — SUICIDE -->
+  <h2>4. 🚨 Protocole détresse extrême et risque suicidaire</h2>
+  <div class="warn"><strong>⚠️ Situation la plus sensible.</strong> Lisez et mémorisez cette procédure avant votre première session. En cas de doute, appliquez-la systématiquement.</div>
+
+  <h3>4.1 Comment reconnaître un risque suicidaire</h3>
+  <p>Soyez attentif aux signaux suivants dans les messages :</p>
+  <ul>
+    <li>Expressions directes : "je veux mourir", "je veux en finir", "je pense au suicide"</li>
+    <li>Expressions indirectes : "tout le monde serait mieux sans moi", "je ne vois plus l'intérêt", "bientôt tout sera terminé"</li>
+    <li>Évocation d'un plan précis ou d'un moyen</li>
+    <li>Sentiment d'être un fardeau pour les autres</li>
+    <li>Désespoir absolu, sentiment que rien ne changera jamais</li>
+    <li>Adieux sous-entendus : "c'est la dernière fois que je parle à quelqu'un"</li>
+  </ul>
+
+  <div class="info"><strong>Idée reçue à combattre :</strong> Poser directement la question "Est-ce que tu penses à te suicider ?" ne donne pas d'idées. Au contraire, cela montre que vous prenez la personne au sérieux et libère souvent la parole.</div>
+
+  <h3>4.2 Procédure étape par étape</h3>
+  <div class="step-box"><span class="num">1</span><h4>Rester calme et ne pas couper brutalement</h4><p>Ne paniquez pas et ne disparaissez pas subitement. Votre présence est rassurante.</p></div>
+  <div class="step-box"><span class="num">2</span><h4>Poser la question directement</h4><p>Si vous avez un doute, demandez sans détour.</p></div>
+  <div class="phrase-box">"Ce que tu partages avec moi m'inquiète pour toi. Est-ce que tu as des pensées de te faire du mal en ce moment ?"</div>
+  <div class="step-box"><span class="num">3</span><h4>Écouter sans minimiser</h4><p>Ne dites pas "c'est pas si grave", "tu as tellement de choses pour toi", "pense à ta famille". Ces phrases invalident la douleur. Reconnaissez-la.</p></div>
+  <div class="phrase-box">"Je t'entends. Ce que tu vis est vraiment difficile. Tu as bien fait de le dire."</div>
+  <div class="step-box"><span class="num">4</span><h4>Orienter vers le 3114 — immédiatement et clairement</h4><p>Ne promettez pas la confidentialité dans ce contexte. Orientez fermement, avec bienveillance.</p></div>
+  <div class="phrase-box">"Je veux que tu sois en sécurité. Il y a des personnes formées pour t'aider à traverser ça, disponibles maintenant au 3114. C'est gratuit, 24h/24. Je t'encourage vraiment à les appeler maintenant, pendant qu'on est encore là tous les deux."</div>
+  <div class="step-box"><span class="num">5</span><h4>Alerter l'administrateur</h4><p>Envoyez immédiatement un message à l'admin via Crisp en indiquant : heure, pseudonyme du client, nature du risque. Ne gérez pas ça seul.</p></div>
+  <div class="step-box"><span class="num">6</span><h4>Mettre fin à la session</h4><p>Après l'orientation, expliquez que vous ne pouvez pas continuer dans ce cadre et que cette situation nécessite une aide professionnelle. Aucun remboursement n'est dû (prévu dans les CGV).</p></div>
+  <div class="phrase-box">"Je dois m'arrêter ici car cette situation dépasse ce que je peux t'offrir sur cette plateforme. Appelle le 3114 dès maintenant. Tu mérites d'être aidé par quelqu'un de formé pour ça. Prends soin de toi."</div>
+  <div class="step-box"><span class="num">7</span><h4>Prendre soin de vous après</h4><p>Une telle conversation peut être éprouvante. Faites une pause, parlez-en à l'administrateur. Vous n'avez pas à porter ça seul non plus.</p></div>
+
+  <!-- URGENCES -->
+  <div class="urgency-box">
+    <h3>🆘 Numéros d'urgence à avoir en tête</h3>
+    <div class="nums">
+      <div><div class="num-badge">3114</div><div class="num-label">Prévention suicide<br>24h/24 · Gratuit</div></div>
+      <div><div class="num-badge">15</div><div class="num-label">SAMU<br>Urgences médicales</div></div>
+      <div><div class="num-badge">112</div><div class="num-label">Urgences européennes<br>Toutes situations</div></div>
+      <div><div class="num-badge">3977</div><div class="num-label">Violences conjugales<br>24h/24</div></div>
+    </div>
+  </div>
+
+  <!-- SECTION 5 -->
+  <h2>5. Autres situations délicates</h2>
+  <h3>Violences domestiques</h3>
+  <p>Si un client évoque des violences physiques ou psychologiques subies, orientez vers le <strong>3919</strong> (violences femmes info) ou le <strong>3977</strong> (maltraitance). Ne minimisez pas, ne donnez pas de conseils sur la relation — écoutez et orientez.</p>
+
+  <h3>Addiction</h3>
+  <p>Si un client parle de dépendance à l'alcool, aux drogues ou aux médicaments, vous pouvez écouter et orienter vers <strong>Alcool Info Service (0 980 980 930)</strong> ou <strong>Drogues Info Service (0 800 23 13 13)</strong>.</p>
+
+  <h3>Mineur en danger</h3>
+  <p>Si vous avez une raison sérieuse de penser que vous parlez à un enfant en danger, alertez immédiatement l'administrateur et orientez vers le <strong>119</strong> (Allô Enfance en Danger).</p>
+
+  <!-- SECTION 6 -->
+  <h2>6. Ce que vous n'avez jamais à faire</h2>
+  <ul>
+    <li>Promettre à quelqu'un qu'il ne se suicidera pas s'il vous parle</li>
+    <li>Promettre de garder le secret si une vie est en danger</li>
+    <li>Jouer au thérapeute ou poser un diagnostic</li>
+    <li>Donner votre numéro personnel ou continuer en dehors de la plateforme</li>
+    <li>Gérer seul une crise grave sans prévenir l'administrateur</li>
+  </ul>
+
+  <div class="ok"><strong>✅ Rappel :</strong> Vous faites un travail important et humainement précieux. Votre rôle est d'être présent, bienveillant, et de savoir quand passer le relais. C'est déjà énorme.</div>
+
+  <div class="footer-doc">
+    Parlons · Protocole Écoutants · Version 1.0 · 16 avril 2026<br>
+    Document confidentiel — ne pas diffuser en dehors de l'équipe
+  </div>
+</div>
+</body>
+</html>

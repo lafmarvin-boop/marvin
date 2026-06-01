@@ -112,7 +112,7 @@
     },
     {
       "id": "architecture_pipeline",
-      "label": "Graphify Pipeline (detect\u2192extract\u2192build\u2192cluster\u2192analyze\u2192report\u2192export)",
+      "label": "Graphify Pipeline (detect→extract→build→cluster→analyze→report→export)",
       "file_type": "document",
       "source_file": "graphify/ARCHITECTURE.md",
       "source_location": null,
@@ -846,6 +846,252 @@
       "captured_at": null,
       "author": null,
       "contributor": null
+    },
+    {
+      "id": "conversation:22451ee2",
+      "label": "Conversation",
+      "type": "conversation",
+      "file": "/home/user/marvin/raw/conversations/2026-04-30_16-13-39_22451ee2.md",
+      "session_id": "22451ee2-ab87-4e22-806e-9accd5bfe473",
+      "timestamp": "2026-04-30T16-13-39",
+      "message_count": 21,
+      "tool_call_count": 111,
+      "tools_used": [
+        "Bash",
+        "Agent",
+        "ToolSearch",
+        "Edit",
+        "Write",
+        "Skill",
+        "mcp__github__get_file_contents",
+        "Read",
+        "mcp__github__create_pull_request",
+        "TodoWrite"
+      ],
+      "summary": "Session 'Conversation'. 21 échanges utilisateur. Outils: Bash, Agent, ToolSearch, Edit, Write. Premier message: installe ce repo : https://github.com/safishamsi/graphify",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_16-13-39_22451ee2.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "conversation:22451ee2:msg_0",
+      "label": "Conversation — réponse 1",
+      "type": "conversation_excerpt",
+      "file": "/home/user/marvin/raw/conversations/2026-04-30_16-13-39_22451ee2.md",
+      "summary": "Graphify est installé avec succès. Voici un résumé : **Installation terminée** — `graphify` v0.5.3 est installé depuis le dépôt `safishamsi/graphify`. C'est un assistant de coding IA qui transforme un dossier de code, docs ou images en un **graphe de connaissances queryable**. Commandes principales ",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_16-13-39_22451ee2.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "conversation:86886518",
+      "label": "Conversation",
+      "type": "conversation",
+      "file": "/home/user/marvin/raw/conversations/2026-04-30_16-36-26_86886518.md",
+      "session_id": "86886518-3618-4d78-8b46-5e1c57a7bf03",
+      "timestamp": "2026-04-30T16-36-26",
+      "message_count": 2,
+      "tool_call_count": 19,
+      "tools_used": [
+        "Bash",
+        "Write",
+        "Read",
+        "Edit"
+      ],
+      "summary": "Session 'Conversation'. 2 échanges utilisateur. Outils: Bash, Write, Read, Edit. Premier message: This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation. Summary: 1. Primary Request and Intent:    The u",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_16-36-26_86886518.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "conversation:86886518:msg_0",
+      "label": "Conversation — réponse 1",
+      "type": "conversation_excerpt",
+      "file": "/home/user/marvin/raw/conversations/2026-04-30_16-36-26_86886518.md",
+      "summary": "Tout est en place. Voici ce qui a été mis en place : --- **3 automatisations configurées :** **1. `/fin-de-session` → graphify** (`~/.claude/skills/fin-de-session/SKILL.md`)   Après avoir généré et sauvegardé le résumé dans `raw/conversations/RESUME_YYYY-MM-DD.md`, le skill lance automatiquement `gr",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_16-36-26_86886518.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "conversation:06232c9c",
+      "label": "Install Graphify repository",
+      "type": "conversation",
+      "file": "/home/user/marvin/raw/conversations/2026-04-30_16-18-53_06232c9c.md",
+      "session_id": "06232c9c-9646-491e-8bf8-2a8686f6691b",
+      "timestamp": "2026-04-30T16-18-53",
+      "message_count": 2,
+      "tool_call_count": 32,
+      "tools_used": [
+        "Bash",
+        "Agent",
+        "ToolSearch",
+        "mcp__github__get_file_contents",
+        "Read",
+        "TodoWrite"
+      ],
+      "summary": "Session 'Install Graphify repository'. 2 échanges utilisateur. Outils: Bash, Agent, ToolSearch, mcp__github__get_file_contents, Read. Premier message: installe ce repo : https://github.com/safishamsi/graphify",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_16-18-53_06232c9c.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "conversation:06232c9c:msg_0",
+      "label": "Install Graphify repository — réponse 1",
+      "type": "conversation_excerpt",
+      "file": "/home/user/marvin/raw/conversations/2026-04-30_16-18-53_06232c9c.md",
+      "summary": "Graphify est installé avec succès. Voici un résumé : **Installation terminée** — `graphify` v0.5.3 est installé depuis le dépôt `safishamsi/graphify`. C'est un assistant de coding IA qui transforme un dossier de code, docs ou images en un **graphe de connaissances queryable**. Commandes principales ",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_16-18-53_06232c9c.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "conversation:369fc090",
+      "label": "Conversation",
+      "type": "conversation",
+      "file": "/home/user/marvin/raw/conversations/2026-04-30_16-19-11_369fc090.md",
+      "session_id": "369fc090-1778-46d6-80d0-290b7c8f55d1",
+      "timestamp": "2026-04-30T16-19-11",
+      "message_count": 23,
+      "tool_call_count": 118,
+      "tools_used": [
+        "Bash",
+        "Agent",
+        "ToolSearch",
+        "Edit",
+        "Write",
+        "Skill",
+        "mcp__github__get_file_contents",
+        "Read",
+        "mcp__github__create_pull_request",
+        "TodoWrite"
+      ],
+      "summary": "Session 'Conversation'. 23 échanges utilisateur. Outils: Bash, Agent, ToolSearch, Edit, Write. Premier message: installe ce repo : https://github.com/safishamsi/graphify",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_16-19-11_369fc090.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "conversation:369fc090:msg_0",
+      "label": "Conversation — réponse 1",
+      "type": "conversation_excerpt",
+      "file": "/home/user/marvin/raw/conversations/2026-04-30_16-19-11_369fc090.md",
+      "summary": "Graphify est installé avec succès. Voici un résumé : **Installation terminée** — `graphify` v0.5.3 est installé depuis le dépôt `safishamsi/graphify`. C'est un assistant de coding IA qui transforme un dossier de code, docs ou images en un **graphe de connaissances queryable**. Commandes principales ",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_16-19-11_369fc090.md",
+      "source_location": "L1"
+    },
+    {
+      "id": "conversation:9920e00f",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_17-13-30_9920e00f.md",
+      "source_location": "L1",
+      "timestamp": "2026-04-30T17:13:30.767662",
+      "summary": "Session 'Conversation'. Outils: Write, Edit, Bash, Read. 45 appels."
+    },
+    {
+      "id": "resume:RESUME_2026-04-30",
+      "label": "Résumé de session — Automatisation graphify : ingestion conversations + SessionStart hook",
+      "type": "session_resume",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/RESUME_2026-04-30.md",
+      "source_location": "L1",
+      "timestamp": "2026-04-30T17:29:32.310294",
+      "summary": "# Résumé de session — Automatisation graphify : ingestion conversations + SessionStart hook\n> Date : 2026-04-30\n> Projet : marvin (`lafmarvin-boop/marvin`)\n> Branche git : `claude/install-graphify-8n5eG`\n\n## Contexte de départ\nSession reprise depuis une précédente conversation. Deux tâches restaient à faire : (1) envoyer automatiquement les résumés `/fin-de-session` dans graphify, (2) injecter le "
+    },
+    {
+      "id": "conversation:3a899a79",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_17-29-35_3a899a79.md",
+      "source_location": "L1",
+      "timestamp": "2026-04-30T17:29:35.917316",
+      "summary": "Session 'Conversation'. Outils: Read, Edit, Write, Bash. 47 appels."
+    },
+    {
+      "id": "conversation:17416ac2",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_18-40-31_17416ac2.md",
+      "source_location": "L1",
+      "timestamp": "2026-04-30T18:40:31.174419",
+      "summary": "Session 'Conversation'. Outils: Agent, Bash, Write, Edit, Read. 55 appels."
+    },
+    {
+      "id": "conversation:b54290c4",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-04-30_21-17-09_b54290c4.md",
+      "source_location": "L1",
+      "timestamp": "2026-04-30T21:17:09.155416",
+      "summary": "Session 'Conversation'. Outils: Read, Write, WebFetch, Agent, Edit. 76 appels."
+    },
+    {
+      "id": "conversation:2f1816d8",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-05-01_09-03-52_2f1816d8.md",
+      "source_location": "L1",
+      "timestamp": "2026-05-01T09:03:52.273652",
+      "summary": "Session 'Conversation'. Outils: WebFetch, Agent, Read, Write, Bash. 86 appels."
+    },
+    {
+      "id": "conversation:3c71451c",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-05-01_09-19-29_3c71451c.md",
+      "source_location": "L1",
+      "timestamp": "2026-05-01T09:19:29.619301",
+      "summary": "Session 'Conversation'. Outils: Read, Edit, Write, Bash, Agent. 110 appels."
+    },
+    {
+      "id": "conversation:ae81eb3b",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-05-01_09-24-08_ae81eb3b.md",
+      "source_location": "L1",
+      "timestamp": "2026-05-01T09:24:08.489155",
+      "summary": "Session 'Conversation'. Outils: Bash, Edit, Write, WebFetch, Read. 111 appels."
+    },
+    {
+      "id": "conversation:4cd34234",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-05-01_09-41-37_4cd34234.md",
+      "source_location": "L1",
+      "timestamp": "2026-05-01T09:41:37.895786",
+      "summary": "Session 'Conversation'. Outils: WebFetch, Edit, Write, Read, Agent. 113 appels."
+    },
+    {
+      "id": "conversation:8fe36790",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-05-01_09-48-20_8fe36790.md",
+      "source_location": "L1",
+      "timestamp": "2026-05-01T09:48:20.691732",
+      "summary": "Session 'Conversation'. Outils: Write, Agent, Edit, Read, WebFetch. 115 appels."
+    },
+    {
+      "id": "conversation:61537f00",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-05-01_09-58-06_61537f00.md",
+      "source_location": "L1",
+      "timestamp": "2026-05-01T09:58:07.126300",
+      "summary": "Session 'Conversation'. Outils: Agent, Edit, WebFetch, Read, Write. 119 appels."
+    },
+    {
+      "id": "conversation:4101c6a6",
+      "label": "Conversation",
+      "type": "conversation",
+      "file_type": "document",
+      "source_file": "/home/user/marvin/raw/conversations/2026-05-01_10-30-42_4101c6a6.md",
+      "source_location": "L1",
+      "timestamp": "2026-05-01T10:30:42.965611",
+      "summary": "Session 'Conversation'. Outils: Edit, Agent, WebFetch, Write, Read. 143 appels."
     }
   ],
   "edges": [
@@ -1468,6 +1714,30 @@
       "source_file": "graphify/docs/logo-text.svg",
       "source_location": null,
       "weight": 0.85
+    },
+    {
+      "source": "conversation:22451ee2",
+      "target": "conversation:22451ee2:msg_0",
+      "relation": "contains_response",
+      "weight": 0.8
+    },
+    {
+      "source": "conversation:86886518",
+      "target": "conversation:86886518:msg_0",
+      "relation": "contains_response",
+      "weight": 0.8
+    },
+    {
+      "source": "conversation:06232c9c",
+      "target": "conversation:06232c9c:msg_0",
+      "relation": "contains_response",
+      "weight": 0.8
+    },
+    {
+      "source": "conversation:369fc090",
+      "target": "conversation:369fc090:msg_0",
+      "relation": "contains_response",
+      "weight": 0.8
     }
   ],
   "hyperedges": [
