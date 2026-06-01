@@ -1800,13 +1800,6 @@ function endSession(){
   localStorage.removeItem('parlons_active_session');
   document.getElementById('session-timer').textContent='0:00';
   const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
-  if(chatSessionId&&chatState==='active'){
-    // Timer expiré mais session active : ouvrir le modal de renouvellement SANS fermer la
-    // session côté serveur. La session reste active tant que l'utilisateur n'a pas décidé.
-    chatExtensionPending=true;
-    setTimeout(()=>openModal(),600);
-    return;
-  }
   _closeSessionNow();
 }
 function _closeSessionNow(){
@@ -1819,7 +1812,6 @@ function _closeSessionNow(){
   clearInterval(chatPollingInterval);chatPollingInterval=null;
   showChatPanel(false);
   const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
-  setTimeout(()=>openModal(),600);
 }
 
 function agentConnected(pseudo, assignedAt){
@@ -3020,7 +3012,6 @@ async function pollChat(){
       clearInterval(chatPollingInterval);chatPollingInterval=null;
       showChatPanel(false);
       const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
-      setTimeout(()=>openModal(),600);
     }
   }catch(e){}
 }
