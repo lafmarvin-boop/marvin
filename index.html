@@ -2098,8 +2098,20 @@ function openModal(amount){
   document.getElementById('step-1').style.display='block';document.getElementById('step-2').style.display='none';
   document.getElementById('payment-success').style.display='none';document.getElementById('sub-success').style.display='none';document.getElementById('payment-form').style.display='block';
   document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';
+  // Bloquer endSession dès l'ouverture du modal si une session est active
+  if(chatSessionId&&chatState==='active'&&sessionTimer!==null&&!chatExtensionPending){
+    chatExtensionPending=true;
+  }
 }
-function closeModal(){document.getElementById('modal').classList.remove('active');document.body.style.overflow='';if(cardElement)try{cardElement.unmount();}catch(e){}}
+function closeModal(){
+  document.getElementById('modal').classList.remove('active');document.body.style.overflow='';
+  if(cardElement)try{cardElement.unmount();}catch(e){}
+  // Si le modal se ferme sans paiement et que la session est toujours active, retirer le blocage
+  const paid=document.getElementById('payment-success')&&document.getElementById('payment-success').style.display==='block';
+  if(!paid&&chatExtensionPending&&chatSessionId&&chatState==='active'){
+    chatExtensionPending=false;
+  }
+}
 function handleOverlayClick(e){if(e.target===document.getElementById('modal'))closeModal();}
 function toggleFaq(btn){const item=btn.closest('.faq-item'),isOpen=item.classList.contains('open');document.querySelectorAll('.faq-item.open').forEach(i=>i.classList.remove('open'));if(!isOpen)item.classList.add('open');}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeArticle();closeGroupModal();}});
