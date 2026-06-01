@@ -138,6 +138,10 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 .session-row-name{font-weight:600;}
 .session-row-amount{font-weight:700;color:var(--tc);}
 .session-row-meta{font-size:.72rem;color:var(--mid);margin-top:.2rem;}
+.review-card{background:var(--white);border-radius:10px;padding:.85rem .9rem;border:1px solid var(--sand);}
+.review-stars{font-size:1rem;color:#FFD700;margin-bottom:.3rem;}
+.review-comment{font-size:.82rem;color:var(--dark);line-height:1.5;margin-bottom:.4rem;font-style:italic;}
+.review-meta{font-size:.7rem;color:var(--mid);}
 
 /* ── LOADING OVERLAY ── */
 .loading-overlay{position:fixed;inset:0;background:rgba(253,248,243,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:1rem;}
@@ -249,6 +253,8 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
       </div>
       <div class="section-head">Sessions récentes</div>
       <div id="recent-sessions"></div>
+      <div class="section-head" id="reviews-head" style="display:none">Avis reçus</div>
+      <div id="agent-reviews"></div>
     </div>
 
   </div>
@@ -707,6 +713,24 @@ function renderStats(){
       </div>
       <div class="session-row-meta">${esc(s.formule||'')}${s.started_at?' · '+fmtDate(s.started_at):''}${s.rating?' · '+'★'.repeat(s.rating):''}</div>
     </div>`).join(''):'<div class="empty-state">Aucune session pour l\'instant</div>';
+
+  const reviews=(statsData.sessions||[]).filter(s=>s.rating&&s.rating_comment).slice(0,10);
+  const revEl=document.getElementById('agent-reviews');
+  const revHead=document.getElementById('reviews-head');
+  if(revEl&&revHead){
+    if(reviews.length){
+      revHead.style.display='block';
+      revEl.innerHTML=reviews.map(s=>`
+        <div class="review-card">
+          <div class="review-stars">${'★'.repeat(s.rating)}${'☆'.repeat(5-s.rating)}</div>
+          <div class="review-comment">"${esc(s.rating_comment)}"</div>
+          <div class="review-meta">${esc(s.pseudo||'Visiteur')}${s.started_at?' · '+fmtDate(s.started_at):''}</div>
+        </div>`).join('');
+    } else {
+      revHead.style.display='none';
+      revEl.innerHTML='';
+    }
+  }
 }
 
 // ── PUSH NOTIFICATIONS ──

@@ -663,7 +663,7 @@ function escHtml(s) {
 }
 
 function openAgentReviews(idx) {
-  const a = typeof idx === 'number' ? (window._agentList||[])[idx] : agentData[idx];
+  const a = typeof idx === 'object' && idx !== null ? idx : (typeof idx === 'number' ? (window._agentList||[])[idx] : agentData[idx]);
   if (!a) return;
   const avg = a.avgRating
     ? `<span style="color:#FFD700;font-size:1.1rem">${'★'.repeat(Math.round(a.avgRating))}${'☆'.repeat(5-Math.round(a.avgRating))}</span> ${a.avgRating.toFixed(1)}/5 · ${a.ratingCount} avis`
@@ -680,6 +680,12 @@ function openAgentReviews(idx) {
     : '<div style="color:var(--light);font-size:.84rem">Aucun commentaire pour cet agent.</div>';
   document.getElementById('reviews-overlay').classList.add('active');
   document.body.style.overflow = 'hidden';
+}
+
+function openMyAgentReviews() {
+  const a = window._myAgentReviews;
+  if (!a) return;
+  openAgentReviews(a);
 }
 
 function closeReviews() {
@@ -1319,11 +1325,14 @@ function renderAgentDash(email, d) {
     : '<div style="color:var(--light);font-size:.82rem">Aucune session pour l\'instant.</div>';
 
   const avg = d.avgRating;
+  const myReviews = (d.sessions||[]).filter(s => s.rating && s.rating_comment).map(s => ({ stars: s.rating, comment: s.rating_comment, pseudo: s.pseudo, formule: s.formule, date: s.started_at }));
+  window._myAgentReviews = { name: 'Mes avis', avgRating: avg, ratingCount: d.ratingCount, reviews: myReviews };
   document.getElementById('agent-rating').innerHTML = avg
     ? `<div style="text-align:center;padding:.5rem 0">
         <div style="font-size:2rem;color:#FFD700">${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))}</div>
         <div style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--dark);margin:.4rem 0">${avg.toFixed(1)}<span style="font-size:.9rem;color:var(--light)">/5</span></div>
         <div style="font-size:.75rem;color:var(--light)">${d.ratingCount} avis reçu${d.ratingCount>1?'s':''}</div>
+        ${myReviews.length ? `<button onclick="openMyAgentReviews()" style="margin-top:.7rem;background:var(--tc);color:white;border:none;border-radius:50px;padding:.42rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;">Voir mes avis →</button>` : ''}
       </div>`
     : '<div style="color:var(--light);font-size:.82rem;text-align:center;padding:1rem">Aucune note pour l\'instant.</div>';
 

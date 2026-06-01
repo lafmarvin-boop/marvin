@@ -483,6 +483,16 @@
     .pcp-input-ta:focus{outline:none;border-color:var(--terracotta);}
     .pcp-send-btn{background:var(--terracotta);color:white;border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
     .pcp-send-btn:hover{background:var(--rust);}
+    #pcp-rating{display:none;flex-direction:column;gap:.6rem;padding:.85rem;border-top:1px solid #f0e8e0;background:#fdf8f3;flex-shrink:0;}
+    #pcp-rating p{font-size:.83rem;color:var(--dark);text-align:center;margin:0;}
+    #pcp-rating-stars{display:flex;justify-content:center;gap:.4rem;}
+    #pcp-rating-stars span{font-size:1.9rem;cursor:pointer;color:#d0c0b0;transition:color .15s,transform .1s;user-select:none;}
+    #pcp-rating-stars span.on{color:#FFD700;}
+    #pcp-rating-comment{border:1.5px solid #e0d8d0;border-radius:10px;padding:.5rem .75rem;font-size:.79rem;font-family:'DM Sans',sans-serif;resize:none;height:52px;color:var(--dark);outline:none;width:100%;box-sizing:border-box;}
+    #pcp-rating-comment:focus{border-color:var(--terracotta);}
+    .pcp-rating-actions{display:flex;gap:.5rem;}
+    .pcp-rating-skip{flex:1;background:none;border:1px solid #e0d8d0;border-radius:50px;padding:.5rem;font-family:'DM Sans',sans-serif;font-size:.79rem;color:var(--mid);cursor:pointer;}
+    .pcp-rating-send{flex:2;background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.5rem;font-family:'DM Sans',sans-serif;font-size:.79rem;font-weight:600;cursor:pointer;}
     @media(max-width:640px){#parlons-chat-panel{bottom:0;right:0;width:100vw;max-width:100vw;border-radius:20px 20px 0 0;height:82dvh;max-height:82dvh;}#parlons-chat-btn{bottom:1rem;right:1rem;}}
     /* rating modal */
     .rating-zone{display:none;margin-top:1.2rem;background:var(--warm);border-radius:11px;padding:1.2rem;text-align:center;border:1px solid var(--sand);}
@@ -1795,6 +1805,7 @@ function endSession(){
   _closeSessionNow();
 }
 function _closeSessionNow(){
+  const sessionIdToRate=chatSessionId;
   if(chatSessionId){
     fetch('/.netlify/functions/chat-close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,closedBy:'visitor'})}).catch(()=>{});
     sessionStorage.removeItem('parlons_chat_session_id');
@@ -1802,6 +1813,42 @@ function _closeSessionNow(){
     chatSessionId=null;
   }
   clearInterval(chatPollingInterval);chatPollingInterval=null;
+  if(sessionIdToRate){
+    showChatPanel(true);
+    showPcpRating(sessionIdToRate);
+  } else {
+    showChatPanel(false);
+    const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
+  }
+}
+
+let pcpRatingVal=0;
+function showPcpRating(sessionId){
+  const el=document.getElementById('pcp-rating');
+  if(!el)return;
+  pcpRatingVal=0;
+  el.dataset.sessionId=sessionId;
+  el.style.display='flex';
+  document.querySelectorAll('#pcp-rating-stars span').forEach(s=>s.classList.remove('on'));
+  const comment=document.getElementById('pcp-rating-comment');if(comment)comment.value='';
+  setChatState('ended');
+}
+function setPcpRating(n){
+  pcpRatingVal=n;
+  document.querySelectorAll('#pcp-rating-stars span').forEach((s,i)=>s.classList.toggle('on',i<n));
+}
+async function submitPcpRating(){
+  const el=document.getElementById('pcp-rating');
+  const sessionId=el?.dataset.sessionId;
+  if(!pcpRatingVal){alert('Veuillez choisir une note.');return;}
+  const comment=document.getElementById('pcp-rating-comment').value.trim();
+  try{
+    await fetch('/.netlify/functions/submit-rating',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatSessionId:sessionId,rating:pcpRatingVal,comment})});
+  }catch(e){}
+  if(el)el.innerHTML='<div style="text-align:center;padding:.8rem 0;"><div style="font-size:1.8rem;margin-bottom:.5rem;">✅</div><p style="color:#2d7a2d;font-size:.84rem;margin:0 0 .9rem">Merci pour votre note !</p><button onclick="closePcpRating()" style="background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.55rem 1.4rem;font-family:\'DM Sans\',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;">Fermer</button></div>';
+}
+function closePcpRating(){
+  const el=document.getElementById('pcp-rating');if(el)el.style.display='none';
   showChatPanel(false);
   const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
 }
@@ -2805,6 +2852,31 @@ window.addEventListener('load', stackBanners);
 window.addEventListener('resize', stackBanners);
 // Relancer après les fonts Google
 document.fonts && document.fonts.ready.then(stackBanners);
+
+// ── AVIS RÉELS ──
+(function loadRealReviews(){
+  const COLORS=['linear-gradient(135deg,#C4714A,#A8502E)','linear-gradient(135deg,#5B8DB8,#3A6A9A)','linear-gradient(135deg,#7A9A5A,#5A7A3A)','linear-gradient(135deg,#A87850,#8A5A30)','linear-gradient(135deg,#7A6AAA,#5A4A8A)'];
+  const STARS=['','★','★★','★★★','★★★★','★★★★★'];
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
+    if(!Array.isArray(data)||data.length<2)return;
+    const grid=document.querySelector('#avis .testi-grid');
+    if(!grid)return;
+    const pick=data.slice(0,3);
+    grid.innerHTML=pick.map((r,i)=>{
+      const label=r.client_pseudo?esc(r.client_pseudo):'Utilisateur';
+      const color=COLORS[i%COLORS.length];
+      const initial=label.charAt(0).toUpperCase();
+      const stars=STARS[Math.max(1,Math.min(5,r.rating||5))];
+      const halfStar=r.rating===4?'☆':'';
+      return `<div class="testi-card">
+        <div class="stars">${stars}${halfStar}</div>
+        <blockquote>"${esc(r.rating_comment)}"</blockquote>
+        <div class="testi-author"><div class="testi-av" style="background:${color}">${initial}</div><div><strong>${label}</strong><span>${r.formule||'Session Parlons'}</span></div></div>
+      </div>`;
+    }).join('');
+  }).catch(()=>{});
+})();
 </script>
 
 <!-- WIDGET CHAT CUSTOM -->
@@ -2843,6 +2915,17 @@ document.fonts && document.fonts.ready.then(stackBanners);
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,90)+'px'"></textarea>
     <button class="pcp-send-btn" onclick="sendChatMessage()" aria-label="Envoyer">➤</button>
+  </div>
+  <div id="pcp-rating">
+    <p>Comment s'est passée votre session ? Notez votre écoutant :</p>
+    <div id="pcp-rating-stars">
+      <span onclick="setPcpRating(1)">★</span><span onclick="setPcpRating(2)">★</span><span onclick="setPcpRating(3)">★</span><span onclick="setPcpRating(4)">★</span><span onclick="setPcpRating(5)">★</span>
+    </div>
+    <textarea id="pcp-rating-comment" placeholder="Un commentaire sur votre écoutant ? (optionnel)"></textarea>
+    <div class="pcp-rating-actions">
+      <button class="pcp-rating-skip" onclick="closePcpRating()">Passer</button>
+      <button class="pcp-rating-send" onclick="submitPcpRating()">Envoyer ma note →</button>
+    </div>
   </div>
 </div>
 
@@ -2911,6 +2994,7 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
   chatExtensionPending=false;chatExtensionNewDuration=0;
   chatRenderedIds=new Set();chatLastMsgTime=null;
   const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
+  const pcpRatingEl=document.getElementById('pcp-rating');if(pcpRatingEl)pcpRatingEl.style.display='none';
   const visitorId=localStorage.getItem('parlons_visitor_id')||'';
   try{
     const r=await fetch('/.netlify/functions/chat-start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId,name,sessionType,sessionLabel,durationSec,paymentId:paymentId||null})});
