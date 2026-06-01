@@ -63,9 +63,23 @@ exports.handler = async (event) => {
     const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=*&limit=1`);
     if (!sessions.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Session introuvable' }) };
     const sess = sessions[0];
-    if (!sess.extension_pending) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Aucune demande en attente' }) };
 
-    const ext = sess.extension_pending;
+    // Lire la demande depuis extension_pending JSONB, ou en fallback depuis le message système
+    let ext = sess.extension_pending;
+    if (!ext) {
+      const msgs = await sbGet(
+        `chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&sender_type=eq.system&order=created_at.desc&limit=10&select=content`
+      );
+      const extMsg = msgs.find(m => m.content && m.content.includes('souhaite prolonger'));
+      if (extMsg) {
+        const match = extMsg.content.match(/de (\d+) min/);
+        if (match) {
+          const mins = parseInt(match[1]);
+          ext = { newDurationSec: mins * 60, totalForNewSession: mins * 60, paymentId: null, label: null };
+        }
+      }
+    }
+    if (!ext) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Aucune demande en attente' }) };
     const now = new Date().toISOString();
 
     // ── CAS ACCEPTÉ ────────────────────────────────────────────────────────────

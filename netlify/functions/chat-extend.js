@@ -43,28 +43,31 @@ exports.handler = async (event) => {
     const totalForNew = addSec + remaining;
     const mins = Math.floor(addSec / 60);
 
-    // Stocker la demande de prolongation dans la session (sans étendre encore)
-    const patchRes = await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
-      method: 'PATCH',
-      headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        extension_pending: {
-          newDurationSec: addSec,
-          remainingSec: remaining,
-          totalForNewSession: totalForNew,
-          paymentId: paymentId || null,
-          label: label || null,
-          requestedAt: new Date().toISOString()
-        }
-      })
-    });
-    if (!patchRes.ok) {
-      const errText = await patchRes.text().catch(() => '');
-      console.error('chat-extend PATCH failed:', patchRes.status, errText);
-      return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Erreur enregistrement prolongation', detail: errText }) };
+    // Tenter de stocker dans extension_pending JSONB — best-effort, ne bloque pas
+    try {
+      const patchRes = await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+        method: 'PATCH',
+        headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          extension_pending: {
+            newDurationSec: addSec,
+            remainingSec: remaining,
+            totalForNewSession: totalForNew,
+            paymentId: paymentId || null,
+            label: label || null,
+            requestedAt: new Date().toISOString()
+          }
+        })
+      });
+      if (!patchRes.ok) {
+        const errText = await patchRes.text().catch(() => '');
+        console.error('chat-extend PATCH non-bloquant:', patchRes.status, errText);
+      }
+    } catch (e) {
+      console.error('chat-extend PATCH error non-bloquant:', e.message);
     }
 
-    // Message système dans le tchat courant
+    // Message système — toujours inséré (c'est la source de vérité pour l'agent)
     await fetch(`${SB_URL}/rest/v1/chat_messages`, {
       method: 'POST',
       headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
