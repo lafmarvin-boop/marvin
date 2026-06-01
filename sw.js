@@ -38,8 +38,8 @@ self.addEventListener('push', e => {
   e.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 192 192\'%3E%3Crect width=\'192\' height=\'192\' rx=\'38\' fill=\'%23C4714A\'/%3E%3Ctext y=\'.88em\' font-size=\'128\' x=\'50%25\' text-anchor=\'middle\' dominant-baseline=\'top\' font-family=\'Georgia,serif\' fill=\'white\'%3EP%3C/text%3E%3C/svg%3E',
-      badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 96 96\'%3E%3Crect width=\'96\' height=\'96\' rx=\'20\' fill=\'%23C4714A\'/%3E%3Ctext y=\'.88em\' font-size=\'64\' x=\'50%25\' text-anchor=\'middle\' dominant-baseline=\'top\' font-family=\'Georgia,serif\' fill=\'white\'%3EP%3C/text%3E%3C/svg%3E',
+      icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 192 192\'%3E%3Crect width=\'192\' height=\'192\' rx=\'40\' fill=\'%23C4714A\'/%3E%3Crect x=\'28\' y=\'26\' width=\'136\' height=\'106\' rx=\'22\' fill=\'white\'/%3E%3Cpolygon points=\'48,132 48,162 76,132\' fill=\'white\'/%3E%3Ctext x=\'96\' y=\'104\' font-size=\'70\' text-anchor=\'middle\' font-family=\'Georgia,serif\' fill=\'%23C4714A\'%3EP%3C/text%3E%3C/svg%3E',
+      badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 96 96\'%3E%3Crect width=\'96\' height=\'96\' rx=\'20\' fill=\'%23C4714A\'/%3E%3Crect x=\'14\' y=\'12\' width=\'68\' height=\'53\' rx=\'11\' fill=\'white\'/%3E%3Cpolygon points=\'24,65 24,83 38,65\' fill=\'white\'/%3E%3Ctext x=\'48\' y=\'51\' font-size=\'34\' text-anchor=\'middle\' font-family=\'Georgia,serif\' fill=\'%23C4714A\'%3EP%3C/text%3E%3C/svg%3E',
       data: { url: data.url },
       vibrate: [200, 100, 200, 100, 200],
       requireInteraction: true,
