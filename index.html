@@ -2901,6 +2901,10 @@ function appendChatMsg(msg){
   if(msg.sender_type==='agent'&&sessionTimer===null&&chatState==='active')startSessionCountdown(msg.created_at||null);
 }
 async function startChatSession(name,sessionType,sessionLabel,durationSec,paymentId){
+  // Réinitialiser l'état du chrono pour que startSessionCountdown puisse démarrer
+  if(sessionTimer!==null){clearInterval(sessionTimer);sessionTimer=null;}
+  sessionEndAt=0;sessionSeconds=durationSec||sessionDurationSec;
+  chatExtensionPending=false;chatExtensionNewDuration=0;
   chatRenderedIds=new Set();chatLastMsgTime=null;
   const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
   const visitorId=localStorage.getItem('parlons_visitor_id')||'';
@@ -2981,7 +2985,9 @@ async function pollChat(){
       }
     }
     if(d.status==='closed'&&chatState!=='ended'&&!chatExtensionPending){
-      setChatState('ended');clearInterval(chatPollingInterval);chatPollingInterval=null;
+      setChatState('ended');
+      if(sessionTimer!==null){clearInterval(sessionTimer);sessionTimer=null;}
+      clearInterval(chatPollingInterval);chatPollingInterval=null;
       showChatPanel(false);
       const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
       setTimeout(()=>openModal(),600);
