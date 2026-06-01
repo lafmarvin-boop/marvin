@@ -84,6 +84,10 @@ exports.handler = async (event) => {
 
     // ── CAS ACCEPTÉ ────────────────────────────────────────────────────────────
     if (accept) {
+      // Idempotency: if extension_pending is already null, the extension was already processed
+      if (!sess.extension_pending) {
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, accepted: true }) };
+      }
       const newTotal = (sess.duration_sec || 1800) + ext.newDurationSec;
       const mins = Math.floor(ext.newDurationSec / 60);
       await Promise.all([

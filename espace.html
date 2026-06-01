@@ -586,6 +586,7 @@ let agentEmailStored = '';
 let agentChatToken = null;
 let agentPollingInterval = null;
 let agentSessions = new Map(); // sessionId -> {id, name, topic, label, durationSec, assignedAt, messages, renderedIds, unread}
+const respondingExtensions = new Set(); // guard against double-click on extension buttons
 let agentActiveTabId = null;
 let agentFloatOpen = false;
 let agentFloatTimerInterval = null;
@@ -2180,6 +2181,8 @@ async function endAgentFloatSession() {
 }
 
 async function respondExtension(sessionId, accept) {
+  if (respondingExtensions.has(sessionId)) return;
+  respondingExtensions.add(sessionId);
   try {
     const res = await fetch(`${API}/chat-extension-respond`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2187,7 +2190,11 @@ async function respondExtension(sessionId, accept) {
     });
     const data = await res.json();
     if (!data.ok) return;
-    if (!accept) {
+    if (accept) {
+      // Immediately clear local extensionPending so buttons disappear before next poll
+      const sess = agentSessions.get(sessionId);
+      if (sess) { sess.extensionPending = null; renderAgentFloatMessages(); }
+    } else {
       // L'ancienne session est fermée : la retirer de la Map
       agentSessions.delete(sessionId);
       if (agentActiveTabId === sessionId) {
@@ -2198,8 +2205,8 @@ async function respondExtension(sessionId, accept) {
       renderAgentFloatMessages();
       updateAgentFloatBubble();
     }
-    // Si accepté, le poll renverra duration_sec mis à jour et extensionPending=null
   } catch(e) { console.error('respondExtension:', e); }
+  finally { respondingExtensions.delete(sessionId); }
 }
 
 async function agentAcceptFromQueue(sessionId) {
