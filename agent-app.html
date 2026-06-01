@@ -203,6 +203,12 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
         <button class="push-banner-btn" onclick="subscribePush()">Activer</button>
       </div>
 
+      <!-- Install PWA banner -->
+      <div class="push-banner" id="install-banner" style="display:none;background:linear-gradient(135deg,#2d1f14,#4a2e1a);">
+        <div class="push-banner-text" style="color:white;">📲 Installer l'appli sur votre téléphone pour un accès rapide et les notifications.</div>
+        <button class="push-banner-btn" onclick="installApp()" style="background:white;color:#C4714A;">Installer</button>
+      </div>
+
       <!-- Queue -->
       <div class="section-head">File d'attente <span id="queue-count-badge"></span></div>
       <div id="queue-list"><div class="empty-state">Aucun visiteur en attente</div></div>
@@ -761,6 +767,34 @@ async function subscribePush(){
 
 // ── ESCAPE HTML ──
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── PWA INSTALL PROMPT ──
+let deferredInstallPrompt = null;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+if (!isStandalone) {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    const banner = document.getElementById('install-banner');
+    if (banner) banner.style.display = 'flex';
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.style.display = 'none';
+});
+
+async function installApp() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.style.display = 'none';
+}
 
 // ── SERVICE WORKER ──
 if('serviceWorker' in navigator){
