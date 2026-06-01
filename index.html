@@ -1829,7 +1829,7 @@ function agentConnected(pseudo, assignedAt){
 }
 function startSessionCountdown(assignedAt){
   if(sessionTimer!==null)return;
-  sessionEndAt=assignedAt?new Date(assignedAt).getTime()+sessionDurationSec*1000:Date.now()+sessionDurationSec*1000;
+  if(sessionEndAt<=0) sessionEndAt=assignedAt?new Date(assignedAt).getTime()+sessionDurationSec*1000:Date.now()+sessionDurationSec*1000;
   try{localStorage.setItem('parlons_active_session',JSON.stringify({paymentId:sessionStorage.getItem('parlons_payment_id'),startedAt:Date.now(),duration:sessionDurationSec,label:selectedLabel}));}catch(e){}
   sessionTimer=setInterval(()=>{
     sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
@@ -2053,7 +2053,7 @@ async function handlePayment(){
 
     // Bloquer endSession pendant la confirmation Stripe si une session est déjà active
     // (le timer peut atteindre 0 pendant les ~10s de traitement Stripe)
-    const wasActiveSession = !!(chatSessionId && chatState==='active' && sessionTimer!==null);
+    const wasActiveSession = !!(chatSessionId && chatState==='active');
     if(wasActiveSession) chatExtensionPending=true;
 
     const {error:stripeErr,paymentIntent}=await stripe.confirmCardPayment(clientSecret,{
@@ -2075,7 +2075,7 @@ async function handlePayment(){
     document.getElementById('payment-form').style.display='none';
     document.getElementById('payment-success').style.display='block';
     // Si une session est déjà active, on prolonge au lieu d'en créer une nouvelle
-    if(chatSessionId&&chatState==='active'&&sessionTimer!==null){
+    if(chatSessionId&&chatState==='active'){
       extendChatSession(sessionDurationSec,paymentIntent.id,selectedLabel);
     } else {
       if(wasActiveSession){chatExtensionPending=false;chatExtensionNewDuration=0;}
@@ -2099,7 +2099,7 @@ function openModal(amount){
   document.getElementById('payment-success').style.display='none';document.getElementById('sub-success').style.display='none';document.getElementById('payment-form').style.display='block';
   document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';
   // Bloquer endSession dès l'ouverture du modal si une session est active
-  if(chatSessionId&&chatState==='active'&&sessionTimer!==null&&!chatExtensionPending){
+  if(chatSessionId&&chatState==='active'&&!chatExtensionPending){
     chatExtensionPending=true;
   }
 }
@@ -2987,7 +2987,8 @@ async function pollChat(){
         const added=d.durationSec-sessionDurationSec;
         chatExtensionPending=false;
         sessionDurationSec=d.durationSec;
-        sessionEndAt+=added*1000;
+        sessionEndAt=sessionEndAt>0?sessionEndAt+added*1000:Date.now()+added*1000;
+        if(sessionTimer===null) startSessionCountdown(null);
         updateSessionUI();
         const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
         const mobileRenew=document.getElementById('mobile-renew-btn');if(mobileRenew)mobileRenew.style.display='none';
