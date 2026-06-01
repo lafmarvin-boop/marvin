@@ -365,8 +365,8 @@
     <div class="section-title">Trafic du site</div>
     <div class="card" style="padding:0;overflow:hidden">
       <table id="traffic-table">
-        <thead><tr><th>Période</th><th>Visites</th><th>Visiteurs uniques</th><th>Tchats</th></tr></thead>
-        <tbody id="traffic-tbody"><tr><td colspan="4" style="color:var(--light);text-align:center;padding:1.2rem">Chargement…</td></tr></tbody>
+        <thead><tr><th>Période</th><th>Visites</th><th>Visiteurs uniques</th></tr></thead>
+        <tbody id="traffic-tbody"><tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.2rem">Chargement…</td></tr></tbody>
       </table>
       <!-- Journaux IP intégrés -->
       <div style="border-top:1px solid var(--sand);padding:.75rem 1rem;">
@@ -1058,7 +1058,6 @@ function renderDashboard(d) {
       <td style="font-weight:500">${label}</td>
       <td style="font-weight:700;color:var(--tc)">${((s&&s.visits)||0).toLocaleString('fr-FR')}</td>
       <td>${((s&&s.unique)||0).toLocaleString('fr-FR')}</td>
-      <td>${((s&&s.chats)||0).toLocaleString('fr-FR')}</td>
     </tr>`
   ).join('');
 
