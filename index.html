@@ -2051,10 +2051,18 @@ async function handlePayment(){
     const {clientSecret,error:serverErr}=await resp.json();
     if(serverErr) throw new Error(serverErr);
 
+    // Bloquer endSession pendant la confirmation Stripe si une session est déjà active
+    // (le timer peut atteindre 0 pendant les ~10s de traitement Stripe)
+    const wasActiveSession = !!(chatSessionId && chatState==='active' && sessionTimer!==null);
+    if(wasActiveSession) chatExtensionPending=true;
+
     const {error:stripeErr,paymentIntent}=await stripe.confirmCardPayment(clientSecret,{
       payment_method:{card:cardElement}
     });
-    if(stripeErr) throw new Error(stripeErr.message);
+    if(stripeErr){
+      if(wasActiveSession){chatExtensionPending=false;chatExtensionNewDuration=0;}
+      throw new Error(stripeErr.message);
+    }
 
     sessionStorage.setItem('parlons_payment_id', paymentIntent.id);
     // Incrémenter le compteur de fidélité
@@ -2070,6 +2078,7 @@ async function handlePayment(){
     if(chatSessionId&&chatState==='active'&&sessionTimer!==null){
       extendChatSession(sessionDurationSec,paymentIntent.id,selectedLabel);
     } else {
+      if(wasActiveSession){chatExtensionPending=false;chatExtensionNewDuration=0;}
       startChatSession(document.getElementById('user-name').value.trim()||'Client','paid',selectedLabel,sessionDurationSec,paymentIntent.id);
       startWaitTimer();
     }
