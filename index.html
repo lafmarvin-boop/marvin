@@ -2931,26 +2931,29 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
     startChatPolling();
   }catch(e){console.error('startChatSession:',e);}
 }
-async function extendChatSession(newDurationSec,paymentId,label){
+async function extendChatSession(newDurationSec,paymentId,label,_retry){
   try{
     const remainingSec=sessionTimer!==null?Math.max(0,Math.round((sessionEndAt-Date.now())/1000)):0;
-    // Set pending flag BEFORE await to prevent endSession racing during the API call
     chatExtensionPending=true;
     chatExtensionNewDuration=newDurationSec;
     const sub=document.getElementById('pcp-subtitle');
     if(sub)sub.textContent='En attente de l\'agent…';
     closeModal();
-    console.log('[extend] calling chat-extend, sessionId=',chatSessionId,'newDurationSec=',newDurationSec);
     const r=await fetch('/.netlify/functions/chat-extend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,newDurationSec,paymentId,label,remainingSec})});
     const d=await r.json();
-    console.log('[extend] response:', d);
     if(!d.ok){
-      chatExtensionPending=false;chatExtensionNewDuration=0;
-      const sub=document.getElementById('pcp-subtitle');
-      if(sub)sub.textContent='Session en cours';
-      console.error('[extend] FAILED:',d.error,d.detail);
+      // Ne pas annuler chatExtensionPending : le paiement est déjà effectué.
+      // Réessayer une fois après 4s, sinon laisser pollChat gérer la résolution.
+      if(!_retry){setTimeout(()=>extendChatSession(newDurationSec,paymentId,label,true),4000);}
+      else{const s2=document.getElementById('pcp-subtitle');if(s2)s2.textContent='Connexion difficile…';}
+      console.error('[extend] FAILED:',d.error);
     }
-  }catch(e){chatExtensionPending=false;chatExtensionNewDuration=0;console.error('[extend] EXCEPTION:',e);}
+  }catch(e){
+    // Ne pas annuler chatExtensionPending : réessayer une fois, puis laisser le poll gérer.
+    console.error('[extend] EXCEPTION:',e);
+    if(!_retry){setTimeout(()=>extendChatSession(newDurationSec,paymentId,label,true),4000);}
+    else{const s2=document.getElementById('pcp-subtitle');if(s2)s2.textContent='Connexion difficile…';}
+  }
 }
 function startChatPolling(){
   if(chatPollingInterval)clearInterval(chatPollingInterval);

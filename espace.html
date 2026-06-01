@@ -1902,10 +1902,8 @@ async function pollAgentChat() {
           const lastTs = m.created_at;
           if (!agentPollSince || lastTs > agentPollSince) agentPollSince = lastTs;
         }
-        console.log('[poll] new msg:', m.sender_type, (m.content||'').substring(0,60));
         // Auto-open panel on new extension request
         if (m.sender_type === 'system' && m.content && m.content.includes('souhaite prolonger')) {
-          console.log('[poll] extension request detected, opening panel');
           agentActiveTabId = s.id; agentChatSessionId = s.id; anyNew = true;
         }
         // Unread: count if not this tab or panel closed
@@ -2024,40 +2022,54 @@ function renderAgentFloatMessages() {
   sess.messages.forEach((m, i) => {
     if (m.sender_type === 'system' && m.content && m.content.includes('souhaite prolonger')) lastExtIdx = i;
   });
-  console.log('[render] messages:', sess.messages.length, 'lastExtIdx:', lastExtIdx, 'msgs:', sess.messages.map(m=>(m.sender_type||'?')+':'+(m.content||'').substring(0,30)));
   const extResolved = lastExtIdx >= 0 && sess.messages.slice(lastExtIdx + 1).some(m =>
     m.sender_type === 'system' && (m.content.includes('prolongée') || m.content.includes("n'a pas pu"))
   );
+
+  // Helper to build extension buttons div
+  function makeExtButtons(text, sessionId) {
+    const wrap = document.createElement('div');
+    wrap.className = 'agent-msg system';
+    wrap.style.cssText = 'border:1.5px solid #fbbf24;background:#fff7ed;border-radius:12px;padding:.55rem .75rem;';
+    const txt = document.createElement('div');
+    txt.textContent = text;
+    wrap.appendChild(txt);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:.45rem;margin-top:.5rem;';
+    const btnA = document.createElement('button');
+    btnA.textContent = '✓ Prolonger';
+    btnA.style.cssText = 'flex:1;background:#22c55e;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
+    btnA.onclick = () => respondExtension(sessionId, true);
+    const btnR = document.createElement('button');
+    btnR.textContent = '↗ Passer à un autre';
+    btnR.style.cssText = 'flex:1;background:#f59e0b;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
+    btnR.onclick = () => respondExtension(sessionId, false);
+    row.appendChild(btnA);
+    row.appendChild(btnR);
+    wrap.appendChild(row);
+    return wrap;
+  }
 
   msgsEl.innerHTML = '';
   sess.messages.forEach((m, i) => {
     const div = document.createElement('div');
     const isActiveExt = (i === lastExtIdx && !extResolved);
     if (isActiveExt) {
-      div.className = 'agent-msg system';
-      div.style.cssText = 'border:1.5px solid #fbbf24;background:#fff7ed;border-radius:12px;padding:.55rem .75rem;';
-      const txt = document.createElement('div');
-      txt.textContent = m.content;
-      div.appendChild(txt);
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:.45rem;margin-top:.5rem;';
-      const btnA = document.createElement('button');
-      btnA.textContent = '✓ Prolonger';
-      btnA.style.cssText = 'flex:1;background:#22c55e;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
-      btnA.onclick = () => respondExtension(sess.id, true);
-      const btnR = document.createElement('button');
-      btnR.textContent = '↗ Passer à un autre';
-      btnR.style.cssText = 'flex:1;background:#f59e0b;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
-      btnR.onclick = () => respondExtension(sess.id, false);
-      row.appendChild(btnA);
-      row.appendChild(btnR);
-      div.appendChild(row);
+      msgsEl.appendChild(makeExtButtons(m.content, sess.id));
     } else {
       div.className = 'agent-msg ' + (m.sender_type === 'agent' ? 'agent' : m.sender_type === 'system' ? 'system' : 'visitor');
       div.textContent = m.content;
+      msgsEl.appendChild(div);
     }
-    msgsEl.appendChild(div);
   });
+
+  // Fallback: si le message de prolongation n'est pas dans l'historique local
+  // mais que extension_pending JSONB est présent, afficher les boutons quand même
+  if (sess.extensionPending && lastExtIdx === -1) {
+    const mins = Math.floor((sess.extensionPending.newDurationSec || 1800) / 60);
+    const fallbackText = `⏳ Le visiteur souhaite prolonger la session de ${mins} min. En attente de votre accord.`;
+    msgsEl.appendChild(makeExtButtons(fallbackText, sess.id));
+  }
 
   msgsEl.scrollTop = msgsEl.scrollHeight;
   if (infoEl) {
