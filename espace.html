@@ -2042,12 +2042,12 @@ function renderAgentFloatMessages() {
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:.45rem;margin-top:.5rem;';
       const btnA = document.createElement('button');
-      btnA.textContent = '✓ Accepter';
+      btnA.textContent = '✓ Prolonger';
       btnA.style.cssText = 'flex:1;background:#22c55e;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
       btnA.onclick = () => respondExtension(sess.id, true);
       const btnR = document.createElement('button');
-      btnR.textContent = '✗ Refuser';
-      btnR.style.cssText = 'flex:1;background:#ef4444;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
+      btnR.textContent = '↗ Passer à un autre';
+      btnR.style.cssText = 'flex:1;background:#f59e0b;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
       btnR.onclick = () => respondExtension(sess.id, false);
       row.appendChild(btnA);
       row.appendChild(btnR);
