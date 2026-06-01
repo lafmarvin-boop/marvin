@@ -1705,6 +1705,10 @@ function goToPayment(){
 
   // ── CAS TEST : 1 min gratuite, bypass total ──
   if(selectedAmount==='test'){
+    if(chatSessionId&&chatState==='active'){
+      document.getElementById('payment-error').textContent='Sélectionnez un plan payant pour prolonger votre session en cours.';
+      return;
+    }
     closeModal();
     startChatSession(name,'test','Test 1 min',60);
     startWaitTimer();
@@ -2098,8 +2102,13 @@ function openModal(amount){
   document.getElementById('payment-success').style.display='none';document.getElementById('sub-success').style.display='none';document.getElementById('payment-form').style.display='block';
   document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';
   // Bloquer endSession dès l'ouverture du modal si une session est active
-  if(chatSessionId&&chatState==='active'&&!chatExtensionPending){
-    chatExtensionPending=true;
+  if(chatSessionId&&chatState==='active'){
+    if(!chatExtensionPending) chatExtensionPending=true;
+    // Si l'option "test" est encore sélectionnée, basculer sur le premier plan payant
+    if(selectedAmount==='test'){
+      const firstPaid=document.querySelector('#session-select option:not([value="test"]):not([value="sub"]):not([value="group"])');
+      if(firstPaid){firstPaid.selected=true;updatePrice();}
+    }
   }
 }
 function closeModal(){
