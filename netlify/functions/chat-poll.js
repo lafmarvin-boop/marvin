@@ -92,7 +92,7 @@ exports.handler = async (event) => {
 
       // Toutes les sessions actives de cet agent
       const activeSessions = await sbGet(
-        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending&order=assigned_at.asc&limit=3`
+        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip&order=assigned_at.asc&limit=3`
       );
 
       // Pour chaque session active, récupérer les messages depuis sinceIso
@@ -114,7 +114,7 @@ exports.handler = async (event) => {
         } else {
           // currentSessionId présent mais pas dans les sessions actives — charger quand même
           const [sessRows, msgs] = await Promise.all([
-            sbGet(`chat_sessions?id=eq.${encodeURIComponent(currentSessionId)}&select=id,pre_name,pre_topic,status,created_at,session_label,duration_sec,assigned_at&limit=1`),
+            sbGet(`chat_sessions?id=eq.${encodeURIComponent(currentSessionId)}&select=id,pre_name,pre_topic,status,created_at,session_label,duration_sec,assigned_at,visitor_ip&limit=1`),
             sbGet(`chat_messages?session_id=eq.${encodeURIComponent(currentSessionId)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=100`)
           ]);
           currentSession = sessRows[0] || null;

@@ -77,3 +77,8 @@ CREATE INDEX IF NOT EXISTS idx_sessions_payment   ON sessions (stripe_payment_id
 CREATE INDEX IF NOT EXISTS idx_sessions_token     ON sessions (token);
 CREATE INDEX IF NOT EXISTS idx_sessions_statut    ON sessions (statut);
 CREATE INDEX IF NOT EXISTS idx_signalements_payment ON signalements (stripe_payment_id);
+
+-- ============================================
+-- Migrations
+-- ============================================
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS visitor_ip TEXT;

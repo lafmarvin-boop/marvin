@@ -45,6 +45,10 @@ exports.handler = async (event) => {
   if (!visitorId || !name)
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Données manquantes' }) };
 
+  const visitorIp = (event.headers['x-nf-client-connection-ip']
+    || (event.headers['x-forwarded-for'] || '').split(',')[0]
+    || '').trim() || null;
+
   try {
     // Créer la session
     const created = await sbPost('chat_sessions', {
@@ -54,7 +58,8 @@ exports.handler = async (event) => {
       session_type: sessionType || 'paid',
       session_label: sessionLabel || '',
       duration_sec: parseInt(durationSec) || 1800,
-      stripe_payment_id: paymentId || null
+      stripe_payment_id: paymentId || null,
+      visitor_ip: visitorIp
     });
     const session = Array.isArray(created) ? created[0] : created;
     if (!session?.id) throw new Error('Création session échouée');
