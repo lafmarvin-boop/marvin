@@ -1795,10 +1795,19 @@ function endSession(){
   clearInterval(sessionTimer); sessionTimer=null;
   localStorage.removeItem('parlons_active_session');
   document.getElementById('session-timer').textContent='0:00';
-  const mbar2=document.getElementById('mobile-session-bar');
-  if(mbar2){mbar2.style.display='none';}
+  const mbar2=document.getElementById('mobile-session-bar');if(mbar2)mbar2.style.display='none';
   const rb=document.getElementById('mobile-renew-btn');if(rb)rb.style.display='none';
-  // Fermer la session côté serveur
+  const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
+  if(chatSessionId&&chatState==='active'){
+    // Timer expiré mais session active : ouvrir le modal de renouvellement SANS fermer la
+    // session côté serveur. La session reste active tant que l'utilisateur n'a pas décidé.
+    chatExtensionPending=true;
+    setTimeout(()=>openModal(),600);
+    return;
+  }
+  _closeSessionNow();
+}
+function _closeSessionNow(){
   if(chatSessionId){
     fetch('/.netlify/functions/chat-close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,closedBy:'visitor'})}).catch(()=>{});
     sessionStorage.removeItem('parlons_chat_session_id');
@@ -1806,8 +1815,6 @@ function endSession(){
     chatSessionId=null;
   }
   clearInterval(chatPollingInterval);chatPollingInterval=null;
-  const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
-  // Fermer le widget chat et rouvrir le modal de sélection
   showChatPanel(false);
   const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
   setTimeout(()=>openModal(),600);
@@ -2106,10 +2113,16 @@ function openModal(amount){
 function closeModal(){
   document.getElementById('modal').classList.remove('active');document.body.style.overflow='';
   if(cardElement)try{cardElement.unmount();}catch(e){}
-  // Si le modal se ferme sans paiement et que la session est toujours active, retirer le blocage
   const paid=document.getElementById('payment-success')&&document.getElementById('payment-success').style.display==='block';
   if(!paid&&chatExtensionPending&&chatSessionId&&chatState==='active'){
-    chatExtensionPending=false;
+    if(sessionTimer===null){
+      // Le timer a expiré et l'utilisateur refuse de renouveler — fermer la session maintenant
+      chatExtensionPending=false;
+      _closeSessionNow();
+    } else {
+      // Session encore en cours, juste débloquer le timer
+      chatExtensionPending=false;
+    }
   }
 }
 function handleOverlayClick(e){if(e.target===document.getElementById('modal'))closeModal();}
