@@ -1884,11 +1884,24 @@ async function pollAgentChat() {
         if (s.duration_sec && s.duration_sec > existing.durationSec) {
           const added = s.duration_sec - existing.durationSec;
           existing.durationSec = s.duration_sec;
-          if (existing.agentSessionEndAt) existing.agentSessionEndAt += added * 1000;
+          // Reprendre depuis le temps gelé + le temps ajouté
+          if (existing.frozenRemainingMs !== undefined) {
+            existing.agentSessionEndAt = Date.now() + existing.frozenRemainingMs + added * 1000;
+            delete existing.frozenRemainingMs;
+          } else if (existing.agentSessionEndAt) {
+            existing.agentSessionEndAt += added * 1000;
+          }
         }
         const hadExtension = !!existing.extensionPending;
         existing.extensionPending = s.extension_pending || null;
         if (!hadExtension && existing.extensionPending) {
+          // Geler le timer : sauvegarder le temps restant au moment de la demande
+          const rem = existing.agentSessionEndAt
+            ? Math.max(0, existing.agentSessionEndAt - Date.now())
+            : existing.timerStartedAt
+              ? Math.max(0, existing.durationSec * 1000 - (Date.now() - existing.timerStartedAt))
+              : existing.durationSec * 1000;
+          existing.frozenRemainingMs = rem;
           agentActiveTabId = s.id;
           agentChatSessionId = s.id;
           anyNew = true;
@@ -2135,6 +2148,15 @@ function updateAgentFloatTimer() {
   if (!timerEl) return;
   const sess = agentSessions.get(agentActiveTabId);
   if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; return; }
+  // Geler l'affichage si une demande de prolongation est en cours
+  if (sess.extensionPending && sess.frozenRemainingMs !== undefined) {
+    const rem = sess.frozenRemainingMs / 1000;
+    const m = Math.floor(rem / 60), s = Math.floor(rem % 60);
+    timerEl.style.display = 'inline';
+    timerEl.textContent = `⏸ ${m}:${String(s).padStart(2,'0')}`;
+    timerEl.style.background = 'rgba(0,0,0,.2)';
+    return;
+  }
   const remaining = sess.agentSessionEndAt
     ? Math.max(0, (sess.agentSessionEndAt - Date.now()) / 1000)
     : Math.max(0, sess.durationSec - (Date.now() - sess.timerStartedAt) / 1000);

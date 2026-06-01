@@ -1574,10 +1574,10 @@
   });
   document.addEventListener('visibilitychange',function(){
     if(document.visibilityState!=='visible')return;
-    if(sessionTimer!==null&&sessionEndAt>0){
+    if(sessionTimer!==null&&sessionEndAt>0&&!chatExtensionPending){
       sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
       updateSessionUI();
-      if(sessionSeconds<=0&&!chatExtensionPending)endSession();
+      if(sessionSeconds<=0)endSession();
     }
   });
 </script>
@@ -1831,12 +1831,13 @@ function startSessionCountdown(assignedAt){
   if(sessionEndAt<=0) sessionEndAt=assignedAt?new Date(assignedAt).getTime()+sessionDurationSec*1000:Date.now()+sessionDurationSec*1000;
   try{localStorage.setItem('parlons_active_session',JSON.stringify({paymentId:sessionStorage.getItem('parlons_payment_id'),startedAt:Date.now(),duration:sessionDurationSec,label:selectedLabel}));}catch(e){}
   sessionTimer=setInterval(()=>{
+    if(chatExtensionPending) return; // timer gelé pendant la prolongation
     sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
     updateSessionUI();
     if(sessionSeconds===120)document.getElementById('end-warning').style.display='block';
     if(sessionSeconds<=120){const ec=document.getElementById('end-countdown');if(ec){const m=Math.floor(sessionSeconds/60),s=sessionSeconds%60;ec.textContent=`${m}:${String(s).padStart(2,'0')}`;ec.style.color=sessionSeconds<=30?'#e74c3c':'inherit';}}
     if(sessionSeconds<=30&&sessionSeconds>0){const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew&&pcpRenew.style.display==='none')pcpRenew.style.display='inline-block';}
-    if(sessionSeconds<=0&&!chatExtensionPending) endSession();
+    if(sessionSeconds<=0) endSession();
   },1000);
 }
 function updateSessionUI(){
@@ -2979,7 +2980,7 @@ async function pollChat(){
         const added=d.durationSec-sessionDurationSec;
         chatExtensionPending=false;
         sessionDurationSec=d.durationSec;
-        sessionEndAt=sessionEndAt>0?sessionEndAt+added*1000:Date.now()+added*1000;
+        sessionEndAt=Date.now()+sessionSeconds*1000+added*1000;
         if(sessionTimer===null) startSessionCountdown(null);
         updateSessionUI();
         setChatState('active');
