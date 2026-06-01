@@ -1034,8 +1034,6 @@ function renderDashboard(d) {
     ? `<span class="${diff >= 0 ? 'stat-up' : 'stat-down'}">${diff >= 0 ? '+' : ''}${pct}%</span> vs mois dernier`
     : fmt(sessions.lastMonthRevenue) + ' mois dernier';
 
-  document.getElementById('s-total-sess').textContent = sessions.total;
-  document.getElementById('s-month-sess').textContent = sessions.monthCount + ' ce mois · ' + sessions.lastMonthCount + ' le mois dernier';
   document.getElementById('s-active-subs').textContent = subscribers.active;
   document.getElementById('s-total-subs').textContent = subscribers.total + ' abonné' + (subscribers.total > 1 ? 's' : '') + ' au total';
 
