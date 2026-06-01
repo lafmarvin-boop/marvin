@@ -68,8 +68,6 @@ exports.handler = async (event) => {
       await saveSignalement({ client, session, rembourse, paymentId });
     }
 
-    console.log(`SIGNALEMENT — client: ${client}, session: ${session}, remboursé: ${rembourse}, refundId: ${refundId}`);
-
     return {
       statusCode: 200,
       headers: CORS,

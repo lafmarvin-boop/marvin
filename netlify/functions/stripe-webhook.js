@@ -22,15 +22,12 @@ exports.handler = async (event) => {
   }
 
   const type = webhookEvent.type;
-  console.log('Webhook reçu:', type);
 
   // ── Paiement unique (sessions à la carte) ──
   if (type === 'payment_intent.succeeded') {
     const pi = webhookEvent.data.object;
     // Ignorer les PaymentIntents liés à des abonnements (ils sont gérés par invoice.payment_succeeded)
     if (pi.invoice) return { statusCode: 200, body: JSON.stringify({ received: true }) };
-
-    console.log('Paiement confirmé:', pi.id, pi.metadata);
 
     if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
       const token = generateToken();
@@ -79,7 +76,6 @@ exports.handler = async (event) => {
         cancel_at_period_end: subscription.cancel_at_period_end || false,
       });
 
-      console.log('Abonné activé/renouvelé:', email, 'jusqu\'au', expires_at);
     } catch (err) {
       console.error('invoice.payment_succeeded error:', err.message);
     }
@@ -96,7 +92,6 @@ exports.handler = async (event) => {
       const email = customer.email || subscription.metadata?.email;
       if (email) {
         await patchSubscriberByEmail(email.toLowerCase().trim(), { status: 'payment_failed' });
-        console.log('Renouvellement échoué pour:', email);
       }
     } catch (err) {
       console.error('invoice.payment_failed error:', err.message);
@@ -114,7 +109,6 @@ exports.handler = async (event) => {
           status: 'cancelled',
           cancel_at_period_end: false,
         });
-        console.log('Abonnement résilié:', email);
       }
     } catch (err) {
       console.error('subscription.deleted error:', err.message);
