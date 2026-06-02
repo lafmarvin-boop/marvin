@@ -535,6 +535,11 @@
     [data-theme="dark"] .pcp-offline{background:#1A1208;}
     [data-theme="dark"] #pcp-rating{background:#2C1F14;border-top-color:#3D2A1A;}
     [data-theme="dark"] #pcp-rating-comment{background:#3D2A1A;border-color:#5D4A2A;color:#F0E8D8;}
+    /* ── Sections dont le fond utilise var(--dark) : forcer le fond sombre ── */
+    [data-theme="dark"] #groupes{background:#1A1208!important;}
+    [data-theme="dark"] .pricing-section{background:#1A1208;}
+    [data-theme="dark"] .notify-section{background:#1A1208;}
+    [data-theme="dark"] .quality-banner{background:linear-gradient(135deg,#1A1208 0%,#2C1F14 100%);}
 
     /* ══ TOGGLE MODE SOMBRE ══ */
     .dark-toggle{position:fixed;bottom:9rem;right:1.3rem;z-index:400;background:var(--warm);border:1.5px solid var(--sand);border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(0,0,0,.15);}
