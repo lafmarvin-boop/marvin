@@ -1,14 +1,36 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-const BASE_AMOUNTS   = { '200': 200, '500': 500, '900': 900 };
-const FIXED_AMOUNTS  = { 'sub': 1500, 'group': 150 };
-const VALID_DISCOUNTS = new Set([0, 10, 20, 30]);
+const BASE_AMOUNTS  = { '200': 200, '500': 500, '900': 900 };
+const FIXED_AMOUNTS = { 'sub': 1500, 'group': 150 };
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Content-Type': 'application/json',
 };
+
+function discountFromCount(count) {
+  if (count >= 19) return 30;
+  if (count >= 9)  return 20;
+  if (count >= 4)  return 10;
+  return 0;
+}
+
+async function getVerifiedDiscount(visitorId) {
+  if (!visitorId || !/^[a-z0-9]+$/i.test(visitorId) || visitorId.length > 64) return 0;
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return 0;
+  try {
+    const res = await fetch(
+      `${process.env.SUPABASE_URL}/rest/v1/chat_sessions?visitor_id=eq.${encodeURIComponent(visitorId)}&session_type=eq.paid&status=eq.closed&select=id`,
+      { headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` } }
+    );
+    if (!res.ok) return 0;
+    const rows = await res.json();
+    return discountFromCount(Array.isArray(rows) ? rows.length : 0);
+  } catch {
+    return 0;
+  }
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -22,23 +44,22 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { montant, discountPct, formule, pseudo, duree, email } = JSON.parse(event.body || '{}');
+    const { montant, formule, pseudo, duree, email, visitorId } = JSON.parse(event.body || '{}');
 
     let amountCents;
+    let effectiveDiscount = 0;
     if (FIXED_AMOUNTS[String(montant)] !== undefined) {
       amountCents = FIXED_AMOUNTS[String(montant)];
     } else if (BASE_AMOUNTS[String(montant)] !== undefined) {
       const base = BASE_AMOUNTS[String(montant)];
-      const pct = VALID_DISCOUNTS.has(parseInt(discountPct) || 0) ? (parseInt(discountPct) || 0) : 0;
-      amountCents = Math.round(base * (1 - pct / 100));
+      effectiveDiscount = await getVerifiedDiscount(visitorId);
+      amountCents = Math.round(base * (1 - effectiveDiscount / 100));
     } else {
       return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Montant invalide' }) };
     }
     if (!pseudo || pseudo.length > 50) {
       return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Pseudo invalide' }) };
     }
-
-    const effectiveDiscount = FIXED_AMOUNTS[String(montant)] !== undefined ? 0 : (VALID_DISCOUNTS.has(parseInt(discountPct) || 0) ? (parseInt(discountPct) || 0) : 0);
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
       currency: 'eur',

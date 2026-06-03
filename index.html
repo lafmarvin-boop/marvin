@@ -2116,11 +2116,9 @@ async function handlePayment(){
     }
 
     // ── Sessions à la carte : flow paiement unique ──
-    const isDiscountable = !isNaN(parseInt(selectedAmount));
-    const loyDiscount = isDiscountable ? getLoyaltyInfo().discount : 0;
     const resp = await fetch('/.netlify/functions/create-payment-intent',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({montant:selectedAmount,discountPct:loyDiscount,formule:selectedLabel,pseudo:name,duree:sessionDurationSec,email:email||undefined})
+      body:JSON.stringify({montant:selectedAmount,formule:selectedLabel,pseudo:name,duree:sessionDurationSec,email:email||undefined,visitorId:localStorage.getItem('parlons_visitor_id')||undefined})
     });
     const {clientSecret,error:serverErr}=await resp.json();
     if(serverErr) throw new Error(serverErr);
