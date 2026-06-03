@@ -1649,6 +1649,8 @@ updateAvailUI();
 // ── STRIPE ──
 function stripeColors(){const d=document.documentElement.getAttribute('data-theme')==='dark';return{color:d?'#F0E8D8':'#2C1F14','::placeholder':{color:d?'#8A7060':'#B09070'}};}
 try{stripe=Stripe(STRIPE_KEY);const el=stripe.elements();cardElement=el.create('card',{hidePostalCode:true,style:{base:{fontFamily:"'DM Sans',sans-serif",fontSize:'15px',...stripeColors()}}});}catch(e){console.warn('Stripe:',e.message);}
+// Stripe est initialisé avant l'IIFE de thème → resync couleurs après (setTimeout 0 = après tout le JS sync)
+setTimeout(function(){if(cardElement&&document.documentElement.getAttribute('data-theme')==='dark'){try{cardElement.update({style:{base:stripeColors()}});}catch{}}},0);
 
 // ── FIDÉLITÉ (Option A — localStorage) ──
 function getLoyaltyInfo() {
