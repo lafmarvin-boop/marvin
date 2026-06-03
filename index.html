@@ -408,6 +408,7 @@
     /* ── MODAL ── */
     .modal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(44,31,20,.6);backdrop-filter:blur(6px);align-items:center;justify-content:center;}
     .modal-overlay.active{display:flex;}
+    .modal-overlay.above-chat{z-index:1100;}
     .modal{background:white;border-radius:22px;padding:2.2rem;max-width:420px;width:92%;position:relative;animation:modalIn .35s cubic-bezier(.34,1.56,.64,1);max-height:90vh;overflow-y:auto;}
     @keyframes modalIn{from{opacity:0;transform:scale(.87) translateY(24px);}to{opacity:1;transform:scale(1) translateY(0);}}
     .modal-close{position:absolute;top:.9rem;right:.9rem;width:30px;height:30px;border-radius:50%;background:var(--warm);border:none;cursor:pointer;font-size:1rem;color:var(--mid);display:flex;align-items:center;justify-content:center;transition:background .2s;}
@@ -1593,12 +1594,30 @@
     sess.disconnectedAt=Date.now();
     localStorage.setItem('parlons_active_session',JSON.stringify(sess));
   });
+  var _visibilityLeaveTimer=null;
   document.addEventListener('visibilitychange',function(){
-    if(document.visibilityState!=='visible')return;
-    if(sessionTimer!==null&&sessionEndAt>0&&!chatExtensionPending){
-      sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
-      updateSessionUI();
-      if(sessionSeconds<=0)endSession();
+    if(document.visibilityState==='hidden'){
+      // Recalcul timer sur retour
+      if(sessionTimer!==null&&sessionEndAt>0&&!chatExtensionPending){
+        sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
+      }
+      // Notifier l'agent après 3s (évite les faux positifs sur changement rapide d'onglet)
+      if(chatSessionId&&chatState==='active'){
+        _visibilityLeaveTimer=setTimeout(function(){
+          fetch('/.netlify/functions/chat-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,content:'📱 L\'utilisateur a quitté la page.',senderType:'system'})}).catch(function(){});
+        },3000);
+      }
+    } else {
+      // Utilisateur de retour
+      clearTimeout(_visibilityLeaveTimer);_visibilityLeaveTimer=null;
+      if(sessionTimer!==null&&sessionEndAt>0&&!chatExtensionPending){
+        sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
+        updateSessionUI();
+        if(sessionSeconds<=0)endSession();
+      }
+      if(chatSessionId&&chatState==='active'){
+        fetch('/.netlify/functions/chat-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,content:'📱 L\'utilisateur est de retour.',senderType:'system'})}).catch(function(){});
+      }
     }
   });
 </script>
@@ -1820,8 +1839,20 @@ function endSession(){
   clearInterval(sessionTimer); sessionTimer=null;
   localStorage.removeItem('parlons_active_session');
   document.getElementById('session-timer').textContent='0:00';
-  const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
-  _closeSessionNow();
+  // Afficher le bouton relance de façon bien visible
+  const pcpRenew=document.getElementById('pcp-renew-btn');
+  if(pcpRenew){pcpRenew.style.display='inline-block';pcpRenew.textContent='🔁 Prolonger';}
+  // Injecter un message dans le chat indiquant que le temps est écoulé
+  const msgs=document.getElementById('pcp-msgs');
+  if(msgs&&chatSessionId){
+    const banner=document.createElement('div');
+    banner.id='pcp-time-up-banner';
+    banner.style.cssText='align-self:center;background:#fff3cd;border:1px solid #f59e0b;border-radius:10px;padding:.5rem .85rem;font-size:.75rem;color:#92400e;text-align:center;max-width:92%;margin:.3rem 0;';
+    banner.innerHTML='⏰ Temps écoulé. <strong>Prolongez</strong> pour continuer à discuter.';
+    msgs.appendChild(banner);msgs.scrollTop=msgs.scrollHeight;
+  }
+  // Ne PAS appeler _closeSessionNow() — la session reste ouverte côté serveur.
+  // Elle se fermera uniquement si l'agent la termine (poll reçoit status:'closed').
 }
 function _closeSessionNow(){
   const sessionIdToRate=chatSessionId;
@@ -2151,7 +2182,10 @@ function openModal(amount){
   if(amount!==undefined){const s=document.getElementById('session-select');for(let o of s.options){if(o.value==amount){o.selected=true;break;}}updatePrice();}
   document.getElementById('step-1').style.display='block';document.getElementById('step-2').style.display='none';
   document.getElementById('payment-success').style.display='none';document.getElementById('sub-success').style.display='none';document.getElementById('payment-form').style.display='block';
-  document.getElementById('modal').classList.add('active');document.body.style.overflow='hidden';
+  const modalEl=document.getElementById('modal');
+  modalEl.classList.add('active');
+  if(chatSessionId&&chatState==='active') modalEl.classList.add('above-chat');
+  document.body.style.overflow='hidden';
   // Bloquer endSession dès l'ouverture du modal si une session est active
   if(chatSessionId&&chatState==='active'){
     if(!chatExtensionPending) chatExtensionPending=true;
@@ -2163,7 +2197,9 @@ function openModal(amount){
   }
 }
 function closeModal(){
-  document.getElementById('modal').classList.remove('active');document.body.style.overflow='';
+  const modalEl=document.getElementById('modal');
+  modalEl.classList.remove('active');modalEl.classList.remove('above-chat');
+  document.body.style.overflow='';
   if(cardElement)try{cardElement.unmount();}catch(e){}
   const paid=document.getElementById('payment-success')&&document.getElementById('payment-success').style.display==='block';
   if(!paid&&chatExtensionPending){
