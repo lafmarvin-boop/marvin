@@ -224,7 +224,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
     <!-- CHAT VIEW (overlay sur les views) -->
     <div class="chat-view" id="chat-view">
       <div class="chat-header">
-        <button class="chat-back" onclick="closeChatView()">←</button>
+        <button class="chat-back" onclick="hideChat()">←</button>
         <div class="chat-header-info">
           <div class="chat-header-name" id="chat-name">—</div>
           <div class="chat-header-label" id="chat-label"></div>
@@ -274,6 +274,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
   <nav class="bottom-nav">
     <button class="nav-btn active" id="nav-home" onclick="showView('home')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span class="nav-badge" id="queue-nav-badge"></span>
       Accueil
     </button>
     <button class="nav-btn" id="nav-chat" onclick="showView('chat')">
@@ -314,6 +315,7 @@ let prevQueueIds = new Set();
 let queueInitialized = false;
 let sessionEndTimer = null;
 let autoTaking = false;
+let pendingOffline = false;
 
 // ── UTILS ──
 function fmt(n){ return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -332,19 +334,36 @@ function showLogin(){ document.getElementById('screen-login').classList.add('act
 
 // ── VIEW SWITCHING ──
 function showView(v){
-  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
   if(v==='chat'){
-    // Show the first active session or stay on home if none
-    const first=[...appSessions.values()].find(s=>s.timerStartedAt)||[...appSessions.values()][0];
+    if(activeChatId&&appSessions.has(activeChatId)){
+      document.getElementById('chat-view').classList.add('active');
+      document.getElementById('nav-chat').classList.add('active');
+      renderChatMessages(activeChatId);
+      return;
+    }
+    const first=[...appSessions.values()][0];
     if(first){ openChatView(first.id); return; }
+    // Aucun chat actif → rester sur accueil
     document.getElementById('view-home').classList.add('active');
     document.getElementById('nav-home').classList.add('active');
     return;
   }
+  // Accueil ou Stats : masquer l'overlay chat sans fermer la session
+  document.getElementById('chat-view').classList.remove('active');
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v)?.classList.add('active');
   document.getElementById('nav-'+v)?.classList.add('active');
   if(v==='stats') renderStats();
+}
+
+// Masquer le chat sans le fermer (retour accueil depuis la flèche ←)
+function hideChat(){
+  document.getElementById('chat-view').classList.remove('active');
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-home').classList.add('active');
+  document.getElementById('nav-home').classList.add('active');
 }
 
 // ── LOGIN ──
@@ -389,7 +408,26 @@ function renderHeader(){
 
 // ── ONLINE / OFFLINE ──
 async function toggleOnline(){
-  if(appOnline) await goOffline(); else await goOnline();
+  if(pendingOffline){
+    // Annuler le mode fin de service
+    pendingOffline=false;
+    await goOnline();
+    return;
+  }
+  if(appOnline){
+    if(appSessions.size>0){
+      // Sessions en cours : mode "fin de service" — plus de nouveaux tchats, finit les actifs
+      pendingOffline=true;
+      try{
+        await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,status:'offline'})});
+      }catch{}
+      updateStatusUI();
+    } else {
+      await goOffline();
+    }
+  } else {
+    await goOnline();
+  }
 }
 
 async function goOnline(){
@@ -411,17 +449,22 @@ async function goOnline(){
 }
 
 async function goOffline(){
-  if(!appToken) return;
   localStorage.removeItem('parlons_agent_online');
+  pendingOffline=false;
   showLoading('Déconnexion…');
   try{
-    await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,status:'offline'})});
+    if(appToken) await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,status:'offline'})});
   }catch{}
   appToken=null; appOnline=false;
   stopPoll();
   appSessions.clear();
   activeChatId=null;
-  closeChatView();
+  document.getElementById('chat-view').classList.remove('active');
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-home').classList.add('active');
+  document.getElementById('nav-home').classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('nav-home').classList.add('active');
   updateStatusUI();
   renderQueue([]);
   renderSessions();
@@ -435,11 +478,17 @@ function updateStatusUI(){
   const sub=document.getElementById('status-sub');
   const dot=document.getElementById('hdr-dot');
   const busy=appSessions.size>0;
-  if(!appOnline){
+  if(!appOnline&&!pendingOffline){
     toggle.className='status-toggle';
     pill.className='sw-pill';
     label.textContent='Hors ligne';
     sub.textContent='Appuyez pour vous mettre en ligne';
+    dot.className='status-dot';
+  } else if(pendingOffline){
+    toggle.className='status-toggle';
+    pill.className='sw-pill';
+    label.textContent='Fin de service…';
+    sub.textContent=`Session${appSessions.size>1?'s':''} en cours — déconnexion à la fin`;
     dot.className='status-dot';
   } else if(busy){
     toggle.className='status-toggle busy';
@@ -527,8 +576,10 @@ function processPoll(d){
   updateStatusUI();
   updateNavBadge();
   if(activeChatId&&appSessions.has(activeChatId)) renderChatMessages(activeChatId);
+  // Si fin de service et plus de sessions actives → déconnexion automatique
+  if(pendingOffline && appSessions.size===0){ goOffline(); return; }
   // Auto-assigner le prochain tchat en attente si l'agent a de la capacité
-  if(appOnline && appSessions.size < 3 && (d.waitingSessions||[]).length) autoTakeNext(d.waitingSessions);
+  if(appOnline && !pendingOffline && appSessions.size < 3 && (d.waitingSessions||[]).length) autoTakeNext(d.waitingSessions);
 }
 
 async function refreshSessions(){
@@ -540,6 +591,8 @@ function renderQueue(waiting){
   const el=document.getElementById('queue-list');
   const badge=document.getElementById('queue-count-badge');
   badge.textContent=waiting.length?`(${waiting.length})`:'';
+  const qBadge=document.getElementById('queue-nav-badge');
+  if(qBadge){ qBadge.textContent=waiting.length||''; qBadge.classList.toggle('visible',waiting.length>0); }
   if(queueInitialized){
     waiting.forEach(s=>{ if(!prevQueueIds.has(s.id)){ triggerNotif('👋 Visiteur en attente', (s.pre_name||'Visiteur')+(s.pre_topic?' — '+s.pre_topic:'')); playBeep(); } });
   }
@@ -633,11 +686,12 @@ function openChatView(sessionId){
   sess.unread=0; updateNavBadge();
   document.getElementById('chat-name').textContent=sess.name;
   document.getElementById('chat-label').textContent=sess.label||'Session en cours';
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('nav-chat').classList.add('active');
   document.getElementById('chat-view').classList.add('active');
   renderChatMessages(sessionId);
   startChatTimer(sessionId);
   renderExtBar(sessionId);
-  document.getElementById('nav-chat').classList.add('active');
 }
 
 function closeChatView(){
@@ -646,6 +700,11 @@ function closeChatView(){
   activeChatId=null;
   clearInterval(chatTimerInterval); chatTimerInterval=null;
   document.getElementById('chat-timer').style.display='none';
+  // Retour accueil
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-home').classList.add('active');
+  document.getElementById('nav-home').classList.add('active');
 }
 
 function renderChatMessages(sessionId){
