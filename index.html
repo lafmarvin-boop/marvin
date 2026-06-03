@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="theme-color" content="#C4714A"/>
+  <link rel="manifest" href="/manifest-visitor.json"/>
 
   <!-- ══ FAVICON SVG inline ══ -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23C4714A'/><rect x='14' y='13' width='72' height='56' rx='11' fill='white'/><polygon points='26,69 26,88 44,69' fill='white'/><text x='50' y='54' font-size='36' text-anchor='middle' font-family='Georgia,serif' fill='%23C4714A'>P</text></svg>"/>
@@ -2625,6 +2626,17 @@ function startFreeGroupTimer(theme,name){
 </div>
 
 <!-- ═══════════════════════════════════════
+     PWA INSTALL BANNER
+═══════════════════════════════════════ -->
+<div id="pwa-banner" style="display:none;position:fixed;bottom:4.5rem;left:1rem;right:1rem;z-index:801;background:linear-gradient(135deg,#2d1f14,#4a2e1a);color:white;border-radius:16px;padding:1rem 1.2rem;box-shadow:0 8px 32px rgba(0,0,0,.4);display:none;align-items:center;gap:.9rem;flex-wrap:wrap;">
+  <div id="pwa-banner-text" style="font-size:.78rem;color:#e8d5b0;line-height:1.55;flex:1;min-width:180px;font-weight:300;"></div>
+  <div style="display:flex;gap:.5rem;flex-shrink:0;">
+    <button id="pwa-install-btn" onclick="pwaBannerAction()" style="background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.45rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:600;cursor:pointer;white-space:nowrap;"></button>
+    <button onclick="pwaBannerDismiss()" style="background:rgba(255,255,255,.12);color:white;border:none;border-radius:50px;padding:.45rem .85rem;font-family:'DM Sans',sans-serif;font-size:.76rem;cursor:pointer;">✕</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
      COOKIE BANNER
 ═══════════════════════════════════════ -->
 <div class="cookie-banner" id="cookie-banner">
@@ -3171,6 +3183,65 @@ function openAgentRequestForm(){
   fetch('/.netlify/functions/chat-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}).catch(()=>{});
   const btn=document.querySelector('.pcp-request-btn');
   if(btn){btn.textContent='✅ Demande envoyée';btn.disabled=true;}
+}
+</script>
+<script>
+// ── PWA INSTALL ──
+(function(){
+  const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
+  if(isStandalone) return;
+  if(localStorage.getItem('parlons_pwa_dismissed')) return;
+
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;
+  const banner=document.getElementById('pwa-banner');
+  const text=document.getElementById('pwa-banner-text');
+  const btn=document.getElementById('pwa-install-btn');
+  if(!banner||!text||!btn) return;
+
+  if(isIOS){
+    text.textContent='📲 Ajoutez Parlons sur votre écran d\'accueil : appuyez sur le bouton Partager (⬜↑) en bas de Safari, puis "Sur l\'écran d\'accueil".';
+    btn.textContent='Compris';
+    banner.style.display='flex';
+  } else {
+    window._pwaDeferredPrompt=null;
+    window.addEventListener('beforeinstallprompt',function(e){
+      e.preventDefault();
+      window._pwaDeferredPrompt=e;
+      text.textContent='📲 Installez Parlons sur votre écran d\'accueil pour un accès rapide.';
+      btn.textContent='Installer';
+      banner.style.display='flex';
+    });
+  }
+
+  window.addEventListener('appinstalled',function(){
+    banner.style.display='none';
+    localStorage.setItem('parlons_pwa_dismissed','1');
+  });
+})();
+
+function pwaBannerAction(){
+  const banner=document.getElementById('pwa-banner');
+  if(window._pwaDeferredPrompt){
+    window._pwaDeferredPrompt.prompt();
+    window._pwaDeferredPrompt.userChoice.then(function(){
+      window._pwaDeferredPrompt=null;
+      if(banner) banner.style.display='none';
+      localStorage.setItem('parlons_pwa_dismissed','1');
+    });
+  } else {
+    // iOS — just dismiss
+    pwaBannerDismiss();
+  }
+}
+function pwaBannerDismiss(){
+  const banner=document.getElementById('pwa-banner');
+  if(banner) banner.style.display='none';
+  localStorage.setItem('parlons_pwa_dismissed','1');
+}
+
+// ── SERVICE WORKER ──
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(function(){});
 }
 </script>
 </body>

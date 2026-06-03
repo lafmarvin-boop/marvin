@@ -956,12 +956,22 @@ let deferredInstallPrompt = null;
 const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
 if (!isStandalone) {
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredInstallPrompt = e;
-    const banner = document.getElementById('install-banner');
-    if (banner) banner.style.display = 'flex';
-  });
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  const banner = document.getElementById('install-banner');
+  const bannerText = banner ? banner.querySelector('.push-banner-text') : null;
+  const bannerBtn = banner ? banner.querySelector('.push-banner-btn') : null;
+
+  if (isIOS && banner && bannerText && bannerBtn) {
+    bannerText.textContent = '📲 Installez l\'appli : appuyez sur le bouton Partager (⬜↑) en bas de Safari, puis "Sur l\'écran d\'accueil".';
+    bannerBtn.textContent = 'Compris';
+    banner.style.display = 'flex';
+  } else {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      if (banner) banner.style.display = 'flex';
+    });
+  }
 }
 
 window.addEventListener('appinstalled', () => {
@@ -971,11 +981,15 @@ window.addEventListener('appinstalled', () => {
 });
 
 async function installApp() {
-  if (!deferredInstallPrompt) return;
+  const banner = document.getElementById('install-banner');
+  if (!deferredInstallPrompt) {
+    // iOS — just dismiss
+    if (banner) banner.style.display = 'none';
+    return;
+  }
   deferredInstallPrompt.prompt();
   const { outcome } = await deferredInstallPrompt.userChoice;
   deferredInstallPrompt = null;
-  const banner = document.getElementById('install-banner');
   if (banner) banner.style.display = 'none';
 }
 
