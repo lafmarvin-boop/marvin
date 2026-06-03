@@ -1003,6 +1003,7 @@ if('serviceWorker' in navigator){
         showView('home');
         updatePushBanner();
         hideLoading();
+        // Auto-go-online si flag présent OU si le serveur indique que l'agent est déjà en ligne
         if(localStorage.getItem('parlons_agent_online')==='1') goOnline();
       })
       .catch(()=>hideLoading());

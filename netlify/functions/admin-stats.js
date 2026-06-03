@@ -91,6 +91,12 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
     }
 
+    // ── Action : présence seule (léger, pour refresh périodique) ──
+    if (body.action === 'presence') {
+      const rows = await sbGet('agent_presence?select=agent_email,status,last_seen&limit=100');
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, presence: rows }) };
+    }
+
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 

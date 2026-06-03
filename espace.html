@@ -774,6 +774,8 @@ async function login() {
       document.getElementById('admin-tabs').style.display = 'block';
       renderDashboard(data);
       showScreen('admin-dash');
+      if (presRefreshInterval) clearInterval(presRefreshInterval);
+      presRefreshInterval = setInterval(refreshAgentPresence, 20000);
     } else if (data.role === 'subscriber') {
       localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
       subEmailStored = email;
@@ -1111,12 +1113,45 @@ function renderDashboard(d) {
   ];
   const note = unassigned > 0 ? `<div style="font-size:.72rem;color:var(--light);margin-top:.8rem">${unassigned} session${unassigned>1?'s':''} sans agent enregistré</div>` : '';
   window._agentList = agentList;
-  function presenceDot(status) {
+  function presenceDot(status, email) {
     const colors = { online:'#22c55e', busy:'#f59e0b', offline:'#cbd5e1' };
     const labels = { online:'En ligne', busy:'Occupé', offline:'Hors ligne' };
     const c = colors[status] || colors.offline;
     const l = labels[status] || 'Hors ligne';
-    return `<span title="${l}" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};margin-right:.4rem;vertical-align:middle;flex-shrink:0"></span><span style="font-size:.72rem;color:var(--mid)">${l}</span>`;
+    const attr = email ? ` data-pres="${escHtml(email.toLowerCase())}"` : '';
+    return `<span${attr} title="${l}" style="display:inline-flex;align-items:center;gap:.35rem"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};flex-shrink:0"></span><span style="font-size:.72rem;color:var(--mid)">${l}</span></span>`;
+  }
+
+  let presRefreshInterval = null;
+  async function refreshAgentPresence() {
+    const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
+    if (!saved.email || !saved.password) return;
+    try {
+      const res = await fetch(`${API}/admin-stats`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: saved.email, password: saved.password, action: 'presence' })
+      });
+      const data = await res.json();
+      if (!data.ok || !data.presence) return;
+      const colors = { online:'#22c55e', busy:'#f59e0b', offline:'#cbd5e1' };
+      const labels = { online:'En ligne', busy:'Occupé', offline:'Hors ligne' };
+      data.presence.forEach(p => {
+        const email = (p.agent_email || '').toLowerCase();
+        const status = p.status || 'offline';
+        const c = colors[status] || colors.offline;
+        const l = labels[status] || 'Hors ligne';
+        document.querySelectorAll(`[data-pres="${email}"]`).forEach(el => {
+          el.title = l;
+          el.querySelector('span:first-child').style.background = c;
+          el.querySelector('span:last-child').textContent = l;
+        });
+        // Mettre à jour le bouton déconnecter : show si online/busy, hide si offline
+        document.querySelectorAll(`[data-force-email="${email}"]`).forEach(btn => {
+          btn.style.display = (status === 'online' || status === 'busy') ? '' : 'none';
+        });
+      });
+    } catch {}
   }
 
   if (agentList.length === 0) {
@@ -1131,8 +1166,9 @@ function renderDashboard(d) {
         if (!cnt) return '';
         return `<span style="background:var(--warm);border:1px solid var(--sand);border-radius:50px;padding:.15rem .55rem;font-size:.7rem;white-space:nowrap;">${c.label} <strong>${cnt}</strong></span>`;
       }).join('');
-      const forceBtn = (a.email && (a.presenceStatus === 'online' || a.presenceStatus === 'busy'))
-        ? `<button onclick="event.stopPropagation();forceOffline('${escHtml(a.email)}')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;">⏻ Déconnecter</button>`
+      const isOnline = a.presenceStatus === 'online' || a.presenceStatus === 'busy';
+      const forceBtn = a.email
+        ? `<button data-force-email="${escHtml(a.email.toLowerCase())}" onclick="event.stopPropagation();forceOffline('${escHtml(a.email)}')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;${isOnline?'':'display:none'}">⏻ Déconnecter</button>`
         : '';
       return `<div style="background:white;border:1px solid var(--sand);border-radius:12px;padding:1rem;margin-bottom:.8rem;" onclick="openAgentReviews(${idx})">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;">
@@ -1141,7 +1177,7 @@ function renderDashboard(d) {
             <div>
               <div style="font-weight:600;font-size:.88rem">${escHtml(a.displayName||a.name)}</div>
               <div style="font-size:.72rem;color:var(--light)">${avg} · ${a.ratingCount||0} avis</div>
-              <div style="display:flex;align-items:center;margin-top:.2rem">${presenceDot(a.presenceStatus)}</div>
+              <div style="display:flex;align-items:center;margin-top:.2rem">${presenceDot(a.presenceStatus, a.email)}</div>
             </div>
           </div>
           <div style="text-align:right">
@@ -1168,8 +1204,9 @@ function renderDashboard(d) {
         const cnt = (a.plans[c.key] || 0) + (c.alt ? (a.plans[c.alt] || 0) : 0);
         return `<td style="text-align:center">${cnt > 0 ? `<strong>${cnt}</strong>` : '<span style="color:var(--sand)">—</span>'}</td>`;
       }).join('');
-      const forceBtn = (a.email && (a.presenceStatus === 'online' || a.presenceStatus === 'busy'))
-        ? `<button onclick="forceOffline('${escHtml(a.email)}')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;margin-left:.3rem;">⏻ Déconnecter</button>`
+      const isOnlineD = a.presenceStatus === 'online' || a.presenceStatus === 'busy';
+      const forceBtnD = a.email
+        ? `<button data-force-email="${escHtml(a.email.toLowerCase())}" onclick="forceOffline('${escHtml(a.email)}')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;margin-left:.3rem;${isOnlineD?'':'display:none'}">⏻ Déconnecter</button>`
         : '';
       return `<tr class="agent-row" onclick="openAgentReviews(${idx})">
         <td>
@@ -1177,7 +1214,7 @@ function renderDashboard(d) {
             <div style="width:28px;height:28px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.75rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
             <div>
               <div style="font-weight:600;font-size:.84rem">${escHtml(a.displayName||a.name)}</div>
-              <div style="display:flex;align-items:center;margin-top:.1rem">${presenceDot(a.presenceStatus)}</div>
+              <div style="display:flex;align-items:center;margin-top:.1rem">${presenceDot(a.presenceStatus, a.email)}</div>
             </div>
           </div>
         </td>
@@ -1188,7 +1225,7 @@ function renderDashboard(d) {
         <td onclick="event.stopPropagation()" style="white-space:nowrap;">
           <button onclick="generateAgentPDF(${idx})" style="background:none;border:1px solid var(--sand);border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:var(--mid);">📄 Fiche</button>
           <button onclick="removeAgent(${idx})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:#c0392b;margin-left:.3rem;">✕ Retirer</button>
-          ${forceBtn}
+          ${forceBtnD}
         </td>
       </tr>`;
     }).join('');
