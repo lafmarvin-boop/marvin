@@ -438,6 +438,8 @@ async function goOnline(){
     appToken=data.token;
     appOnline=true;
     localStorage.setItem('parlons_agent_online','1');
+    localStorage.setItem('parlons_agent_token', data.token);
+    localStorage.setItem('parlons_agent_token_email', appEmail);
     prevQueueIds=new Set(); queueInitialized=false;
     updateStatusUI();
     startPoll();
@@ -449,6 +451,8 @@ async function goOnline(){
 
 async function goOffline(){
   localStorage.removeItem('parlons_agent_online');
+  localStorage.removeItem('parlons_agent_token');
+  localStorage.removeItem('parlons_agent_token_email');
   pendingOffline=false;
   showLoading('Déconnexion…');
   try{
@@ -512,7 +516,7 @@ async function poll(){
   if(!appToken) return;
   try{
     const res=await fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken,since:pollSince})});
-    if(res.status===401){ appToken=null; appOnline=false; localStorage.removeItem('parlons_agent_online'); updateStatusUI(); stopPoll(); appSessions.clear(); if(activeChatId) closeChatView(); renderSessions(); return; }
+    if(res.status===401){ appToken=null; appOnline=false; localStorage.removeItem('parlons_agent_online'); localStorage.removeItem('parlons_agent_token'); localStorage.removeItem('parlons_agent_token_email'); updateStatusUI(); stopPoll(); appSessions.clear(); if(activeChatId) closeChatView(); renderSessions(); return; }
     const d=await res.json();
     if(d.error) return;
     pollSince=new Date().toISOString();
@@ -1003,8 +1007,17 @@ if('serviceWorker' in navigator){
         showView('home');
         updatePushBanner();
         hideLoading();
-        // Auto-go-online si flag présent OU si le serveur indique que l'agent est déjà en ligne
-        if(localStorage.getItem('parlons_agent_online')==='1') goOnline();
+        // Token partagé avec espace.html → reprendre la session sans nouveau goOnline()
+        const sharedToken=localStorage.getItem('parlons_agent_token');
+        const sharedEmail=localStorage.getItem('parlons_agent_token_email');
+        if(sharedToken && sharedEmail && sharedEmail.toLowerCase()===savedEmail.toLowerCase()){
+          appToken=sharedToken; appOnline=true;
+          localStorage.setItem('parlons_agent_online','1');
+          prevQueueIds=new Set(); queueInitialized=false;
+          updateStatusUI(); startPoll();
+        } else if(localStorage.getItem('parlons_agent_online')==='1'){
+          goOnline();
+        }
       })
       .catch(()=>hideLoading());
   }

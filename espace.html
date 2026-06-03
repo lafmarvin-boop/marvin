@@ -651,6 +651,15 @@ async function switchTab(tab) {
       }
       btn.textContent = '💬 Agent'; btn.disabled = false;
     }
+    // Reprendre session partagée avec agent-app.html si disponible
+    if (!agentChatToken) {
+      const sharedToken = localStorage.getItem('parlons_agent_token');
+      const sharedEmail = localStorage.getItem('parlons_agent_token_email');
+      if (sharedToken && sharedEmail && sharedEmail.toLowerCase() === agentEmailStored.toLowerCase()) {
+        agentChatToken = sharedToken;
+        startAgentPolling();
+      }
+    }
     if (agentChatToken && agentChatSessionId) { agentLastMsgTime = null; agentRenderedIds = new Set(); }
     renderAgentDash(agentEmailStored, adminAgentDataCache);
     showScreen('agent-dash');
@@ -1876,6 +1885,9 @@ async function agentGoOnline() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
     agentChatToken = data.token;
+    localStorage.setItem('parlons_agent_token', data.token);
+    localStorage.setItem('parlons_agent_token_email', agentEmailStored);
+    localStorage.setItem('parlons_agent_online', '1');
     updateAgentPresenceUI(true);
     startAgentPolling();
   } catch(e) {
@@ -1893,6 +1905,9 @@ async function agentGoOffline() {
       body: JSON.stringify({ agentEmail: agentEmailStored, agentToken: agentChatToken, status: 'offline' })
     });
   } catch {}
+  localStorage.removeItem('parlons_agent_token');
+  localStorage.removeItem('parlons_agent_token_email');
+  localStorage.removeItem('parlons_agent_online');
   clearInterval(agentPollingInterval); clearInterval(agentFloatTimerInterval);
   agentPollingInterval = null; agentChatToken = null;
   agentSessions.clear(); agentActiveTabId = null; agentFloatOpen = false;
@@ -1917,7 +1932,7 @@ async function pollAgentChat() {
     });
     const data = await res.json();
     if (!res.ok) {
-      if (res.status === 401) { clearInterval(agentPollingInterval); agentPollingInterval = null; agentChatToken = null; updateAgentPresenceUI(false); }
+      if (res.status === 401) { clearInterval(agentPollingInterval); agentPollingInterval = null; agentChatToken = null; localStorage.removeItem('parlons_agent_token'); localStorage.removeItem('parlons_agent_token_email'); localStorage.removeItem('parlons_agent_online'); updateAgentPresenceUI(false); }
       return;
     }
 
