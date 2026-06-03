@@ -3183,7 +3183,6 @@ function openAgentRequestForm(){
 (function(){
   const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
   if(isStandalone) return;
-  if(localStorage.getItem('parlons_pwa_dismissed')) return;
 
   const link=document.getElementById('pwa-app-link');
   if(!link) return;
@@ -3191,7 +3190,6 @@ function openAgentRequestForm(){
   const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;
   const isSamsung=/SamsungBrowser/i.test(navigator.userAgent);
 
-  // Toujours afficher le lien (instructions selon navigateur au clic)
   link.style.display='inline-block';
 
   if(!isIOS && !isSamsung){
@@ -3202,9 +3200,9 @@ function openAgentRequestForm(){
     });
   }
 
+  // Masquer uniquement pendant la session courante après installation
   window.addEventListener('appinstalled',function(){
     link.style.display='none';
-    localStorage.setItem('parlons_pwa_dismissed','1');
   });
 })();
 
@@ -3215,7 +3213,6 @@ function pwaLinkAction(){
       window._pwaDeferredPrompt=null;
       const link=document.getElementById('pwa-app-link');
       if(link) link.style.display='none';
-      localStorage.setItem('parlons_pwa_dismissed','1');
     });
     return;
   }
