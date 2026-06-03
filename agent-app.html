@@ -757,6 +757,16 @@ function renderExtBar(sessionId){
 // ── CHAT TIMER ──
 function startSessionEndCountdown(){
   if(sessionEndTimer) return;
+  // Ouvrir la vue chat si l'agent n'y est pas déjà
+  if(activeChatId && !document.getElementById('chat-view').classList.contains('active')){
+    document.getElementById('chat-view').classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+    document.getElementById('nav-chat').classList.add('active');
+    if(activeChatId) renderChatMessages(activeChatId);
+  }
+  // Notif + son
+  triggerNotif('⏱ Session terminée', 'La session va se fermer dans 10 secondes.');
+  playBeep();
   const msgs=document.getElementById('chat-msgs');
   if(msgs){
     let banner=document.getElementById('session-end-banner');
