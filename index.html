@@ -1595,29 +1595,16 @@
     sess.disconnectedAt=Date.now();
     localStorage.setItem('parlons_active_session',JSON.stringify(sess));
   });
-  var _visibilityLeaveTimer=null;
   document.addEventListener('visibilitychange',function(){
     if(document.visibilityState==='hidden'){
-      // Recalcul timer sur retour
       if(sessionTimer!==null&&sessionEndAt>0&&!chatExtensionPending){
         sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
       }
-      // Notifier l'agent après 3s (évite les faux positifs sur changement rapide d'onglet)
-      if(chatSessionId&&chatState==='active'){
-        _visibilityLeaveTimer=setTimeout(function(){
-          fetch('/.netlify/functions/chat-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,content:'📱 L\'utilisateur a quitté la page.',senderType:'system'})}).catch(function(){});
-        },3000);
-      }
     } else {
-      // Utilisateur de retour
-      clearTimeout(_visibilityLeaveTimer);_visibilityLeaveTimer=null;
       if(sessionTimer!==null&&sessionEndAt>0&&!chatExtensionPending){
         sessionSeconds=Math.max(0,Math.round((sessionEndAt-Date.now())/1000));
         updateSessionUI();
         if(sessionSeconds<=0)endSession();
-      }
-      if(chatSessionId&&chatState==='active'){
-        fetch('/.netlify/functions/chat-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,content:'📱 L\'utilisateur est de retour.',senderType:'system'})}).catch(function(){});
       }
     }
   });
@@ -1834,6 +1821,7 @@ function startWaitTimer(){
 
 // ── AGENT CONNECTED ──
 let sessionEndAt = 0; // timestamp absolu de fin de session
+let sessionDbDurationSec = 0; // durée DB réelle, non écrasée par la sélection modale
 
 function endSession(){
   if(sessionTimer===null) return;
@@ -3035,6 +3023,7 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
   // Réinitialiser l'état du chrono pour que startSessionCountdown puisse démarrer
   if(sessionTimer!==null){clearInterval(sessionTimer);sessionTimer=null;}
   sessionEndAt=0;sessionSeconds=durationSec||sessionDurationSec;
+  sessionDbDurationSec=durationSec||sessionDurationSec;
   chatExtensionPending=false;chatExtensionNewDuration=0;
   chatRenderedIds=new Set();chatLastMsgTime=null;
   const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
@@ -3090,14 +3079,15 @@ async function pollChat(){
     const r=await fetch('/.netlify/functions/chat-poll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'visitor',sessionId:chatSessionId,since})});
     const d=await r.json();
     if(d.messages)d.messages.forEach(m=>appendChatMsg(m));
-    if(d.status==='active'&&chatState==='waiting'&&d.agentConnected){setChatState('active');agentConnected(d.agentPseudo||null,d.assignedAt||null);}
+    if(d.status==='active'&&chatState==='waiting'&&d.agentConnected){if(d.durationSec&&!sessionDbDurationSec)sessionDbDurationSec=d.durationSec;setChatState('active');agentConnected(d.agentPseudo||null,d.assignedAt||null);}
     // Gestion prolongation en attente
     if(chatExtensionPending){
       const sub=document.getElementById('pcp-subtitle');
-      if(d.durationSec && d.durationSec > sessionDurationSec){
+      if(d.durationSec && d.durationSec > sessionDbDurationSec){
         // L'agent a accepté — la durée DB a augmenté, c'est le signal fiable
-        const added=d.durationSec-sessionDurationSec;
+        const added=d.durationSec-sessionDbDurationSec;
         chatExtensionPending=false;
+        sessionDbDurationSec=d.durationSec;
         sessionDurationSec=d.durationSec;
         sessionEndAt=Date.now()+sessionSeconds*1000+added*1000;
         if(sessionTimer===null) startSessionCountdown(null);
