@@ -433,7 +433,7 @@ function updateStatusUI(){
   const label=document.getElementById('status-label');
   const sub=document.getElementById('status-sub');
   const dot=document.getElementById('hdr-dot');
-  const busy=[...appSessions.values()].some(s=>s.timerStartedAt);
+  const busy=appSessions.size>0;
   if(!appOnline){
     toggle.className='status-toggle';
     pill.className='sw-pill';
@@ -515,7 +515,7 @@ function processPoll(d){
       sess.messages.push(m);
       if(s.id!==activeChatId||(document.getElementById('chat-view')&&!document.getElementById('chat-view').classList.contains('active'))) sess.unread++;
       // Start timer on first agent/system msg
-      if(!sess.timerStartedAt&&(m.sender_type==='agent'||m.content?.includes('peut commencer'))){
+      if(!sess.timerStartedAt&&m.sender_type==='agent'){
         sess.timerStartedAt=Date.now();
         sess.sessionEndAt=Date.now()+sess.durationSec*1000;
       }
