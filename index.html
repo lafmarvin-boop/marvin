@@ -421,7 +421,7 @@
     /* stripe */
     #stripe-card-element{padding:.72rem .95rem;border:1.5px solid var(--sand);border-radius:9px;background:var(--cream);transition:border-color .2s;}
     #stripe-card-element.StripeElement--focus{border-color:var(--terracotta);}
-    [data-theme="dark"] #stripe-card-element{background:#2C1F14;border-color:#3D2A1A;}
+    [data-theme="dark"] #stripe-card-element{background:#FFF8F3;border-color:#C4714A;}
     #payment-error{color:#e74c3c;font-size:.78rem;margin-top:.4rem;min-height:1.1rem;}
     .test-hint{background:#fff8e1;border:1px solid #FFD700;border-radius:7px;padding:.55rem .85rem;font-size:.74rem;color:#7a6000;margin-top:.7rem;line-height:1.5;}
     .test-hint strong{color:#5a4000;}
@@ -1647,10 +1647,7 @@ function updateAvailUI(){
 updateAvailUI();
 
 // ── STRIPE ──
-function stripeColors(){const d=document.documentElement.getAttribute('data-theme')==='dark';return{color:d?'#F0E8D8':'#2C1F14','::placeholder':{color:d?'#8A7060':'#B09070'}};}
-try{stripe=Stripe(STRIPE_KEY);const el=stripe.elements();cardElement=el.create('card',{hidePostalCode:true,style:{base:{fontFamily:"'DM Sans',sans-serif",fontSize:'15px',...stripeColors()}}});}catch(e){console.warn('Stripe:',e.message);}
-// Stripe est initialisé avant l'IIFE de thème → resync couleurs après (setTimeout 0 = après tout le JS sync)
-setTimeout(function(){if(cardElement&&document.documentElement.getAttribute('data-theme')==='dark'){try{cardElement.update({style:{base:stripeColors()}});}catch{}}},0);
+try{stripe=Stripe(STRIPE_KEY);const el=stripe.elements();cardElement=el.create('card',{hidePostalCode:true,style:{base:{fontFamily:"'DM Sans',sans-serif",fontSize:'15px',color:'#2C1F14','::placeholder':{color:'#B09070'}}}});}catch(e){console.warn('Stripe:',e.message);}
 
 // ── FIDÉLITÉ (Option A — localStorage) ──
 function getLoyaltyInfo() {
@@ -2812,7 +2809,6 @@ function toggleDark(){
   html.setAttribute('data-theme',isDark?'light':'dark');
   document.getElementById('dark-toggle').textContent=isDark?'🌙':'☀️';
   localStorage.setItem('parlons_theme',isDark?'light':'dark');
-  if(cardElement) try{cardElement.update({style:{base:{color:isDark?'#2C1F14':'#F0E8D8','::placeholder':{color:isDark?'#B09070':'#8A7060'}}}});}catch{}
 }
 (function(){
   const saved=localStorage.getItem('parlons_theme');
