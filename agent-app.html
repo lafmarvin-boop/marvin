@@ -764,16 +764,13 @@ function startSessionEndCountdown(){
     document.getElementById('nav-chat').classList.add('active');
     if(activeChatId) renderChatMessages(activeChatId);
   }
-  // Notif + son
-  triggerNotif('⏱ Session terminée', 'La session va se fermer dans 10 secondes.');
-  playBeep();
   const msgs=document.getElementById('chat-msgs');
   if(msgs){
     let banner=document.getElementById('session-end-banner');
     if(!banner){ banner=document.createElement('div'); banner.id='session-end-banner'; banner.style.cssText='text-align:center;padding:.65rem;background:#fef2f2;border-radius:10px;margin:.5rem 0;font-size:.8rem;color:#991b1b;font-weight:500;'; msgs.appendChild(banner); msgs.scrollTop=msgs.scrollHeight; }
-    banner.textContent='⏱ Session terminée — fermeture dans 10s';
+    banner.textContent='⏱ Session terminée — fermeture dans 5s';
   }
-  let n=10;
+  let n=5;
   sessionEndTimer=setInterval(()=>{
     n--;
     const b=document.getElementById('session-end-banner');
