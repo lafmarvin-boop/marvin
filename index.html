@@ -1317,6 +1317,7 @@
       <div style="display:flex;flex-direction:column;gap:.55rem;">
         <a href="#" onclick="openCGV();return false;" style="font-size:.82rem;color:#9A8070;text-decoration:none;">CGV</a>
         <a href="#" onclick="openPrivacy();return false;" style="font-size:.82rem;color:#9A8070;text-decoration:none;">Confidentialité &amp; RGPD</a>
+        <a href="#" onclick="openPrivacy();return false;" style="font-size:.82rem;color:#9A8070;text-decoration:none;">Politique cookies</a>
         <a href="#" onclick="openLegal();return false;" style="font-size:.82rem;color:#9A8070;text-decoration:none;">Mentions légales</a>
         <a href="#" onclick="openRefund();return false;" style="font-size:.82rem;color:#9A8070;text-decoration:none;">Politique de remboursement</a>
         <a href="mailto:contact.parlons.ecoute@gmail.com?subject=Réclamation%20Parlons" style="font-size:.82rem;color:#9A8070;text-decoration:none;">Réclamation</a>
@@ -2543,7 +2544,7 @@ function startFreeGroupTimer(theme,name){
   <div class="cgv-box">
     <button class="cgv-close" onclick="closeCGV()">✕ Fermer les CGV</button>
     <h1>Conditions Générales de Vente</h1>
-    <div class="cgv-meta">Version 1.2 · En vigueur à compter du 16 avril 2026 · Mise à jour : 30 mai 2026 · Parlons</div>
+    <div class="cgv-meta">Version 1.3 · En vigueur à compter du 16 avril 2026 · Mise à jour : 3 juin 2026 · Parlons</div>
 
     <p>Les présentes CGV régissent les relations entre la plateforme <strong>Parlons</strong> et tout utilisateur du service. Le paiement d'une session vaut acceptation pleine et entière des présentes CGV.</p>
 
@@ -2557,6 +2558,7 @@ function startFreeGroupTimer(theme,name){
     <h2><span class="cgv-art">Art. 3</span> Tarification et paiement</h2>
     <h3>Sessions individuelles</h3>
     <ul>
+      <li><strong>10 minutes</strong> : 2,00 € TTC</li>
       <li><strong>30 minutes</strong> : 5,00 € TTC</li>
       <li><strong>1 heure</strong> : 9,00 € TTC</li>
     </ul>
@@ -2568,7 +2570,7 @@ function startFreeGroupTimer(theme,name){
 
     <h2><span class="cgv-art">Art. 4</span> File d'attente et décompte du temps</h2>
     <div class="cgv-green">✅ Le chronomètre de session démarre <strong>uniquement au premier message de l'écoutant</strong>. Le temps d'attente en file n'est jamais facturé.</div>
-    <p>Une alerte est envoyée 2 minutes avant la fin, avec possibilité de prolonger.</p>
+    <p>Un avertissement s'affiche à 2 minutes avant la fin. Un bouton de prolongation apparaît dans les 30 dernières secondes, permettant de régler une nouvelle session sans interrompre la conversation.</p>
 
     <h2><span class="cgv-art">Art. 5</span> Fin de session et historique</h2>
     <p>À l'expiration du temps, la session se termine avec un message de clôture courtois. L'historique reste accessible côté client tant que les cookies ne sont pas effacés. Une session terminée ne peut pas être rouverte sans nouvelle souscription.</p>
@@ -2689,8 +2691,17 @@ function startFreeGroupTimer(theme,name){
     </ul>
     <div class="lb-info">Aucun cookie publicitaire ou de tracking n'est utilisé sur Parlons.</div>
 
-    <h2>7. Transferts hors UE</h2>
-    <p>Certains sous-traitants sont établis hors de l'UE (Stripe, Supabase, Netlify, Resend — USA). Ces transferts sont encadrés par des clauses contractuelles types conformes au RGPD. Crisp est hébergé en Europe. ipwho.is effectue une résolution IP sans stockage identifiable.</p>
+    <h2>7. Transferts hors UE &amp; sous-traitants</h2>
+    <p>Certains sous-traitants sont établis hors de l'UE. Ces transferts sont encadrés par des clauses contractuelles types (CCT) conformes au RGPD (Art. 46).</p>
+    <ul>
+      <li><strong>Stripe, Inc.</strong> (USA) — traitement des paiements · <a href="https://stripe.com/fr/privacy" target="_blank" style="color:var(--terracotta)">politique Stripe</a></li>
+      <li><strong>Supabase, Inc.</strong> (USA) — base de données des sessions et messages · <a href="https://supabase.com/privacy" target="_blank" style="color:var(--terracotta)">politique Supabase</a></li>
+      <li><strong>Netlify, Inc.</strong> (USA) — hébergement du site · <a href="https://www.netlify.com/privacy/" target="_blank" style="color:var(--terracotta)">politique Netlify</a></li>
+      <li><strong>Resend, Inc.</strong> (USA) — envoi d'emails transactionnels · <a href="https://resend.com/privacy" target="_blank" style="color:var(--terracotta)">politique Resend</a></li>
+      <li><strong>Crisp IM SAS</strong> (France/UE) — widget de chat · <a href="https://crisp.chat/fr/privacy/" target="_blank" style="color:var(--terracotta)">politique Crisp</a></li>
+    </ul>
+    <p>Les contrats de traitement de données (DPA) avec chacun de ces sous-traitants sont disponibles sur demande à <a href="mailto:contact.parlons.ecoute@gmail.com?subject=DPA%20sous-traitants" style="color:var(--terracotta)">contact.parlons.ecoute@gmail.com</a>.</p>
+    <p style="font-size:.75rem;color:var(--light);">ipwho.is effectue une résolution IP (pays/ville) sans stockage identifiable.</p>
     <button class="legal-close-btn" onclick="closePrivacy()">Fermer ✕</button>
   </div>
 </div>
