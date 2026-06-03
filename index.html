@@ -3193,6 +3193,7 @@ function openAgentRequestForm(){
   if(localStorage.getItem('parlons_pwa_dismissed')) return;
 
   const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;
+  const isSamsung=/SamsungBrowser/i.test(navigator.userAgent);
   const banner=document.getElementById('pwa-banner');
   const text=document.getElementById('pwa-banner-text');
   const btn=document.getElementById('pwa-install-btn');
@@ -3202,7 +3203,12 @@ function openAgentRequestForm(){
     text.textContent='📲 Ajoutez Parlons sur votre écran d\'accueil : appuyez sur le bouton Partager (⬜↑) en bas de Safari, puis "Sur l\'écran d\'accueil".';
     btn.textContent='Compris';
     banner.style.display='flex';
+  } else if(isSamsung){
+    text.textContent='📲 Installez Parlons sur votre téléphone : appuyez sur le menu ⋮ en bas, puis "Ajouter page à" → "Écran d\'accueil".';
+    btn.textContent='Compris';
+    banner.style.display='flex';
   } else {
+    // Chrome / autres Android : attendre beforeinstallprompt, sinon instructions manuelles
     window._pwaDeferredPrompt=null;
     window.addEventListener('beforeinstallprompt',function(e){
       e.preventDefault();
@@ -3211,6 +3217,14 @@ function openAgentRequestForm(){
       btn.textContent='Installer';
       banner.style.display='flex';
     });
+    // Si pas de prompt après 3s → instructions manuelles
+    setTimeout(function(){
+      if(banner.style.display==='none'||banner.style.display==='') {
+        text.textContent='📲 Installez Parlons : dans Chrome, appuyez sur ⋮ puis "Ajouter à l\'écran d\'accueil".';
+        btn.textContent='Compris';
+        banner.style.display='flex';
+      }
+    },3000);
   }
 
   window.addEventListener('appinstalled',function(){

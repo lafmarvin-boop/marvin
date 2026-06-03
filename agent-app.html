@@ -957,6 +957,7 @@ const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
 
 if (!isStandalone) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
   const banner = document.getElementById('install-banner');
   const bannerText = banner ? banner.querySelector('.push-banner-text') : null;
   const bannerBtn = banner ? banner.querySelector('.push-banner-btn') : null;
@@ -965,12 +966,24 @@ if (!isStandalone) {
     bannerText.textContent = '📲 Installez l\'appli : appuyez sur le bouton Partager (⬜↑) en bas de Safari, puis "Sur l\'écran d\'accueil".';
     bannerBtn.textContent = 'Compris';
     banner.style.display = 'flex';
+  } else if (isSamsung && banner && bannerText && bannerBtn) {
+    bannerText.textContent = '📲 Installez l\'appli : appuyez sur le menu ⋮ en bas, puis "Ajouter page à" → "Écran d\'accueil".';
+    bannerBtn.textContent = 'Compris';
+    banner.style.display = 'flex';
   } else {
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredInstallPrompt = e;
       if (banner) banner.style.display = 'flex';
     });
+    // Fallback Chrome : instructions manuelles si le prompt ne vient pas
+    setTimeout(() => {
+      if (banner && banner.style.display !== 'flex' && bannerText && bannerBtn) {
+        bannerText.textContent = '📲 Installez l\'appli : dans Chrome, appuyez sur ⋮ puis "Ajouter à l\'écran d\'accueil".';
+        bannerBtn.textContent = 'Compris';
+        banner.style.display = 'flex';
+      }
+    }, 3000);
   }
 }
 
