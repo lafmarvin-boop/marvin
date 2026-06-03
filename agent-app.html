@@ -307,6 +307,8 @@ let renderedIds = {};           // sessionId → Set of rendered message ids
 let statsData = null;
 let currentPeriod = 'today';
 const respondingExt = new Set();
+let prevQueueIds = new Set();
+let queueInitialized = false;
 
 // ── UTILS ──
 function fmt(n){ return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -393,8 +395,11 @@ async function goOnline(){
     if(!data.ok){ alert(data.error||'Erreur'); hideLoading(); return; }
     appToken=data.token;
     appOnline=true;
+    localStorage.setItem('parlons_agent_online','1');
+    prevQueueIds=new Set(); queueInitialized=false;
     updateStatusUI();
     startPoll();
+    if(Notification.permission==='default') Notification.requestPermission().then(()=>updatePushBanner()).catch(()=>{});
     if(data.assignedSession){ await refreshSessions(); openChatView(data.assignedSession); }
   }catch(e){ alert('Erreur réseau'); }
   hideLoading();
@@ -402,6 +407,7 @@ async function goOnline(){
 
 async function goOffline(){
   if(!appToken) return;
+  localStorage.removeItem('parlons_agent_online');
   showLoading('Déconnexion…');
   try{
     await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,status:'offline'})});
@@ -453,7 +459,7 @@ async function poll(){
   if(!appToken) return;
   try{
     const res=await fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken,since:pollSince})});
-    if(res.status===401){ appToken=null; appOnline=false; updateStatusUI(); stopPoll(); return; }
+    if(res.status===401){ appToken=null; appOnline=false; localStorage.removeItem('parlons_agent_online'); updateStatusUI(); stopPoll(); return; }
     const d=await res.json();
     if(d.error) return;
     pollSince=new Date().toISOString();
@@ -475,6 +481,8 @@ function processPoll(d){
     if(!renderedIds[s.id]) renderedIds[s.id]=new Set();
     if(!appSessions.has(s.id)){
       appSessions.set(s.id,{ id:s.id, name:s.pre_name||'Visiteur', topic:s.pre_topic||'', label:s.session_label||'', durationSec:s.duration_sec||1800, assignedAt:s.assigned_at, timerStartedAt:null, sessionEndAt:0, extensionPending:s.extension_pending||null, frozenRemMs:undefined, messages:[], unread:0 });
+      triggerNotif('💬 Nouveau tchat assigné', (s.pre_name||'Visiteur')+(s.pre_topic?' — '+s.pre_topic:''));
+      playBeep();
     }
     const sess=appSessions.get(s.id);
     if(s.duration_sec&&s.duration_sec>sess.durationSec){
@@ -518,6 +526,10 @@ function renderQueue(waiting){
   const el=document.getElementById('queue-list');
   const badge=document.getElementById('queue-count-badge');
   badge.textContent=waiting.length?`(${waiting.length})`:'';
+  if(queueInitialized){
+    waiting.forEach(s=>{ if(!prevQueueIds.has(s.id)){ triggerNotif('👋 Visiteur en attente', (s.pre_name||'Visiteur')+(s.pre_topic?' — '+s.pre_topic:'')); playBeep(); } });
+  }
+  prevQueueIds=new Set(waiting.map(s=>s.id)); queueInitialized=true;
   if(!waiting.length){ el.innerHTML='<div class="empty-state">Aucun visiteur en attente</div>'; return; }
   el.innerHTML=waiting.map(s=>`
     <div class="queue-card">
@@ -804,6 +816,30 @@ async function installApp() {
   if (banner) banner.style.display = 'none';
 }
 
+// ── NOTIFICATIONS & BEEP ──
+function triggerNotif(title, body){
+  if(Notification.permission!=='granted') return;
+  try{ new Notification(title,{body,silent:false}); }catch{}
+}
+function playBeep(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value=880;
+    g.gain.setValueAtTime(.35,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.45);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime+.45);
+  }catch{}
+}
+
+// ── VISIBILITYCHANGE : re-go-online after screen lock ──
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) return;
+  if(appOnline && appToken){ poll(); return; }
+  if(localStorage.getItem('parlons_agent_online')==='1' && appEmail && appPassword && !appOnline) goOnline();
+});
+
 // ── SERVICE WORKER ──
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').catch(()=>{});
@@ -829,6 +865,7 @@ if('serviceWorker' in navigator){
         showView('home');
         updatePushBanner();
         hideLoading();
+        if(localStorage.getItem('parlons_agent_online')==='1') goOnline();
       })
       .catch(()=>hideLoading());
   }
