@@ -33,6 +33,10 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 .field-label{font-size:.75rem;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem;}
 .field-input{width:100%;border:1.5px solid var(--sand);border-radius:10px;padding:.75rem 1rem;font-size:.95rem;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--dark);outline:none;transition:border-color .2s;margin-bottom:1rem;}
 .field-input:focus{border-color:var(--tc);}
+.pwd-wrap{position:relative;margin-bottom:1rem;}
+.pwd-wrap .field-input{margin-bottom:0;padding-right:2.8rem;}
+.pwd-eye{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#bfb0a0;padding:0;line-height:1;display:flex;align-items:center;}
+.pwd-eye:hover{color:var(--dark);}
 .btn-primary{width:100%;background:var(--tc);color:var(--white);border:none;border-radius:50px;padding:.9rem;font-size:1rem;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .2s;margin-top:.25rem;}
 .btn-primary:active{background:var(--tc2);}
 .btn-primary:disabled{opacity:.5;cursor:default;}
@@ -167,7 +171,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
     <div class="field-label">Email</div>
     <input id="login-email" class="field-input" type="email" inputmode="email" autocomplete="email" placeholder="votre@email.fr">
     <div class="field-label">Mot de passe</div>
-    <input id="login-password" class="field-input" type="password" autocomplete="current-password" placeholder="••••••••">
+    <div class="pwd-wrap"><input id="login-password" class="field-input" type="password" autocomplete="current-password" placeholder="••••••••"><button type="button" class="pwd-eye" onclick="togglePwd('login-password')" tabindex="-1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
     <button class="btn-primary" id="login-btn" onclick="doLogin()">Se connecter</button>
     <div class="login-error" id="login-error"></div>
   </div>
@@ -298,6 +302,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 
 <script>
 const API = '/.netlify/functions';
+function togglePwd(id){const el=document.getElementById(id);el.type=el.type==='password'?'text':'password';}
 
 // ── STATE ──
 let appEmail = '', appPassword = '', appToken = null, appOnline = false;
