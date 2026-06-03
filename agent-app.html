@@ -86,6 +86,8 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 .queue-take-btn{background:var(--tc);color:var(--white);border:none;border-radius:50px;padding:.35rem .9rem;font-size:.76rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;}
 .session-card{background:var(--white);border-radius:12px;padding:.85rem 1rem;display:flex;align-items:center;gap:.85rem;border:1.5px solid #fde68a;cursor:pointer;transition:background .15s;}
 .session-card:active{background:#fef9f5;}
+.session-card.new{border-color:var(--red);animation:pulse-card 1s ease-in-out infinite alternate;}
+@keyframes pulse-card{from{border-color:var(--red);box-shadow:0 0 0 0 rgba(239,68,68,.3);}to{border-color:#fca5a5;box-shadow:0 0 0 6px rgba(239,68,68,0);}}
 .session-card-avatar{width:38px;height:38px;border-radius:50%;background:#fef9c3;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
 .session-card-info{flex:1;min-width:0;}
 .session-card-name{font-weight:600;font-size:.9rem;}
@@ -238,6 +240,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
         </div>
       </div>
       <div class="chat-msgs" id="chat-msgs"></div>
+      <div id="send-error" style="display:none;font-size:.72rem;color:#ef4444;text-align:center;padding:.25rem .75rem;background:#fef2f2;"></div>
       <div class="chat-input-row">
         <textarea class="chat-ta" id="chat-ta" rows="1" placeholder="Votre message…" oninput="autoResize(this)" onkeydown="taKeydown(event)"></textarea>
         <button class="chat-send" onclick="sendMsg()">
@@ -483,6 +486,8 @@ function processPoll(d){
       appSessions.set(s.id,{ id:s.id, name:s.pre_name||'Visiteur', topic:s.pre_topic||'', label:s.session_label||'', durationSec:s.duration_sec||1800, assignedAt:s.assigned_at, timerStartedAt:null, sessionEndAt:0, extensionPending:s.extension_pending||null, frozenRemMs:undefined, messages:[], unread:0 });
       triggerNotif('💬 Nouveau tchat assigné', (s.pre_name||'Visiteur')+(s.pre_topic?' — '+s.pre_topic:''));
       playBeep();
+      // Ouvrir automatiquement si l'agent n'est pas déjà dans un autre chat
+      if(!activeChatId) setTimeout(()=>openChatView(s.id), 50);
     }
     const sess=appSessions.get(s.id);
     if(s.duration_sec&&s.duration_sec>sess.durationSec){
@@ -549,11 +554,12 @@ function renderSessions(){
   if(!appSessions.size){ el.innerHTML='<div class="empty-state">Aucune session active</div>'; return; }
   el.innerHTML=[...appSessions.values()].map(s=>{
     const rem=sessionRemaining(s);
-    return `<div class="session-card" onclick="openChatView('${s.id}')">
-      <div class="session-card-avatar">💬</div>
+    const isNew=!s.timerStartedAt;
+    return `<div class="session-card${isNew?' new':''}" onclick="openChatView('${s.id}')">
+      <div class="session-card-avatar">${isNew?'🔔':'💬'}</div>
       <div class="session-card-info">
         <div class="session-card-name">${esc(s.name)}</div>
-        <div class="session-card-label">${esc(s.label)||'Session'}</div>
+        <div class="session-card-label">${isNew?'Nouveau tchat — appuyez pour répondre':esc(s.label)||'Session'}</div>
       </div>
       ${s.timerStartedAt?`<div class="session-card-timer">${fmtTime(rem)}</div>`:``}
       ${s.unread?`<div class="session-unread">${s.unread}</div>`:''}
@@ -670,10 +676,21 @@ async function sendMsg(){
     updateStatusUI();
   }
   // Optimistic render
-  if(sess){ sess.messages.push({id:'tmp'+Date.now(),content,sender_type:'agent',created_at:new Date().toISOString()}); renderChatMessages(sessionId); }
+  const tmpId='tmp'+Date.now();
+  if(sess){ sess.messages.push({id:tmpId,content,sender_type:'agent',created_at:new Date().toISOString()}); renderChatMessages(sessionId); }
   try{
-    await fetch(`${API}/chat-send`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,content,senderType:'agent',agentEmail:appEmail,agentToken:appToken})});
-  }catch{}
+    const res=await fetch(`${API}/chat-send`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,content,senderType:'agent',agentEmail:appEmail,agentToken:appToken})});
+    if(!res.ok){
+      const d=await res.json().catch(()=>({}));
+      if(sess) sess.messages=sess.messages.filter(m=>m.id!==tmpId);
+      renderChatMessages(sessionId);
+      const errEl=document.getElementById('send-error');
+      if(errEl){ errEl.textContent='Envoi échoué : '+(d.error||res.status); errEl.style.display='block'; setTimeout(()=>{ errEl.style.display='none'; },4000); }
+    }
+  }catch{
+    if(sess) sess.messages=sess.messages.filter(m=>m.id!==tmpId);
+    renderChatMessages(sessionId);
+  }
 }
 
 function taKeydown(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(); } }

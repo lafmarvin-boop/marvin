@@ -75,15 +75,15 @@ exports.handler = async (event) => {
       body: JSON.stringify({ session_id: sessionId, content: greeting, sender_type: 'system' })
     });
 
-    // 5. Mettre à jour current_session_id dans agent_presence
-    fetch(
+    // 5. Mettre à jour current_session_id dans agent_presence (awaité pour éviter la race condition)
+    await fetch(
       `${SB_URL}/rest/v1/agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}`,
       {
         method: 'PATCH',
         headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ current_session_id: sessionId, last_seen: now })
+        body: JSON.stringify({ current_session_id: sessionId, status: 'busy', last_seen: now })
       }
-    ).catch(() => {});
+    );
 
     return {
       statusCode: 200, headers: CORS,
