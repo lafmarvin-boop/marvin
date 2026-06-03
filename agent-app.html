@@ -506,6 +506,9 @@ function processPoll(d){
     (s.messages||[]).forEach(m=>{
       if(renderedIds[s.id].has(m.id)) return;
       renderedIds[s.id].add(m.id);
+      // Supprimer le doublon optimiste (tmp) du même contenu
+      const tmpIdx=sess.messages.findIndex(x=>x.id.startsWith('tmp')&&x.content===m.content&&x.sender_type===m.sender_type);
+      if(tmpIdx!==-1) sess.messages.splice(tmpIdx,1);
       sess.messages.push(m);
       if(s.id!==activeChatId||(document.getElementById('chat-view')&&!document.getElementById('chat-view').classList.contains('active'))) sess.unread++;
       // Start timer on first agent/system msg
@@ -834,9 +837,17 @@ async function installApp() {
 }
 
 // ── NOTIFICATIONS & BEEP ──
-function triggerNotif(title, body){
+async function triggerNotif(title, body){
   if(Notification.permission!=='granted') return;
-  try{ new Notification(title,{body,silent:false}); }catch{}
+  try{
+    // Android Chrome : new Notification() ne fonctionne pas, il faut le SW
+    if('serviceWorker' in navigator){
+      const sw=await navigator.serviceWorker.ready;
+      sw.showNotification(title,{body,icon:'/icons/icon-192.png',badge:'/icons/icon-192.png',vibrate:[200,100,200]});
+    } else {
+      new Notification(title,{body});
+    }
+  }catch{}
 }
 function playBeep(){
   try{
