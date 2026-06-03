@@ -1839,20 +1839,8 @@ function endSession(){
   clearInterval(sessionTimer); sessionTimer=null;
   localStorage.removeItem('parlons_active_session');
   document.getElementById('session-timer').textContent='0:00';
-  // Afficher le bouton relance de façon bien visible
-  const pcpRenew=document.getElementById('pcp-renew-btn');
-  if(pcpRenew){pcpRenew.style.display='inline-block';pcpRenew.textContent='🔁 Prolonger';}
-  // Injecter un message dans le chat indiquant que le temps est écoulé
-  const msgs=document.getElementById('pcp-msgs');
-  if(msgs&&chatSessionId){
-    const banner=document.createElement('div');
-    banner.id='pcp-time-up-banner';
-    banner.style.cssText='align-self:center;background:#fff3cd;border:1px solid #f59e0b;border-radius:10px;padding:.5rem .85rem;font-size:.75rem;color:#92400e;text-align:center;max-width:92%;margin:.3rem 0;';
-    banner.innerHTML='⏰ Temps écoulé. <strong>Prolongez</strong> pour continuer à discuter.';
-    msgs.appendChild(banner);msgs.scrollTop=msgs.scrollHeight;
-  }
-  // Ne PAS appeler _closeSessionNow() — la session reste ouverte côté serveur.
-  // Elle se fermera uniquement si l'agent la termine (poll reçoit status:'closed').
+  const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
+  _closeSessionNow();
 }
 function _closeSessionNow(){
   const sessionIdToRate=chatSessionId;
