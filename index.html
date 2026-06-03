@@ -449,8 +449,9 @@
     #end-warning{display:none;margin-top:.7rem;background:#FFF0F0;border-radius:9px;padding:.7rem .9rem;border:1px solid #f8c8c8;font-size:.78rem;color:#a02020;text-align:center;}
     #session-ended{display:none;margin-top:.7rem;background:var(--cream);border-radius:9px;padding:.9rem;border:1px solid var(--sand);text-align:center;font-size:.84rem;color:var(--mid);}
     /* ══ WIDGET CHAT ══ */
-    #parlons-chat-btn{position:fixed;bottom:1.4rem;right:1.4rem;z-index:1000;width:56px;height:56px;border-radius:50%;background:var(--terracotta);color:white;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 18px rgba(0,0,0,.25);transition:transform .2s,box-shadow .2s;}
     #parlons-chat-btn:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(0,0,0,.3);}
+    #pwa-chat-wrap{display:flex;}
+    @media(max-width:640px){#pwa-chat-wrap{bottom:1rem;right:1rem;}}
     #chat-unread-badge{position:absolute;top:-3px;right:-3px;background:#e74c3c;color:white;font-size:.6rem;font-weight:700;min-width:17px;height:17px;border-radius:50%;padding:0 3px;display:flex;align-items:center;justify-content:center;}
     #parlons-chat-panel{position:fixed;bottom:5rem;right:1rem;z-index:1000;width:360px;max-width:calc(100vw - 1.5rem);height:520px;max-height:calc(100dvh - 6rem);background:white;border-radius:20px;box-shadow:0 12px 40px rgba(0,0,0,.18);display:none;flex-direction:column;font-family:'DM Sans',sans-serif;overflow:hidden;border:1px solid rgba(0,0,0,.06);}
     #parlons-chat-panel.pcp-open{display:flex;}
@@ -496,7 +497,7 @@
     .pcp-rating-actions{display:flex;gap:.5rem;}
     .pcp-rating-skip{flex:1;background:none;border:1px solid #e0d8d0;border-radius:50px;padding:.5rem;font-family:'DM Sans',sans-serif;font-size:.79rem;color:var(--mid);cursor:pointer;}
     .pcp-rating-send{flex:2;background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.5rem;font-family:'DM Sans',sans-serif;font-size:.79rem;font-weight:600;cursor:pointer;}
-    @media(max-width:640px){#parlons-chat-panel{bottom:0;right:0;width:100vw;max-width:100vw;border-radius:20px 20px 0 0;height:82dvh;max-height:82dvh;}#parlons-chat-btn{bottom:1rem;right:1rem;}}
+    @media(max-width:640px){#parlons-chat-panel{bottom:0;right:0;width:100vw;max-width:100vw;border-radius:20px 20px 0 0;height:82dvh;max-height:82dvh;}}
     /* rating modal */
     .rating-zone{display:none;margin-top:1.2rem;background:var(--warm);border-radius:11px;padding:1.2rem;text-align:center;border:1px solid var(--sand);}
     .rating-zone p{font-size:.85rem;color:var(--dark);margin-bottom:.8rem;}
@@ -2626,17 +2627,6 @@ function startFreeGroupTimer(theme,name){
 </div>
 
 <!-- ═══════════════════════════════════════
-     PWA INSTALL BANNER
-═══════════════════════════════════════ -->
-<div id="pwa-banner" style="display:none;position:fixed;bottom:4.5rem;left:1rem;right:1rem;z-index:801;background:linear-gradient(135deg,#2d1f14,#4a2e1a);color:white;border-radius:16px;padding:1rem 1.2rem;box-shadow:0 8px 32px rgba(0,0,0,.4);display:none;align-items:center;gap:.9rem;flex-wrap:wrap;">
-  <div id="pwa-banner-text" style="font-size:.78rem;color:#e8d5b0;line-height:1.55;flex:1;min-width:180px;font-weight:300;"></div>
-  <div style="display:flex;gap:.5rem;flex-shrink:0;">
-    <button id="pwa-install-btn" onclick="pwaBannerAction()" style="background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.45rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:600;cursor:pointer;white-space:nowrap;"></button>
-    <button onclick="pwaBannerDismiss()" style="background:rgba(255,255,255,.12);color:white;border:none;border-radius:50px;padding:.45rem .85rem;font-family:'DM Sans',sans-serif;font-size:.76rem;cursor:pointer;">✕</button>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════
      COOKIE BANNER
 ═══════════════════════════════════════ -->
 <div class="cookie-banner" id="cookie-banner">
@@ -2945,9 +2935,12 @@ document.fonts && document.fonts.ready.then(stackBanners);
 </script>
 
 <!-- WIDGET CHAT CUSTOM -->
-<button id="parlons-chat-btn" onclick="toggleChatPanel()" title="Ouvrir le chat Parlons" aria-label="Chat">
-  💬<span id="chat-unread-badge" style="display:none">1</span>
-</button>
+<div id="pwa-chat-wrap" style="position:fixed;bottom:1.4rem;right:1.4rem;z-index:1000;display:flex;flex-direction:column;align-items:center;gap:5px;">
+  <button id="parlons-chat-btn" onclick="toggleChatPanel()" title="Ouvrir le chat Parlons" aria-label="Chat" style="position:static;width:56px;height:56px;border-radius:50%;background:var(--terracotta);color:white;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 4px 18px rgba(0,0,0,.25);transition:transform .2s,box-shadow .2s;">
+    💬<span id="chat-unread-badge" style="display:none">1</span>
+  </button>
+  <button id="pwa-app-link" onclick="pwaLinkAction()" style="display:none;background:rgba(196,113,74,.12);color:var(--terracotta);border:1px solid rgba(196,113,74,.35);border-radius:50px;padding:.22rem .7rem;font-family:'DM Sans',sans-serif;font-size:.68rem;font-weight:600;cursor:pointer;white-space:nowrap;backdrop-filter:blur(6px);">📲 Installer l'appli</button>
+</div>
 <div id="parlons-chat-panel">
   <div class="pcp-header">
     <div class="pcp-header-left">
@@ -3192,65 +3185,47 @@ function openAgentRequestForm(){
   if(isStandalone) return;
   if(localStorage.getItem('parlons_pwa_dismissed')) return;
 
+  const link=document.getElementById('pwa-app-link');
+  if(!link) return;
+
   const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;
   const isSamsung=/SamsungBrowser/i.test(navigator.userAgent);
-  const banner=document.getElementById('pwa-banner');
-  const text=document.getElementById('pwa-banner-text');
-  const btn=document.getElementById('pwa-install-btn');
-  if(!banner||!text||!btn) return;
 
-  if(isIOS){
-    text.textContent='📲 Ajoutez Parlons sur votre écran d\'accueil : appuyez sur le bouton Partager (⬜↑) en bas de Safari, puis "Sur l\'écran d\'accueil".';
-    btn.textContent='Compris';
-    banner.style.display='flex';
-  } else if(isSamsung){
-    text.textContent='📲 Installez Parlons sur votre téléphone : appuyez sur le menu ⋮ en bas, puis "Ajouter page à" → "Écran d\'accueil".';
-    btn.textContent='Compris';
-    banner.style.display='flex';
-  } else {
-    // Chrome / autres Android : attendre beforeinstallprompt, sinon instructions manuelles
+  // Toujours afficher le lien (instructions selon navigateur au clic)
+  link.style.display='inline-block';
+
+  if(!isIOS && !isSamsung){
     window._pwaDeferredPrompt=null;
     window.addEventListener('beforeinstallprompt',function(e){
       e.preventDefault();
       window._pwaDeferredPrompt=e;
-      text.textContent='📲 Installez Parlons sur votre écran d\'accueil pour un accès rapide.';
-      btn.textContent='Installer';
-      banner.style.display='flex';
     });
-    // Si pas de prompt après 3s → instructions manuelles
-    setTimeout(function(){
-      if(banner.style.display==='none'||banner.style.display==='') {
-        text.textContent='📲 Installez Parlons : dans Chrome, appuyez sur ⋮ puis "Ajouter à l\'écran d\'accueil".';
-        btn.textContent='Compris';
-        banner.style.display='flex';
-      }
-    },3000);
   }
 
   window.addEventListener('appinstalled',function(){
-    banner.style.display='none';
+    link.style.display='none';
     localStorage.setItem('parlons_pwa_dismissed','1');
   });
 })();
 
-function pwaBannerAction(){
-  const banner=document.getElementById('pwa-banner');
+function pwaLinkAction(){
   if(window._pwaDeferredPrompt){
     window._pwaDeferredPrompt.prompt();
     window._pwaDeferredPrompt.userChoice.then(function(){
       window._pwaDeferredPrompt=null;
-      if(banner) banner.style.display='none';
+      const link=document.getElementById('pwa-app-link');
+      if(link) link.style.display='none';
       localStorage.setItem('parlons_pwa_dismissed','1');
     });
-  } else {
-    // iOS — just dismiss
-    pwaBannerDismiss();
+    return;
   }
-}
-function pwaBannerDismiss(){
-  const banner=document.getElementById('pwa-banner');
-  if(banner) banner.style.display='none';
-  localStorage.setItem('parlons_pwa_dismissed','1');
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.MSStream;
+  const isSamsung=/SamsungBrowser/i.test(navigator.userAgent);
+  let msg;
+  if(isIOS) msg='Pour installer Parlons :\n\nAppuyez sur le bouton Partager (⬜↑) en bas de Safari, puis "Sur l\'écran d\'accueil".';
+  else if(isSamsung) msg='Pour installer Parlons :\n\nAppuyez sur le menu ⋮ en bas du navigateur, puis "Ajouter page à" → "Écran d\'accueil".';
+  else msg='Pour installer Parlons :\n\nDans Chrome, appuyez sur ⋮ en haut à droite, puis "Ajouter à l\'écran d\'accueil".';
+  alert(msg);
 }
 
 // ── SERVICE WORKER ──
