@@ -732,7 +732,7 @@ function renderChatMessages(sessionId){
   const el=document.getElementById('chat-msgs');
   const wasAtBottom=el.scrollHeight-el.scrollTop-el.clientHeight<80;
   el.innerHTML=sess.messages.map(m=>{
-    const type=m.sender_type==='agent'?'agent':(m.sender_type==='system'||m.sender_type==='system_private')?'system':'visitor';
+    const type=m.sender_type==='agent'?'agent':m.sender_type==='system'?'system':'visitor';
     const time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
     return `<div class="msg ${type}"><div class="bubble">${esc(m.content)}</div>${type!=='system'?`<div class="msg-time">${time}</div>`:''}</div>`;
   }).join('');
