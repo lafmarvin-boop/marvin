@@ -32,7 +32,16 @@ exports.handler = async (event) => {
     if (!Array.isArray(presRows) || !presRows.length || presRows[0].session_token !== agentToken)
       return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Token invalide' }) };
 
-    // 2. Vérifier que la session est bien en attente
+    // 2. Vérifier que l'agent n'a pas atteint la limite de 3 tchats simultanés
+    const activeRes = await fetch(
+      `${SB_URL}/rest/v1/chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id`,
+      { headers: H() }
+    );
+    const activeRows = await activeRes.json();
+    if (Array.isArray(activeRows) && activeRows.length >= 3)
+      return { statusCode: 429, headers: CORS, body: JSON.stringify({ error: 'Limite de 3 tchats simultanés atteinte' }) };
+
+    // 3. Vérifier que la session est bien en attente
     const sessRes = await fetch(
       `${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&status=eq.waiting&select=id,pre_name,pre_topic,session_label,duration_sec&limit=1`,
       { headers: H() }
