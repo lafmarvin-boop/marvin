@@ -313,6 +313,7 @@ const respondingExt = new Set();
 let prevQueueIds = new Set();
 let queueInitialized = false;
 let sessionEndTimer = null;
+let autoTaking = false;
 
 // ── UTILS ──
 function fmt(n){ return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -526,6 +527,8 @@ function processPoll(d){
   updateStatusUI();
   updateNavBadge();
   if(activeChatId&&appSessions.has(activeChatId)) renderChatMessages(activeChatId);
+  // Auto-assigner le prochain tchat en attente si l'agent a de la capacité
+  if(appOnline && appSessions.size < 3 && (d.waitingSessions||[]).length) autoTakeNext(d.waitingSessions);
 }
 
 async function refreshSessions(){
@@ -542,6 +545,7 @@ function renderQueue(waiting){
   }
   prevQueueIds=new Set(waiting.map(s=>s.id)); queueInitialized=true;
   if(!waiting.length){ el.innerHTML='<div class="empty-state">Aucun visiteur en attente</div>'; return; }
+  const atCapacity = appSessions.size >= 3;
   el.innerHTML=waiting.map(s=>`
     <div class="queue-card">
       <div class="queue-card-avatar">👤</div>
@@ -550,7 +554,9 @@ function renderQueue(waiting){
         <div class="queue-card-topic">${esc(s.pre_topic||'Aucun sujet précisé')}</div>
         <div class="queue-card-wait">Attend depuis ${elapsed(s.created_at)}</div>
       </div>
-      <button class="queue-take-btn" onclick="takeSession('${s.id}')">Prendre</button>
+      ${atCapacity
+        ? `<button class="queue-take-btn" disabled style="opacity:.4;cursor:not-allowed;background:var(--mid)">Complet</button>`
+        : `<button class="queue-take-btn" onclick="takeSession('${s.id}')">Prendre</button>`}
     </div>`).join('');
 }
 
@@ -588,6 +594,24 @@ function updateNavBadge(){
 }
 
 // ── TAKE SESSION ──
+async function autoTakeNext(waiting){
+  if(autoTaking||!appToken||!appOnline||appSessions.size>=3) return;
+  if(!waiting||!waiting.length) return;
+  autoTaking=true;
+  try{
+    const sessionId=waiting[0].id;
+    const res=await fetch(`${API}/chat-take`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,agentEmail:appEmail,agentToken:appToken})});
+    const data=await res.json();
+    if(data.ok){
+      await refreshSessions();
+      // Ouvrir le chat seulement si aucun autre n'est actif
+      if(!activeChatId) openChatView(sessionId);
+    }
+    // 404 = session déjà prise par un autre agent → normal, on ignore
+  }catch{}
+  finally{ autoTaking=false; }
+}
+
 async function takeSession(sessionId){
   if(!appToken) return;
   showLoading('Prise en charge…');
