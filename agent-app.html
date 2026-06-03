@@ -312,6 +312,7 @@ let currentPeriod = 'today';
 const respondingExt = new Set();
 let prevQueueIds = new Set();
 let queueInitialized = false;
+let sessionEndTimer = null;
 
 // ── UTILS ──
 function fmt(n){ return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -462,7 +463,7 @@ async function poll(){
   if(!appToken) return;
   try{
     const res=await fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken,since:pollSince})});
-    if(res.status===401){ appToken=null; appOnline=false; localStorage.removeItem('parlons_agent_online'); updateStatusUI(); stopPoll(); return; }
+    if(res.status===401){ appToken=null; appOnline=false; localStorage.removeItem('parlons_agent_online'); updateStatusUI(); stopPoll(); appSessions.clear(); if(activeChatId) closeChatView(); renderSessions(); return; }
     const d=await res.json();
     if(d.error) return;
     pollSince=new Date().toISOString();
@@ -479,6 +480,8 @@ function processPoll(d){
 
   // Remove closed sessions
   [...appSessions.keys()].forEach(id=>{ if(!newIds.has(id)) appSessions.delete(id); });
+  // Si le chat actif a disparu (visiteur parti / session expirée), décompte auto
+  if(activeChatId && !appSessions.has(activeChatId)) startSessionEndCountdown();
 
   incoming.forEach(s=>{
     if(!renderedIds[s.id]) renderedIds[s.id]=new Set();
@@ -614,6 +617,7 @@ function openChatView(sessionId){
 }
 
 function closeChatView(){
+  if(sessionEndTimer){ clearInterval(sessionEndTimer); sessionEndTimer=null; }
   document.getElementById('chat-view').classList.remove('active');
   activeChatId=null;
   clearInterval(chatTimerInterval); chatTimerInterval=null;
@@ -648,6 +652,29 @@ function renderExtBar(sessionId){
 }
 
 // ── CHAT TIMER ──
+function startSessionEndCountdown(){
+  if(sessionEndTimer) return;
+  const msgs=document.getElementById('chat-msgs');
+  if(msgs){
+    let banner=document.getElementById('session-end-banner');
+    if(!banner){ banner=document.createElement('div'); banner.id='session-end-banner'; banner.style.cssText='text-align:center;padding:.65rem;background:#fef2f2;border-radius:10px;margin:.5rem 0;font-size:.8rem;color:#991b1b;font-weight:500;'; msgs.appendChild(banner); msgs.scrollTop=msgs.scrollHeight; }
+    banner.textContent='⏱ Session terminée — fermeture dans 10s';
+  }
+  let n=10;
+  sessionEndTimer=setInterval(()=>{
+    n--;
+    const b=document.getElementById('session-end-banner');
+    if(b) b.textContent=`⏱ Session terminée — fermeture dans ${n}s`;
+    if(n<=0){
+      clearInterval(sessionEndTimer); sessionEndTimer=null;
+      const sid=activeChatId;
+      if(sid&&appToken) fetch(`${API}/chat-close`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid,agentEmail:appEmail,agentToken:appToken,closedBy:'agent'})}).catch(()=>{});
+      if(sid){ appSessions.delete(sid); delete renderedIds[sid]; }
+      closeChatView(); renderSessions(); updateStatusUI();
+    }
+  },1000);
+}
+
 function startChatTimer(sessionId){
   clearInterval(chatTimerInterval); chatTimerInterval=null;
   const timerEl=document.getElementById('chat-timer');
@@ -659,6 +686,7 @@ function startChatTimer(sessionId){
     timerEl.style.display='inline';
     timerEl.textContent=(frozen?'⏸ ':'')+fmtTime(rem);
     timerEl.style.background=(!frozen&&rem<=120)?'rgba(239,68,68,.35)':'rgba(0,0,0,.2)';
+    if(rem<=0&&!frozen) startSessionEndCountdown();
   }
   tick();
   chatTimerInterval=setInterval(tick,1000);
@@ -722,12 +750,12 @@ async function respondExt(accept){
 
 // ── END SESSION ──
 async function endCurrentSession(){
-  if(!activeChatId||!appToken) return;
+  if(!activeChatId) return;
   if(!confirm('Terminer la session ?')) return;
   const sessionId=activeChatId;
-  try{
-    await fetch(`${API}/chat-close`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,agentEmail:appEmail,agentToken:appToken,closedBy:'agent'})});
-  }catch{}
+  if(appToken){
+    try{ await fetch(`${API}/chat-close`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,agentEmail:appEmail,agentToken:appToken,closedBy:'agent'})}); }catch{}
+  }
   appSessions.delete(sessionId);
   delete renderedIds[sessionId];
   closeChatView();
