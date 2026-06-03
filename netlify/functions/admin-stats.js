@@ -94,7 +94,7 @@ exports.handler = async (event) => {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows, ipLogs] = await Promise.all([
+    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows, ipLogs, agentPresenceRows] = await Promise.all([
       sbGet('sessions?statut=eq.paid&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
       sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
       sbGet('group_messages?select=room_id,created_at,author&order=created_at.desc&limit=2000'),
@@ -103,8 +103,11 @@ exports.handler = async (event) => {
       sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors,total_chats'),
       sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,visited_at&order=visited_at.desc&limit=50000`),
       sbGet(`chats?started_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=started_at&order=started_at.desc&limit=10000`),
-      sbGet('visits?select=ip_address,country,city,region,visited_at,visitor_id,is_new&order=visited_at.desc&limit=200')
+      sbGet('visits?select=ip_address,country,city,region,visited_at,visitor_id,is_new&order=visited_at.desc&limit=200'),
+      sbGet('agent_presence?select=agent_email,status,last_seen&limit=100')
     ]);
+    const presenceByEmail = {};
+    agentPresenceRows.forEach(p => { if (p.agent_email) presenceByEmail[p.agent_email.toLowerCase()] = p; });
     const siteStats = siteStatsRows[0] || { total_visits: 0, unique_visitors: 0, total_chats: 0 };
 
     // Calculer stats trafic par période
@@ -204,7 +207,7 @@ exports.handler = async (event) => {
       };
     });
 
-    // Enrichir les agents avec leur profil (prenom + nom) si disponible
+    // Enrichir les agents avec leur profil (prenom + nom) et présence si disponible
     const allProfileRows = await sbGet('agent_profiles?select=email,prenom,nom&limit=100');
     const profileByEmail = {};
     allProfileRows.forEach(p => { if (p.email) profileByEmail[p.email.toLowerCase()] = p; });
@@ -212,6 +215,9 @@ exports.handler = async (event) => {
       if (!a.email) return;
       const p = profileByEmail[a.email.toLowerCase()];
       if (p && p.prenom) a.displayName = `${p.prenom} ${p.nom || ''}`.trim();
+      const pres = presenceByEmail[a.email.toLowerCase()];
+      a.presenceStatus = pres ? pres.status : null;
+      a.presenceLastSeen = pres ? pres.last_seen : null;
     });
 
     const unassigned = sessions.filter(s => !s.agent_name).length;
