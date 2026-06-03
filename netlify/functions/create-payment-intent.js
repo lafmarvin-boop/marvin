@@ -20,8 +20,9 @@ async function getVerifiedDiscount(visitorId) {
   if (!visitorId || !/^[a-z0-9]+$/i.test(visitorId) || visitorId.length > 64) return 0;
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return 0;
   try {
+    // Seuls les paiements confirmés par le webhook Stripe ont statut='paid'
     const res = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/chat_sessions?visitor_id=eq.${encodeURIComponent(visitorId)}&session_type=eq.paid&status=eq.closed&select=id`,
+      `${process.env.SUPABASE_URL}/rest/v1/sessions?visitor_id=eq.${encodeURIComponent(visitorId)}&statut=eq.paid&select=id`,
       { headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` } }
     );
     if (!res.ok) return 0;
@@ -65,7 +66,7 @@ exports.handler = async (event) => {
       currency: 'eur',
       automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
       description: `Parlons - ${formule} - ${pseudo}`,
-      metadata: { formule, pseudo, duree: String(duree || 1800), plateforme: 'parlons', discount: String(effectiveDiscount), ...(email ? { email } : {}) },
+      metadata: { formule, pseudo, duree: String(duree || 1800), plateforme: 'parlons', discount: String(effectiveDiscount), ...(visitorId ? { visitor_id: visitorId } : {}), ...(email ? { email } : {}) },
     });
 
     // Enregistrement optionnel dans Supabase
@@ -76,6 +77,7 @@ exports.handler = async (event) => {
         formule,
         montant: amountCents / 100,
         statut: 'pending',
+        visitor_id: visitorId || null,
       });
     }
 
