@@ -316,6 +316,7 @@ let queueInitialized = false;
 let sessionEndTimer = null;
 let autoTaking = false;
 let pendingOffline = false;
+let _reconnecting = false;
 
 // ── UTILS ──
 function fmt(n){ return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -516,7 +517,23 @@ async function poll(){
   if(!appToken) return;
   try{
     const res=await fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken,since:pollSince})});
-    if(res.status===401){ appToken=null; appOnline=false; localStorage.removeItem('parlons_agent_online'); localStorage.removeItem('parlons_agent_token'); localStorage.removeItem('parlons_agent_token_email'); updateStatusUI(); stopPoll(); appSessions.clear(); if(activeChatId) closeChatView(); renderSessions(); return; }
+    if(res.status===401){
+      localStorage.removeItem('parlons_agent_token');
+      localStorage.removeItem('parlons_agent_token_email');
+      appToken=null; appOnline=false; stopPoll();
+      if(appEmail && appPassword && !_reconnecting){
+        // Token invalidé → reconnexion silencieuse
+        _reconnecting=true;
+        await goOnline();
+        _reconnecting=false;
+      } else {
+        // Vraiment hors ligne (credentials absents ou deuxième échec)
+        localStorage.removeItem('parlons_agent_online');
+        appSessions.clear(); updateStatusUI();
+        if(activeChatId) closeChatView(); renderSessions();
+      }
+      return;
+    }
     const d=await res.json();
     if(d.error) return;
     pollSince=new Date().toISOString();

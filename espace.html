@@ -1932,7 +1932,7 @@ async function pollAgentChat() {
     });
     const data = await res.json();
     if (!res.ok) {
-      if (res.status === 401) { clearInterval(agentPollingInterval); agentPollingInterval = null; agentChatToken = null; localStorage.removeItem('parlons_agent_token'); localStorage.removeItem('parlons_agent_token_email'); localStorage.removeItem('parlons_agent_online'); updateAgentPresenceUI(false); }
+      if (res.status === 401) { clearInterval(agentPollingInterval); agentPollingInterval = null; agentChatToken = null; localStorage.removeItem('parlons_agent_token'); localStorage.removeItem('parlons_agent_token_email'); updateAgentPresenceUI(false); }
       return;
     }
 
