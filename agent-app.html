@@ -335,6 +335,8 @@ function showLogin(){ document.getElementById('screen-login').classList.add('act
 // ── VIEW SWITCHING ──
 function showView(v){
   document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('chat-view').classList.remove('active');
   if(v==='chat'){
     if(activeChatId&&appSessions.has(activeChatId)){
       document.getElementById('chat-view').classList.add('active');
@@ -344,14 +346,11 @@ function showView(v){
     }
     const first=[...appSessions.values()][0];
     if(first){ openChatView(first.id); return; }
-    // Aucun chat actif → rester sur accueil
+    // Aucun chat actif → accueil
     document.getElementById('view-home').classList.add('active');
     document.getElementById('nav-home').classList.add('active');
     return;
   }
-  // Accueil ou Stats : masquer l'overlay chat sans fermer la session
-  document.getElementById('chat-view').classList.remove('active');
-  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v)?.classList.add('active');
   document.getElementById('nav-'+v)?.classList.add('active');
   if(v==='stats') renderStats();
