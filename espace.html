@@ -577,6 +577,17 @@
         <input type="text" id="ap-siret" class="finput" placeholder="000 000 000 00000">
         <label class="flabel">IBAN (pour les virements)</label>
         <input type="text" id="ap-iban" class="finput" placeholder="FR76 0000 0000 0000 0000 0000 000">
+        <label class="flabel">Email de notification <span style="color:var(--tc);font-weight:600;">(demandes visiteurs)</span></label>
+        <input type="email" id="ap-notify-email" class="finput" placeholder="votre@email.com" style="margin-bottom:.9rem;">
+        <div id="ap-notify-row" onclick="toggleApNotify()" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;background:#faf8f5;border:1.5px solid var(--sand);border-radius:12px;padding:.85rem 1rem;cursor:pointer;transition:background .25s,border-color .25s;user-select:none;">
+          <div>
+            <div style="font-size:.82rem;font-weight:600;color:var(--dark);">Recevoir les demandes d'écoutant</div>
+            <div style="font-size:.74rem;color:var(--mid);margin-top:.1rem;line-height:1.4;">Alerté par email dès qu'un visiteur cherche un écoutant.</div>
+          </div>
+          <div id="ap-notify-sw" style="width:46px;height:26px;border-radius:13px;background:#ccc;position:relative;flex-shrink:0;transition:background .25s;">
+            <div id="ap-notify-dot" style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:4px;left:4px;transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 3px rgba(0,0,0,.2);"></div>
+          </div>
+        </div>
         <div id="ap-err" style="color:#ef4444;font-size:.78rem;margin-bottom:.6rem;min-height:1rem;"></div>
         <div id="ap-ok" style="display:none;color:#16a34a;font-size:.8rem;margin-bottom:.6rem;">✓ Profil enregistré !</div>
         <button onclick="saveAgentProfile()" style="background:var(--dark);color:white;border:none;border-radius:50px;padding:.75rem 1.5rem;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;">Enregistrer</button>
@@ -1345,6 +1356,8 @@ function renderAgentDash(email, d) {
     if (el && profile[f]) el.value = profile[f];
   });
   if (profile.code_postal) document.getElementById('ap-cp').value = profile.code_postal;
+  if (profile.notify_email) { const ne=document.getElementById('ap-notify-email'); if(ne) ne.value=profile.notify_email; }
+  setApNotify(!!profile.notify_requests);
 
   const initial = (profile.prenom || email).charAt(0).toUpperCase();
   const displayName = profile.prenom && profile.nom ? `${profile.prenom} ${profile.nom}` : email;
@@ -1435,6 +1448,16 @@ function initAgentMonthSelector() {
   }
 }
 
+let apNotifyOn = false;
+function setApNotify(val){
+  apNotifyOn = !!val;
+  const sw=document.getElementById('ap-notify-sw'), dot=document.getElementById('ap-notify-dot'), row=document.getElementById('ap-notify-row');
+  if(sw) sw.style.background = apNotifyOn ? '#22c55e' : '#ccc';
+  if(dot) dot.style.transform = apNotifyOn ? 'translateX(20px)' : 'none';
+  if(row){ row.style.borderColor = apNotifyOn ? '#22c55e' : 'var(--sand)'; row.style.background = apNotifyOn ? '#f0fdf4' : '#faf8f5'; }
+}
+function toggleApNotify(){ setApNotify(!apNotifyOn); }
+
 function toggleAgentProfile() {
   const f = document.getElementById('agent-profile-form');
   const c = document.getElementById('agent-profile-chevron');
@@ -1449,14 +1472,16 @@ async function saveAgentProfile() {
   err.textContent = ''; ok.style.display = 'none';
 
   const profile = {
-    pseudo:      document.getElementById('ap-pseudo').value.trim(),
-    nom:         document.getElementById('ap-nom').value.trim(),
-    prenom:      document.getElementById('ap-prenom').value.trim(),
-    adresse:     document.getElementById('ap-adresse').value.trim(),
-    code_postal: document.getElementById('ap-cp').value.trim(),
-    ville:       document.getElementById('ap-ville').value.trim(),
-    siret:       document.getElementById('ap-siret').value.trim(),
-    iban:        document.getElementById('ap-iban').value.trim(),
+    pseudo:           document.getElementById('ap-pseudo').value.trim(),
+    nom:              document.getElementById('ap-nom').value.trim(),
+    prenom:           document.getElementById('ap-prenom').value.trim(),
+    adresse:          document.getElementById('ap-adresse').value.trim(),
+    code_postal:      document.getElementById('ap-cp').value.trim(),
+    ville:            document.getElementById('ap-ville').value.trim(),
+    siret:            document.getElementById('ap-siret').value.trim(),
+    iban:             document.getElementById('ap-iban').value.trim(),
+    notify_email:     (document.getElementById('ap-notify-email')?.value||'').trim(),
+    notify_requests:  apNotifyOn,
   };
 
   if (!profile.nom || !profile.prenom) { err.textContent = 'Nom et prénom requis.'; return; }

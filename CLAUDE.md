@@ -54,13 +54,10 @@ CREATE TABLE IF NOT EXISTS agent_requests (
   notified_at TIMESTAMPTZ
 );
 
-CREATE TABLE IF NOT EXISTS agent_profiles (
-  agent_email TEXT PRIMARY KEY,
-  notify_email TEXT,
-  notify_requests BOOLEAN DEFAULT FALSE,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE agent_profiles ENABLE ROW LEVEL SECURITY;
+-- agent_profiles existe déjà (pseudo, nom, prenom, adresse, siret, iban…)
+-- Ajouter les colonnes de notification :
+ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS notify_email TEXT;
+ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS notify_requests BOOLEAN DEFAULT FALSE;
 ```
 
 ---

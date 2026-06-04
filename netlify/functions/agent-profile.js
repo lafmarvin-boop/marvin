@@ -44,7 +44,7 @@ exports.handler = async (event) => {
 
   if (action === 'get') {
     const res = await fetch(
-      `${SB_URL}/rest/v1/agent_profiles?agent_email=eq.${encodeURIComponent(emailLower)}&select=notify_email,notify_requests&limit=1`,
+      `${SB_URL}/rest/v1/agent_profiles?email=eq.${encodeURIComponent(emailLower)}&select=notify_email,notify_requests&limit=1`,
       { headers: H() }
     );
     const rows = await res.json().catch(() => []);
@@ -57,7 +57,7 @@ exports.handler = async (event) => {
       method: 'POST',
       headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
       body: JSON.stringify({
-        agent_email: emailLower,
+        email: emailLower,
         notify_email: notify_email || null,
         notify_requests: !!notify_requests,
         updated_at: new Date().toISOString()
