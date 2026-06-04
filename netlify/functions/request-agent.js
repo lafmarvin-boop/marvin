@@ -45,23 +45,35 @@ exports.handler = async (event) => {
     }).catch(() => {});
   }
 
-  // Notifier l'admin
   if (RESEND_KEY) {
-    try {
-      await fetch('https://api.resend.com/emails', {
+    const emailHtml = `<p style="font-family:sans-serif">Un visiteur souhaite parler à un écoutant.</p>
+<p style="font-family:sans-serif"><strong>Email :</strong> ${emailLower}</p>
+<p style="font-family:sans-serif"><strong>Date :</strong> ${new Date().toLocaleString('fr-FR')}</p>
+<p style="font-family:sans-serif">Il sera automatiquement prévenu dès qu'un écoutant se connectera.</p>`;
+
+    const targets = [CONTACT_EMAIL];
+
+    // Ajouter les agents qui ont activé les notifications
+    if (SB_URL && SB_KEY) {
+      try {
+        const agRes = await fetch(
+          `${SB_URL}/rest/v1/agent_profiles?notify_requests=eq.true&notify_email=not.is.null&select=notify_email`,
+          { headers: H() }
+        );
+        const agents = await agRes.json().catch(() => []);
+        if (Array.isArray(agents)) {
+          agents.forEach(a => { if (a.notify_email && !targets.includes(a.notify_email)) targets.push(a.notify_email); });
+        }
+      } catch (e) { console.error('fetch-agent-profiles:', e.message); }
+    }
+
+    await Promise.all(targets.map(to =>
+      fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: FROM,
-          to: CONTACT_EMAIL,
-          subject: "📩 Demande d'écoutant — Parlons",
-          html: `<p>Un visiteur souhaite parler à un écoutant.</p>
-<p><strong>Email :</strong> ${emailLower}</p>
-<p><strong>Date :</strong> ${new Date().toLocaleString('fr-FR')}</p>
-<p>Il sera automatiquement prévenu dès qu'un écoutant se connectera.</p>`
-        })
-      });
-    } catch (e) { console.error('request-agent resend:', e.message); }
+        body: JSON.stringify({ from: FROM, to, subject: "📩 Demande d'écoutant — Parlons", html: emailHtml })
+      }).catch(e => console.error('request-agent resend:', e.message))
+    ));
   }
 
   return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };

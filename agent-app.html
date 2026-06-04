@@ -160,6 +160,20 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 .admin-link-sub{font-size:.74rem;color:var(--mid);margin-top:.15rem;}
 .admin-stat-row{display:flex;gap:.6rem;}
 
+/* ── VIEW PROFIL ── */
+.profil-field{width:100%;box-sizing:border-box;background:var(--white);border:1.5px solid var(--sand);border-radius:12px;padding:.7rem .9rem;font-size:.9rem;font-family:'DM Sans',sans-serif;color:var(--dark);outline:none;transition:border-color .2s;}
+.profil-field:focus{border-color:var(--tc);}
+.profil-label{font-size:.8rem;font-weight:600;color:var(--dark);margin-bottom:.3rem;}
+.profil-sub{font-size:.74rem;color:var(--mid);line-height:1.45;}
+.profil-toggle-row{background:var(--white);border-radius:var(--radius);padding:1rem 1.1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;border:1.5px solid var(--sand);cursor:pointer;user-select:none;transition:border-color .25s,background .25s;}
+.profil-toggle-row.active{border-color:var(--green);background:#f0fdf4;}
+.notify-sw{width:46px;height:26px;border-radius:13px;background:#ccc;position:relative;flex-shrink:0;border:none;transition:background .25s;pointer-events:none;}
+.notify-sw.on{background:var(--green);}
+.notify-sw::after{content:'';position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:4px;left:4px;transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.notify-sw.on::after{transform:translateX(20px);}
+.profil-save-btn{width:100%;padding:.75rem;background:var(--tc);color:white;border:none;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;transition:background .2s;}
+.profil-save-btn:active{background:#a8502e;}
+
 /* ── LOADING OVERLAY ── */
 .loading-overlay{position:fixed;inset:0;background:rgba(253,248,243,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:1rem;}
 .spinner{width:38px;height:38px;border:3px solid var(--sand);border-top-color:var(--tc);border-radius:50%;animation:spin .8s linear infinite;}
@@ -297,6 +311,35 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
       </div>
     </div>
 
+    <!-- PROFIL VIEW -->
+    <div class="view" id="view-profil">
+      <div class="section-head">Mon compte</div>
+      <div class="stat-card">
+        <div class="profil-label">Connecté en tant que</div>
+        <div style="font-size:.88rem;color:var(--dark);margin-top:.25rem" id="profil-email-display">—</div>
+      </div>
+
+      <div class="section-head">Notifications — Demandes visiteurs</div>
+
+      <div class="stat-card">
+        <div class="profil-label">Email de notification</div>
+        <div class="profil-sub" style="margin-bottom:.7rem">Adresse où recevoir les alertes quand un visiteur cherche un écoutant (peut être différente de votre email de connexion).</div>
+        <input type="email" class="profil-field" id="profil-notify-email" placeholder="votre@email.com" inputmode="email">
+      </div>
+
+      <div class="profil-toggle-row" id="profil-toggle-row" onclick="toggleNotifySwitch()">
+        <div style="flex:1">
+          <div class="profil-label" style="margin-bottom:.15rem">Recevoir les demandes</div>
+          <div class="profil-sub">Soyez alerté par email dès qu'un visiteur cherche un écoutant.</div>
+        </div>
+        <div class="notify-sw" id="notify-sw"></div>
+      </div>
+
+      <button class="profil-save-btn" onclick="saveProfilSettings()">Enregistrer</button>
+      <div id="profil-msg" style="display:none;text-align:center;font-size:.82rem;color:#2d6e2d;padding:.4rem;"></div>
+      <div id="profil-err" style="display:none;text-align:center;font-size:.82rem;color:#8b2020;padding:.4rem;"></div>
+    </div>
+
   </div>
 
   <!-- Bottom nav -->
@@ -314,6 +357,10 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
     <button class="nav-btn" id="nav-stats" onclick="showView('stats')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Stats
+    </button>
+    <button class="nav-btn" id="nav-profil" onclick="showView('profil')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+      Profil
     </button>
     <button class="nav-btn" id="nav-admin" onclick="showView('admin')" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="18" cy="18" r="3"/><path d="M18 15v3"/><path d="M18 21v.01"/></svg>
@@ -390,6 +437,7 @@ function showView(v){
   document.getElementById('nav-'+v)?.classList.add('active');
   if(v==='stats') renderStats();
   if(v==='admin') renderAdminView();
+  if(v==='profil') renderProfilView();
 }
 
 // Masquer le chat sans le fermer (retour accueil depuis la flèche ←)
@@ -954,6 +1002,55 @@ function renderStats(){
       revEl.innerHTML='';
     }
   }
+}
+
+// ── PROFIL ──
+let profilNotifyOn = false;
+
+function toggleNotifySwitch(){
+  profilNotifyOn = !profilNotifyOn;
+  document.getElementById('notify-sw')?.classList.toggle('on', profilNotifyOn);
+  document.getElementById('profil-toggle-row')?.classList.toggle('active', profilNotifyOn);
+}
+
+async function renderProfilView(){
+  document.getElementById('profil-email-display').textContent = appEmail;
+  document.getElementById('profil-msg').style.display = 'none';
+  document.getElementById('profil-err').style.display = 'none';
+  try {
+    const r = await fetch(`${API}/agent-profile`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({action:'get', email:appEmail, password:appPassword})
+    });
+    const d = await r.json();
+    if(d.profile){
+      document.getElementById('profil-notify-email').value = d.profile.notify_email || '';
+      profilNotifyOn = !!d.profile.notify_requests;
+      document.getElementById('notify-sw')?.classList.toggle('on', profilNotifyOn);
+      document.getElementById('profil-toggle-row')?.classList.toggle('active', profilNotifyOn);
+    }
+  } catch(e){}
+}
+
+async function saveProfilSettings(){
+  const notifyEmail = (document.getElementById('profil-notify-email').value||'').trim();
+  const msgEl = document.getElementById('profil-msg');
+  const errEl = document.getElementById('profil-err');
+  msgEl.style.display='none'; errEl.style.display='none';
+  if(profilNotifyOn && notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)){
+    errEl.textContent='Email de notification invalide.'; errEl.style.display='block'; return;
+  }
+  try {
+    const r = await fetch(`${API}/agent-profile`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'save', email:appEmail, password:appPassword, notify_email:notifyEmail, notify_requests:profilNotifyOn})
+    });
+    const d = await r.json();
+    if(d.ok){ msgEl.textContent='Enregistré ✓'; msgEl.style.display='block'; setTimeout(()=>{ msgEl.style.display='none'; },3000); }
+    else { errEl.textContent=d.error||'Erreur.'; errEl.style.display='block'; }
+  } catch(e){ errEl.textContent='Erreur de connexion.'; errEl.style.display='block'; }
 }
 
 // ── PUSH NOTIFICATIONS ──

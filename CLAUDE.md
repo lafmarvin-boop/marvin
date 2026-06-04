@@ -53,6 +53,14 @@ CREATE TABLE IF NOT EXISTS agent_requests (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   notified_at TIMESTAMPTZ
 );
+
+CREATE TABLE IF NOT EXISTS agent_profiles (
+  agent_email TEXT PRIMARY KEY,
+  notify_email TEXT,
+  notify_requests BOOLEAN DEFAULT FALSE,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE agent_profiles ENABLE ROW LEVEL SECURITY;
 ```
 
 ---
