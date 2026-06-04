@@ -171,6 +171,8 @@
     .nav-agent:hover{background:var(--terracotta)!important;color:white!important;}
     .nav-demander{background:transparent;border:1.5px solid rgba(196,113,74,.6);color:var(--terracotta);border-radius:50px;padding:.42rem .9rem;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;transition:background .2s,color .2s;}
     .nav-demander:hover{background:var(--terracotta);color:white;}
+    .nav-demander-mob{display:none;background:rgba(196,113,74,.1);border:1.5px solid rgba(196,113,74,.45);color:var(--terracotta);border-radius:50px;padding:.38rem .75rem;font-size:.74rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;}
+    @media(min-width:900px){.nav-demander-mob{display:none!important;}}
     .nav-espace-link{color:white!important;background:var(--mid);border-radius:50px;padding:.5rem 1.2rem;font-weight:500;white-space:nowrap;}
     .nav-espace-link:hover{background:#444!important;}
 
@@ -622,9 +624,11 @@
       nav ul{display:none;}
       .nav-espace-btn{display:inline-flex;}
       /* Hero — padding géré par JS */
-      .hero{grid-template-columns:1fr;text-align:center;gap:2rem;}
+      .hero{grid-template-columns:1fr;text-align:center;gap:2rem;padding-bottom:5rem;}
       .hero p{margin:0 auto 1.8rem;}
-      .hero-actions{justify-content:center;}
+      .hero-actions{justify-content:center;flex-direction:column;align-items:center;gap:.85rem;}
+      .hero-actions .btn-primary{width:100%;max-width:320px;text-align:center;}
+      .hero-actions .btn-secondary{font-size:.85rem;}
       .price-badge,.loyalty-badge{justify-content:center;}
       .hero-right{display:none;} /* cache le mockup sur mobile */
       /* Sections */
@@ -728,6 +732,7 @@
 <!-- NAV -->
 <nav>
   <div class="logo">Par<span>lons</span></div>
+  <button id="nav-demander-mob" class="nav-demander-mob" onclick="openDemander()" style="display:none">🔔 Demander</button>
   <a href="/espace.html" class="nav-espace-btn">🔑 Espace abonné</a>
   <ul>
     <li class="nav-tab-hide"><a href="#comment">Comment ça marche</a></li>
@@ -1666,6 +1671,9 @@ function updateAvailUI(){
   // Bouton "Demander un agent" : visible seulement quand aucun agent en ligne
   const liDemander=document.getElementById('li-demander');
   if(liDemander) liDemander.style.display=isOnline?'none':'list-item';
+  // Version mobile (hors ul, masquée sur desktop via CSS)
+  const mobDemander=document.getElementById('nav-demander-mob');
+  if(mobDemander) mobDemander.style.display=isOnline?'none':'inline-flex';
   // Fermer le modal si un agent se connecte
   if(isOnline){const md=document.getElementById('modal-demander');if(md&&md.style.display==='flex')closeDemander();}
 }
