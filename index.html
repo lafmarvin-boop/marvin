@@ -182,18 +182,6 @@
       .nav-espace-link{padding:.45rem 1.1rem!important;font-size:.82rem!important;}
       .nav-tab-hide{display:none;}
     }
-    .avail-bar{
-      position:fixed;left:0;right:0;z-index:199;
-      padding:.38rem 2rem;
-      display:flex;align-items:center;justify-content:center;gap:.6rem;
-      font-size:.75rem;font-weight:500;
-      transition:background .4s;
-    }
-    .avail-bar.online{background:#e8f8e8;border-bottom:1px solid #b8e8b8;color:#2d7a2d;}
-    .avail-bar.offline{background:#fff0f0;border-bottom:1px solid #f8c8c8;color:#a02020;}
-    .avail-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-    .online .avail-dot{background:#5CB85C;animation:pulse 2s infinite;}
-    .offline .avail-dot{background:#e74c3c;}
     @keyframes pulse{0%,100%{box-shadow:0 0 0 2px rgba(92,184,92,.3);}50%{box-shadow:0 0 0 5px rgba(92,184,92,.1);}}
 
     /* ── JS calculera les top dynamiquement au chargement ── */
@@ -201,8 +189,9 @@
     /* ── HERO ── */
     .hero{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;align-items:center;padding:14rem 2.5rem 3rem;gap:4rem;position:relative;overflow:hidden;}
     .hero::before{content:'';position:absolute;top:-100px;right:-150px;width:550px;height:550px;background:radial-gradient(circle,rgba(196,113,74,.12) 0%,transparent 70%);border-radius:50%;pointer-events:none;}
-    .hero-tag{display:inline-flex;align-items:center;gap:.5rem;background:var(--warm);border:1px solid var(--sand);padding:.4rem 1rem;border-radius:50px;font-size:.78rem;font-weight:500;color:var(--mid);margin-bottom:1.6rem;animation:fadeUp .6s ease both;}
-    .dot{width:8px;height:8px;background:#5CB85C;border-radius:50%;box-shadow:0 0 0 2px rgba(92,184,92,.3);animation:pulse 2s infinite;}
+    .hero-tag{display:inline-flex;align-items:center;gap:.5rem;background:var(--warm);border:1px solid var(--sand);padding:.4rem 1rem;border-radius:50px;font-size:.78rem;font-weight:500;color:var(--mid);margin-bottom:1.6rem;animation:fadeUp .6s ease both;transition:background .4s,border-color .4s,color .4s;}
+    .hero-tag.offline{background:rgba(220,50,50,.08);border-color:rgba(220,50,50,.25);color:#8b2020;}
+    .dot{width:8px;height:8px;background:#5CB85C;border-radius:50%;box-shadow:0 0 0 2px rgba(92,184,92,.3);animation:pulse 2s infinite;transition:background .4s;}
     h1{font-family:'Playfair Display',serif;font-size:clamp(2.6rem,5vw,4rem);line-height:1.1;margin-bottom:1.4rem;animation:fadeUp .6s .1s ease both;}
     h1 em{font-style:italic;color:var(--terracotta);}
     .hero p{font-size:1.05rem;line-height:1.75;color:var(--mid);max-width:480px;margin-bottom:2.2rem;font-weight:300;animation:fadeUp .6s .2s ease both;}
@@ -753,17 +742,10 @@
   </ul>
 </nav>
 
-<!-- AVAILABILITY BAR -->
-<div class="avail-bar online" id="avail-bar">
-  <span class="avail-dot"></span>
-  <span id="avail-text">Nos écoutants sont disponibles · Démarrez votre session maintenant</span>
-  <span id="avail-queue" style="opacity:.7;margin-left:.5rem;font-size:.74rem;"></span>
-</div>
-
 <!-- HERO -->
 <section class="hero" id="accueil">
   <div>
-    <div class="hero-tag"><span class="dot"></span> Des écoutants disponibles maintenant</div>
+    <div class="hero-tag" id="hero-tag"><span class="dot" id="hero-dot"></span><span id="hero-tag-text"> Des écoutants disponibles maintenant</span></div>
     <h1>Besoin de parler ?<br><em>Quelqu'un vous attend.</em></h1>
     <p>Parfois, on a juste besoin d'une oreille attentive. Discutez en direct avec quelqu'un de bienveillant, sans jugement, en toute confidentialité.</p>
     <div class="hero-actions">
@@ -1657,9 +1639,16 @@ window.setAvailability = function(v){ isOnline=!!v; updateAvailUI(); };
 
 // ── AVAILABILITY ──
 function updateAvailUI(){
-  const bar=document.getElementById('avail-bar'),text=document.getElementById('avail-text'),queue=document.getElementById('avail-queue'),dot=document.querySelector('.dot');
-  if(isOnline){bar.className='avail-bar online';text.textContent='Nos écoutants sont disponibles · Démarrez votre session maintenant';queue.textContent=queueCount>0?`· ${queueCount} en attente`:'';if(dot)dot.style.background='#5CB85C';}
-  else{bar.className='avail-bar offline';text.textContent='⚠️ Tous nos écoutants sont occupés — Paiement suspendu';queue.textContent='';if(dot)dot.style.background='#e74c3c';}
+  const tag=document.getElementById('hero-tag'),tagText=document.getElementById('hero-tag-text'),dot=document.getElementById('hero-dot');
+  if(isOnline){
+    if(tag)tag.className='hero-tag';
+    if(tagText)tagText.textContent=' Des écoutants disponibles maintenant';
+    if(dot){dot.style.background='';dot.style.animation='pulse 2s infinite';dot.style.boxShadow='';}
+  } else {
+    if(tag)tag.className='hero-tag offline';
+    if(tagText)tagText.textContent=' Tous nos écoutants sont occupés — Paiement suspendu';
+    if(dot){dot.style.background='#e74c3c';dot.style.animation='none';dot.style.boxShadow='none';}
+  }
   // Mettre à jour le modal si déjà ouvert
   const offMsg=document.getElementById('offline-msg'),btn=document.querySelector('#step-1 .btn-primary');
   if(offMsg){offMsg.style.display=isOnline?'none':'block';}
@@ -2261,7 +2250,7 @@ function sendRecontactRequest(prenom){
 function showAgentPage(){
   // Cache tous les éléments de la page principale
   const toHide = [
-    '.emergency-bar','.disclaimer-bar','.avail-bar',
+    '.emergency-bar','.disclaimer-bar',
     '.hero','#comment','#tarifs','#fidelite','#groupes',
     '#notif','#ressources','.quality-banner','.testimonials',
     '.faq-section','#retours','#ecoutants',
@@ -2280,7 +2269,7 @@ function showAgentPage(){
 function hideAgentPage(){
   // Réaffiche tous les éléments
   const toShow = [
-    '.emergency-bar','.disclaimer-bar','.avail-bar',
+    '.emergency-bar','.disclaimer-bar',
     '.hero','#comment','#tarifs','#fidelite','#groupes',
     '#notif','#ressources','.quality-banner','.testimonials',
     '.faq-section','#retours','#ecoutants',
@@ -2866,10 +2855,9 @@ function stackBanners() {
   const emergency   = document.querySelector('.emergency-bar');
   const disclaimer  = document.querySelector('.disclaimer-bar');
   const nav         = document.querySelector('nav');
-  const avail       = document.getElementById('avail-bar');
   const hero        = document.querySelector('.hero');
 
-  if (!emergency || !disclaimer || !nav || !avail) return;
+  if (!emergency || !disclaimer || !nav) return;
 
   const h0 = (launch && launch.offsetParent !== null) ? launch.offsetHeight : 0;
   const h1 = emergency.offsetHeight;
@@ -2879,9 +2867,8 @@ function stackBanners() {
   emergency.style.top   = h0 + 'px';
   disclaimer.style.top  = (h0 + h1) + 'px';
   nav.style.top         = (h0 + h1 + h2) + 'px';
-  avail.style.top       = (h0 + h1 + h2 + h3) + 'px';
 
-  const totalHeight = h0 + h1 + h2 + h3 + avail.offsetHeight;
+  const totalHeight = h0 + h1 + h2 + h3;
   if (hero) hero.style.paddingTop = (totalHeight + 40) + 'px';
 }
 
