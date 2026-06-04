@@ -1,4 +1,4 @@
-const CACHE = 'parlons-v2';
+const CACHE = 'parlons-v3';
 const PRECACHE = ['/agent-app.html', '/', '/index.html', '/manifest-visitor.json'];
 
 self.addEventListener('install', e => {
@@ -27,7 +27,7 @@ self.addEventListener('fetch', e => {
         }
         return res;
       })
-      .catch(() => caches.match(e.request))
+      .catch(() => caches.match(e.request, { ignoreSearch: true }))
   );
 });
 

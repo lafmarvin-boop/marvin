@@ -2,7 +2,7 @@
   "name": "Parlons — Espace Agent",
   "short_name": "Agent Parlons",
   "description": "Interface agent pour recevoir et gérer les tchats Parlons",
-  "start_url": "/agent-app.html?pwa=1",
+  "start_url": "/agent-app.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -28,7 +28,7 @@
       "name": "Me mettre en ligne",
       "short_name": "En ligne",
       "description": "Passer en ligne pour recevoir des tchats",
-      "url": "/agent-app.html?action=online&pwa=1"
+      "url": "/agent-app.html?action=online"
     }
   ],
   "categories": ["productivity", "communication"]
