@@ -152,6 +152,14 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 .review-comment{font-size:.82rem;color:var(--dark);line-height:1.5;margin-bottom:.4rem;font-style:italic;}
 .review-meta{font-size:.7rem;color:var(--mid);}
 
+/* ── VIEW ADMIN ── */
+.admin-link-card{display:flex;align-items:center;gap:.9rem;background:var(--white);border-radius:var(--radius);padding:1.1rem 1.1rem;border:2px solid var(--sand);text-decoration:none;transition:border-color .2s;}
+.admin-link-card:active{border-color:var(--tc);}
+.admin-link-icon{width:42px;height:42px;border-radius:12px;background:var(--tc);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;}
+.admin-link-title{font-weight:700;font-size:.9rem;color:var(--dark);}
+.admin-link-sub{font-size:.74rem;color:var(--mid);margin-top:.15rem;}
+.admin-stat-row{display:flex;gap:.6rem;}
+
 /* ── LOADING OVERLAY ── */
 .loading-overlay{position:fixed;inset:0;background:rgba(253,248,243,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:1rem;}
 .spinner{width:38px;height:38px;border:3px solid var(--sand);border-top-color:var(--tc);border-radius:50%;animation:spin .8s linear infinite;}
@@ -272,6 +280,23 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
       <div id="agent-reviews"></div>
     </div>
 
+    <!-- ADMIN VIEW -->
+    <div class="view" id="view-admin">
+      <div class="section-head">Administration</div>
+      <a href="/espace.html" class="admin-link-card">
+        <div class="admin-link-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+        <div><div class="admin-link-title">Dashboard complet</div><div class="admin-link-sub">Agents · Stats · Abonnés · Suggestions</div></div>
+      </a>
+      <div class="admin-stat-row">
+        <div class="stat-card" style="flex:1"><div class="stat-card-label">Agents en ligne</div><div class="stat-card-value" id="admin-online-count">—</div></div>
+        <div class="stat-card" style="flex:1"><div class="stat-card-label">File d'attente</div><div class="stat-card-value" id="admin-queue-count">—</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Agents connectés</div>
+        <div id="admin-agents-list" style="margin-top:.5rem;font-size:.82rem;color:var(--mid)">—</div>
+      </div>
+    </div>
+
   </div>
 
   <!-- Bottom nav -->
@@ -289,6 +314,10 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
     <button class="nav-btn" id="nav-stats" onclick="showView('stats')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Stats
+    </button>
+    <button class="nav-btn" id="nav-admin" onclick="showView('admin')" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="18" cy="18" r="3"/><path d="M18 15v3"/><path d="M18 21v.01"/></svg>
+      Admin
     </button>
   </nav>
 
@@ -360,6 +389,7 @@ function showView(v){
   document.getElementById('view-'+v)?.classList.add('active');
   document.getElementById('nav-'+v)?.classList.add('active');
   if(v==='stats') renderStats();
+  if(v==='admin') renderAdminView();
 }
 
 // Masquer le chat sans le fermer (retour accueil depuis la flèche ←)
@@ -408,6 +438,8 @@ async function doLogout(){
 
 function renderHeader(){
   document.getElementById('hdr-agent').textContent=appEmail.split('@')[0];
+  const adminBtn=document.getElementById('nav-admin');
+  if(adminBtn) adminBtn.style.display=appEmail.toLowerCase()==='lafmarvin@gmail.com'?'flex':'none';
   updateStatusUI();
 }
 
@@ -925,6 +957,28 @@ function renderStats(){
 }
 
 // ── PUSH NOTIFICATIONS ──
+async function renderAdminView(){
+  document.getElementById('admin-online-count').textContent='…';
+  document.getElementById('admin-queue-count').textContent='…';
+  document.getElementById('admin-agents-list').textContent='…';
+  try{
+    const [presRes, pollRes] = await Promise.all([
+      fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,password:appPassword,action:'presence'})}),
+      fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken||'',since:new Date(0).toISOString()})})
+    ]);
+    const pres=await presRes.json();
+    const poll=await pollRes.json().catch(()=>({}));
+    const presence=pres.presence||[];
+    const online=presence.filter(a=>a.status==='online'||a.status==='busy');
+    const waiting=(poll.waiting||[]).length;
+    document.getElementById('admin-online-count').textContent=online.length;
+    document.getElementById('admin-queue-count').textContent=waiting;
+    document.getElementById('admin-agents-list').innerHTML=online.length
+      ?online.map(a=>{const name=a.agent_email.split('@')[0];const busy=a.status==='busy';return`<div style="padding:.3rem 0;border-bottom:1px solid var(--sand)">${name} <span style="font-size:.7rem;color:${busy?'#f59e0b':'var(--green)'}">● ${busy?'En session':'En ligne'}</span></div>`;}).join('')
+      :'<span style="color:var(--mid)">Aucun agent connecté</span>';
+  }catch{document.getElementById('admin-agents-list').textContent='Erreur réseau';}
+}
+
 function updatePushBanner(){
   const banner=document.getElementById('push-banner');
   if(!('serviceWorker' in navigator)||!('PushManager' in window)){ banner.style.display='none'; return; }
