@@ -1334,8 +1334,8 @@
       <div class="form-group"><label>Choisissez votre formule</label>
         <select id="session-select" onchange="updatePrice()">
 
-          <option value="200" data-label="10 min" data-sec="600">💬 Session individuelle · 10 min — 2,00 €</option>
-          <option value="500" data-label="30 min" data-sec="1800" selected>💬 Session individuelle · 30 min — 5,00 € ⭐</option>
+          <option value="200" data-label="10 min" data-sec="600" selected>💬 Session individuelle · 10 min — 2,00 €</option>
+          <option value="500" data-label="30 min" data-sec="1800">💬 Session individuelle · 30 min — 5,00 € ⭐</option>
           <option value="900" data-label="1 heure" data-sec="3600">💬 Session individuelle · 1 heure — 9,00 €</option>
           <option value="sub" data-label="Pass mensuel" data-sec="1800">♾️ Pass mensuel illimité — 15,00 €/mois</option>
           <option value="group" data-label="Chat de groupe" data-sec="1800">👥 Chat de groupe · 5 min gratuites puis 1,50 €</option>
@@ -1609,7 +1609,7 @@ const STRIPE_KEY='pk_test_51TZB64Cob93hyzLhaymOSUpdD8pRdk4ElsIH23IfXcuiSb6XN5hXx
   fetch('/.netlify/functions/track-visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId:vid,isNew:isNew})}).catch(function(){});
 })();
 
-let stripe,cardElement,selectedAmount=500,selectedLabel='30 min',sessionDurationSec=1800;
+let stripe,cardElement,selectedAmount=200,selectedLabel='10 min',sessionDurationSec=600;
 let isOnline=false,queueCount=0;
 let waitTimer=null,sessionTimer=null,waitSeconds=0,sessionSeconds=0,reportShown=false;
 let ratingVal=0;
