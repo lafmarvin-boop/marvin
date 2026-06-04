@@ -75,6 +75,35 @@ CREATE TABLE IF NOT EXISTS agent_requests (
 
 ---
 
+## ⚠️ À faire depuis l'ordinateur (priorité)
+
+### 1. Configurer Resend (emails transactionnels)
+Toutes les notifications email (demande d'écoutant, email de bienvenue abonné) sont codées mais silencieuses sans ces variables.
+
+**Étapes :**
+1. Créer un compte sur [resend.com](https://resend.com)
+2. Vérifier le domaine `parlons.fr` dans Resend (DNS → ajouter les enregistrements TXT/DKIM qu'ils fournissent)
+3. Créer une API Key dans Resend
+4. Dans Netlify → Site settings → Environment variables, ajouter :
+   - `RESEND_API_KEY` = la clé Resend
+   - `FROM_EMAIL` = `Parlons <noreply@parlons.fr>`
+   - `SITE_URL` = `https://parlons.fr` (ou l'URL Netlify en attendant le domaine)
+5. Redéployer le site (Netlify → Deploys → Trigger deploy)
+
+**Ce que ça débloque :**
+- ✉️ Email admin sur `contact.parlons.ecoute@gmail.com` quand un visiteur clique "Demander un agent"
+- ✉️ Email automatique au visiteur dès qu'un agent se connecte
+- ✉️ Email de bienvenue lors d'un nouvel abonnement
+
+### 2. Tester le bouton "Demander un agent"
+Une fois Resend configuré :
+1. Se déconnecter de l'app agent (aucun agent en ligne)
+2. Sur `index.html`, vérifier que le bouton "🔔 Demander un agent" apparaît en haut à droite
+3. Soumettre un email → vérifier réception sur `contact.parlons.ecoute@gmail.com`
+4. Se reconnecter en tant qu'agent → vérifier que l'email de disponibilité part vers le demandeur
+
+---
+
 ## 🚧 Code à compléter (prochaines sessions)
 
 1. **Email de bienvenue (Resend)** — la fonction `create-subscription.js` envoie déjà l'email, mais nécessite `RESEND_API_KEY` + `FROM_EMAIL` + `SITE_URL` configurés. À tester une fois les variables en place.
