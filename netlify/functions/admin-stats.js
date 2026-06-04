@@ -93,8 +93,16 @@ exports.handler = async (event) => {
 
     // ── Action : présence seule (léger, pour refresh périodique) ──
     if (body.action === 'presence') {
-      const rows = await sbGet('agent_presence?select=agent_email,status,last_seen&limit=100');
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, presence: rows }) };
+      const [rows, activeSessions] = await Promise.all([
+        sbGet('agent_presence?select=agent_email,status,last_seen&limit=100'),
+        sbGet('chat_sessions?status=eq.active&select=agent_email&limit=200')
+      ]);
+      const chatCount = {};
+      activeSessions.forEach(s => {
+        if (s.agent_email) chatCount[s.agent_email.toLowerCase()] = (chatCount[s.agent_email.toLowerCase()] || 0) + 1;
+      });
+      const presence = rows.map(r => ({ ...r, activeChatCount: chatCount[(r.agent_email || '').toLowerCase()] || 0 }));
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, presence }) };
     }
 
     const now = new Date();
