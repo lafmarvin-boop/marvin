@@ -169,6 +169,8 @@
     .nav-cta:hover{background:var(--rust)!important;}
     .nav-agent{border:1.5px solid var(--terracotta)!important;color:var(--terracotta)!important;padding:.5rem 1.2rem;border-radius:50px;}
     .nav-agent:hover{background:var(--terracotta)!important;color:white!important;}
+    .nav-demander{background:transparent;border:1.5px solid rgba(196,113,74,.6);color:var(--terracotta);border-radius:50px;padding:.42rem .9rem;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;transition:background .2s,color .2s;}
+    .nav-demander:hover{background:var(--terracotta);color:white;}
     .nav-espace-link{color:white!important;background:var(--mid);border-radius:50px;padding:.5rem 1.2rem;font-weight:500;white-space:nowrap;}
     .nav-espace-link:hover{background:#444!important;}
 
@@ -736,9 +738,24 @@
     <li><a href="#ecoutants">Nos écoutants</a></li>
     <li class="nav-tab-hide"><a href="#contact">Contact</a></li>
     <li class="nav-tab-hide"><a href="#" class="nav-agent" onclick="showAgentPage();return false;">🎙️ Devenir écoutant</a></li>
+    <li id="li-demander" style="display:none"><button class="nav-demander" onclick="openDemander()">🔔 Demander un agent</button></li>
     <li><a href="/espace.html" class="nav-espace-link">🔑 Espace perso</a></li>
   </ul>
 </nav>
+
+<!-- MODAL DEMANDER UN AGENT -->
+<div id="modal-demander" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:20px;padding:2rem 1.8rem;max-width:380px;width:90%;text-align:center;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.18);">
+    <button onclick="closeDemander()" style="position:absolute;top:.8rem;right:1rem;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#aaa;line-height:1;">×</button>
+    <div style="font-size:2rem;margin-bottom:.5rem;">🔔</div>
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.15rem;color:#2C1F14;margin-bottom:.5rem;">Être prévenu par email</h3>
+    <p style="font-size:.83rem;color:#7A6560;margin-bottom:1.2rem;line-height:1.6;">Tous nos écoutants sont occupés en ce moment. Laissez votre email, nous vous préviendrons dès qu'un écoutant se connecte.</p>
+    <input type="email" id="demander-email" placeholder="vous@email.com" style="width:100%;box-sizing:border-box;border:1.5px solid #e0d8d0;border-radius:12px;padding:.7rem 1rem;font-size:.9rem;font-family:'DM Sans',sans-serif;margin-bottom:.8rem;outline:none;" onkeydown="if(event.key==='Enter')submitDemande()">
+    <button onclick="submitDemande()" id="demander-submit" style="width:100%;background:#C4714A;color:white;border:none;border-radius:50px;padding:.75rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;transition:background .2s;" onmouseenter="this.style.background='#A8502E'" onmouseleave="this.style.background='#C4714A'">M'avertir →</button>
+    <div id="demander-msg" style="display:none;margin-top:.8rem;font-size:.82rem;color:#2d6e2d;line-height:1.5;"></div>
+    <div id="demander-err" style="display:none;margin-top:.8rem;font-size:.82rem;color:#8b2020;"></div>
+  </div>
+</div>
 
 <!-- HERO -->
 <section class="hero" id="accueil">
@@ -1646,8 +1663,51 @@ function updateAvailUI(){
   const offMsg=document.getElementById('offline-msg'),btn=document.querySelector('#step-1 .btn-primary');
   if(offMsg){offMsg.style.display=isOnline?'none':'block';}
   if(btn){btn.disabled=!isOnline;btn.style.opacity=isOnline?'1':'.4';}
+  // Bouton "Demander un agent" : visible seulement quand aucun agent en ligne
+  const liDemander=document.getElementById('li-demander');
+  if(liDemander) liDemander.style.display=isOnline?'none':'list-item';
+  // Fermer le modal si un agent se connecte
+  if(isOnline){const md=document.getElementById('modal-demander');if(md&&md.style.display==='flex')closeDemander();}
 }
 updateAvailUI();
+
+function openDemander(){
+  const m=document.getElementById('modal-demander');
+  if(!m)return;
+  document.getElementById('demander-msg').style.display='none';
+  document.getElementById('demander-err').style.display='none';
+  const sb=document.getElementById('demander-submit');
+  if(sb){sb.style.display='';sb.disabled=false;sb.textContent="M'avertir →";}
+  m.style.display='flex';
+  setTimeout(()=>document.getElementById('demander-email').focus(),80);
+}
+function closeDemander(){
+  const m=document.getElementById('modal-demander');
+  if(m) m.style.display='none';
+}
+async function submitDemande(){
+  const email=(document.getElementById('demander-email').value||'').trim();
+  const btn=document.getElementById('demander-submit');
+  const msgEl=document.getElementById('demander-msg');
+  const errEl=document.getElementById('demander-err');
+  msgEl.style.display='none'; errEl.style.display='none';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){errEl.textContent='Email invalide.';errEl.style.display='block';return;}
+  btn.disabled=true; btn.textContent='Envoi…';
+  try{
+    const r=await fetch('/.netlify/functions/request-agent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const d=await r.json();
+    if(d.ok){
+      msgEl.textContent=d.already?'Votre demande est déjà enregistrée. Vous serez prévenu dès qu\'un écoutant est disponible ✓':"C'est noté ! Vous recevrez un email dès qu'un écoutant se connecte ✓";
+      msgEl.style.display='block';
+      btn.style.display='none';
+      setTimeout(closeDemander,4000);
+    } else {
+      errEl.textContent=d.error||'Erreur, veuillez réessayer.';errEl.style.display='block';
+      btn.disabled=false;btn.textContent="M'avertir →";
+    }
+  }catch(e){errEl.textContent='Erreur de connexion.';errEl.style.display='block';btn.disabled=false;btn.textContent="M'avertir →";}
+}
+document.getElementById('modal-demander').addEventListener('click',function(e){if(e.target===this)closeDemander();});
 
 // ── STRIPE ──
 try{stripe=Stripe(STRIPE_KEY);const el=stripe.elements();cardElement=el.create('card',{hidePostalCode:true,style:{base:{fontFamily:"'DM Sans',sans-serif",fontSize:'15px',color:'#2C1F14','::placeholder':{color:'#B09070'}}}});}catch(e){console.warn('Stripe:',e.message);}

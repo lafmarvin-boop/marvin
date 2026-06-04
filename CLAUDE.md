@@ -46,6 +46,13 @@ CREATE TABLE IF NOT EXISTS suggestions (
   payment_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS agent_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  notified_at TIMESTAMPTZ
+);
 ```
 
 ---
