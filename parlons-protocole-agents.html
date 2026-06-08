@@ -35,55 +35,114 @@
     .urgency-box .nums{display:flex;justify-content:center;gap:2rem;flex-wrap:wrap;margin-top:.8rem;}
     .urgency-box .num-badge{background:rgba(255,255,255,.2);border-radius:10px;padding:.6rem 1.2rem;font-size:1.1rem;font-weight:700;}
     .urgency-box .num-label{font-size:.72rem;opacity:.85;margin-top:.2rem;}
+    .toc{background:#FAF7F2;border-radius:12px;padding:1.3rem 1.8rem;margin:1.5rem 0;}
+    .toc h3{margin:0 0 .6rem;font-size:.8rem;color:#7A5C42;letter-spacing:1px;text-transform:uppercase;}
+    .toc ol{margin-left:1.2rem;}
+    .toc li{font-size:.84rem;color:#7A5C42;margin-bottom:.25rem;}
     @media(max-width:600px){.container{padding:2rem 1.4rem;}}
   </style>
 </head>
 <body>
 <div class="container">
   <div class="logo">Par<span>lons</span></div>
-  <div class="doc-meta">Protocole interne — Écoutants · Version 1.0 · 16 avril 2026 · Document confidentiel</div>
+  <div class="doc-meta">Protocole interne — Écoutants · Version 2.0 · 8 juin 2026 · Document confidentiel</div>
 
   <h1>Protocole des Écoutants</h1>
-  <p>Ce document est votre guide de référence en tant qu'écoutant chez Parlons. Il couvre le déroulement normal d'une session, et surtout les procédures à suivre dans les situations délicates ou d'urgence. <strong>Lisez-le entièrement avant votre première session.</strong></p>
+  <p>Ce document est votre guide de référence en tant qu'écoutant chez Parlons. Il couvre la connexion à la plateforme, le déroulement des sessions individuelles et de groupe, ainsi que les procédures à suivre dans les situations délicates ou d'urgence. <strong>Lisez-le entièrement avant votre première session.</strong></p>
 
   <div class="info"><strong>Rappel fondamental :</strong> Vous êtes un écoutant bienveillant, pas un thérapeute, ni un médecin, ni un service d'urgence. Votre rôle est d'écouter, d'accompagner et d'orienter — jamais de diagnostiquer ni de prendre en charge une crise médicale.</div>
 
+  <div class="toc">
+    <h3>Sommaire</h3>
+    <ol>
+      <li>Se connecter et gérer sa disponibilité</li>
+      <li>Notifications de demandes visiteurs</li>
+      <li>Déroulement d'une session individuelle</li>
+      <li>Chats de groupe thématiques</li>
+      <li>Règles fondamentales de conduite</li>
+      <li>Gestion des comportements irrespectueux</li>
+      <li>Protocole détresse extrême et risque suicidaire</li>
+      <li>Autres situations délicates</li>
+      <li>Ce que vous n'avez jamais à faire</li>
+    </ol>
+  </div>
+
   <!-- SECTION 1 -->
-  <h2>1. Déroulement normal d'une session</h2>
-  <div class="step-box"><span class="num">1</span><h4>Accepter la conversation</h4><p>Répondez dans les <strong>2 minutes</strong> après attribution. Au-delà, le client peut signaler votre retard et demander un remboursement. Vérifiez que votre connexion est stable avant de prendre une session.</p></div>
-  <div class="step-box"><span class="num">2</span><h4>Message d'accueil</h4><p>Envoyez un premier message chaleureux et rassurant. Le chronomètre du client démarre à votre premier message.</p></div>
-  <div class="phrase-box">Exemple : "Bonjour ! Je suis là pour vous écouter, prenez le temps qu'il vous faut. Qu'est-ce qui vous amène aujourd'hui ?"</div>
-  <div class="step-box"><span class="num">3</span><h4>Pendant la session</h4><p>Écoutez activement : reformulez, posez des questions ouvertes, validez les émotions. Ne donnez pas de conseils non sollicités. Ne jugez pas.</p></div>
-  <div class="step-box"><span class="num">4</span><h4>Fin de session (alerte 2 min)</h4><p>Quand l'alerte de fin apparaît, informez le client : <em>"Votre session touche à sa fin dans 2 minutes. Si vous souhaitez continuer, vous pouvez souscrire une nouvelle session."</em></p></div>
-  <div class="step-box"><span class="num">5</span><h4>Clôture</h4><p>Terminez chaleureusement, même si le temps est écoulé. Un message de clôture bienveillant laisse une impression positive et donne envie de revenir.</p></div>
-  <div class="phrase-box">Exemple de clôture : "Merci de m'avoir accordé votre confiance aujourd'hui. Prenez soin de vous. La plateforme reste disponible si vous souhaitez revenir. 🤍"</div>
+  <h2>1. Se connecter et gérer sa disponibilité</h2>
+  <p>La plateforme agent est accessible depuis l'application dédiée (PWA installable sur votre téléphone).</p>
+
+  <div class="step-box"><span class="num">1</span><h4>Connexion</h4><p>Connectez-vous avec votre adresse email et votre mot de passe. Si vous n'avez pas encore défini de mot de passe, utilisez la procédure de première connexion.</p></div>
+  <div class="step-box"><span class="num">2</span><h4>Passer en ligne</h4><p>Appuyez sur le bouton de statut pour passer <strong>En ligne</strong>. Vous apparaissez alors dans la liste des écoutants disponibles. Le paiement des visiteurs est activé uniquement quand au moins un agent est en ligne.</p></div>
+  <div class="step-box"><span class="num">3</span><h4>Passer hors ligne</h4><p>Appuyez à nouveau sur le statut pour passer <strong>Hors ligne</strong>. Si une session est en cours, elle sera clôturée. Faites-le toujours proprement — ne fermez pas simplement l'application.</p></div>
+  <div class="step-box"><span class="num">4</span><h4>Profil auto-entrepreneur</h4><p>Renseignez votre profil complet (prénom, nom, adresse, SIRET, IBAN) dans l'onglet <em>Espace agent → Mon profil auto-entrepreneur</em>. Ces données sont nécessaires pour la génération de vos factures.</p></div>
+
+  <div class="ok"><strong>✅ Bonne pratique :</strong> Installez l'application en PWA sur votre téléphone pour recevoir les notifications push même en arrière-plan. Activez-les dans l'application lors de votre première connexion.</div>
 
   <!-- SECTION 2 -->
-  <h2>2. Règles fondamentales de conduite</h2>
+  <h2>2. Notifications de demandes visiteurs</h2>
+  <p>Quand aucun agent n'est en ligne, les visiteurs peuvent laisser leur email pour être prévenus de votre disponibilité. Vous pouvez choisir d'être notifié de ces demandes.</p>
+
+  <div class="step-box"><span class="num">1</span><h4>Activer les notifications de demandes</h4><p>Dans <em>Espace agent → Mon profil auto-entrepreneur</em>, renseignez votre <strong>email de notification</strong> et activez le toggle <em>Recevoir les demandes d'écoutant</em>. Vous recevrez un email à chaque demande d'un visiteur.</p></div>
+  <div class="step-box"><span class="num">2</span><h4>Notification automatique au visiteur</h4><p>Dès que vous passez en ligne, le système envoie automatiquement un email à tous les visiteurs en attente pour les prévenir de votre disponibilité. Aucune action de votre part n'est requise.</p></div>
+
+  <!-- SECTION 3 -->
+  <h2>3. Déroulement d'une session individuelle</h2>
+
+  <div class="step-box"><span class="num">1</span><h4>Accepter la conversation</h4><p>Répondez dans les <strong>2 minutes</strong> après attribution. Au-delà, le client peut signaler votre retard et demander un remboursement. Vérifiez que votre connexion est stable avant de prendre une session.</p></div>
+  <div class="step-box"><span class="num">2</span><h4>Message d'accueil</h4><p>Envoyez un premier message chaleureux et rassurant. Le chronomètre du client démarre à votre <strong>premier message</strong>.</p></div>
+  <div class="phrase-box">"Bonjour ! Je suis là pour vous écouter, prenez le temps qu'il vous faut. Qu'est-ce qui vous amène aujourd'hui ?"</div>
+  <div class="step-box"><span class="num">3</span><h4>Pendant la session</h4><p>Écoutez activement : reformulez, posez des questions ouvertes, validez les émotions. Ne donnez pas de conseils non sollicités. Ne jugez pas.</p></div>
+  <div class="step-box"><span class="num">4</span><h4>Alerte 2 minutes avant la fin</h4><p>Informez le client qu'il peut prolonger la session s'il le souhaite.</p></div>
+  <div class="phrase-box">"Votre session touche à sa fin dans 2 minutes. Si vous souhaitez continuer, vous pouvez souscrire une nouvelle session."</div>
+  <div class="step-box"><span class="num">5</span><h4>Clôture</h4><p>Terminez chaleureusement, même si le temps est écoulé. Un message de clôture bienveillant laisse une impression positive.</p></div>
+  <div class="phrase-box">"Merci de m'avoir accordé votre confiance aujourd'hui. Prenez soin de vous. La plateforme reste disponible si vous souhaitez revenir. 🤍"</div>
+
+  <div class="info"><strong>Sessions multiples :</strong> Vous pouvez gérer jusqu'à 3 sessions simultanément. Chaque session dispose de son propre chronomètre indépendant. Gérez votre charge de travail en conséquence.</div>
+
+  <!-- SECTION 4 -->
+  <h2>4. Chats de groupe thématiques</h2>
+  <p>Les groupes sont des espaces de discussion entre visiteurs autour d'une thématique commune (anxiété, deuil, relations, travail…). Votre rôle y est différent d'une session individuelle.</p>
+
+  <h3>4.1 Rejoindre un groupe</h3>
+  <p>Pour rejoindre un salon de groupe en tant qu'écoutant, rendez-vous sur la page <em>Groupes</em> du site, choisissez un salon, cochez <em>Je suis un écoutant</em> et saisissez votre <strong>email et mot de passe</strong> de connexion. Vous obtenez un accès gratuit et illimité au groupe.</p>
+
+  <h3>4.2 Rôle dans le groupe</h3>
   <ul>
-    <li>Répondez toujours dans les <strong>2 minutes</strong> après attribution</li>
+    <li>Votre présence est signalée dans le chat (les membres voient que vous êtes là)</li>
+    <li>Participez à la discussion avec bienveillance et encouragez les échanges constructifs</li>
+    <li>Veillez au respect mutuel entre membres — les CGV s'appliquent dans les groupes</li>
+    <li>Ne monopolisez pas la parole : l'objectif est que les membres s'entraident</li>
+    <li>Si un membre exprime une détresse grave, appliquez le protocole de la section 7</li>
+  </ul>
+
+  <div class="info"><strong>Groupes personnalisés :</strong> Les visiteurs peuvent créer leurs propres salons avec un thème libre. Vous pouvez rejoindre n'importe quel groupe existant.</div>
+
+  <!-- SECTION 5 -->
+  <h2>5. Règles fondamentales de conduite</h2>
+  <ul>
+    <li>Répondez toujours dans les <strong>2 minutes</strong> après attribution d'une session individuelle</li>
     <li>Restez neutre, bienveillant et sans jugement en toutes circonstances</li>
     <li>Ne partagez <strong>jamais</strong> d'informations personnelles vous concernant</li>
     <li>Ne donnez pas de consultations médicales, juridiques ou financières</li>
     <li>Ne promettez rien que vous ne pouvez pas tenir</li>
     <li>Ne poursuivez pas de contact avec un client en dehors de la plateforme</li>
     <li>Signalez immédiatement à l'administrateur toute situation préoccupante</li>
+    <li>Gardez votre profil auto-entrepreneur à jour (SIRET, IBAN) pour les paiements</li>
   </ul>
 
-  <!-- SECTION 3 -->
-  <h2>3. Gestion des comportements irrespectueux</h2>
+  <!-- SECTION 6 -->
+  <h2>6. Gestion des comportements irrespectueux</h2>
   <p>Le respect mutuel est non négociable. Si un client adopte un comportement irrespectueux (insultes, harcèlement, propos obscènes, menaces) :</p>
   <div class="step-box"><span class="num">1</span><h4>Avertissement clair et unique</h4><p>Signalez une seule fois calmement que le comportement n'est pas acceptable.</p></div>
   <div class="phrase-box">"Je suis là pour vous écouter avec bienveillance, mais je ne peux pas continuer si les échanges ne sont pas respectueux. Je vous invite à changer de ton pour que nous puissions continuer."</div>
-  <div class="step-box"><span class="num">2</span><h4>Si ça continue : fin immédiate</h4><p>Mettez fin à la conversation sans explication supplémentaire. Aucun remboursement n'est dû. Notifiez l'administrateur via Crisp ou par message.</p></div>
+  <div class="step-box"><span class="num">2</span><h4>Si ça continue : fin immédiate</h4><p>Mettez fin à la conversation sans explication supplémentaire. Aucun remboursement n'est dû. Notifiez l'administrateur.</p></div>
   <div class="warn"><strong>Vous n'avez jamais à subir d'irrespect.</strong> Vous êtes seul juge pour décider qu'une conversation dépasse les bornes. Faites confiance à votre ressenti.</div>
 
-  <!-- SECTION 4 — SUICIDE -->
-  <h2>4. 🚨 Protocole détresse extrême et risque suicidaire</h2>
+  <!-- SECTION 7 — SUICIDE -->
+  <h2>7. 🚨 Protocole détresse extrême et risque suicidaire</h2>
   <div class="warn"><strong>⚠️ Situation la plus sensible.</strong> Lisez et mémorisez cette procédure avant votre première session. En cas de doute, appliquez-la systématiquement.</div>
 
-  <h3>4.1 Comment reconnaître un risque suicidaire</h3>
-  <p>Soyez attentif aux signaux suivants dans les messages :</p>
+  <h3>7.1 Comment reconnaître un risque suicidaire</h3>
   <ul>
     <li>Expressions directes : "je veux mourir", "je veux en finir", "je pense au suicide"</li>
     <li>Expressions indirectes : "tout le monde serait mieux sans moi", "je ne vois plus l'intérêt", "bientôt tout sera terminé"</li>
@@ -95,7 +154,7 @@
 
   <div class="info"><strong>Idée reçue à combattre :</strong> Poser directement la question "Est-ce que tu penses à te suicider ?" ne donne pas d'idées. Au contraire, cela montre que vous prenez la personne au sérieux et libère souvent la parole.</div>
 
-  <h3>4.2 Procédure étape par étape</h3>
+  <h3>7.2 Procédure étape par étape</h3>
   <div class="step-box"><span class="num">1</span><h4>Rester calme et ne pas couper brutalement</h4><p>Ne paniquez pas et ne disparaissez pas subitement. Votre présence est rassurante.</p></div>
   <div class="step-box"><span class="num">2</span><h4>Poser la question directement</h4><p>Si vous avez un doute, demandez sans détour.</p></div>
   <div class="phrase-box">"Ce que tu partages avec moi m'inquiète pour toi. Est-ce que tu as des pensées de te faire du mal en ce moment ?"</div>
@@ -103,12 +162,11 @@
   <div class="phrase-box">"Je t'entends. Ce que tu vis est vraiment difficile. Tu as bien fait de le dire."</div>
   <div class="step-box"><span class="num">4</span><h4>Orienter vers le 3114 — immédiatement et clairement</h4><p>Ne promettez pas la confidentialité dans ce contexte. Orientez fermement, avec bienveillance.</p></div>
   <div class="phrase-box">"Je veux que tu sois en sécurité. Il y a des personnes formées pour t'aider à traverser ça, disponibles maintenant au 3114. C'est gratuit, 24h/24. Je t'encourage vraiment à les appeler maintenant, pendant qu'on est encore là tous les deux."</div>
-  <div class="step-box"><span class="num">5</span><h4>Alerter l'administrateur</h4><p>Envoyez immédiatement un message à l'admin via Crisp en indiquant : heure, pseudonyme du client, nature du risque. Ne gérez pas ça seul.</p></div>
-  <div class="step-box"><span class="num">6</span><h4>Mettre fin à la session</h4><p>Après l'orientation, expliquez que vous ne pouvez pas continuer dans ce cadre et que cette situation nécessite une aide professionnelle. Aucun remboursement n'est dû (prévu dans les CGV).</p></div>
+  <div class="step-box"><span class="num">5</span><h4>Alerter l'administrateur</h4><p>Envoyez immédiatement un message à l'admin en indiquant : heure, pseudonyme du client, nature du risque. Ne gérez pas ça seul.</p></div>
+  <div class="step-box"><span class="num">6</span><h4>Mettre fin à la session</h4><p>Après l'orientation, expliquez que vous ne pouvez pas continuer dans ce cadre. Aucun remboursement n'est dû (prévu dans les CGV).</p></div>
   <div class="phrase-box">"Je dois m'arrêter ici car cette situation dépasse ce que je peux t'offrir sur cette plateforme. Appelle le 3114 dès maintenant. Tu mérites d'être aidé par quelqu'un de formé pour ça. Prends soin de toi."</div>
   <div class="step-box"><span class="num">7</span><h4>Prendre soin de vous après</h4><p>Une telle conversation peut être éprouvante. Faites une pause, parlez-en à l'administrateur. Vous n'avez pas à porter ça seul non plus.</p></div>
 
-  <!-- URGENCES -->
   <div class="urgency-box">
     <h3>🆘 Numéros d'urgence à avoir en tête</h3>
     <div class="nums">
@@ -119,8 +177,8 @@
     </div>
   </div>
 
-  <!-- SECTION 5 -->
-  <h2>5. Autres situations délicates</h2>
+  <!-- SECTION 8 -->
+  <h2>8. Autres situations délicates</h2>
   <h3>Violences domestiques</h3>
   <p>Si un client évoque des violences physiques ou psychologiques subies, orientez vers le <strong>3919</strong> (violences femmes info) ou le <strong>3977</strong> (maltraitance). Ne minimisez pas, ne donnez pas de conseils sur la relation — écoutez et orientez.</p>
 
@@ -130,20 +188,25 @@
   <h3>Mineur en danger</h3>
   <p>Si vous avez une raison sérieuse de penser que vous parlez à un enfant en danger, alertez immédiatement l'administrateur et orientez vers le <strong>119</strong> (Allô Enfance en Danger).</p>
 
-  <!-- SECTION 6 -->
-  <h2>6. Ce que vous n'avez jamais à faire</h2>
+  <h3>Dans un groupe thématique</h3>
+  <p>Si un membre d'un groupe exprime une détresse grave, appliquez la même procédure qu'en session individuelle. Vous pouvez contacter l'administrateur en dehors du groupe pour signaler la situation sans exposer le membre.</p>
+
+  <!-- SECTION 9 -->
+  <h2>9. Ce que vous n'avez jamais à faire</h2>
   <ul>
     <li>Promettre à quelqu'un qu'il ne se suicidera pas s'il vous parle</li>
     <li>Promettre de garder le secret si une vie est en danger</li>
     <li>Jouer au thérapeute ou poser un diagnostic</li>
     <li>Donner votre numéro personnel ou continuer en dehors de la plateforme</li>
     <li>Gérer seul une crise grave sans prévenir l'administrateur</li>
+    <li>Partager votre mot de passe ou laisser quelqu'un utiliser votre compte</li>
+    <li>Rejoindre un groupe en tant que simple visiteur avec un pseudonyme différent</li>
   </ul>
 
   <div class="ok"><strong>✅ Rappel :</strong> Vous faites un travail important et humainement précieux. Votre rôle est d'être présent, bienveillant, et de savoir quand passer le relais. C'est déjà énorme.</div>
 
   <div class="footer-doc">
-    Parlons · Protocole Écoutants · Version 1.0 · 16 avril 2026<br>
+    Parlons · Protocole Écoutants · Version 2.0 · 8 juin 2026<br>
     Document confidentiel — ne pas diffuser en dehors de l'équipe
   </div>
 </div>
