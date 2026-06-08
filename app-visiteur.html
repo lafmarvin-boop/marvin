@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#C4714A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Parlons">
+<title>Parlons</title>
+<link rel="manifest" href="/manifest-visitor.json">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23C4714A'/><rect x='14' y='13' width='72' height='56' rx='11' fill='white'/><polygon points='26,69 26,88 44,69' fill='white'/><text x='50' y='54' font-size='36' text-anchor='middle' font-family='Georgia,serif' fill='%23C4714A'>P</text></svg>"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%23C4714A'/><rect x='28' y='26' width='136' height='106' rx='22' fill='white'/><polygon points='48,132 48,162 76,132' fill='white'/><text x='96' y='104' font-size='70' text-anchor='middle' font-family='Georgia,serif' fill='%23C4714A'>P</text></svg>"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--tc:#C4714A;--tc2:#a85c38;--dark:#2d1f14;--mid:#7a5a42;--light:#b09880;--sand:#e8ddd4;--bg:#fdf8f3;--white:#fff;--green:#16a34a;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--dark);overscroll-behavior:none;}
+body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);}
+
+.app-wrap{display:flex;flex-direction:column;flex:1;padding:1.5rem 1.5rem 2rem;}
+
+/* Header */
+.app-logo{font-family:'Playfair Display',serif;font-size:2.4rem;color:var(--tc);line-height:1;}
+.app-tagline{font-size:.88rem;color:var(--mid);margin-top:.35rem;}
+
+/* Status pill */
+.status-pill{display:inline-flex;align-items:center;gap:.45rem;padding:.38rem .9rem;border-radius:50px;font-size:.78rem;font-weight:600;margin-top:1.2rem;transition:all .3s;}
+.status-pill.online{background:rgba(22,163,74,.1);border:1px solid rgba(22,163,74,.3);color:#166534;}
+.status-pill.offline{background:rgba(220,50,50,.07);border:1px solid rgba(220,50,50,.2);color:#8b2020;}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.status-pill.online .status-dot{background:var(--green);}
+.status-pill.offline .status-dot{background:#ef4444;}
+
+/* Main CTA area */
+.cta-block{margin-top:2.2rem;display:flex;flex-direction:column;gap:.9rem;}
+
+.btn-main{width:100%;padding:1.05rem 1.5rem;border-radius:16px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:.6rem;text-decoration:none;transition:transform .15s,box-shadow .15s;}
+.btn-main:active{transform:scale(.97);}
+.btn-talk{background:linear-gradient(135deg,var(--tc),var(--tc2));color:white;box-shadow:0 6px 20px rgba(196,113,74,.4);font-size:1.05rem;}
+.btn-talk.disabled{opacity:.5;pointer-events:none;}
+.btn-space{background:var(--white);color:var(--dark);border:1.5px solid var(--sand);box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.btn-sub{background:var(--white);color:var(--dark);border:1.5px solid var(--sand);}
+
+/* Info cards */
+.info-block{margin-top:2.2rem;display:flex;flex-direction:column;gap:.65rem;}
+.info-card{background:var(--white);border:1px solid var(--sand);border-radius:14px;padding:.9rem 1.1rem;display:flex;align-items:flex-start;gap:.8rem;}
+.info-icon{font-size:1.3rem;flex-shrink:0;margin-top:.05rem;}
+.info-text{flex:1;}
+.info-title{font-weight:600;font-size:.88rem;color:var(--dark);}
+.info-desc{font-size:.78rem;color:var(--mid);margin-top:.15rem;line-height:1.45;}
+
+/* Offline msg */
+.offline-msg{background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:.85rem 1rem;font-size:.82rem;color:#8b2020;display:none;margin-top:-.2rem;}
+
+/* Footer */
+.app-footer{margin-top:auto;padding-top:1.8rem;text-align:center;font-size:.72rem;color:var(--light);}
+.app-footer a{color:var(--light);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="app-wrap">
+
+  <!-- Logo -->
+  <div style="margin-top:.5rem">
+    <div class="app-logo">Parlons</div>
+    <div class="app-tagline">Service d'écoute bienveillante &amp; anonyme</div>
+  </div>
+
+  <!-- Status -->
+  <div id="status-pill" class="status-pill offline">
+    <span class="status-dot"></span>
+    <span id="status-text">Vérification…</span>
+  </div>
+
+  <!-- CTAs -->
+  <div class="cta-block">
+    <a id="btn-talk" class="btn-main btn-talk disabled" href="/">
+      💬 Parler maintenant
+    </a>
+    <div id="offline-msg" class="offline-msg">
+      Aucun écoutant disponible pour l'instant. Vous pouvez laisser votre email pour être averti dès qu'un écoutant se connecte — rendez-vous sur le site principal.
+    </div>
+    <a class="btn-main btn-space" href="/espace.html">
+      🔐 Mon espace abonné
+    </a>
+  </div>
+
+  <!-- Info cards -->
+  <div class="info-block">
+    <div class="info-card">
+      <div class="info-icon">🔒</div>
+      <div class="info-text">
+        <div class="info-title">Anonyme &amp; confidentiel</div>
+        <div class="info-desc">Pseudonyme libre, aucune donnée personnelle requise.</div>
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-icon">⏱️</div>
+      <div class="info-text">
+        <div class="info-title">Sessions à la carte</div>
+        <div class="info-desc">10 min, 30 min ou 1h — ou abonnement illimité mensuel.</div>
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-icon">🌱</div>
+      <div class="info-text">
+        <div class="info-title">Écoute bienveillante</div>
+        <div class="info-desc">Des écoutants formés, disponibles 7j/7 pour vous accompagner.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="app-footer">
+    <a href="/">Site complet</a> &nbsp;·&nbsp;
+    <a href="/parlons-CGV.html">CGV</a> &nbsp;·&nbsp;
+    <a href="/parlons-registre-RGPD.html">Données</a>
+  </div>
+
+</div>
+
+<script>
+async function checkAvailability() {
+  try {
+    const r = await fetch('/.netlify/functions/availability', { cache: 'no-store' });
+    const d = await r.json();
+    const online = !!d.online;
+    const pill = document.getElementById('status-pill');
+    const txt = document.getElementById('status-text');
+    const btn = document.getElementById('btn-talk');
+    const offMsg = document.getElementById('offline-msg');
+
+    pill.className = 'status-pill ' + (online ? 'online' : 'offline');
+    txt.textContent = online ? 'Écoutant(s) disponible(s)' : 'Aucun écoutant disponible';
+    if (online) {
+      btn.classList.remove('disabled');
+      btn.href = '/';
+      offMsg.style.display = 'none';
+    } else {
+      btn.classList.add('disabled');
+      offMsg.style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('status-text').textContent = 'Statut inconnu';
+  }
+}
+
+checkAvailability();
+setInterval(checkAvailability, 30000);
+</script>
+</body>
+</html>
