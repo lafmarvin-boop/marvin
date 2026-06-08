@@ -28,7 +28,7 @@
 <body>
 <div class="container">
   <div class="logo">Par<span>lons</span></div>
-  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.0 · Mai 2026 · Document interne confidentiel</div>
+  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.1 · Juin 2026 · Document interne confidentiel</div>
 
   <h1>Registre des Activités de Traitement</h1>
   <p>Conformément à l'article 30 du Règlement Général sur la Protection des Données (RGPD — UE 2016/679), tout responsable de traitement doit tenir un registre documentant l'ensemble des traitements de données personnelles réalisés. Ce document constitue ce registre pour la micro-entreprise Parlons.</p>
@@ -69,14 +69,14 @@
   <h2>Traitement n°3 — Alertes disponibilité (emails)</h2>
   <table>
     <tr><th>Élément</th><th>Détail</th></tr>
-    <tr><td><strong>Finalité</strong></td><td>Notifier les utilisateurs de la disponibilité des écoutants</td></tr>
+    <tr><td><strong>Finalité</strong></td><td>Notifier les visiteurs de la disponibilité des écoutants et alerter les agents d'une demande de mise en relation</td></tr>
     <tr><td><strong>Base légale</strong></td><td>Consentement explicite (Art. 6.1.a RGPD)</td></tr>
-    <tr><td><strong>Données collectées</strong></td><td>Adresse email, date d'inscription à l'alerte</td></tr>
-    <tr><td><strong>Personnes concernées</strong></td><td>Utilisateurs ayant demandé une alerte disponibilité</td></tr>
-    <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme uniquement</td></tr>
-    <tr><td><strong>Durée conservation</strong></td><td>Jusqu'à désinscription demandée par l'utilisateur</td></tr>
-    <tr><td><strong>Transferts hors UE</strong></td><td>Aucun</td></tr>
-    <tr><td><strong>Mesures sécurité</strong></td><td>Stockage local chiffré, accès administrateur uniquement</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Adresse email du visiteur, date de la demande, horodatage de notification</td></tr>
+    <tr><td><strong>Personnes concernées</strong></td><td>Visiteurs ayant demandé une alerte disponibilité · Écoutants ayant activé les notifications de demandes</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme · Resend (envoi des emails transactionnels)</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>30 jours après envoi de la notification, puis suppression automatique</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Supabase (USA) — stockage des demandes, clauses contractuelles types UE · Resend (USA) — envoi email, clauses contractuelles types UE</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Accès restreint par clé de service, marquage automatique après notification, suppression à 30 jours</td></tr>
   </table>
 
   <h2>Traitement n°4 — Journal de connexion et géolocalisation IP</h2>
@@ -155,10 +155,11 @@
     <tr><th>Date</th><th>Version</th><th>Modification</th></tr>
     <tr><td>Avril 2026</td><td>1.0</td><td>Création du registre</td></tr>
     <tr><td>Mai 2026</td><td>2.0</td><td>Ajout traitements n°4 (journal IP/géoloc) et n°5 (visitorId localStorage) · Remplacement Tawk.to par Crisp · Ajout Supabase, ipwho.is, Resend dans sous-traitants · Correction références</td></tr>
+    <tr><td>Juin 2026</td><td>2.1</td><td>Mise à jour traitement n°3 (alertes disponibilité) : précision des destinataires (Resend, agents), correction des transferts hors UE (Supabase + Resend USA), durée de conservation clarifiée à 30 jours après notification</td></tr>
   </table>
 
   <div class="footer">
-    Parlons · Registre RGPD v2.0 · Mai 2026 · Document interne confidentiel<br>
+    Parlons · Registre RGPD v2.1 · Juin 2026 · Document interne confidentiel<br>
     Ce registre doit être mis à jour à chaque nouveau traitement de données ou modification significative.
   </div>
 </div>
