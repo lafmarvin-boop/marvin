@@ -514,7 +514,7 @@
     </div>
 
     <!-- Facture du mois -->
-    <div style="background:white;border:1px solid var(--sand);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;">
+    <div style="background:white;border:1px solid var(--sand);border-radius:14px;padding:1.4rem;margin-bottom:.8rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;">
         <div>
           <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);">Ma facture mensuelle</div>
@@ -523,6 +523,20 @@
         <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
           <select id="agent-pdf-month" style="border:1.5px solid var(--sand);border-radius:8px;padding:.35rem .7rem;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--dark);background:white;cursor:pointer;"></select>
           <button onclick="downloadAgentInvoice()" id="agent-invoice-btn" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.5rem 1.1rem;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📄 Télécharger ma facture</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Relevé URSSAF annuel -->
+    <div style="background:white;border:1px solid var(--sand);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);">Relevé URSSAF annuel</div>
+          <div style="font-size:.75rem;color:var(--light);margin-top:.2rem;">Récapitulatif de votre chiffre d'affaires par trimestre</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
+          <select id="agent-urssaf-year" style="border:1.5px solid var(--sand);border-radius:8px;padding:.35rem .7rem;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--dark);background:white;cursor:pointer;"></select>
+          <button onclick="downloadUrssafStatement()" style="background:#2563eb;color:white;border:none;border-radius:50px;padding:.5rem 1.1rem;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📊 Télécharger mon relevé</button>
         </div>
       </div>
     </div>
@@ -1366,6 +1380,7 @@ function renderAgentDash(email, d) {
   document.getElementById('agent-hero-sub').textContent = 'Espace agent · ' + new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   initAgentMonthSelector();
+  initAgentYearSelector();
 
   // Calcul honoraires par période
   const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
@@ -1446,6 +1461,150 @@ function initAgentMonthSelector() {
     if (i === 1) opt.selected = true;
     sel.appendChild(opt);
   }
+}
+
+function initAgentYearSelector() {
+  const sel = document.getElementById('agent-urssaf-year');
+  if (!sel || sel.options.length > 0) return;
+  const now = new Date();
+  for (let i = 0; i < 3; i++) {
+    const y = now.getFullYear() - i;
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function downloadUrssafStatement() {
+  if (!window.jspdf) { alert('PDF non disponible, rechargez la page.'); return; }
+
+  const profile = {
+    nom:    document.getElementById('ap-nom')?.value.trim() || '',
+    prenom: document.getElementById('ap-prenom')?.value.trim() || '',
+    siret:  document.getElementById('ap-siret')?.value.trim() || '',
+    adresse: document.getElementById('ap-adresse')?.value.trim() || '',
+    cp:     document.getElementById('ap-cp')?.value.trim() || '',
+    ville:  document.getElementById('ap-ville')?.value.trim() || '',
+  };
+
+  if (!profile.siret || !profile.nom) {
+    alert('Complétez votre profil (nom, SIRET) avant de générer le relevé.');
+    document.getElementById('agent-profile-form').style.display = 'block';
+    document.getElementById('agent-profile-chevron').textContent = '▲';
+    return;
+  }
+
+  const year = parseInt(document.getElementById('agent-urssaf-year')?.value || new Date().getFullYear());
+
+  const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+  function getRate(f) {
+    for (const [k, v] of Object.entries(RATES)) { if ((f||'').includes(k)) return v; }
+    return 0;
+  }
+
+  const quarters = [
+    { label: '1er trimestre (Jan – Mar)', months: [0,1,2] },
+    { label: '2e trimestre (Avr – Jun)',  months: [3,4,5] },
+    { label: '3e trimestre (Jul – Sep)',  months: [6,7,8] },
+    { label: '4e trimestre (Oct – Déc)', months: [9,10,11] },
+  ];
+
+  const qData = quarters.map(q => {
+    const sessions = agentSessionsCache.filter(s => {
+      if (!s.started_at) return false;
+      const d = new Date(s.started_at);
+      return d.getFullYear() === year && q.months.includes(d.getMonth());
+    });
+    const ca = sessions.reduce((sum, s) => sum + getRate(s.formule), 0);
+    return { ...q, count: sessions.length, ca };
+  });
+
+  const totalCA = qData.reduce((s, q) => s + q.ca, 0);
+  const totalSessions = qData.reduce((s, q) => s + q.count, 0);
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // En-tête
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(37, 99, 235);
+  doc.text('RELEVÉ URSSAF', 20, 26);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Chiffre d'affaires déclaré — Année ${year}`, 20, 34);
+
+  doc.setDrawColor(200, 220, 255);
+  doc.line(20, 40, 190, 40);
+
+  // Identité agent
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(44, 31, 20);
+  doc.text(`${profile.prenom} ${profile.nom}`, 20, 50);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  if (profile.adresse) doc.text(profile.adresse, 20, 57);
+  if (profile.cp || profile.ville) doc.text(`${profile.cp} ${profile.ville}`.trim(), 20, 63);
+  doc.text(agentEmailStored || '', 20, 69);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(37, 99, 235);
+  doc.text(`SIRET : ${profile.siret}`, 20, 75);
+
+  doc.setFontSize(8);
+  doc.setTextColor(140);
+  doc.text(`Donneur d'ordre : PARLONS · SIRET 105 179 360 000 18`, 20, 82);
+  doc.text(`Généré le : ${new Date().toLocaleDateString('fr-FR')}`, 20, 87);
+
+  // Tableau trimestriel
+  doc.autoTable({
+    startY: 95,
+    head: [['Trimestre', 'Sessions', "Chiffre d'affaires"]],
+    body: qData.map(q => [q.label, q.count, `${q.ca.toFixed(2)} €`]),
+    foot: [['TOTAL ANNUEL', totalSessions, `${totalCA.toFixed(2)} €`]],
+    styles: { fontSize: 10, cellPadding: 4 },
+    headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
+    footStyles: { fillColor: [230, 240, 255], textColor: [37, 99, 235], fontStyle: 'bold', fontSize: 11 },
+    alternateRowStyles: { fillColor: [245, 248, 255] },
+    columnStyles: { 2: { halign: 'right' } }
+  });
+
+  const y = doc.lastAutoTable.finalY + 12;
+
+  // Encadré récapitulatif
+  doc.setFillColor(230, 240, 255);
+  doc.roundedRect(20, y, 170, 22, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(37, 99, 235);
+  doc.text(`CA total à déclarer : ${totalCA.toFixed(2)} €`, 105, y + 9, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(80, 100, 160);
+  doc.text('Montant à reporter dans votre déclaration URSSAF auto-entrepreneur', 105, y + 16, { align: 'center' });
+
+  // Notes légales
+  const yn = y + 30;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(130);
+  doc.text('• TVA non applicable — article 293 B du CGI (franchise en base de TVA)', 20, yn);
+  doc.text('• Ce document récapitule les honoraires perçus via la plateforme Parlons.', 20, yn + 6);
+  doc.text('• Conservez vos factures mensuelles comme justificatifs comptables.', 20, yn + 12);
+  doc.text('• Pour déclarer : autoentrepreneur.urssaf.fr → Mon compte → Déclarer mon CA', 20, yn + 18);
+
+  // Pied
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7.5);
+  doc.setTextColor(160);
+  doc.text(`${profile.prenom} ${profile.nom} · SIRET ${profile.siret} · Relevé URSSAF ${year}`, 105, 288, { align: 'center' });
+
+  doc.save(`Releve_URSSAF_Parlons_${profile.nom}_${year}.pdf`);
 }
 
 let apNotifyOn = false;
