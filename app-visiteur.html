@@ -196,7 +196,14 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;}
   <div style="margin-top:1.4rem">
     <label class="field-label">Choisir une formule</label>
     <div class="options-grid">
-      <div class="option-card selected" data-amount="500" data-sec="1800" data-label="30 min" onclick="selectOption(this)">
+      <div class="option-card selected" data-amount="200" data-sec="600" data-label="10 min" onclick="selectOption(this)">
+        <div>
+          <div class="option-name">Session 10 min</div>
+          <div class="option-desc">Pour un échange rapide</div>
+        </div>
+        <div class="option-price">2 €</div>
+      </div>
+      <div class="option-card" data-amount="500" data-sec="1800" data-label="30 min" onclick="selectOption(this)">
         <div>
           <div class="option-name">Session 30 min</div>
           <div class="option-desc">Idéal pour un premier échange</div>
@@ -302,7 +309,7 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;}
 // ── State ──
 const STRIPE_KEY = 'pk_live_51TZB64Cob93hyzLhnt58hZ8gwkCIsg7jD5HQM69ZtSO6ZKaCH7PRa9IPlt9NZb0PFyR7n5yF0QgHiY0Jfry9U86k00x8xGlf6i';
 let stripe, cardElement;
-let selectedAmount = 500, selectedLabel = '30 min', selectedSec = 1800;
+let selectedAmount = 200, selectedLabel = '10 min', selectedSec = 600;
 let chatSessionId = null, chatState = 'waiting';
 let pollInterval = null, timerInterval = null;
 let sessionEndAt = 0, chatLastMsgTime = null;
