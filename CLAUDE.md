@@ -58,6 +58,9 @@ CREATE TABLE IF NOT EXISTS agent_requests (
 -- Ajouter les colonnes de notification :
 ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS notify_email TEXT;
 ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS notify_requests BOOLEAN DEFAULT FALSE;
+
+-- Réassignation automatique si l'agent ne répond pas dans les 2 min :
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS response_deadline TIMESTAMPTZ;
 ```
 
 ---

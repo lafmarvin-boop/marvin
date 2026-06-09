@@ -80,7 +80,8 @@ exports.handler = async (event) => {
         sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
           agent_email: assignedAgent,
           status: 'active',
-          assigned_at: now
+          assigned_at: now,
+          response_deadline: new Date(Date.now() + 2 * 60 * 1000).toISOString()
         }),
         sbPatch(`agent_presence?agent_email=eq.${encodeURIComponent(assignedAgent)}`, {
           current_session_id: sessionId,

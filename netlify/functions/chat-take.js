@@ -59,7 +59,7 @@ exports.handler = async (event) => {
       {
         method: 'PATCH',
         headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
-        body: JSON.stringify({ agent_email: agentEmail, status: 'active', assigned_at: now })
+        body: JSON.stringify({ agent_email: agentEmail, status: 'active', assigned_at: now, response_deadline: new Date(Date.now() + 2 * 60 * 1000).toISOString() })
       }
     );
     const patchRows = await patchRes.json();

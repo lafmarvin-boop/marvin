@@ -58,6 +58,15 @@ exports.handler = async (event) => {
       body: JSON.stringify({ session_id: sessionId, content: content.trim(), sender_type: senderType })
     });
 
+    // Premier message agent : effacer le délai de réponse (fire-and-forget)
+    if (senderType === 'agent') {
+      fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&response_deadline=not.is.null`, {
+        method: 'PATCH',
+        headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ response_deadline: null })
+      }).catch(() => {});
+    }
+
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
   } catch (e) {
     console.error('chat-send:', e.message);

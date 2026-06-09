@@ -119,7 +119,8 @@ exports.handler = async (event) => {
         const sessionId = waiting[0].id;
         await Promise.all([
           sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
-            agent_email: agentEmail, status: 'active', assigned_at: now
+            agent_email: agentEmail, status: 'active', assigned_at: now,
+            response_deadline: new Date(Date.now() + 2 * 60 * 1000).toISOString()
           }),
           sbPatch(`agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}`, {
             current_session_id: sessionId, status: 'busy'
