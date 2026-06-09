@@ -152,10 +152,6 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;}
     <button id="btn-talk" class="btn btn-primary" disabled onclick="goSetup()">
       💬 Parler maintenant
     </button>
-    <div id="offline-msg" class="offline-msg" style="display:none">
-      Aucun écoutant disponible pour l'instant.
-    </div>
-
     <!-- Demander un agent -->
     <div id="agent-request-block" class="agent-request-block">
       <div class="agent-request-title">🔔 Être prévenu dès qu'un écoutant est disponible</div>
@@ -363,7 +359,6 @@ async function checkAvailability() {
     pill.className = 'status-pill ' + (online ? 'online' : 'offline');
     document.getElementById('s1-status-text').textContent = online ? 'Écoutant(s) disponible(s)' : 'Aucun écoutant disponible';
     document.getElementById('btn-talk').disabled = !online;
-    document.getElementById('offline-msg').style.display = online ? 'none' : 'block';
     const reqBlock = document.getElementById('agent-request-block');
     if (!online) reqBlock.classList.add('visible');
     else reqBlock.classList.remove('visible');
