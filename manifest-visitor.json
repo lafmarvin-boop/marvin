@@ -2,7 +2,7 @@
   "name": "Parlons — Écoute anonyme",
   "short_name": "Parlons",
   "description": "Service d'écoute bienveillante et anonyme, disponible 7j/7",
-  "start_url": "/",
+  "start_url": "/app-visiteur.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
