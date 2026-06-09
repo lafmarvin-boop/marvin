@@ -19,7 +19,7 @@ exports.handler = async (event) => {
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Invalid JSON' }; }
 
-  const { email } = body;
+  const { email, pushSubscription } = body;
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Email invalide' }) };
 
@@ -33,15 +33,27 @@ exports.handler = async (event) => {
     ).catch(() => null);
     if (check && check.ok) {
       const ex = await check.json().catch(() => []);
-      if (Array.isArray(ex) && ex.length > 0)
+      if (Array.isArray(ex) && ex.length > 0) {
+        // Mettre à jour la push subscription si fournie
+        if (pushSubscription && ex[0]?.id) {
+          await fetch(`${SB_URL}/rest/v1/agent_requests?id=eq.${encodeURIComponent(ex[0].id)}`, {
+            method: 'PATCH',
+            headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify({ push_subscription: JSON.stringify(pushSubscription) })
+          }).catch(() => {});
+        }
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, already: true }) };
+      }
     }
 
     // Enregistrer la demande
     await fetch(`${SB_URL}/rest/v1/agent_requests`, {
       method: 'POST',
       headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ email: emailLower })
+      body: JSON.stringify({
+        email: emailLower,
+        push_subscription: pushSubscription ? JSON.stringify(pushSubscription) : null
+      })
     }).catch(() => {});
   }
 

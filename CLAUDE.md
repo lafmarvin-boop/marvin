@@ -54,6 +54,9 @@ CREATE TABLE IF NOT EXISTS agent_requests (
   notified_at TIMESTAMPTZ
 );
 
+-- Colonne pour les push notifications visiteurs (app-visiteur.html)
+ALTER TABLE agent_requests ADD COLUMN IF NOT EXISTS push_subscription TEXT;
+
 -- agent_profiles existe déjà (pseudo, nom, prenom, adresse, siret, iban…)
 -- Ajouter les colonnes de notification :
 ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS notify_email TEXT;

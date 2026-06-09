@@ -46,6 +46,14 @@ async function notifyPendingRequests() {
     headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify({ notified_at: notifiedAt })
   }).catch(() => {});
+  // Envoyer les push notifications visiteurs (fire-and-forget)
+  const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.fr';
+  fetch(`${siteUrl}/.netlify/functions/visitor-push-notify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requestIds: pending.map(r => r.id) })
+  }).catch(() => {});
+
   // Envoyer les emails
   await Promise.all(pending.map(r =>
     fetch('https://api.resend.com/emails', {

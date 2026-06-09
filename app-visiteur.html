@@ -56,6 +56,19 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;}
 /* Offline msg */
 .offline-msg{background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:.85rem 1rem;font-size:.82rem;color:#8b2020;margin-top:-.2rem;}
 
+/* Demander agent */
+.agent-request-block{background:var(--white);border:1.5px solid var(--sand);border-radius:14px;padding:1rem 1.1rem;display:none;}
+.agent-request-block.visible{display:block;}
+.agent-request-title{font-weight:700;font-size:.9rem;color:var(--dark);margin-bottom:.3rem;}
+.agent-request-desc{font-size:.78rem;color:var(--mid);margin-bottom:.8rem;line-height:1.45;}
+.agent-request-row{display:flex;gap:.5rem;}
+.agent-request-input{flex:1;padding:.65rem .9rem;border:1.5px solid var(--sand);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--dark);background:var(--bg);outline:none;}
+.agent-request-input:focus{border-color:var(--tc);}
+.agent-request-btn{padding:.65rem 1rem;background:linear-gradient(135deg,var(--tc),var(--tc2));color:white;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+.agent-request-btn:disabled{opacity:.5;}
+.agent-request-ok{font-size:.82rem;color:#166534;background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.25);border-radius:10px;padding:.6rem .9rem;display:none;margin-top:.6rem;line-height:1.45;}
+.agent-request-notif{font-size:.75rem;color:var(--mid);margin-top:.5rem;display:none;}
+
 /* Info cards */
 .info-block{margin-top:2rem;display:flex;flex-direction:column;gap:.65rem;}
 .info-card{background:var(--white);border:1px solid var(--sand);border-radius:14px;padding:.9rem 1.1rem;display:flex;align-items:flex-start;gap:.8rem;}
@@ -140,7 +153,21 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;}
       💬 Parler maintenant
     </button>
     <div id="offline-msg" class="offline-msg" style="display:none">
-      Aucun écoutant disponible pour l'instant. Revenez bientôt ou laissez votre email sur le site pour être prévenu.
+      Aucun écoutant disponible pour l'instant.
+    </div>
+
+    <!-- Demander un agent -->
+    <div id="agent-request-block" class="agent-request-block">
+      <div class="agent-request-title">🔔 Être prévenu dès qu'un écoutant est disponible</div>
+      <div class="agent-request-desc">Laissez votre email — vous recevrez un message dès qu'un écoutant se connecte. Si vous autorisez les notifications, vous recevrez aussi une alerte directement sur cet appareil.</div>
+      <div class="agent-request-row">
+        <input id="agent-req-email" class="agent-request-input" type="email" placeholder="votre@email.fr" autocomplete="email">
+        <button id="agent-req-btn" class="agent-request-btn" onclick="submitAgentRequest()">Confirmer</button>
+      </div>
+      <div id="agent-req-notif-hint" class="agent-request-notif">Les notifications seront activées sur cet appareil.</div>
+      <div id="agent-req-ok" class="agent-request-ok">
+        ✓ Demande enregistrée ! Vous recevrez un email et une notification dès qu'un écoutant sera disponible.
+      </div>
     </div>
     <a class="btn btn-secondary" href="/espace.html">
       🔐 Mon espace abonné
@@ -306,6 +333,11 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;}
 </div>
 
 <script>
+// ── Service Worker ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
 // ── State ──
 const STRIPE_KEY = 'pk_live_51TZB64Cob93hyzLhnt58hZ8gwkCIsg7jD5HQM69ZtSO6ZKaCH7PRa9IPlt9NZb0PFyR7n5yF0QgHiY0Jfry9U86k00x8xGlf6i';
 let stripe, cardElement;
@@ -332,6 +364,9 @@ async function checkAvailability() {
     document.getElementById('s1-status-text').textContent = online ? 'Écoutant(s) disponible(s)' : 'Aucun écoutant disponible';
     document.getElementById('btn-talk').disabled = !online;
     document.getElementById('offline-msg').style.display = online ? 'none' : 'block';
+    const reqBlock = document.getElementById('agent-request-block');
+    if (!online) reqBlock.classList.add('visible');
+    else reqBlock.classList.remove('visible');
   } catch(e) {
     document.getElementById('s1-status-text').textContent = 'Statut inconnu';
   }
@@ -339,6 +374,58 @@ async function checkAvailability() {
 
 checkAvailability();
 setInterval(checkAvailability, 30000);
+
+// ── Demander un agent ──
+async function submitAgentRequest() {
+  const email = document.getElementById('agent-req-email').value.trim();
+  if (!email || !email.includes('@')) {
+    document.getElementById('agent-req-email').focus();
+    return;
+  }
+  const btn = document.getElementById('agent-req-btn');
+  btn.disabled = true;
+
+  let pushSubscription = null;
+
+  // Demander la permission de notif et s'abonner si accordée
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        const reg = await navigator.serviceWorker.ready;
+        const vapidRes = await fetch('/.netlify/functions/push-vapid-key');
+        const { key } = await vapidRes.json();
+        if (key) {
+          pushSubscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(key)
+          });
+          document.getElementById('agent-req-notif-hint').style.display = 'block';
+        }
+      }
+    } catch (e) { /* notifications non disponibles, on continue sans */ }
+  }
+
+  try {
+    await fetch('/.netlify/functions/request-agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, pushSubscription: pushSubscription ? pushSubscription.toJSON() : null })
+    });
+    document.getElementById('agent-req-ok').style.display = 'block';
+    document.getElementById('agent-req-email').style.display = 'none';
+    btn.style.display = 'none';
+  } catch (e) {
+    btn.disabled = false;
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
 
 // ── Screen 1 → 2 ──
 function goSetup() {
