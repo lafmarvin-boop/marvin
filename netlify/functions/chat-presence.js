@@ -54,10 +54,10 @@ async function notifyPendingRequests() {
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: r.email,
-        subject: '🟢 Un écoutant est disponible — Parlons',
+        subject: 'Un écoutant est disponible — Parlons',
         html: `<p style="font-family:sans-serif">Bonne nouvelle ! Un écoutant est maintenant disponible sur <strong>Parlons</strong>.</p>
 <p><a href="${SITE_URL}" style="display:inline-block;background:#C4714A;color:white;text-decoration:none;padding:.65rem 1.5rem;border-radius:50px;font-weight:700">Démarrer une conversation →</a></p>
-<p style="font-size:.8rem;color:#888;font-family:sans-serif">Vous recevez cet email car vous avez demandé à être prévenu sur parlons.fr</p>`
+<p style="font-size:.8rem;color:#888;font-family:sans-serif">Vous recevez cet email car vous avez demandé à être prévenu sur parlonsecoute.fr</p>`
       })
     }).catch(e => console.error('notify email:', e.message))
   ));
