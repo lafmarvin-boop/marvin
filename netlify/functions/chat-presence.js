@@ -47,8 +47,7 @@ async function notifyPendingRequests() {
     body: JSON.stringify({ notified_at: notifiedAt })
   }).catch(() => {});
   // Envoyer les push notifications visiteurs (fire-and-forget)
-  const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.fr';
-  fetch(`${siteUrl}/.netlify/functions/visitor-push-notify`, {
+  fetch(`${SITE_URL}/.netlify/functions/visitor-push-notify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ requestIds: pending.map(r => r.id) })

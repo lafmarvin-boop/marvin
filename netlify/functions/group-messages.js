@@ -19,7 +19,7 @@ exports.handler = async (event) => {
     if (!VALID_ROOMS.includes(room_id))
       return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Salon invalide' }) };
 
-    let url = `${SB_URL}/rest/v1/group_messages?room_id=eq.${room_id}&order=created_at.asc&limit=200`;
+    let url = `${SB_URL}/rest/v1/group_messages?room_id=eq.${encodeURIComponent(room_id)}&order=created_at.asc&limit=200`;
     if (since) url += `&created_at=gt.${encodeURIComponent(since)}`;
 
     const r = await fetch(url, { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } });

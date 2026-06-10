@@ -23,7 +23,7 @@ exports.handler = async (event) => {
       if (safeComment) patch.rating_comment = safeComment;
 
       await fetch(
-        `${process.env.SUPABASE_URL}/rest/v1/sessions?stripe_payment_id=eq.${paymentId}`,
+        `${process.env.SUPABASE_URL}/rest/v1/sessions?stripe_payment_id=eq.${encodeURIComponent(paymentId)}`,
         {
           method: 'PATCH',
           headers: {
