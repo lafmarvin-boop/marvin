@@ -28,7 +28,7 @@
 <body>
 <div class="container">
   <div class="logo">Par<span>lons</span></div>
-  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.4 · Juin 2026 · Document interne confidentiel</div>
+  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.5 · Juin 2026 · Document interne confidentiel</div>
 
   <h1>Registre des Activités de Traitement</h1>
   <p>Conformément à l'article 30 du Règlement Général sur la Protection des Données (RGPD — UE 2016/679), tout responsable de traitement doit tenir un registre documentant l'ensemble des traitements de données personnelles réalisés. Ce document constitue ce registre pour la micro-entreprise Parlons.</p>
@@ -62,7 +62,7 @@
     <tr><td><strong>Personnes concernées</strong></td><td>Clients ayant effectué un paiement</td></tr>
     <tr><td><strong>Destinataires</strong></td><td>Stripe (sous-traitant) — aucune donnée bancaire stockée par Parlons</td></tr>
     <tr><td><strong>Durée conservation</strong></td><td>5 ans (obligation légale comptable)</td></tr>
-    <tr><td><strong>Transferts hors UE</strong></td><td>Stripe Inc. (USA) — Privacy Shield + clauses contractuelles types</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Stripe Inc. (USA) — Data Privacy Framework UE-USA (adopté juillet 2023) + Clauses contractuelles types UE</td></tr>
     <tr><td><strong>Mesures sécurité</strong></td><td>Stripe PCI-DSS niveau 1, aucune donnée bancaire stockée côté Parlons</td></tr>
   </table>
 
@@ -136,12 +136,12 @@
     <tr><th>Élément</th><th>Détail</th></tr>
     <tr><td><strong>Finalité</strong></td><td>Gestion de la relation contractuelle avec les écoutants indépendants</td></tr>
     <tr><td><strong>Base légale</strong></td><td>Exécution d'un contrat (Art. 6.1.b) + Obligation légale (Art. 6.1.c)</td></tr>
-    <tr><td><strong>Données collectées</strong></td><td>Nom, prénom, email, pseudo, SIRET, données de rémunération, statistiques de sessions</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Nom, prénom, email, pseudo, adresse postale, code postal, ville, SIRET, IBAN/RIB (données bancaires pour virement), données de rémunération, statistiques de sessions, mot de passe hashé (authentification à la plateforme agent)</td></tr>
     <tr><td><strong>Personnes concernées</strong></td><td>Écoutants ayant signé un contrat de prestation</td></tr>
     <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme, URSSAF (si requis)</td></tr>
-    <tr><td><strong>Durée conservation</strong></td><td>5 ans après fin du contrat (obligation légale)</td></tr>
-    <tr><td><strong>Transferts hors UE</strong></td><td>Aucun</td></tr>
-    <tr><td><strong>Mesures sécurité</strong></td><td>Accès restreint par mot de passe, stockage sécurisé</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>5 ans après fin du contrat (obligation légale) · Mot de passe hashé : supprimé à la résiliation du contrat</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Supabase (USA) — Clauses contractuelles types UE, chiffrement au repos</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Accès restreint par clé de service, IBAN chiffré au repos, mot de passe stocké uniquement sous forme hashée (PBKDF2-SHA512, sel aléatoire), accès limité à l'administrateur</td></tr>
   </table>
 
   <h2>Droits des personnes concernées</h2>
@@ -157,9 +157,9 @@
     <tr><th>Sous-traitant</th><th>Pays</th><th>Finalité</th><th>Garanties</th></tr>
     <tr><td><strong>Stripe</strong></td><td>USA</td><td>Paiements en ligne</td><td>PCI-DSS, Clauses contractuelles types UE</td></tr>
 
-    <tr><td><strong>Netlify</strong></td><td>USA</td><td>Hébergement du site et fonctions serverless</td><td>DPA RGPD disponible</td></tr>
+    <tr><td><strong>Netlify</strong></td><td>USA</td><td>Hébergement du site et fonctions serverless</td><td>Clauses contractuelles types UE (DPA signable disponible sur netlify.com/gdpr)</td></tr>
     <tr><td><strong>Supabase</strong></td><td>USA</td><td>Base de données (sessions, abonnés, visites)</td><td>Clauses contractuelles types UE, chiffrement au repos</td></tr>
-    <tr><td><strong>ip-api.com</strong></td><td>Royaume-Uni</td><td>Géolocalisation approximative par IP (ville/région)</td><td>Requête sans stockage de données côté tiers — l'IP n'est pas conservée par le service</td></tr>
+    <tr><td><strong>ip-api.com</strong></td><td>Royaume-Uni</td><td>Géolocalisation approximative par IP (ville/région)</td><td>Décision d'adéquation UE-UK (à renouveler périodiquement) · Requête sans stockage : l'IP transmise n'est pas conservée par le service</td></tr>
     <tr><td><strong>Resend</strong></td><td>USA</td><td>Envoi d'emails transactionnels (confirmations abonnement, candidatures, alertes disponibilité, notifications admin)</td><td>Clauses contractuelles types UE</td></tr>
   </table>
 
@@ -172,10 +172,11 @@
     <tr><td>Juin 2026</td><td>2.2</td><td>Ajout traitement n°6 (notifications push visiteurs) — souscription push liée aux demandes d'agent via app-visiteur.html · Renumérotation des traitements 6→7 (candidatures) et 7→8 (gestion agents)</td></tr>
     <tr><td>Juin 2026</td><td>2.3</td><td>Suppression de Crisp (service non utilisé) — retrait du tableau des sous-traitants et correction traitement n°1</td></tr>
     <tr><td>Juin 2026</td><td>2.4</td><td>Correction sous-traitant géolocalisation : ipwho.is → ip-api.com (service effectivement utilisé dans le code)</td></tr>
+    <tr><td>Juin 2026</td><td>2.5</td><td>Traitement n°2 : remplacement Privacy Shield (invalidé CJUE 2020) par Data Privacy Framework UE-USA · Traitement n°8 : ajout données manquantes (IBAN/RIB, mot de passe hashé, adresse) + transfert Supabase + mesures sécurité détaillées · Sous-traitants : Netlify CCT précisées, ip-api.com décision d'adéquation UK mentionnée</td></tr>
   </table>
 
   <div class="footer">
-    Parlons · Registre RGPD v2.4 · Juin 2026 · Document interne confidentiel<br>
+    Parlons · Registre RGPD v2.5 · Juin 2026 · Document interne confidentiel<br>
     Ce registre doit être mis à jour à chaque nouveau traitement de données ou modification significative.
   </div>
 </div>
