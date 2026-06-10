@@ -2300,7 +2300,7 @@ function submitReview(){
   document.getElementById('review-name').value='';document.getElementById('review-age').value='';document.getElementById('review-text').value='';setStars(0);
   document.getElementById('review-ok').style.display='block';setTimeout(()=>document.getElementById('review-ok').style.display='none',4000);
 }
-function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function renderReviews(apiReviews){
   const list=document.getElementById('reviews-list');
   if(!list)return;

@@ -1206,7 +1206,7 @@ async function subscribePush(){
 }
 
 // ── ESCAPE HTML ──
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 // ── PWA INSTALL PROMPT ──
 let deferredInstallPrompt = null;
