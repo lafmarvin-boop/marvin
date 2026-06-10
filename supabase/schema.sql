@@ -80,13 +80,14 @@ CREATE INDEX IF NOT EXISTS idx_signalements_payment ON signalements (stripe_paym
 
 -- ============================================
 -- Sessions de tchat en temps réel
--- (séparée de la table sessions qui gère les paiements)
+-- (séparée de la table sessions qui gère les paiements Stripe)
 -- ============================================
 CREATE TABLE IF NOT EXISTS chat_sessions (
   id                  UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
   visitor_id          TEXT        NOT NULL,
-  status              TEXT        DEFAULT 'waiting',  -- waiting, active, ended
+  status              TEXT        DEFAULT 'waiting',  -- waiting, active, ended, closed
   pre_name            TEXT,
+  pre_topic           TEXT,
   session_type        TEXT        DEFAULT 'paid',  -- paid, sub, group
   session_label       TEXT,
   duration_sec        INTEGER     DEFAULT 1800,
@@ -158,15 +159,17 @@ CREATE POLICY "no_public_read" ON agent_passwords FOR ALL TO anon USING (false);
 
 -- Abonnés pass mensuel
 CREATE TABLE IF NOT EXISTS subscribers (
-  id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
-  email           TEXT        UNIQUE NOT NULL,
-  stripe_customer TEXT,
-  stripe_sub_id   TEXT,
-  status          TEXT        DEFAULT 'active',  -- active, cancelled
-  paid_until      TIMESTAMPTZ,
-  password_hash   TEXT,
-  password_salt   TEXT,
-  created_at      TIMESTAMPTZ DEFAULT NOW()
+  id                    UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  email                 TEXT        UNIQUE NOT NULL,
+  pseudo                TEXT,
+  stripe_customer_id    TEXT,
+  stripe_subscription_id TEXT,
+  status                TEXT        DEFAULT 'active',  -- active, pending, payment_failed, cancelled
+  expires_at            TIMESTAMPTZ,
+  cancel_at_period_end  BOOLEAN     DEFAULT FALSE,
+  password_hash         TEXT,
+  password_salt         TEXT,
+  created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE subscribers ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "no_public_read" ON subscribers FOR ALL TO anon USING (false);
@@ -182,6 +185,85 @@ CREATE TABLE IF NOT EXISTS agent_requests (
 ALTER TABLE agent_requests ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "no_public_read" ON agent_requests FOR ALL TO anon USING (false);
 
+-- Chat de groupe — accès membres
+CREATE TABLE IF NOT EXISTS group_access (
+  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  room_id     TEXT        NOT NULL,
+  pseudo      TEXT        NOT NULL,
+  is_agent    BOOLEAN     DEFAULT FALSE,
+  free_until  TIMESTAMPTZ,
+  paid_until  TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(room_id, pseudo)
+);
+CREATE INDEX IF NOT EXISTS idx_group_access_room ON group_access (room_id);
+ALTER TABLE group_access ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN CREATE POLICY "no_public_read" ON group_access FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Chat de groupe — messages
+CREATE TABLE IF NOT EXISTS group_messages (
+  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  room_id     TEXT        NOT NULL,
+  author      TEXT        NOT NULL,
+  content     TEXT        NOT NULL,
+  is_private  BOOLEAN     DEFAULT FALSE,
+  recipient   TEXT,
+  is_question BOOLEAN     DEFAULT FALSE,
+  is_agent    BOOLEAN     DEFAULT FALSE,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_group_messages_room ON group_messages (room_id, created_at);
+ALTER TABLE group_messages ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN CREATE POLICY "no_public_read" ON group_messages FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Suggestions utilisateurs
+CREATE TABLE IF NOT EXISTS suggestions (
+  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  content     TEXT        NOT NULL,
+  payment_id  TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE suggestions ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN CREATE POLICY "no_public_read" ON suggestions FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Statistiques de visites (journal IP/géoloc — conservé 30 jours max)
+CREATE TABLE IF NOT EXISTS visits (
+  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  visitor_id  TEXT,
+  is_new      BOOLEAN     DEFAULT FALSE,
+  ip_address  TEXT,
+  country     TEXT,
+  city        TEXT,
+  region      TEXT,
+  visited_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_visits_visitor ON visits (visitor_id);
+CREATE INDEX IF NOT EXISTS idx_visits_date    ON visits (visited_at);
+ALTER TABLE visits ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN CREATE POLICY "no_public_read" ON visits FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Compteurs globaux du site
+CREATE TABLE IF NOT EXISTS site_stats (
+  id              INTEGER     PRIMARY KEY DEFAULT 1,
+  total_visits    INTEGER     DEFAULT 0,
+  unique_visitors INTEGER     DEFAULT 0,
+  total_chats     INTEGER     DEFAULT 0,
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE site_stats ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN CREATE POLICY "no_public_read" ON site_stats FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+INSERT INTO site_stats (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+-- Chats démarrés (tracking léger pour les statistiques)
+CREATE TABLE IF NOT EXISTS chats (
+  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  visitor_id  TEXT,
+  formule     TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE chats ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN CREATE POLICY "no_public_read" ON chats FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- ============================================
 -- Migrations (colonnes ajoutées après la création initiale)
 -- ============================================
@@ -190,6 +272,7 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS extension_pending JSONB;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS transfer_session_id TEXT;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS response_deadline TIMESTAMPTZ;
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS pre_topic TEXT;
 
 -- ============================================
 -- Push Subscriptions (notifications PWA agent)
