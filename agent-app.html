@@ -1177,7 +1177,7 @@ async function renderAdminView(){
     document.getElementById('admin-online-count').textContent=online.length;
     document.getElementById('admin-queue-count').textContent=waiting;
     document.getElementById('admin-agents-list').innerHTML=online.length
-      ?online.map(a=>{const name=a.agent_email.split('@')[0];const busy=a.status==='busy';const n=a.activeChatCount||0;const chatBadge=n>0?` <span style="background:#f59e0b;color:white;border-radius:50px;font-size:.65rem;font-weight:700;padding:.1rem .45rem;margin-left:.3rem">${n} tchat${n>1?'s':''}</span>`:'';return`<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--sand)"><span>${name}${chatBadge}</span><span style="font-size:.7rem;color:${busy?'#f59e0b':'var(--green)'}">● ${busy?'En session':'En ligne'}</span></div>`;}).join('')
+      ?online.map(a=>{const name=esc(a.agent_email.split('@')[0]);const busy=a.status==='busy';const n=a.activeChatCount||0;const chatBadge=n>0?` <span style="background:#f59e0b;color:white;border-radius:50px;font-size:.65rem;font-weight:700;padding:.1rem .45rem;margin-left:.3rem">${n} tchat${n>1?'s':''}</span>`:'';return`<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--sand)"><span>${name}${chatBadge}</span><span style="font-size:.7rem;color:${busy?'#f59e0b':'var(--green)'}">● ${busy?'En session':'En ligne'}</span></div>`;}).join('')
       :'<span style="color:var(--mid)">Aucun agent connecté</span>';
   }catch{document.getElementById('admin-agents-list').textContent='Erreur réseau';}
 }
