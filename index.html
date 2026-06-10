@@ -134,7 +134,7 @@
   <style>
     :root {
       --cream:#FAF7F2; --warm:#F0E8D8; --sand:#E2D0B8;
-      --terracotta:#C4714A; --rust:#A8502E;
+      --terracotta:#C4714A; --tc:#C4714A; --rust:#A8502E;
       --dark:#2C1F14; --mid:#7A5C42; --light:#B09070;
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -2300,6 +2300,7 @@ function submitReview(){
   document.getElementById('review-name').value='';document.getElementById('review-age').value='';document.getElementById('review-text').value='';setStars(0);
   document.getElementById('review-ok').style.display='block';setTimeout(()=>document.getElementById('review-ok').style.display='none',4000);
 }
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function renderReviews(apiReviews){
   const list=document.getElementById('reviews-list');
   if(!list)return;

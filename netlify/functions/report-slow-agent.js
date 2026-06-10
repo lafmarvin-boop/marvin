@@ -26,6 +26,7 @@ exports.handler = async (event) => {
     let rembourse = false;
     let refundId = null;
     let delaiOk = false;
+    let elapsedSec = null;
 
     try {
       // Vérification côté serveur : récupérer le PI depuis Stripe (source de vérité)
@@ -36,7 +37,7 @@ exports.handler = async (event) => {
       }
 
       // Vérification du délai côté serveur : temps écoulé depuis le paiement
-      const elapsedSec = Math.floor(Date.now() / 1000) - pi.created;
+      elapsedSec = Math.floor(Date.now() / 1000) - pi.created;
       delaiOk = elapsedSec >= 120;
 
       if (delaiOk && SB_URL && SB_KEY) {
