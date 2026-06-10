@@ -138,6 +138,8 @@ CREATE TABLE IF NOT EXISTS agent_profiles (
   prenom          TEXT,
   nom             TEXT,
   adresse         TEXT,
+  code_postal     TEXT,
+  ville           TEXT,
   siret           TEXT,
   iban            TEXT,
   notify_email    TEXT,
@@ -283,6 +285,10 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS visitor_id TEXT;
 
 -- Colonne group_access (traçabilité paiement groupe)
 ALTER TABLE group_access ADD COLUMN IF NOT EXISTS payment_intent_id TEXT;
+
+-- Colonnes agent_profiles (adresse complète)
+ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS code_postal TEXT;
+ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS ville TEXT;
 
 -- ============================================
 -- Push Subscriptions (notifications PWA agent)
