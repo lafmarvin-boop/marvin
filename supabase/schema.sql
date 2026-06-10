@@ -65,10 +65,10 @@ ALTER TABLE agents       ENABLE ROW LEVEL SECURITY;
 
 -- Politique : personne ne peut lire via clé anon
 -- (tout passe par les Netlify Functions avec SERVICE_KEY)
-CREATE POLICY "no_public_read" ON sessions     FOR ALL TO anon USING (false);
-CREATE POLICY "no_public_read" ON signalements FOR ALL TO anon USING (false);
-CREATE POLICY "no_public_read" ON clients      FOR ALL TO anon USING (false);
-CREATE POLICY "no_public_read" ON agents       FOR ALL TO anon USING (false);
+DO $$ BEGIN CREATE POLICY "no_public_read" ON sessions     FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "no_public_read" ON signalements FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "no_public_read" ON clients      FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "no_public_read" ON agents       FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ============================================
 -- Index pour les requêtes fréquentes
@@ -105,7 +105,7 @@ CREATE INDEX IF NOT EXISTS idx_chat_sessions_visitor  ON chat_sessions (visitor_
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_status   ON chat_sessions (status);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_agent    ON chat_sessions (agent_email);
 ALTER TABLE chat_sessions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "no_public_read" ON chat_sessions FOR ALL TO anon USING (false);
+DO $$ BEGIN CREATE POLICY "no_public_read" ON chat_sessions FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Messages de tchat
 CREATE TABLE IF NOT EXISTS chat_messages (
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages (session_id, created_at);
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "no_public_read" ON chat_messages FOR ALL TO anon USING (false);
+DO $$ BEGIN CREATE POLICY "no_public_read" ON chat_messages FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Présence des agents
 CREATE TABLE IF NOT EXISTS agent_presence (
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS agent_presence (
   last_seen           TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE agent_presence ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "no_public_read" ON agent_presence FOR ALL TO anon USING (false);
+DO $$ BEGIN CREATE POLICY "no_public_read" ON agent_presence FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Profils agents (informations personnelles et contractuelles)
 CREATE TABLE IF NOT EXISTS agent_profiles (
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS agent_profiles (
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE agent_profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "no_public_read" ON agent_profiles FOR ALL TO anon USING (false);
+DO $$ BEGIN CREATE POLICY "no_public_read" ON agent_profiles FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Mots de passe agents (hashés + salés)
 CREATE TABLE IF NOT EXISTS agent_passwords (
@@ -157,7 +157,7 @@ CREATE TABLE IF NOT EXISTS agent_passwords (
   updated_at     TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE agent_passwords ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "no_public_read" ON agent_passwords FOR ALL TO anon USING (false);
+DO $$ BEGIN CREATE POLICY "no_public_read" ON agent_passwords FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Abonnés pass mensuel
 CREATE TABLE IF NOT EXISTS subscribers (
@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS subscribers (
   created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE subscribers ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "no_public_read" ON subscribers FOR ALL TO anon USING (false);
+DO $$ BEGIN CREATE POLICY "no_public_read" ON subscribers FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Demandes d'agent (notifications visiteur)
 CREATE TABLE IF NOT EXISTS agent_requests (
@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS agent_requests (
   notified_at       TIMESTAMPTZ
 );
 ALTER TABLE agent_requests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "no_public_read" ON agent_requests FOR ALL TO anon USING (false);
+DO $$ BEGIN CREATE POLICY "no_public_read" ON agent_requests FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Chat de groupe — accès membres
 CREATE TABLE IF NOT EXISTS group_access (
@@ -302,4 +302,4 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 );
 CREATE INDEX IF NOT EXISTS idx_push_subs_email ON push_subscriptions (agent_email);
 ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "no_public_read" ON push_subscriptions FOR ALL TO anon USING (false);
+DO $$ BEGIN CREATE POLICY "no_public_read" ON push_subscriptions FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
