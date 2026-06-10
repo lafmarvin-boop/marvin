@@ -59,7 +59,7 @@
       <li>Confidentialité et anonymat</li>
       <li>Limitation de responsabilité</li>
       <li>Réclamations et litiges</li>
-      <li>Données personnelles</li>
+      <li>Données personnelles et sous-traitants</li>
       <li>Modification des CGV</li>
     </ol>
   </div>
@@ -171,6 +171,9 @@
     <li><strong>3114</strong> — Prévention du suicide (24h/24, gratuit)</li>
     <li><strong>15</strong> — SAMU</li>
     <li><strong>112</strong> — Urgences européennes</li>
+    <li><strong>3919</strong> — Violences Femmes Info (24h/24, gratuit)</li>
+    <li><strong>3977</strong> — Allô Maltraitance (violences conjugales / maltraitance)</li>
+    <li><strong>119</strong> — Allô Enfance en Danger</li>
   </ul>
 
   <h2><span class="article-num">Art. 9</span> Confidentialité et anonymat</h2>
@@ -188,10 +191,20 @@
   <h2><span class="article-num">Art. 12</span> Données personnelles</h2>
   <p>Conformément au RGPD (UE 2016/679), les données suivantes sont collectées et traitées :</p>
   <ul style="margin:.5rem 0 .7rem 1.3rem;color:#4A3828;font-weight:300;font-size:.88rem;line-height:1.8;">
-    <li><strong>Session d'écoute :</strong> pseudonyme, horodatage, formule, référence de paiement Stripe anonymisée — base légale : exécution du contrat (Art. 6.1.b).</li>
+    <li><strong>Session d'écoute :</strong> pseudonyme, horodatage, formule, référence de paiement Stripe anonymisée — conservés <strong>48 heures</strong> pour l'historique de tchat, <strong>5 ans</strong> pour les données comptables — base légale : exécution du contrat (Art. 6.1.b).</li>
     <li><strong>Abonnement :</strong> adresse email, statut, date d'expiration — base légale : exécution du contrat (Art. 6.1.b).</li>
     <li><strong>Journal de connexion :</strong> adresse IP, pays, ville et région (géolocalisation approximative), horodatage — conservés <strong>30 jours maximum</strong>, puis suppression automatique — base légale : intérêt légitime (Art. 6.1.f) — sécurité de la plateforme et protection des utilisateurs vulnérables.</li>
-    <li><strong>Identifiant de visite anonyme :</strong> identifiant aléatoire stocké dans le localStorage du navigateur, non lié à l'identité — base légale : intérêt légitime (Art. 6.1.f) — mesure d'audience interne, exemptée de consentement cookie.</li>
+    <li><strong>Identifiant de visite anonyme :</strong> identifiant aléatoire stocké dans le localStorage du navigateur, non lié à l'identité — base légale : intérêt légitime (Art. 6.1.f) — mesure d'audience interne, exemptée de consentement cookie (délibération CNIL 2020-091).</li>
+    <li><strong>Notifications push (optionnel) :</strong> abonnement push navigateur, adresse email — collectés uniquement si le Client clique sur « Être prévenu(e) dès qu'un écoutant est disponible » — conservés jusqu'à l'envoi de la notification ou 30 jours maximum — base légale : consentement explicite (Art. 6.1.a) — droit de retrait à tout moment.</li>
+  </ul>
+  <h3>Sous-traitants techniques</h3>
+  <p>Le traitement des données s'appuie sur les prestataires suivants, tous hébergeant les données dans l'Union européenne ou avec garanties contractuelles (clauses contractuelles types UE) :</p>
+  <ul style="margin:.3rem 0 .7rem 1.3rem;color:#4A3828;font-weight:300;font-size:.88rem;line-height:1.8;">
+    <li><strong>Stripe</strong> — paiements sécurisés (États-Unis — Privacy Shield / clauses contractuelles)</li>
+    <li><strong>Supabase</strong> — base de données (AWS eu-west-1, Irlande)</li>
+    <li><strong>Netlify</strong> — hébergement et fonctions (AWS us-east-1 — clauses contractuelles)</li>
+    <li><strong>Resend</strong> — envoi d'emails transactionnels (États-Unis — clauses contractuelles)</li>
+    <li><strong>ipwho.is</strong> — géolocalisation IP approximative (anonymisation à 30 jours)</li>
   </ul>
   <p>Aucune donnée n'est revendue ni transmise à des tiers à des fins commerciales. Le Client dispose d'un droit d'accès, de rectification, de suppression et d'opposition, exercice par email à <strong>contact.parlons.ecoute@gmail.com</strong>. Réponse sous 30 jours. Recours possible auprès de la <strong>CNIL</strong> (cnil.fr).</p>
 

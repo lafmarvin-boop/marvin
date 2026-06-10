@@ -1,6 +1,6 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const ADMIN_PWD = process.env.ADMIN_PASSWORD || 'Parlons2026!';
+const ADMIN_PWD = process.env.ADMIN_PASSWORD;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
 const crypto = require('crypto');
 

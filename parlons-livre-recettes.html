@@ -713,8 +713,7 @@
 // ════════════════════════════════════
 // AUTHENTIFICATION
 // ════════════════════════════════════
-// ⚠️ CHANGEZ CE MOT DE PASSE AVANT UTILISATION
-const ADMIN_PASSWORD = 'Parlons2026!';
+let _adminPwd = '';
 
 // ── DISPONIBILITÉ ──
 let _currentOnline = null;
@@ -769,7 +768,7 @@ async function toggleAvailability(){
     const r = await fetch('/.netlify/functions/availability', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ online: !_currentOnline, password: ADMIN_PASSWORD })
+      body: JSON.stringify({ online: !_currentOnline, password: _adminPwd })
     });
     const d = await r.json();
     _currentOnline = d.online;
@@ -778,36 +777,57 @@ async function toggleAvailability(){
   btn.disabled = false;
 }
 const SESSION_KEY = 'parlons_admin_session';
+const ADMIN_EMAIL = 'lafmarvin@gmail.com';
 
-function checkPassword() {
-  const pwd = document.getElementById('pwd-input').value;
+async function checkPassword() {
+  const pwd = document.getElementById('pwd-input').value.trim();
   const err = document.getElementById('login-error');
-  if (pwd === ADMIN_PASSWORD) {
-    sessionStorage.setItem(SESSION_KEY, 'ok');
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    err.style.display = 'none';
-    render(); renderClients(); loadAvailability(); loadRatings();
-  } else {
+  const btn = document.querySelector('.login-btn');
+  if (!pwd) return;
+  btn.disabled = true; btn.textContent = '…';
+  err.style.display = 'none';
+  try {
+    const r = await fetch('/.netlify/functions/admin-stats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: ADMIN_EMAIL, password: pwd })
+    });
+    if (r.ok) {
+      _adminPwd = pwd;
+      sessionStorage.setItem(SESSION_KEY, 'ok');
+      sessionStorage.setItem('_adm_p', pwd);
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      render(); renderClients(); loadAvailability(); loadRatings();
+    } else {
+      err.style.display = 'block';
+      document.getElementById('pwd-input').value = '';
+      document.getElementById('pwd-input').focus();
+    }
+  } catch(e) {
+    err.textContent = '❌ Erreur réseau — réessayez.';
     err.style.display = 'block';
-    document.getElementById('pwd-input').value = '';
-    document.getElementById('pwd-input').focus();
   }
+  btn.disabled = false; btn.textContent = 'Accéder →';
 }
 
 function logout() {
+  _adminPwd = '';
   sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem('_adm_p');
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('pwd-input').value = '';
 }
 
-// Vérifier si déjà connecté
+// Vérifier si déjà connecté (même session navigateur)
 window.addEventListener('load', () => {
-  if (sessionStorage.getItem(SESSION_KEY) === 'ok') {
+  const saved = sessionStorage.getItem('_adm_p');
+  if (sessionStorage.getItem(SESSION_KEY) === 'ok' && saved) {
+    _adminPwd = saved;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
-    render(); renderClients();
+    render(); renderClients(); loadAvailability(); loadRatings();
   }
 });
 

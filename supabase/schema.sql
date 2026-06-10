@@ -79,12 +79,117 @@ CREATE INDEX IF NOT EXISTS idx_sessions_statut    ON sessions (statut);
 CREATE INDEX IF NOT EXISTS idx_signalements_payment ON signalements (stripe_payment_id);
 
 -- ============================================
--- Migrations
+-- Sessions de tchat en temps réel
+-- (séparée de la table sessions qui gère les paiements)
+-- ============================================
+CREATE TABLE IF NOT EXISTS chat_sessions (
+  id                  UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  visitor_id          TEXT        NOT NULL,
+  status              TEXT        DEFAULT 'waiting',  -- waiting, active, ended
+  pre_name            TEXT,
+  session_type        TEXT        DEFAULT 'paid',  -- paid, sub, group
+  session_label       TEXT,
+  duration_sec        INTEGER     DEFAULT 1800,
+  stripe_payment_id   TEXT,
+  visitor_ip          TEXT,
+  agent_email         TEXT,
+  assigned_at         TIMESTAMPTZ,
+  response_deadline   TIMESTAMPTZ,
+  extension_pending   JSONB,
+  transfer_session_id TEXT,
+  closed_at           TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_visitor  ON chat_sessions (visitor_id);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_status   ON chat_sessions (status);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_agent    ON chat_sessions (agent_email);
+ALTER TABLE chat_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no_public_read" ON chat_sessions FOR ALL TO anon USING (false);
+
+-- Messages de tchat
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id           UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  session_id   UUID        REFERENCES chat_sessions(id) ON DELETE CASCADE,
+  content      TEXT        NOT NULL,
+  sender_type  TEXT        NOT NULL,  -- visitor, agent, system
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages (session_id, created_at);
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no_public_read" ON chat_messages FOR ALL TO anon USING (false);
+
+-- Présence des agents
+CREATE TABLE IF NOT EXISTS agent_presence (
+  agent_email         TEXT        PRIMARY KEY,
+  status              TEXT        DEFAULT 'offline',  -- offline, online, busy
+  session_token       TEXT,
+  current_session_id  UUID,
+  connected_since     TIMESTAMPTZ,
+  last_seen           TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE agent_presence ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no_public_read" ON agent_presence FOR ALL TO anon USING (false);
+
+-- Profils agents (informations personnelles et contractuelles)
+CREATE TABLE IF NOT EXISTS agent_profiles (
+  email           TEXT        PRIMARY KEY,
+  pseudo          TEXT,
+  prenom          TEXT,
+  nom             TEXT,
+  adresse         TEXT,
+  siret           TEXT,
+  iban            TEXT,
+  notify_email    TEXT,
+  notify_requests BOOLEAN     DEFAULT FALSE,
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE agent_profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no_public_read" ON agent_profiles FOR ALL TO anon USING (false);
+
+-- Mots de passe agents (hashés + salés)
+CREATE TABLE IF NOT EXISTS agent_passwords (
+  email          TEXT        PRIMARY KEY,
+  password_hash  TEXT        NOT NULL,
+  password_salt  TEXT        NOT NULL,
+  updated_at     TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE agent_passwords ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no_public_read" ON agent_passwords FOR ALL TO anon USING (false);
+
+-- Abonnés pass mensuel
+CREATE TABLE IF NOT EXISTS subscribers (
+  id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  email           TEXT        UNIQUE NOT NULL,
+  stripe_customer TEXT,
+  stripe_sub_id   TEXT,
+  status          TEXT        DEFAULT 'active',  -- active, cancelled
+  paid_until      TIMESTAMPTZ,
+  password_hash   TEXT,
+  password_salt   TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE subscribers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no_public_read" ON subscribers FOR ALL TO anon USING (false);
+
+-- Demandes d'agent (notifications visiteur)
+CREATE TABLE IF NOT EXISTS agent_requests (
+  id                UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  email             TEXT        NOT NULL,
+  push_subscription TEXT,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  notified_at       TIMESTAMPTZ
+);
+ALTER TABLE agent_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "no_public_read" ON agent_requests FOR ALL TO anon USING (false);
+
+-- ============================================
+-- Migrations (colonnes ajoutées après la création initiale)
 -- ============================================
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS visitor_ip TEXT;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS extension_pending JSONB;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS transfer_session_id TEXT;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS response_deadline TIMESTAMPTZ;
 
 -- ============================================
 -- Push Subscriptions (notifications PWA agent)

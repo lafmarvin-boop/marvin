@@ -18,7 +18,7 @@ Ces variables d'environnement ne sont pas encore définies en production :
 
 | Variable | Valeur |
 |---|---|
-| `ADMIN_PASSWORD` | Le mot de passe admin choisi (défaut actuel : `Parlons2026!`) |
+| `ADMIN_PASSWORD` | Le mot de passe admin choisi |
 | `ADMIN_EMAIL` | `lafmarvin@gmail.com` |
 | `STRIPE_PRICE_ID` | ID du prix récurrent 15€/mois à créer dans Stripe |
 | `CRISP_API_IDENTIFIER` | Crisp → Settings → Integrations → API |
@@ -133,4 +133,4 @@ Une fois Resend configuré :
 
 - URL : `/espace.html`
 - Email : `lafmarvin@gmail.com`
-- Mot de passe : valeur de `ADMIN_PASSWORD` (défaut : `Parlons2026!`)
+- Mot de passe : valeur de `ADMIN_PASSWORD` (env var Netlify)
