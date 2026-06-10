@@ -23,7 +23,7 @@ function hashPassword(password, salt) {
 
 async function sendWelcomeEmail(email, pseudo, password) {
   if (!process.env.RESEND_API_KEY) { console.warn('RESEND_API_KEY manquant, email non envoyé'); return; }
-  const from = process.env.FROM_EMAIL || 'Parlons <noreply@parlons.fr>';
+  const from = process.env.FROM_EMAIL || 'Parlons <noreply@parlonsecoute.fr>';
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#FBF6EF;font-family:Arial,sans-serif;">
 <div style="max-width:520px;margin:0 auto;padding:2rem 1rem;">

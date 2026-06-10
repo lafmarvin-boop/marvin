@@ -373,8 +373,6 @@
 
 </div><!-- fin .app -->
 
-</div>
-
 <!-- ══ MODAL DÉTAIL AGENT ══ -->
 <div class="modal-overlay" id="agent-modal" onclick="if(event.target===this)closeAgentModal()">
   <div class="modal-box">
@@ -730,7 +728,7 @@ async function loadRatings(){
       <div style="background:white;border:1px solid #E8DFD0;border-radius:10px;padding:.9rem 1rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;">
           <span style="font-size:1rem;">${'★'.repeat(d.rating||0)}${'☆'.repeat(5-(d.rating||0))}</span>
-          <span style="font-size:.75rem;color:#9A9AB0;">${d.created_at?new Date(d.created_at).toLocaleDateString('fr-FR'):''} · ${d.session_label||''}</span>
+          <span style="font-size:.75rem;color:#9A9AB0;">${d.started_at?new Date(d.started_at).toLocaleDateString('fr-FR'):''} · ${d.formule||''}</span>
         </div>
         ${d.rating_comment?`<p style="font-size:.83rem;color:#4A3728;margin:0;">"${d.rating_comment}"</p>`:'<p style="font-size:.78rem;color:#9A9AB0;margin:0;">Pas de commentaire</p>'}
       </div>`).join('');

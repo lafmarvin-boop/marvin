@@ -4,7 +4,7 @@ const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
 const ADMIN_PWD   = process.env.ADMIN_PASSWORD;
 const RESEND_KEY  = process.env.RESEND_API_KEY;
-const FROM_EMAIL  = process.env.FROM_EMAIL || 'Parlons <noreply@parlons.fr>';
+const FROM_EMAIL  = process.env.FROM_EMAIL || 'Parlons <noreply@parlonsecoute.fr>';
 const SITE_URL    = process.env.SITE_URL || 'https://parlonsecoute.fr';
 
 const CORS = {

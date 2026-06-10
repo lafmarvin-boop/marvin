@@ -1,7 +1,7 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const RESEND_KEY = process.env.RESEND_API_KEY;
-const FROM = process.env.FROM_EMAIL || 'Parlons <noreply@parlons.fr>';
+const FROM = process.env.FROM_EMAIL || 'Parlons <noreply@parlonsecoute.fr>';
 const CONTACT_EMAIL = 'contact.parlons.ecoute@gmail.com';
 
 const CORS = {
