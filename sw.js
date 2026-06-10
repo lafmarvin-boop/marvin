@@ -1,5 +1,5 @@
 const CACHE = 'parlons-v3';
-const PRECACHE = ['/agent-app.html', '/app-visiteur.html', '/', '/index.html', '/manifest-visitor.json', '/manifest.json'];
+const PRECACHE = ['/agent-app.html', '/app-visiteur.html', '/espace.html', '/groupe.html', '/', '/index.html', '/manifest-visitor.json', '/manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)));
