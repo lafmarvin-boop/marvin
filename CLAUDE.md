@@ -1,6 +1,6 @@
 # Parlons — Mémo de session
 
-Projet : service d'écoute anonyme en ligne (Netlify + Supabase + Stripe + Crisp + Resend).
+Projet : service d'écoute anonyme en ligne (Netlify + Supabase + Stripe + Resend).
 
 ---
 
@@ -8,7 +8,7 @@ Projet : service d'écoute anonyme en ligne (Netlify + Supabase + Stripe + Crisp
 
 - `index.html` : paiement unique (Stripe), abonnement mensuel, groupe, notation, suggestions, fidélité Option A (localStorage)
 - `espace.html` : login unifié admin/abonné, dashboard admin (stats, tableau agents, suggestions, abonnés, sessions récentes), dashboard abonné (démarrer session, changer mdp, résilier)
-- `netlify/functions/` : create-payment-intent, create-subscription, stripe-webhook, cancel-subscription, change-password, subscriber-session, crisp-webhook, submit-suggestion, admin-stats
+- `netlify/functions/` : create-payment-intent, create-subscription, stripe-webhook, cancel-subscription, change-password, subscriber-session, submit-suggestion, admin-stats
 
 ---
 
@@ -21,9 +21,6 @@ Ces variables d'environnement ne sont pas encore définies en production :
 | `ADMIN_PASSWORD` | Le mot de passe admin choisi |
 | `ADMIN_EMAIL` | `lafmarvin@gmail.com` |
 | `STRIPE_PRICE_ID` | ID du prix récurrent 15€/mois à créer dans Stripe |
-| `CRISP_API_IDENTIFIER` | Crisp → Settings → Integrations → API |
-| `CRISP_API_KEY` | Crisp → Settings → Integrations → API |
-| `CRISP_HOOK_TOKEN` | Token secret à choisir, à mettre aussi dans l'URL du webhook Crisp |
 | `RESEND_API_KEY` | Compte Resend (resend.com) |
 | `FROM_EMAIL` | Ex : `bonjour@parlons.fr` (domaine vérifié dans Resend) |
 | `SITE_URL` | `https://parlons.fr` (ou URL Netlify actuelle) |
@@ -65,14 +62,6 @@ ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS notify_requests BOOLEAN DEFA
 -- Réassignation automatique si l'agent ne répond pas dans les 2 min :
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS response_deadline TIMESTAMPTZ;
 ```
-
----
-
-## 📋 Crisp — configuration webhook
-
-1. Crisp Dashboard → Settings → Integrations → Webhooks
-2. URL : `https://TON-SITE.netlify.app/.netlify/functions/crisp-webhook?token=TON_CRISP_HOOK_TOKEN`
-3. Événements à cocher : `message:send` + `conversation:resolved`
 
 ---
 
@@ -125,7 +114,7 @@ Une fois Resend configuré :
 
 4. **Fidélité Option B (futur)** — si on veut passer au tracking par email (cross-device), à concevoir. Mis en attente à la demande de l'utilisateur.
 
-5. **Afficher le discount fidélité dans Crisp** — quand un agent prend un chat, lui montrer si le client est en tarif réduit fidélité (nécessite de passer l'info dans session:data Crisp).
+5. **Afficher le discount fidélité dans l'app agent** — quand un agent prend un chat, lui montrer si le client est en tarif réduit fidélité.
 
 ---
 
