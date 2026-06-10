@@ -2670,8 +2670,8 @@ function startFreeGroupTimer(theme,name){
     <h2><span class="cgv-art">Art. 5 bis</span> Droit de rétractation</h2>
     <p>Conformément à l’article L221-28 du Code de la consommation, le droit de rétractation de 14 jours ne s’applique pas aux <strong>services dont l’exécution a commencé avec l’accord préalable et exprès du consommateur avant l’expiration du délai</strong>. En cochant la case dédiée <em>avant</em> le paiement, le Client reconnaît expressément que la prestation démarre immédiatement et renonce à son droit de rétractation.</p>
     <h2><span class="cgv-art">Art. 6</span> Remboursement et signalement</h2>
-    <div class="cgv-green">✅ Si l'écoutant ne répond pas dans les <strong>2 minutes</strong> après attribution, un bouton de signalement apparaît automatiquement. L'administrateur vérifie et rembourse intégralement si le délai est confirmé.</div>
-    <p>Le remboursement est traité manuellement et crédité sous 5 à 10 jours ouvrés.</p>
+    <div class="cgv-green">✅ Si aucun écoutant n'est attribué dans les <strong>2 minutes suivant le paiement</strong>, un bouton de signalement apparaît automatiquement. En cliquant dessus, le remboursement intégral est déclenché <strong>automatiquement</strong> via Stripe, sans intervention manuelle.</div>
+    <p>Le remboursement est traité <strong>automatiquement par le système</strong> et crédité sous 5 à 10 jours ouvrés selon les délais bancaires.</p>
     <h3>Cas non remboursables</h3>
     <ul>
       <li>Sessions ayant débuté normalement, même si le client part avant la fin</li>
@@ -2863,7 +2863,7 @@ function startFreeGroupTimer(theme,name){
     <p><strong>Étape 1</strong> — Si l'écoutant tarde à répondre : cliquez sur le bouton 🚨 dans l'interface après 2 minutes.</p>
     <p><strong>Étape 2</strong> — Pour tout autre cas : écrivez-nous à <a href="mailto:contact.parlons.ecoute@gmail.com?subject=Demande de remboursement" style="color:var(--terracotta)">contact.parlons.ecoute@gmail.com</a> en indiquant la date, l'heure et la durée de votre session.</p>
     <p><strong>Délai de traitement</strong> : 5 à 10 jours ouvrés selon votre banque.</p>
-    <div class="lb-info">⚠️ Le remboursement est traité manuellement par notre équipe après vérification. Aucun remboursement automatique n'est appliqué sans contrôle préalable.</div>
+    <div class="lb-info">✅ Le remboursement de l'étape 1 (aucun agent attribué en 2 min) est déclenché <strong>automatiquement</strong> via Stripe dès le clic sur le bouton de signalement. Pour tout autre cas, notre équipe traite la demande sous 48 h ouvrées.</div>
     <button class="legal-close-btn" onclick="closeRefund()">Fermer ✕</button>
   </div>
 </div>
