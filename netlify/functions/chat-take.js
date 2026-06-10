@@ -32,7 +32,16 @@ exports.handler = async (event) => {
     if (!Array.isArray(presRows) || !presRows.length || presRows[0].session_token !== agentToken)
       return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Token invalide' }) };
 
-    // 2. Vérifier que la session est bien en attente
+    // 2. Vérifier que l'agent n'a pas atteint la limite de 3 tchats simultanés
+    const activeRes = await fetch(
+      `${SB_URL}/rest/v1/chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id`,
+      { headers: H() }
+    );
+    const activeRows = await activeRes.json();
+    if (Array.isArray(activeRows) && activeRows.length >= 3)
+      return { statusCode: 429, headers: CORS, body: JSON.stringify({ error: 'Limite de 3 tchats simultanés atteinte' }) };
+
+    // 3. Vérifier que la session est bien en attente
     const sessRes = await fetch(
       `${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&status=eq.waiting&select=id,pre_name,pre_topic,session_label,duration_sec&limit=1`,
       { headers: H() }
@@ -50,7 +59,7 @@ exports.handler = async (event) => {
       {
         method: 'PATCH',
         headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
-        body: JSON.stringify({ agent_email: agentEmail, status: 'active', assigned_at: now })
+        body: JSON.stringify({ agent_email: agentEmail, status: 'active', assigned_at: now, response_deadline: new Date(Date.now() + 2 * 60 * 1000).toISOString() })
       }
     );
     const patchRows = await patchRes.json();
@@ -75,15 +84,15 @@ exports.handler = async (event) => {
       body: JSON.stringify({ session_id: sessionId, content: greeting, sender_type: 'system' })
     });
 
-    // 5. Mettre à jour current_session_id dans agent_presence
-    fetch(
+    // 5. Mettre à jour current_session_id dans agent_presence (awaité pour éviter la race condition)
+    await fetch(
       `${SB_URL}/rest/v1/agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}`,
       {
         method: 'PATCH',
         headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ current_session_id: sessionId, last_seen: now })
+        body: JSON.stringify({ current_session_id: sessionId, status: 'busy', last_seen: now })
       }
-    ).catch(() => {});
+    );
 
     return {
       statusCode: 200, headers: CORS,

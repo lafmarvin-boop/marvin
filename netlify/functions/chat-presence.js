@@ -3,6 +3,9 @@ const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
 const ADMIN_PWD   = process.env.ADMIN_PASSWORD;
+const RESEND_KEY  = process.env.RESEND_API_KEY;
+const FROM_EMAIL  = process.env.FROM_EMAIL || 'Parlons <noreply@parlonsecoute.fr>';
+const SITE_URL    = process.env.SITE_URL || 'https://parlonsecoute.fr';
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -28,6 +31,43 @@ async function sbPatch(path, body) {
     headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify(body)
   });
+}
+
+async function notifyPendingRequests() {
+  if (!SB_URL || !SB_KEY || !RESEND_KEY) return;
+  const res = await fetch(`${SB_URL}/rest/v1/agent_requests?notified_at=is.null&select=id,email`, { headers: H() });
+  const pending = await res.json().catch(() => []);
+  if (!Array.isArray(pending) || !pending.length) return;
+  const notifiedAt = new Date().toISOString();
+  const ids = pending.map(r => r.id).join(',');
+  // Marquer comme notifiés d'abord pour éviter les doublons
+  await fetch(`${SB_URL}/rest/v1/agent_requests?id=in.(${ids})`, {
+    method: 'PATCH',
+    headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ notified_at: notifiedAt })
+  }).catch(() => {});
+  // Envoyer les push notifications visiteurs (fire-and-forget)
+  fetch(`${SITE_URL}/.netlify/functions/visitor-push-notify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requestIds: pending.map(r => r.id) })
+  }).catch(() => {});
+
+  // Envoyer les emails
+  await Promise.all(pending.map(r =>
+    fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: r.email,
+        subject: 'Un écoutant est disponible — Parlons',
+        html: `<p style="font-family:sans-serif">Bonne nouvelle ! Un écoutant est maintenant disponible sur <strong>Parlons</strong>.</p>
+<p><a href="${SITE_URL}" style="display:inline-block;background:#C4714A;color:white;text-decoration:none;padding:.65rem 1.5rem;border-radius:50px;font-weight:700">Démarrer une conversation →</a></p>
+<p style="font-size:.8rem;color:#888;font-family:sans-serif">Vous recevez cet email car vous avez demandé à être prévenu sur parlonsecoute.fr</p>`
+      })
+    }).catch(e => console.error('notify email:', e.message))
+  ));
 }
 
 exports.handler = async (event) => {
@@ -77,13 +117,17 @@ exports.handler = async (event) => {
         })
       });
 
+      // Notifier les visiteurs qui avaient demandé un écoutant (fire-and-forget)
+      notifyPendingRequests().catch(() => {});
+
       // Vérifier si des visiteurs attendent et en assigner un
       const waiting = await sbGet(`chat_sessions?status=eq.waiting&select=id&order=created_at.asc&limit=1`);
       if (waiting.length) {
         const sessionId = waiting[0].id;
         await Promise.all([
           sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
-            agent_email: agentEmail, status: 'active', assigned_at: now
+            agent_email: agentEmail, status: 'active', assigned_at: now,
+            response_deadline: new Date(Date.now() + 2 * 60 * 1000).toISOString()
           }),
           sbPatch(`agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}`, {
             current_session_id: sessionId, status: 'busy'

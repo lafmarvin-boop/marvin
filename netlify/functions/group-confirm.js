@@ -35,7 +35,7 @@ exports.handler = async (event) => {
   const paid_until = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
   await fetch(
-    `${SB_URL}/rest/v1/group_access?room_id=eq.${room_id}&pseudo=eq.${encodeURIComponent(pseudo)}`,
+    `${SB_URL}/rest/v1/group_access?room_id=eq.${encodeURIComponent(room_id)}&pseudo=eq.${encodeURIComponent(pseudo)}`,
     {
       method: 'PATCH',
       headers: {

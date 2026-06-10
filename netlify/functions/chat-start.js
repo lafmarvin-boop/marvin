@@ -45,6 +45,10 @@ exports.handler = async (event) => {
   if (!visitorId || !name)
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Données manquantes' }) };
 
+  const visitorIp = (event.headers['x-nf-client-connection-ip']
+    || (event.headers['x-forwarded-for'] || '').split(',')[0]
+    || '').trim() || null;
+
   try {
     // Créer la session
     const created = await sbPost('chat_sessions', {
@@ -54,7 +58,8 @@ exports.handler = async (event) => {
       session_type: sessionType || 'paid',
       session_label: sessionLabel || '',
       duration_sec: parseInt(durationSec) || 1800,
-      stripe_payment_id: paymentId || null
+      stripe_payment_id: paymentId || null,
+      visitor_ip: visitorIp
     });
     const session = Array.isArray(created) ? created[0] : created;
     if (!session?.id) throw new Error('Création session échouée');
@@ -75,7 +80,8 @@ exports.handler = async (event) => {
         sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
           agent_email: assignedAgent,
           status: 'active',
-          assigned_at: now
+          assigned_at: now,
+          response_deadline: new Date(Date.now() + 2 * 60 * 1000).toISOString()
         }),
         sbPatch(`agent_presence?agent_email=eq.${encodeURIComponent(assignedAgent)}`, {
           current_session_id: sessionId,
@@ -98,6 +104,20 @@ exports.handler = async (event) => {
         sender_type: 'system'
       })
     });
+
+    // Push notification aux agents si personne n'était disponible
+    if (!assignedAgent) {
+      const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.netlify.app';
+      fetch(`${siteUrl}/.netlify/functions/push-notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: '💬 Nouveau tchat en attente',
+          message: `${name} attend votre aide`,
+          url: '/agent-app.html'
+        })
+      }).catch(() => {});
+    }
 
     return {
       statusCode: 200, headers: CORS,

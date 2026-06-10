@@ -26,6 +26,7 @@ exports.handler = async (event) => {
     let rembourse = false;
     let refundId = null;
     let delaiOk = false;
+    let elapsedSec = null;
 
     try {
       // Vérification côté serveur : récupérer le PI depuis Stripe (source de vérité)
@@ -36,13 +37,13 @@ exports.handler = async (event) => {
       }
 
       // Vérification du délai côté serveur : temps écoulé depuis le paiement
-      const elapsedSec = Math.floor(Date.now() / 1000) - pi.created;
+      elapsedSec = Math.floor(Date.now() / 1000) - pi.created;
       delaiOk = elapsedSec >= 120;
 
       if (delaiOk && SB_URL && SB_KEY) {
         // Ne pas rembourser si un agent a déjà été assigné (il a donc répondu)
         const checkRes = await fetch(
-          `${SB_URL}/rest/v1/sessions?stripe_payment_id=eq.${encodeURIComponent(paymentId)}&agent_name=not.is.null&select=id&limit=1`,
+          `${SB_URL}/rest/v1/sessions?stripe_payment_id=eq.${encodeURIComponent(paymentId)}&agent_email=not.is.null&select=id&limit=1`,
           { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
         );
         const assigned = await checkRes.json();
@@ -65,10 +66,8 @@ exports.handler = async (event) => {
     }
 
     if (SB_URL && SB_KEY) {
-      await saveSignalement({ client, session, rembourse, paymentId });
+      await saveSignalement({ client, session, rembourse, paymentId, elapsedSec });
     }
-
-    console.log(`SIGNALEMENT — client: ${client}, session: ${session}, remboursé: ${rembourse}, refundId: ${refundId}`);
 
     return {
       statusCode: 200,
@@ -95,6 +94,7 @@ async function saveSignalement(data) {
       formule: data.session,
       remboursement_effectue: data.rembourse,
       stripe_payment_id: data.paymentId,
+      delai_attente: data.elapsedSec != null ? Math.floor(data.elapsedSec) : null,
     }),
   });
   if (!res.ok) console.error('Supabase signalement error:', await res.text());

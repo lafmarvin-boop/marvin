@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /espace.html
+Disallow: /agent-app.html
+Disallow: /app-visiteur.html
+Disallow: /parlons-livre-recettes.html
+Disallow: /.netlify/
+
+Sitemap: https://parlonsecoute.fr/sitemap.xml

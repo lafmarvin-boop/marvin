@@ -43,12 +43,12 @@ exports.handler = async (event) => {
       if (!agentEmail || !agentToken)
         return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
       const presence = await sbGet(
-        `agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}&select=session_token,current_session_id&limit=1`
+        `agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}&select=session_token&limit=1`
       );
       if (!presence.length || presence[0].session_token !== agentToken)
         return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Token invalide' }) };
-      if (presence[0].current_session_id !== sessionId)
-        return { statusCode: 403, headers: CORS, body: JSON.stringify({ error: 'Session non assignée' }) };
+      if (sessions[0].agent_email !== agentEmail)
+        return { statusCode: 403, headers: CORS, body: JSON.stringify({ error: 'Session non assignée à cet agent' }) };
     }
     // Visiteur : le sessionId (UUID) est le secret suffisant
 
@@ -57,6 +57,15 @@ exports.handler = async (event) => {
       headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({ session_id: sessionId, content: content.trim(), sender_type: senderType })
     });
+
+    // Premier message agent : effacer le délai de réponse (fire-and-forget)
+    if (senderType === 'agent') {
+      fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&response_deadline=not.is.null`, {
+        method: 'PATCH',
+        headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ response_deadline: null })
+      }).catch(() => {});
+    }
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
   } catch (e) {

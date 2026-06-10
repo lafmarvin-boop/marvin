@@ -1,5 +1,5 @@
 const RESEND_KEY = process.env.RESEND_API_KEY;
-const FROM = process.env.FROM_EMAIL || 'Parlons <noreply@parlons.fr>';
+const FROM = process.env.FROM_EMAIL || 'Parlons <noreply@parlonsecoute.fr>';
 const ADMIN = process.env.ADMIN_EMAIL || 'lafmarvin@gmail.com';
 
 const CORS = {

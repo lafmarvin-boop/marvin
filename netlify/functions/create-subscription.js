@@ -2,7 +2,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const crypto = require('crypto');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const SITE_URL = process.env.SITE_URL || 'https://parlons.fr';
+const SITE_URL = process.env.SITE_URL || 'https://parlonsecoute.fr';
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -23,7 +23,7 @@ function hashPassword(password, salt) {
 
 async function sendWelcomeEmail(email, pseudo, password) {
   if (!process.env.RESEND_API_KEY) { console.warn('RESEND_API_KEY manquant, email non envoyé'); return; }
-  const from = process.env.FROM_EMAIL || 'Parlons <noreply@parlons.fr>';
+  const from = process.env.FROM_EMAIL || 'Parlons <noreply@parlonsecoute.fr>';
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#FBF6EF;font-family:Arial,sans-serif;">
 <div style="max-width:520px;margin:0 auto;padding:2rem 1rem;">
@@ -123,11 +123,12 @@ exports.handler = async (event) => {
       };
       if (passwordHash) { subData.password_hash = passwordHash; subData.password_salt = passwordSalt; }
 
-      await fetch(`${SB_URL}/rest/v1/subscribers`, {
+      const subRes = await fetch(`${SB_URL}/rest/v1/subscribers`, {
         method: 'POST',
         headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
         body: JSON.stringify(subData),
       });
+      if (!subRes.ok) console.error('create-subscription: Supabase upsert failed', await subRes.text());
     }
 
     // Envoyer l'email de bienvenue avec le mot de passe (une seule fois)

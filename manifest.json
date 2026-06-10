@@ -1,0 +1,35 @@
+{
+  "name": "Parlons — Espace Agent",
+  "short_name": "Agent Parlons",
+  "description": "Interface agent pour recevoir et gérer les tchats Parlons",
+  "start_url": "/agent-app.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fdf8f3",
+  "theme_color": "#C4714A",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Me mettre en ligne",
+      "short_name": "En ligne",
+      "description": "Passer en ligne pour recevoir des tchats",
+      "url": "/agent-app.html?action=online"
+    }
+  ],
+  "categories": ["productivity", "communication"]
+}

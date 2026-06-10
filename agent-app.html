@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23C4714A'/><rect x='14' y='13' width='72' height='56' rx='11' fill='white'/><polygon points='26,69 26,88 44,69' fill='white'/><text x='50' y='54' font-size='36' text-anchor='middle' font-family='Georgia,serif' fill='%23C4714A'>P</text></svg>"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%23C4714A'/><rect x='28' y='26' width='136' height='106' rx='22' fill='white'/><polygon points='48,132 48,162 76,132' fill='white'/><text x='96' y='104' font-size='70' text-anchor='middle' font-family='Georgia,serif' fill='%23C4714A'>P</text></svg>"/>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Parlons Agent">
+<meta name="theme-color" content="#C4714A">
+<title>Parlons — Agent</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--tc:#C4714A;--tc2:#a85c38;--dark:#2d1f14;--mid:#7a5a42;--light:#b09880;--sand:#e8ddd4;--bg:#fdf8f3;--white:#fff;--green:#16a34a;--red:#ef4444;--radius:16px;--shadow:0 4px 20px rgba(0,0,0,.1);}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--dark);overscroll-behavior:none;}
+body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative;}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.screen.active{display:flex;}
+
+/* ── LOGIN ── */
+#screen-login{align-items:center;justify-content:center;padding:2rem 1.5rem;background:var(--bg);}
+.login-logo{text-align:center;margin-bottom:2.5rem;}
+.login-logo h1{font-family:'Playfair Display',serif;font-size:2.2rem;color:var(--tc);line-height:1;}
+.login-logo p{font-size:.85rem;color:var(--mid);margin-top:.4rem;}
+.login-card{background:var(--white);border-radius:var(--radius);padding:1.75rem 1.5rem;width:100%;box-shadow:var(--shadow);}
+.field-label{font-size:.75rem;font-weight:600;color:var(--mid);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem;}
+.field-input{width:100%;border:1.5px solid var(--sand);border-radius:10px;padding:.75rem 1rem;font-size:.95rem;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--dark);outline:none;transition:border-color .2s;margin-bottom:1rem;}
+.field-input:focus{border-color:var(--tc);}
+.pwd-wrap{position:relative;margin-bottom:1rem;}
+.pwd-wrap .field-input{margin-bottom:0;padding-right:2.8rem;}
+.pwd-eye{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#bfb0a0;padding:0;line-height:1;display:flex;align-items:center;}
+.pwd-eye:hover{color:var(--dark);}
+.btn-primary{width:100%;background:var(--tc);color:var(--white);border:none;border-radius:50px;padding:.9rem;font-size:1rem;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .2s;margin-top:.25rem;}
+.btn-primary:active{background:var(--tc2);}
+.btn-primary:disabled{opacity:.5;cursor:default;}
+.login-error{font-size:.8rem;color:var(--red);text-align:center;margin-top:.75rem;min-height:1.2em;}
+
+/* ── APP SHELL ── */
+#app-shell{display:none;flex-direction:column;height:100%;overflow:hidden;}
+#app-shell.visible{display:flex;}
+.app-header{background:var(--white);padding:.85rem 1.1rem;padding-top:max(.85rem, env(safe-area-inset-top));display:flex;align-items:center;gap:.75rem;border-bottom:1px solid var(--sand);flex-shrink:0;}
+.app-header-title{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--tc);flex:1;}
+.app-header-agent{font-size:.75rem;color:var(--mid);text-align:right;line-height:1.3;}
+.status-dot{width:9px;height:9px;border-radius:50%;background:#ccc;flex-shrink:0;}
+.status-dot.online{background:var(--green);}
+.status-dot.busy{background:#f59e0b;}
+.views{flex:1;overflow:hidden;position:relative;}
+.view{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1rem;display:none;flex-direction:column;gap:.85rem;}
+.view.active{display:flex;}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{display:flex;background:var(--white);border-top:1px solid var(--sand);flex-shrink:0;padding-bottom:max(.4rem,env(safe-area-inset-bottom));}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:.18rem;padding:.55rem .5rem;font-size:.65rem;font-weight:500;color:var(--light);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:color .2s;position:relative;}
+.nav-btn.active{color:var(--tc);}
+.nav-btn svg{width:22px;height:22px;stroke-width:1.8;}
+.nav-badge{position:absolute;top:.3rem;right:calc(50% - 14px);background:var(--red);color:var(--white);border-radius:50%;min-width:16px;height:16px;font-size:.6rem;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 3px;}
+.nav-badge.visible{display:flex;}
+
+/* ── VIEW HOME ── */
+.status-toggle{background:var(--white);border-radius:var(--radius);padding:1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border:2px solid var(--sand);transition:border-color .25s,background .25s;user-select:none;}
+.status-toggle.online{border-color:var(--green);background:#f0fdf4;}
+.status-toggle.busy{border-color:#f59e0b;background:#fffbeb;}
+.status-toggle-text{display:flex;flex-direction:column;gap:.15rem;}
+.status-toggle-label{font-size:.95rem;font-weight:700;color:var(--dark);}
+.status-toggle-sub{font-size:.74rem;color:var(--mid);}
+/* pill switch */
+.sw-pill{width:54px;height:30px;border-radius:15px;background:#e74c3c;position:relative;transition:background .25s;flex-shrink:0;box-shadow:inset 0 1px 3px rgba(0,0,0,.15);}
+.sw-pill.on{background:var(--green);}
+.sw-pill::after{content:'';position:absolute;width:22px;height:22px;background:white;border-radius:50%;top:4px;left:4px;transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 4px rgba(0,0,0,.25);}
+.sw-pill.on::after{transform:translateX(24px);}
+.push-banner{background:#fff7ed;border:1.5px solid #fdba74;border-radius:12px;padding:.85rem 1rem;display:flex;align-items:center;gap:.75rem;}
+.push-banner-text{flex:1;font-size:.8rem;color:#92400e;line-height:1.4;}
+.push-banner-btn{font-size:.75rem;font-weight:600;background:var(--tc);color:var(--white);border:none;border-radius:50px;padding:.35rem .85rem;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.section-head{font-size:.72rem;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:.05em;margin-top:.25rem;}
+.empty-state{text-align:center;padding:1.5rem;color:var(--light);font-size:.85rem;background:var(--white);border-radius:var(--radius);border:1.5px dashed var(--sand);}
+.queue-card{background:var(--white);border-radius:12px;padding:.85rem 1rem;display:flex;align-items:center;gap:.85rem;border:1.5px solid var(--sand);cursor:pointer;transition:border-color .15s;}
+.queue-card:active{border-color:var(--tc);}
+.queue-card-avatar{width:38px;height:38px;border-radius:50%;background:var(--sand);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.queue-card-info{flex:1;min-width:0;}
+.queue-card-name{font-weight:600;font-size:.9rem;}
+.queue-card-topic{font-size:.76rem;color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem;}
+.queue-card-wait{font-size:.7rem;color:var(--light);}
+.queue-take-btn{background:var(--tc);color:var(--white);border:none;border-radius:50px;padding:.35rem .9rem;font-size:.76rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;}
+.session-card{background:var(--white);border-radius:12px;padding:.85rem 1rem;display:flex;align-items:center;gap:.85rem;border:1.5px solid #fde68a;cursor:pointer;transition:background .15s;}
+.session-card:active{background:#fef9f5;}
+.session-card.new{border-color:var(--red);animation:pulse-card 1s ease-in-out infinite alternate;}
+@keyframes pulse-card{from{border-color:var(--red);box-shadow:0 0 0 0 rgba(239,68,68,.3);}to{border-color:#fca5a5;box-shadow:0 0 0 6px rgba(239,68,68,0);}}
+.session-card-avatar{width:38px;height:38px;border-radius:50%;background:#fef9c3;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.session-card-info{flex:1;min-width:0;}
+.session-card-name{font-weight:600;font-size:.9rem;}
+.session-card-label{font-size:.76rem;color:var(--mid);margin-top:.1rem;}
+.session-card-timer{font-size:.8rem;font-weight:700;color:var(--tc);background:#fff7ed;border-radius:50px;padding:.2rem .6rem;flex-shrink:0;}
+.session-unread{background:var(--red);color:var(--white);border-radius:50%;min-width:20px;height:20px;font-size:.68rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0;}
+
+/* ── VIEW CHAT ── */
+.chat-header{background:var(--tc);color:var(--white);padding:.75rem 1rem;display:flex;align-items:center;gap:.75rem;flex-shrink:0;}
+.chat-back{background:none;border:none;color:rgba(255,255,255,.85);font-size:1.2rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;}
+.chat-header-info{flex:1;min-width:0;}
+.chat-header-name{font-weight:700;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chat-header-label{font-size:.72rem;opacity:.8;margin-top:.05rem;}
+.chat-header-timer{font-size:.82rem;font-weight:700;background:rgba(0,0,0,.2);border-radius:50px;padding:.18rem .65rem;flex-shrink:0;}
+.chat-header-end{background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.5);border-radius:50px;color:var(--white);font-size:.72rem;font-weight:600;padding:.28rem .7rem;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;}
+.chat-view{display:none;flex-direction:column;position:absolute;inset:0;background:var(--bg);}
+.chat-view.active{display:flex;}
+.chat-msgs{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:.85rem .9rem;display:flex;flex-direction:column;gap:.5rem;}
+.msg{max-width:82%;display:flex;flex-direction:column;gap:.18rem;}
+.msg.visitor{align-self:flex-start;}
+.msg.agent{align-self:flex-end;}
+.msg.system{align-self:center;max-width:90%;}
+.bubble{padding:.6rem .85rem;border-radius:16px;font-size:.88rem;line-height:1.45;}
+.msg.visitor .bubble{background:var(--white);border:1px solid var(--sand);border-bottom-left-radius:4px;color:var(--dark);}
+.msg.agent .bubble{background:var(--tc);color:var(--white);border-bottom-right-radius:4px;}
+.msg.system .bubble{background:#f0e8e0;color:var(--mid);font-size:.78rem;text-align:center;border-radius:50px;padding:.3rem .9rem;}
+.msg-time{font-size:.62rem;color:var(--light);}
+.msg.agent .msg-time{text-align:right;}
+.chat-input-row{background:var(--white);border-top:1px solid var(--sand);padding:.6rem .7rem;padding-bottom:max(.6rem,env(safe-area-inset-bottom));display:flex;align-items:flex-end;gap:.5rem;flex-shrink:0;}
+.chat-ta{flex:1;border:1.5px solid var(--sand);border-radius:12px;padding:.55rem .75rem;font-size:.88rem;font-family:'DM Sans',sans-serif;resize:none;max-height:100px;outline:none;background:var(--bg);}
+.chat-ta:focus{border-color:var(--tc);}
+.chat-send{background:var(--tc);color:var(--white);border:none;border-radius:50%;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ext-bar{background:#fff7ed;border-top:2px solid #fbbf24;padding:.65rem .9rem;display:none;flex-direction:column;gap:.45rem;flex-shrink:0;}
+.ext-bar.visible{display:flex;}
+.ext-bar-text{font-size:.8rem;color:#92400e;font-weight:600;}
+.ext-bar-btns{display:flex;gap:.5rem;}
+.ext-btn{flex:1;border:none;border-radius:50px;padding:.45rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.ext-btn.accept{background:#22c55e;color:var(--white);}
+.ext-btn.pass{background:#f59e0b;color:var(--white);}
+
+/* ── VIEW STATS ── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;}
+.stat-card{background:var(--white);border-radius:12px;padding:1rem 1.1rem;border:1px solid var(--sand);}
+.stat-card-label{font-size:.68rem;color:var(--light);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:.3rem;}
+.stat-card-value{font-family:'Playfair Display',serif;font-size:1.7rem;color:var(--dark);line-height:1;}
+.stat-card-sub{font-size:.72rem;color:var(--mid);margin-top:.25rem;}
+.period-tabs{display:flex;gap:.4rem;background:var(--white);border-radius:50px;padding:.25rem;border:1px solid var(--sand);}
+.period-tab{flex:1;text-align:center;padding:.4rem .2rem;font-size:.75rem;font-weight:500;border-radius:50px;border:none;background:none;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--mid);transition:all .15s;}
+.period-tab.active{background:var(--tc);color:var(--white);font-weight:700;}
+.rating-row{display:flex;gap:.2rem;font-size:1rem;}
+.session-row{background:var(--white);border-radius:10px;padding:.75rem .9rem;border:1px solid var(--sand);font-size:.82rem;}
+.session-row-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;}
+.session-row-name{font-weight:600;}
+.session-row-amount{font-weight:700;color:var(--tc);}
+.session-row-meta{font-size:.72rem;color:var(--mid);margin-top:.2rem;}
+.review-card{background:var(--white);border-radius:10px;padding:.85rem .9rem;border:1px solid var(--sand);}
+.review-stars{font-size:1rem;color:#FFD700;margin-bottom:.3rem;}
+.review-comment{font-size:.82rem;color:var(--dark);line-height:1.5;margin-bottom:.4rem;font-style:italic;}
+.review-meta{font-size:.7rem;color:var(--mid);}
+
+/* ── VIEW ADMIN ── */
+.admin-link-card{display:flex;align-items:center;gap:.9rem;background:var(--white);border-radius:var(--radius);padding:1.1rem 1.1rem;border:2px solid var(--sand);text-decoration:none;transition:border-color .2s;}
+.admin-link-card:active{border-color:var(--tc);}
+.admin-link-icon{width:42px;height:42px;border-radius:12px;background:var(--tc);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;}
+.admin-link-title{font-weight:700;font-size:.9rem;color:var(--dark);}
+.admin-link-sub{font-size:.74rem;color:var(--mid);margin-top:.15rem;}
+.admin-stat-row{display:flex;gap:.6rem;}
+
+/* ── VIEW PROFIL ── */
+.profil-field{width:100%;box-sizing:border-box;background:var(--white);border:1.5px solid var(--sand);border-radius:12px;padding:.7rem .9rem;font-size:.9rem;font-family:'DM Sans',sans-serif;color:var(--dark);outline:none;transition:border-color .2s;}
+.profil-field:focus{border-color:var(--tc);}
+.profil-label{font-size:.8rem;font-weight:600;color:var(--dark);margin-bottom:.3rem;}
+.profil-sub{font-size:.74rem;color:var(--mid);line-height:1.45;}
+.profil-toggle-row{background:var(--white);border-radius:var(--radius);padding:1rem 1.1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;border:1.5px solid var(--sand);cursor:pointer;user-select:none;transition:border-color .25s,background .25s;}
+.profil-toggle-row.active{border-color:var(--green);background:#f0fdf4;}
+.notify-sw{width:46px;height:26px;border-radius:13px;background:#ccc;position:relative;flex-shrink:0;border:none;transition:background .25s;pointer-events:none;}
+.notify-sw.on{background:var(--green);}
+.notify-sw::after{content:'';position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:4px;left:4px;transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.notify-sw.on::after{transform:translateX(20px);}
+.profil-save-btn{width:100%;padding:.75rem;background:var(--tc);color:white;border:none;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;transition:background .2s;}
+
+/* ── SHORTCUTS ── */
+.shortcuts-popup{position:absolute;bottom:100%;left:0;right:0;background:var(--white);border:1.5px solid var(--sand);border-bottom:none;border-radius:12px 12px 0 0;overflow:hidden;box-shadow:0 -4px 16px rgba(0,0,0,.08);z-index:10;max-height:200px;overflow-y:auto;}
+.sc-row{display:flex;align-items:center;gap:.7rem;padding:.6rem .9rem;cursor:pointer;border-bottom:1px solid #f3ede7;}
+.sc-row:active{background:#fdf8f3;}
+.sc-key{font-weight:700;color:var(--tc);font-size:.78rem;background:#fff5ee;border-radius:6px;padding:.12rem .42rem;flex-shrink:0;font-family:monospace;}
+.sc-phrase{font-size:.78rem;color:var(--mid);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.sc-manage-item{display:flex;align-items:center;gap:.55rem;padding:.48rem .65rem;background:var(--bg);border-radius:10px;margin-bottom:.32rem;}
+.sc-manage-key{font-weight:700;color:var(--tc);font-size:.76rem;background:#fff5ee;border-radius:6px;padding:.1rem .38rem;font-family:monospace;flex-shrink:0;}
+.sc-manage-phrase{flex:1;font-size:.76rem;color:var(--mid);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.sc-del{background:none;border:none;color:#ef4444;font-size:1.05rem;cursor:pointer;padding:0 .2rem;line-height:1;flex-shrink:0;}
+.sc-add-form{background:var(--bg);border-radius:12px;padding:.8rem;margin-top:.45rem;}
+.sc-key-wrap{display:flex;align-items:center;background:var(--white);border:1.5px solid var(--sand);border-radius:10px;padding:.42rem .55rem;gap:.05rem;transition:border-color .2s;}
+.sc-key-wrap:focus-within{border-color:var(--tc);}
+.sc-key-wrap b{color:var(--tc);font-size:.95rem;}
+.sc-key-input{border:none;outline:none;width:54px;font-family:monospace;font-size:.88rem;font-weight:600;color:var(--dark);background:transparent;}
+.sc-phrase-input{width:100%;border:1.5px solid var(--sand);border-radius:10px;padding:.52rem .72rem;font-size:.84rem;font-family:'DM Sans',sans-serif;resize:none;min-height:62px;outline:none;background:var(--white);margin-bottom:.45rem;box-sizing:border-box;transition:border-color .2s;}
+.sc-phrase-input:focus{border-color:var(--tc);}
+.sc-save-btn{flex:1;background:var(--tc);color:white;border:none;border-radius:50px;padding:.58rem;font-family:'DM Sans',sans-serif;font-size:.84rem;font-weight:600;cursor:pointer;}
+.sc-cancel-btn{background:var(--sand);color:var(--dark);border:none;border-radius:50px;padding:.58rem .9rem;font-family:'DM Sans',sans-serif;font-size:.84rem;cursor:pointer;}
+.profil-save-btn:active{background:#a8502e;}
+
+/* ── LOADING OVERLAY ── */
+.loading-overlay{position:fixed;inset:0;background:rgba(253,248,243,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:1rem;}
+.spinner{width:38px;height:38px;border:3px solid var(--sand);border-top-color:var(--tc);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{font-size:.85rem;color:var(--mid);}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="screen-login" class="screen active">
+  <div class="login-logo">
+    <h1>Parlons</h1>
+    <p>Espace écoutant</p>
+  </div>
+  <div class="login-card">
+    <div class="field-label">Email</div>
+    <input id="login-email" class="field-input" type="email" inputmode="email" autocomplete="email" placeholder="votre@email.fr">
+    <div class="field-label">Mot de passe</div>
+    <div class="pwd-wrap"><input id="login-password" class="field-input" type="password" autocomplete="current-password" placeholder="••••••••"><button type="button" class="pwd-eye" onclick="togglePwd('login-password')" tabindex="-1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">Se connecter</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ══ APP SHELL ══ -->
+<div id="app-shell">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="status-dot" id="hdr-dot"></div>
+    <div class="app-header-title">Parlons</div>
+    <div class="app-header-agent" id="hdr-agent"></div>
+    <button style="background:none;border:none;color:var(--light);font-size:.75rem;cursor:pointer;font-family:'DM Sans',sans-serif;" onclick="doLogout()">Déco.</button>
+  </div>
+
+  <!-- Views container -->
+  <div class="views">
+
+    <!-- HOME VIEW -->
+    <div class="view active" id="view-home">
+
+      <!-- Status toggle -->
+      <div class="status-toggle" id="status-toggle" onclick="toggleOnline()">
+        <div class="status-toggle-text">
+          <div class="status-toggle-label" id="status-label">Hors ligne</div>
+          <div class="status-toggle-sub" id="status-sub">Appuyez pour vous mettre en ligne</div>
+        </div>
+        <div class="sw-pill" id="sw-pill"></div>
+      </div>
+
+      <!-- Push notification banner -->
+      <div class="push-banner" id="push-banner" style="display:none">
+        <div class="push-banner-text">🔔 Activez les notifications pour être alerté des nouveaux tchats, même en arrière-plan.</div>
+        <button class="push-banner-btn" onclick="subscribePush()">Activer</button>
+      </div>
+
+      <!-- Install PWA banner -->
+      <div class="push-banner" id="install-banner" style="display:none;background:linear-gradient(135deg,#2d1f14,#4a2e1a);">
+        <div class="push-banner-text" style="color:white;">📲 Installer l'appli sur votre téléphone pour un accès rapide et les notifications.</div>
+        <button class="push-banner-btn" onclick="installApp()" style="background:white;color:#C4714A;">Installer</button>
+      </div>
+
+      <!-- Queue -->
+      <div class="section-head">File d'attente <span id="queue-count-badge"></span></div>
+      <div id="queue-list"><div class="empty-state">Aucun visiteur en attente</div></div>
+
+      <!-- Active sessions -->
+      <div class="section-head">Mes sessions actives</div>
+      <div id="sessions-list"><div class="empty-state">Aucune session active</div></div>
+
+    </div>
+
+    <!-- CHAT VIEW (overlay sur les views) -->
+    <div class="chat-view" id="chat-view">
+      <div class="chat-header">
+        <button class="chat-back" onclick="hideChat()">←</button>
+        <div class="chat-header-info">
+          <div class="chat-header-name" id="chat-name">—</div>
+          <div class="chat-header-label" id="chat-label"></div>
+        </div>
+        <div class="chat-header-timer" id="chat-timer" style="display:none"></div>
+        <button class="chat-header-end" onclick="endCurrentSession()">Terminer</button>
+      </div>
+      <div class="ext-bar" id="ext-bar">
+        <div class="ext-bar-text" id="ext-bar-text">⏳ Prolongation demandée</div>
+        <div class="ext-bar-btns">
+          <button class="ext-btn accept" onclick="respondExt(true)">✓ Prolonger</button>
+          <button class="ext-btn pass" onclick="respondExt(false)">↗ Passer</button>
+        </div>
+      </div>
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div id="send-error" style="display:none;font-size:.72rem;color:#ef4444;text-align:center;padding:.25rem .75rem;background:#fef2f2;"></div>
+      <div style="position:relative;flex-shrink:0;">
+        <div id="shortcuts-popup" class="shortcuts-popup" style="display:none;"></div>
+        <div class="chat-input-row">
+          <textarea class="chat-ta" id="chat-ta" rows="1" placeholder="Message… (/ pour raccourci)" oninput="chatTaInput(this)" onkeydown="taKeydown(event)"></textarea>
+          <button class="chat-send" onclick="sendMsg()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS VIEW -->
+    <div class="view" id="view-stats">
+      <div class="period-tabs" id="period-tabs">
+        <button class="period-tab active" data-period="today" onclick="setPeriod('today')">Auj.</button>
+        <button class="period-tab" data-period="week" onclick="setPeriod('week')">Semaine</button>
+        <button class="period-tab" data-period="month" onclick="setPeriod('month')">Mois</button>
+        <button class="period-tab" data-period="allTime" onclick="setPeriod('allTime')">Total</button>
+      </div>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-card-label">Sessions</div><div class="stat-card-value" id="st-sessions">—</div></div>
+        <div class="stat-card"><div class="stat-card-label">Gains</div><div class="stat-card-value" id="st-revenue">—</div><div class="stat-card-sub">€ nets</div></div>
+        <div class="stat-card" style="grid-column:1/-1"><div class="stat-card-label">Note moyenne</div><div class="stat-card-value" id="st-rating">—</div><div id="st-rating-stars" class="rating-row" style="margin-top:.3rem"></div></div>
+      </div>
+      <div class="section-head">Sessions récentes</div>
+      <div id="recent-sessions"></div>
+      <div class="section-head" id="reviews-head" style="display:none">Avis reçus</div>
+      <div id="agent-reviews"></div>
+    </div>
+
+    <!-- ADMIN VIEW -->
+    <div class="view" id="view-admin">
+      <div class="section-head">Administration</div>
+      <a href="/espace.html" class="admin-link-card">
+        <div class="admin-link-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+        <div><div class="admin-link-title">Dashboard complet</div><div class="admin-link-sub">Agents · Stats · Abonnés · Suggestions</div></div>
+      </a>
+      <div class="admin-stat-row">
+        <div class="stat-card" style="flex:1"><div class="stat-card-label">Agents en ligne</div><div class="stat-card-value" id="admin-online-count">—</div></div>
+        <div class="stat-card" style="flex:1"><div class="stat-card-label">File d'attente</div><div class="stat-card-value" id="admin-queue-count">—</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Agents connectés</div>
+        <div id="admin-agents-list" style="margin-top:.5rem;font-size:.82rem;color:var(--mid)">—</div>
+      </div>
+    </div>
+
+    <!-- PROFIL VIEW -->
+    <div class="view" id="view-profil">
+      <div class="section-head">Mon compte</div>
+      <div class="stat-card">
+        <div class="profil-label">Connecté en tant que</div>
+        <div style="font-size:.88rem;color:var(--dark);margin-top:.25rem" id="profil-email-display">—</div>
+      </div>
+
+      <div class="section-head">Notifications — Demandes visiteurs</div>
+
+      <div class="stat-card">
+        <div class="profil-label">Email de notification</div>
+        <div class="profil-sub" style="margin-bottom:.7rem">Adresse où recevoir les alertes quand un visiteur cherche un écoutant (peut être différente de votre email de connexion).</div>
+        <input type="email" class="profil-field" id="profil-notify-email" placeholder="votre@email.com" inputmode="email">
+      </div>
+
+      <div class="profil-toggle-row" id="profil-toggle-row" onclick="toggleNotifySwitch()">
+        <div style="flex:1">
+          <div class="profil-label" style="margin-bottom:.15rem">Recevoir les demandes</div>
+          <div class="profil-sub">Soyez alerté par email dès qu'un visiteur cherche un écoutant.</div>
+        </div>
+        <div class="notify-sw" id="notify-sw"></div>
+      </div>
+
+      <button class="profil-save-btn" onclick="saveProfilSettings()">Enregistrer</button>
+      <div id="profil-msg" style="display:none;text-align:center;font-size:.82rem;color:#2d6e2d;padding:.4rem;"></div>
+      <div id="profil-err" style="display:none;text-align:center;font-size:.82rem;color:#8b2020;padding:.4rem;"></div>
+
+      <div class="section-head" style="margin-top:.75rem">Mes raccourcis chat</div>
+      <div class="stat-card" style="padding:.85rem">
+        <div class="profil-sub" style="margin-bottom:.6rem">Tapez <strong style="color:var(--tc)">/raccourci</strong> dans le chat pour insérer une phrase préenregistrée. Ex : <strong style="font-family:monospace;color:var(--tc)">/b</strong> → "Bonjour, je suis…"</div>
+        <div id="sc-list"></div>
+        <button id="sc-add-btn" onclick="openAddShortcut()" style="width:100%;background:none;border:1.5px dashed var(--sand);border-radius:10px;padding:.58rem;color:var(--mid);font-family:'DM Sans',sans-serif;font-size:.82rem;cursor:pointer;margin-top:.3rem;">+ Ajouter un raccourci</button>
+        <div id="sc-add-form" class="sc-add-form" style="display:none">
+          <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.45rem;">
+            <div class="sc-key-wrap"><b>/</b><input id="sc-key-input" class="sc-key-input" placeholder="b" maxlength="15" autocomplete="off"></div>
+            <div style="flex:1;font-size:.73rem;color:var(--mid);line-height:1.35">Code court après / dans le chat</div>
+          </div>
+          <textarea id="sc-phrase-input" class="sc-phrase-input" placeholder="Bonjour, je suis Marvin. De quoi souhaitez-vous discuter ?"></textarea>
+          <div style="display:flex;gap:.45rem">
+            <button class="sc-save-btn" onclick="saveNewShortcut()">Sauvegarder</button>
+            <button class="sc-cancel-btn" onclick="cancelAddShortcut()">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom nav -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="showView('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span class="nav-badge" id="queue-nav-badge"></span>
+      Accueil
+    </button>
+    <button class="nav-btn" id="nav-chat" onclick="showView('chat')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="nav-badge" id="nav-badge"></span>
+      Chat
+    </button>
+    <button class="nav-btn" id="nav-stats" onclick="showView('stats')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Stats
+    </button>
+    <button class="nav-btn" id="nav-profil" onclick="showView('profil')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+      Profil
+    </button>
+    <button class="nav-btn" id="nav-admin" onclick="showView('admin')" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="18" cy="18" r="3"/><path d="M18 15v3"/><path d="M18 21v.01"/></svg>
+      Admin
+    </button>
+  </nav>
+
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading" style="display:none">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Connexion…</div>
+</div>
+
+<script>
+const API = '/.netlify/functions';
+function togglePwd(id){const el=document.getElementById(id);el.type=el.type==='password'?'text':'password';}
+
+// ── STATE ──
+let appEmail = '', appPassword = '', appToken = null, appOnline = false;
+let appSessions = new Map();   // sessionId → session state
+let appStats = null;
+let activeChatId = null;       // session currently open in chat view
+let pollTimer = null;
+let pollSince = null;
+let chatTimerInterval = null;
+let renderedIds = {};           // sessionId → Set of rendered message ids
+let statsData = null;
+let currentPeriod = 'today';
+const respondingExt = new Set();
+let prevQueueIds = new Set();
+let queueInitialized = false;
+let sessionEndTimer = null;
+let autoTaking = false;
+let pendingOffline = false;
+let _reconnecting = false;
+
+// ── UTILS ──
+function fmt(n){ return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtDate(iso){ const d=new Date(iso); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
+function elapsed(iso){ const s=Math.round((Date.now()-new Date(iso))/1000); if(s<60)return s+'s'; if(s<3600)return Math.floor(s/60)+'min'; return Math.floor(s/3600)+'h'; }
+function fmtTime(sec){ const m=Math.floor(sec/60),s=Math.floor(sec%60); return m+':'+String(s).padStart(2,'0'); }
+function urlBase64ToUint8Array(b64){ const p=(b64+'='.repeat((4-b64.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'); const raw=atob(p); return Uint8Array.from([...raw].map(c=>c.charCodeAt(0))); }
+
+// ── LOADING ──
+function showLoading(txt='Chargement…'){ const l=document.getElementById('loading'); l.style.display='flex'; document.getElementById('loading-text').textContent=txt; }
+function hideLoading(){ document.getElementById('loading').style.display='none'; }
+
+// ── SCREEN: LOGIN → APP ──
+function showApp(){ document.getElementById('screen-login').classList.remove('active'); document.getElementById('app-shell').style.display='flex'; document.getElementById('app-shell').style.flexDirection='column'; document.getElementById('app-shell').style.height='100%'; document.getElementById('app-shell').style.overflow='hidden'; }
+function showLogin(){ document.getElementById('screen-login').classList.add('active'); document.getElementById('app-shell').style.display='none'; stopPoll(); }
+
+// ── VIEW SWITCHING ──
+function showView(v){
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('chat-view').classList.remove('active');
+  if(v==='chat'){
+    if(activeChatId&&appSessions.has(activeChatId)){
+      document.getElementById('chat-view').classList.add('active');
+      document.getElementById('nav-chat').classList.add('active');
+      renderChatMessages(activeChatId);
+      return;
+    }
+    const first=[...appSessions.values()][0];
+    if(first){ openChatView(first.id); return; }
+    // Aucun chat actif → accueil
+    document.getElementById('view-home').classList.add('active');
+    document.getElementById('nav-home').classList.add('active');
+    return;
+  }
+  document.getElementById('view-'+v)?.classList.add('active');
+  document.getElementById('nav-'+v)?.classList.add('active');
+  if(v==='stats') renderStats();
+  if(v==='admin') renderAdminView();
+  if(v==='profil') renderProfilView();
+}
+
+// Masquer le chat sans le fermer (retour accueil depuis la flèche ←)
+function hideChat(){
+  document.getElementById('chat-view').classList.remove('active');
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-home').classList.add('active');
+  document.getElementById('nav-home').classList.add('active');
+}
+
+// ── LOGIN ──
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim().toLowerCase();
+  const pwd=document.getElementById('login-password').value;
+  const err=document.getElementById('login-error');
+  const btn=document.getElementById('login-btn');
+  if(!email||!pwd){ err.textContent='Email et mot de passe requis'; return; }
+  err.textContent=''; btn.disabled=true; btn.textContent='Connexion…';
+  try{
+    const res=await fetch(`${API}/agent-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pwd})});
+    const data=await res.json();
+    if(!res.ok||data.error){ err.textContent=data.error||'Erreur de connexion'; btn.disabled=false; btn.textContent='Se connecter'; return; }
+    appEmail=email; appPassword=pwd;
+    statsData=data;
+    localStorage.setItem('parlons_agent_email',email);
+    localStorage.setItem('parlons_agent_pwd',pwd);
+    renderHeader();
+    showApp();
+    showView('home');
+    updatePushBanner();
+    // Auto-passer en ligne si action=online dans l'URL
+    if(new URLSearchParams(location.search).get('action')==='online') toggleOnline();
+  }catch(e){ err.textContent='Erreur réseau'; }
+  btn.disabled=false; btn.textContent='Se connecter';
+}
+
+async function doLogout(){
+  if(appToken) await goOffline();
+  appEmail=''; appPassword=''; appToken=null;
+  localStorage.removeItem('parlons_agent_email');
+  localStorage.removeItem('parlons_agent_pwd');
+  appSessions.clear();
+  showLogin();
+}
+
+function renderHeader(){
+  document.getElementById('hdr-agent').textContent=appEmail.split('@')[0];
+  const adminBtn=document.getElementById('nav-admin');
+  if(adminBtn) adminBtn.style.display=appEmail.toLowerCase()==='lafmarvin@gmail.com'?'flex':'none';
+  updateStatusUI();
+}
+
+// ── ONLINE / OFFLINE ──
+async function toggleOnline(){
+  if(pendingOffline){
+    // Annuler le mode fin de service
+    pendingOffline=false;
+    await goOnline();
+    return;
+  }
+  if(appOnline){
+    if(appSessions.size>0){
+      // Sessions en cours : mode "fin de service" — plus de nouveaux tchats, finit les actifs
+      pendingOffline=true;
+      try{
+        await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,status:'offline'})});
+      }catch{}
+      updateStatusUI();
+    } else {
+      await goOffline();
+    }
+  } else {
+    await goOnline();
+  }
+}
+
+async function goOnline(){
+  showLoading('Mise en ligne…');
+  try{
+    const res=await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,password:appPassword,status:'online'})});
+    const data=await res.json();
+    if(!data.ok){ alert(data.error||'Erreur'); hideLoading(); return; }
+    appToken=data.token;
+    appOnline=true;
+    localStorage.setItem('parlons_agent_online','1');
+    localStorage.setItem('parlons_agent_token', data.token);
+    localStorage.setItem('parlons_agent_token_email', appEmail);
+    prevQueueIds=new Set(); queueInitialized=false;
+    updateStatusUI();
+    startPoll();
+    if(Notification.permission==='default') Notification.requestPermission().then(()=>updatePushBanner()).catch(()=>{});
+    if(data.assignedSession){ await refreshSessions(); openChatView(data.assignedSession); }
+  }catch(e){ alert('Erreur réseau'); }
+  hideLoading();
+}
+
+async function goOffline(){
+  localStorage.removeItem('parlons_agent_online');
+  localStorage.removeItem('parlons_agent_token');
+  localStorage.removeItem('parlons_agent_token_email');
+  pendingOffline=false;
+  showLoading('Déconnexion…');
+  try{
+    if(appToken) await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,status:'offline'})});
+  }catch{}
+  appToken=null; appOnline=false;
+  stopPoll();
+  appSessions.clear();
+  activeChatId=null;
+  document.getElementById('chat-view').classList.remove('active');
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-home').classList.add('active');
+  document.getElementById('nav-home').classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('nav-home').classList.add('active');
+  updateStatusUI();
+  renderQueue([]);
+  renderSessions();
+  hideLoading();
+}
+
+function updateStatusUI(){
+  const toggle=document.getElementById('status-toggle');
+  const pill=document.getElementById('sw-pill');
+  const label=document.getElementById('status-label');
+  const sub=document.getElementById('status-sub');
+  const dot=document.getElementById('hdr-dot');
+  const busy=appSessions.size>0;
+  if(!appOnline&&!pendingOffline){
+    toggle.className='status-toggle';
+    pill.className='sw-pill';
+    label.textContent='Hors ligne';
+    sub.textContent='Appuyez pour vous mettre en ligne';
+    dot.className='status-dot';
+  } else if(pendingOffline){
+    toggle.className='status-toggle';
+    pill.className='sw-pill';
+    label.textContent='Fin de service…';
+    sub.textContent=`Session${appSessions.size>1?'s':''} en cours — déconnexion à la fin`;
+    dot.className='status-dot';
+  } else if(busy){
+    toggle.className='status-toggle busy';
+    pill.className='sw-pill on';
+    label.textContent='En session';
+    sub.textContent='Tchat en cours';
+    dot.className='status-dot busy';
+  } else {
+    toggle.className='status-toggle online';
+    pill.className='sw-pill on';
+    label.textContent='En ligne';
+    sub.textContent='En attente de tchat';
+    dot.className='status-dot online';
+  }
+}
+
+// ── POLL ──
+function startPoll(){ stopPoll(); poll(); pollTimer=setInterval(poll,3000); }
+function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+
+async function poll(){
+  if(!appToken) return;
+  try{
+    const res=await fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken,since:pollSince})});
+    if(res.status===401){
+      localStorage.removeItem('parlons_agent_token');
+      localStorage.removeItem('parlons_agent_token_email');
+      appToken=null; appOnline=false; stopPoll();
+      if(appEmail && appPassword && !_reconnecting){
+        // Token invalidé → reconnexion silencieuse
+        _reconnecting=true;
+        await goOnline();
+        _reconnecting=false;
+      } else {
+        // Vraiment hors ligne (credentials absents ou deuxième échec)
+        localStorage.removeItem('parlons_agent_online');
+        appSessions.clear(); updateStatusUI();
+        if(activeChatId) closeChatView(); renderSessions();
+      }
+      return;
+    }
+    const d=await res.json();
+    if(d.error) return;
+    pollSince=new Date().toISOString();
+    processPoll(d);
+  }catch{}
+}
+
+function processPoll(d){
+  renderQueue(d.waitingSessions||[]);
+
+  // Merge sessions
+  const incoming=d.sessions||[];
+  const newIds=new Set(incoming.map(s=>s.id));
+
+  // Remove closed sessions
+  [...appSessions.keys()].forEach(id=>{ if(!newIds.has(id)) appSessions.delete(id); });
+  // Si le chat actif a disparu (visiteur parti / session expirée), décompte auto
+  if(activeChatId && !appSessions.has(activeChatId)) startSessionEndCountdown();
+
+  incoming.forEach(s=>{
+    if(!renderedIds[s.id]) renderedIds[s.id]=new Set();
+    if(!appSessions.has(s.id)){
+      appSessions.set(s.id,{ id:s.id, name:s.pre_name||'Visiteur', topic:s.pre_topic||'', label:s.session_label||'', durationSec:s.duration_sec||1800, assignedAt:s.assigned_at, timerStartedAt:null, sessionEndAt:0, extensionPending:s.extension_pending||null, frozenRemMs:undefined, messages:[], unread:0 });
+      triggerNotif('💬 Nouveau tchat assigné', (s.pre_name||'Visiteur')+(s.pre_topic?' — '+s.pre_topic:''));
+      playBeep();
+      // Ouvrir automatiquement si l'agent n'est pas déjà dans un autre chat
+      if(!activeChatId) setTimeout(()=>openChatView(s.id), 50);
+    }
+    const sess=appSessions.get(s.id);
+    if(s.duration_sec&&s.duration_sec>sess.durationSec){
+      const added=s.duration_sec-sess.durationSec;
+      sess.durationSec=s.duration_sec;
+      if(sess.frozenRemMs!==undefined){ sess.sessionEndAt=Date.now()+sess.frozenRemMs+added*1000; delete sess.frozenRemMs; }
+      else if(sess.sessionEndAt) sess.sessionEndAt+=added*1000;
+    }
+    const hadExt=!!sess.extensionPending;
+    sess.extensionPending=s.extension_pending||null;
+    if(!hadExt&&sess.extensionPending&&sess.timerStartedAt){
+      sess.frozenRemMs=sess.sessionEndAt?Math.max(0,sess.sessionEndAt-Date.now()):Math.max(0,sess.durationSec*1000-(Date.now()-sess.timerStartedAt));
+    }
+
+    // Append messages
+    (s.messages||[]).forEach(m=>{
+      if(renderedIds[s.id].has(m.id)) return;
+      renderedIds[s.id].add(m.id);
+      // Supprimer le doublon optimiste (tmp) du même contenu
+      const tmpIdx=sess.messages.findIndex(x=>x.id.startsWith('tmp')&&x.content===m.content&&x.sender_type===m.sender_type);
+      if(tmpIdx!==-1) sess.messages.splice(tmpIdx,1);
+      sess.messages.push(m);
+      if(s.id!==activeChatId||(document.getElementById('chat-view')&&!document.getElementById('chat-view').classList.contains('active'))) sess.unread++;
+      // Start timer on first agent/system msg
+      if(!sess.timerStartedAt&&m.sender_type==='agent'){
+        sess.timerStartedAt=Date.now();
+        sess.sessionEndAt=Date.now()+sess.durationSec*1000;
+      }
+    });
+  });
+
+  renderSessions();
+  updateStatusUI();
+  updateNavBadge();
+  if(activeChatId&&appSessions.has(activeChatId)) renderChatMessages(activeChatId);
+  // Si fin de service et plus de sessions actives → déconnexion automatique
+  if(pendingOffline && appSessions.size===0){ goOffline(); return; }
+  // Auto-assigner le prochain tchat en attente si l'agent a de la capacité
+  if(appOnline && !pendingOffline && appSessions.size < 3 && (d.waitingSessions||[]).length) autoTakeNext(d.waitingSessions);
+}
+
+async function refreshSessions(){
+  await poll();
+}
+
+// ── QUEUE RENDER ──
+function renderQueue(waiting){
+  const el=document.getElementById('queue-list');
+  const badge=document.getElementById('queue-count-badge');
+  badge.textContent=waiting.length?`(${waiting.length})`:'';
+  const qBadge=document.getElementById('queue-nav-badge');
+  if(qBadge){ qBadge.textContent=waiting.length||''; qBadge.classList.toggle('visible',waiting.length>0); }
+  if(queueInitialized){
+    waiting.forEach(s=>{ if(!prevQueueIds.has(s.id)){ triggerNotif('👋 Visiteur en attente', (s.pre_name||'Visiteur')+(s.pre_topic?' — '+s.pre_topic:'')); playBeep(); } });
+  }
+  prevQueueIds=new Set(waiting.map(s=>s.id)); queueInitialized=true;
+  if(!waiting.length){ el.innerHTML='<div class="empty-state">Aucun visiteur en attente</div>'; return; }
+  const atCapacity = appSessions.size >= 3;
+  el.innerHTML=waiting.map(s=>`
+    <div class="queue-card">
+      <div class="queue-card-avatar">👤</div>
+      <div class="queue-card-info">
+        <div class="queue-card-name">${esc(s.pre_name||'Visiteur')}</div>
+        <div class="queue-card-topic">${esc(s.pre_topic||'Aucun sujet précisé')}</div>
+        <div class="queue-card-wait">Attend depuis ${elapsed(s.created_at)}</div>
+      </div>
+      ${atCapacity
+        ? `<button class="queue-take-btn" disabled style="opacity:.4;cursor:not-allowed;background:var(--mid)">Complet</button>`
+        : `<button class="queue-take-btn" onclick="takeSession('${s.id}')">Prendre</button>`}
+    </div>`).join('');
+}
+
+// ── SESSIONS RENDER ──
+function renderSessions(){
+  const el=document.getElementById('sessions-list');
+  if(!appSessions.size){ el.innerHTML='<div class="empty-state">Aucune session active</div>'; return; }
+  el.innerHTML=[...appSessions.values()].map(s=>{
+    const rem=sessionRemaining(s);
+    const isNew=!s.timerStartedAt;
+    return `<div class="session-card${isNew?' new':''}" onclick="openChatView('${s.id}')">
+      <div class="session-card-avatar">${isNew?'🔔':'💬'}</div>
+      <div class="session-card-info">
+        <div class="session-card-name">${esc(s.name)}</div>
+        <div class="session-card-label">${isNew?'Nouveau tchat — appuyez pour répondre':esc(s.label)||'Session'}</div>
+      </div>
+      ${s.timerStartedAt?`<div class="session-card-timer">${fmtTime(rem)}</div>`:``}
+      ${s.unread?`<div class="session-unread">${s.unread}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function sessionRemaining(sess){
+  if(!sess.timerStartedAt) return sess.durationSec;
+  if(sess.extensionPending&&sess.frozenRemMs!==undefined) return Math.max(0,sess.frozenRemMs/1000);
+  return Math.max(0,(sess.sessionEndAt-Date.now())/1000);
+}
+
+// ── NAV BADGE ──
+function updateNavBadge(){
+  let total=0; appSessions.forEach(s=>{ total+=s.unread; });
+  const badge=document.getElementById('nav-badge');
+  badge.textContent=total>9?'9+':String(total);
+  badge.classList.toggle('visible',total>0);
+}
+
+// ── TAKE SESSION ──
+async function autoTakeNext(waiting){
+  if(autoTaking||!appToken||!appOnline||appSessions.size>=3) return;
+  if(!waiting||!waiting.length) return;
+  autoTaking=true;
+  try{
+    const sessionId=waiting[0].id;
+    const res=await fetch(`${API}/chat-take`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,agentEmail:appEmail,agentToken:appToken})});
+    const data=await res.json();
+    if(data.ok){
+      await refreshSessions();
+      // Ouvrir le chat seulement si aucun autre n'est actif
+      if(!activeChatId) openChatView(sessionId);
+    }
+    // 404 = session déjà prise par un autre agent → normal, on ignore
+  }catch{}
+  finally{ autoTaking=false; }
+}
+
+async function takeSession(sessionId){
+  if(!appToken) return;
+  showLoading('Prise en charge…');
+  try{
+    const res=await fetch(`${API}/chat-take`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,agentEmail:appEmail,agentToken:appToken})});
+    const data=await res.json();
+    if(!data.ok){ alert(data.error||'Erreur'); hideLoading(); return; }
+    await refreshSessions();
+    openChatView(sessionId);
+  }catch(e){ alert('Erreur réseau'); }
+  hideLoading();
+}
+
+// ── CHAT VIEW ──
+function openChatView(sessionId){
+  activeChatId=sessionId;
+  const sess=appSessions.get(sessionId);
+  if(!sess) return;
+  sess.unread=0; updateNavBadge();
+  document.getElementById('chat-name').textContent=sess.name;
+  document.getElementById('chat-label').textContent=sess.label||'Session en cours';
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('nav-chat').classList.add('active');
+  document.getElementById('chat-view').classList.add('active');
+  renderChatMessages(sessionId);
+  startChatTimer(sessionId);
+  renderExtBar(sessionId);
+}
+
+function closeChatView(){
+  if(sessionEndTimer){ clearInterval(sessionEndTimer); sessionEndTimer=null; }
+  document.getElementById('chat-view').classList.remove('active');
+  activeChatId=null;
+  clearInterval(chatTimerInterval); chatTimerInterval=null;
+  document.getElementById('chat-timer').style.display='none';
+  // Retour accueil
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-home').classList.add('active');
+  document.getElementById('nav-home').classList.add('active');
+}
+
+function renderChatMessages(sessionId){
+  const sess=appSessions.get(sessionId); if(!sess) return;
+  const el=document.getElementById('chat-msgs');
+  const wasAtBottom=el.scrollHeight-el.scrollTop-el.clientHeight<80;
+  el.innerHTML=sess.messages.map(m=>{
+    const type=m.sender_type==='agent'?'agent':m.sender_type==='system'?'system':'visitor';
+    const time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
+    return `<div class="msg ${type}"><div class="bubble">${esc(m.content)}</div>${type!=='system'?`<div class="msg-time">${time}</div>`:''}</div>`;
+  }).join('');
+  if(wasAtBottom||el.scrollHeight===el.clientHeight) el.scrollTop=el.scrollHeight;
+  renderExtBar(sessionId);
+}
+
+function renderExtBar(sessionId){
+  const sess=appSessions.get(sessionId); if(!sess) return;
+  const bar=document.getElementById('ext-bar');
+  if(sess.extensionPending){
+    const mins=Math.floor((sess.extensionPending.newDurationSec||600)/60);
+    document.getElementById('ext-bar-text').textContent=`⏳ ${sess.name} souhaite prolonger de ${mins} min`;
+    bar.classList.add('visible');
+    bar.dataset.sessionId=sessionId;
+  } else {
+    bar.classList.remove('visible');
+    bar.dataset.sessionId='';
+  }
+}
+
+// ── CHAT TIMER ──
+function startSessionEndCountdown(){
+  if(sessionEndTimer) return;
+  // Ouvrir la vue chat si l'agent n'y est pas déjà
+  if(activeChatId && !document.getElementById('chat-view').classList.contains('active')){
+    document.getElementById('chat-view').classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+    document.getElementById('nav-chat').classList.add('active');
+    if(activeChatId) renderChatMessages(activeChatId);
+  }
+  const msgs=document.getElementById('chat-msgs');
+  if(msgs){
+    let banner=document.getElementById('session-end-banner');
+    if(!banner){ banner=document.createElement('div'); banner.id='session-end-banner'; banner.style.cssText='text-align:center;padding:.65rem;background:#fef2f2;border-radius:10px;margin:.5rem 0;font-size:.8rem;color:#991b1b;font-weight:500;'; msgs.appendChild(banner); msgs.scrollTop=msgs.scrollHeight; }
+    banner.textContent='⏱ Session terminée — fermeture dans 5s';
+  }
+  let n=5;
+  sessionEndTimer=setInterval(()=>{
+    n--;
+    const b=document.getElementById('session-end-banner');
+    if(b) b.textContent=`⏱ Session terminée — fermeture dans ${n}s`;
+    if(n<=0){
+      clearInterval(sessionEndTimer); sessionEndTimer=null;
+      const sid=activeChatId;
+      if(sid&&appToken) fetch(`${API}/chat-close`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid,agentEmail:appEmail,agentToken:appToken,closedBy:'agent'})}).catch(()=>{});
+      if(sid){ appSessions.delete(sid); delete renderedIds[sid]; }
+      closeChatView(); renderSessions(); updateStatusUI();
+    }
+  },1000);
+}
+
+function startChatTimer(sessionId){
+  clearInterval(chatTimerInterval); chatTimerInterval=null;
+  const timerEl=document.getElementById('chat-timer');
+  function tick(){
+    const sess=appSessions.get(sessionId);
+    if(!sess||!sess.timerStartedAt){ timerEl.style.display='none'; return; }
+    const rem=sessionRemaining(sess);
+    const frozen=sess.extensionPending&&sess.frozenRemMs!==undefined;
+    timerEl.style.display='inline';
+    timerEl.textContent=(frozen?'⏸ ':'')+fmtTime(rem);
+    timerEl.style.background=(!frozen&&rem<=120)?'rgba(239,68,68,.35)':'rgba(0,0,0,.2)';
+    if(rem<=0&&!frozen) startSessionEndCountdown();
+  }
+  tick();
+  chatTimerInterval=setInterval(tick,1000);
+}
+
+// ── SEND MESSAGE ──
+async function sendMsg(){
+  const ta=document.getElementById('chat-ta');
+  const content=(ta.value||'').trim();
+  if(!content||!activeChatId||!appToken) return;
+  const sessionId=activeChatId;
+  ta.value=''; ta.style.height='auto';
+  const sess=appSessions.get(sessionId);
+  if(sess&&!sess.timerStartedAt){
+    sess.timerStartedAt=Date.now();
+    sess.sessionEndAt=Date.now()+sess.durationSec*1000;
+    startChatTimer(sessionId);
+    updateStatusUI();
+  }
+  // Optimistic render
+  const tmpId='tmp'+Date.now();
+  if(sess){ sess.messages.push({id:tmpId,content,sender_type:'agent',created_at:new Date().toISOString()}); renderChatMessages(sessionId); }
+  try{
+    const res=await fetch(`${API}/chat-send`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,content,senderType:'agent',agentEmail:appEmail,agentToken:appToken})});
+    if(!res.ok){
+      const d=await res.json().catch(()=>({}));
+      if(sess) sess.messages=sess.messages.filter(m=>m.id!==tmpId);
+      renderChatMessages(sessionId);
+      const errEl=document.getElementById('send-error');
+      if(errEl){ errEl.textContent='Envoi échoué : '+(d.error||res.status); errEl.style.display='block'; setTimeout(()=>{ errEl.style.display='none'; },4000); }
+    }
+  }catch{
+    if(sess) sess.messages=sess.messages.filter(m=>m.id!==tmpId);
+    renderChatMessages(sessionId);
+  }
+}
+
+function taKeydown(e){
+  const popup=document.getElementById('shortcuts-popup');
+  if(popup&&popup.style.display!=='none'){
+    if(e.key==='Tab'||e.key==='ArrowDown'){e.preventDefault();const f=popup.querySelector('.sc-row');if(f)f.click();return;}
+    if(e.key==='Escape'){popup.style.display='none';return;}
+  }
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}
+}
+function autoResize(ta){ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,100)+'px'; }
+
+// ── SHORTCUTS ──
+let _scMatches=[];
+function chatTaInput(ta){
+  autoResize(ta);
+  const popup=document.getElementById('shortcuts-popup');
+  if(!popup) return;
+  const val=ta.value;
+  if(val.startsWith('/')&&!val.includes(' ')&&val.length>0){
+    const key=val.slice(1).toLowerCase();
+    _scMatches=getShortcuts().filter(s=>s.shortcut.toLowerCase().startsWith(key));
+    if(_scMatches.length){
+      popup.innerHTML=_scMatches.map((s,i)=>`<div class="sc-row" onclick="useShortcut(${i})"><span class="sc-key">/${esc(s.shortcut)}</span><span class="sc-phrase">${esc(s.phrase.length>65?s.phrase.substring(0,65)+'…':s.phrase)}</span></div>`).join('');
+      popup.style.display='block'; return;
+    }
+  }
+  _scMatches=[];
+  popup.style.display='none';
+}
+function useShortcut(idx){
+  const sc=_scMatches[idx]; if(!sc) return;
+  const ta=document.getElementById('chat-ta');
+  ta.value=sc.phrase; autoResize(ta); ta.focus();
+  document.getElementById('shortcuts-popup').style.display='none';
+}
+function getShortcuts(){ return JSON.parse(localStorage.getItem('parlons_sc_'+(appEmail||''))||'[]'); }
+function saveShortcuts(list){ localStorage.setItem('parlons_sc_'+(appEmail||''),JSON.stringify(list)); }
+function renderShortcutsList(){
+  const el=document.getElementById('sc-list'); if(!el) return;
+  const sc=getShortcuts();
+  if(!sc.length){ el.innerHTML='<div style="color:var(--mid);font-size:.76rem;text-align:center;padding:.35rem 0">Aucun raccourci pour l\'instant</div>'; return; }
+  el.innerHTML=sc.map((s,i)=>`<div class="sc-manage-item"><span class="sc-manage-key">/${esc(s.shortcut)}</span><span class="sc-manage-phrase">${esc(s.phrase)}</span><button class="sc-del" onclick="deleteShortcut(${i})">×</button></div>`).join('');
+}
+function openAddShortcut(){
+  document.getElementById('sc-add-form').style.display='block';
+  document.getElementById('sc-add-btn').style.display='none';
+  document.getElementById('sc-key-input').focus();
+}
+function cancelAddShortcut(){
+  document.getElementById('sc-add-form').style.display='none';
+  document.getElementById('sc-add-btn').style.display='block';
+  document.getElementById('sc-key-input').value='';
+  document.getElementById('sc-phrase-input').value='';
+}
+function saveNewShortcut(){
+  const key=document.getElementById('sc-key-input').value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+  const phrase=document.getElementById('sc-phrase-input').value.trim();
+  if(!key||!phrase){alert('Remplissez le raccourci et la phrase.');return;}
+  const list=getShortcuts();
+  const ei=list.findIndex(s=>s.shortcut===key);
+  if(ei!==-1){if(!confirm('/'+key+' existe déjà. Remplacer ?'))return; list[ei].phrase=phrase;}
+  else list.push({shortcut:key,phrase});
+  saveShortcuts(list); cancelAddShortcut(); renderShortcutsList();
+}
+function deleteShortcut(idx){
+  const list=getShortcuts(); list.splice(idx,1); saveShortcuts(list); renderShortcutsList();
+}
+
+// ── EXTENSION ──
+async function respondExt(accept){
+  const sessionId=document.getElementById('ext-bar').dataset.sessionId;
+  if(!sessionId||respondingExt.has(sessionId)) return;
+  respondingExt.add(sessionId);
+  try{
+    const res=await fetch(`${API}/chat-extension-respond`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,agentEmail:appEmail,agentToken:appToken,accept})});
+    const data=await res.json();
+    if(!data.ok){ alert(data.error||'Erreur'); return; }
+    const sess=appSessions.get(sessionId);
+    if(sess){ sess.extensionPending=null; delete sess.frozenRemMs; }
+    document.getElementById('ext-bar').classList.remove('visible');
+    if(!accept){
+      appSessions.delete(sessionId);
+      if(activeChatId===sessionId) closeChatView();
+      renderSessions();
+    }
+  }catch(e){ console.error(e); }
+  finally{ respondingExt.delete(sessionId); }
+}
+
+// ── END SESSION ──
+async function endCurrentSession(){
+  if(!activeChatId) return;
+  if(!confirm('Terminer la session ?')) return;
+  const sessionId=activeChatId;
+  if(appToken){
+    try{ await fetch(`${API}/chat-close`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,agentEmail:appEmail,agentToken:appToken,closedBy:'agent'})}); }catch{}
+  }
+  appSessions.delete(sessionId);
+  delete renderedIds[sessionId];
+  closeChatView();
+  renderSessions();
+  updateStatusUI();
+}
+
+// ── STATS ──
+function setPeriod(p){
+  currentPeriod=p;
+  document.querySelectorAll('.period-tab').forEach(el=>el.classList.toggle('active',el.dataset.period===p));
+  renderStats();
+}
+
+function renderStats(){
+  if(!statsData) return;
+  const p=statsData.periods?.[currentPeriod]||{sessions:0,revenue:0};
+  document.getElementById('st-sessions').textContent=p.sessions;
+  document.getElementById('st-revenue').textContent=fmt(p.revenue)+'€';
+  const rating=statsData.avgRating;
+  document.getElementById('st-rating').textContent=rating?rating.toFixed(1)+' / 5':'—';
+  const stars=document.getElementById('st-rating-stars');
+  stars.innerHTML=rating?'★'.repeat(Math.round(rating))+'☆'.repeat(5-Math.round(rating)):'';
+  const recEl=document.getElementById('recent-sessions');
+  const recent=(statsData.sessions||[]).slice(0,15);
+  recEl.innerHTML=recent.length?recent.map(s=>`
+    <div class="session-row">
+      <div class="session-row-top">
+        <div class="session-row-name">${esc(s.pseudo||'Visiteur')}</div>
+        <div class="session-row-amount">${s.montant?fmt(s.montant)+'€':''}</div>
+      </div>
+      <div class="session-row-meta">${esc(s.formule||'')}${s.started_at?' · '+fmtDate(s.started_at):''}${s.rating?' · '+'★'.repeat(s.rating):''}</div>
+    </div>`).join(''):'<div class="empty-state">Aucune session pour l\'instant</div>';
+
+  const reviews=(statsData.sessions||[]).filter(s=>s.rating&&s.rating_comment).slice(0,10);
+  const revEl=document.getElementById('agent-reviews');
+  const revHead=document.getElementById('reviews-head');
+  if(revEl&&revHead){
+    if(reviews.length){
+      revHead.style.display='block';
+      revEl.innerHTML=reviews.map(s=>`
+        <div class="review-card">
+          <div class="review-stars">${'★'.repeat(s.rating)}${'☆'.repeat(5-s.rating)}</div>
+          <div class="review-comment">"${esc(s.rating_comment)}"</div>
+          <div class="review-meta">${esc(s.pseudo||'Visiteur')}${s.started_at?' · '+fmtDate(s.started_at):''}</div>
+        </div>`).join('');
+    } else {
+      revHead.style.display='none';
+      revEl.innerHTML='';
+    }
+  }
+}
+
+// ── PROFIL ──
+let profilNotifyOn = false;
+
+function toggleNotifySwitch(){
+  profilNotifyOn = !profilNotifyOn;
+  document.getElementById('notify-sw')?.classList.toggle('on', profilNotifyOn);
+  document.getElementById('profil-toggle-row')?.classList.toggle('active', profilNotifyOn);
+}
+
+async function renderProfilView(){
+  document.getElementById('profil-email-display').textContent = appEmail;
+  document.getElementById('profil-msg').style.display = 'none';
+  document.getElementById('profil-err').style.display = 'none';
+  renderShortcutsList();
+  try {
+    const r = await fetch(`${API}/agent-profile`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({action:'get', email:appEmail, password:appPassword})
+    });
+    const d = await r.json();
+    if(d.profile){
+      document.getElementById('profil-notify-email').value = d.profile.notify_email || '';
+      profilNotifyOn = !!d.profile.notify_requests;
+      document.getElementById('notify-sw')?.classList.toggle('on', profilNotifyOn);
+      document.getElementById('profil-toggle-row')?.classList.toggle('active', profilNotifyOn);
+    }
+  } catch(e){}
+}
+
+async function saveProfilSettings(){
+  const notifyEmail = (document.getElementById('profil-notify-email').value||'').trim();
+  const msgEl = document.getElementById('profil-msg');
+  const errEl = document.getElementById('profil-err');
+  msgEl.style.display='none'; errEl.style.display='none';
+  if(profilNotifyOn && notifyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notifyEmail)){
+    errEl.textContent='Email de notification invalide.'; errEl.style.display='block'; return;
+  }
+  try {
+    const r = await fetch(`${API}/agent-profile`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'save', email:appEmail, password:appPassword, notify_email:notifyEmail, notify_requests:profilNotifyOn})
+    });
+    const d = await r.json();
+    if(d.ok){ msgEl.textContent='Enregistré ✓'; msgEl.style.display='block'; setTimeout(()=>{ msgEl.style.display='none'; },3000); }
+    else { errEl.textContent=d.error||'Erreur.'; errEl.style.display='block'; }
+  } catch(e){ errEl.textContent='Erreur de connexion.'; errEl.style.display='block'; }
+}
+
+// ── PUSH NOTIFICATIONS ──
+async function renderAdminView(){
+  document.getElementById('admin-online-count').textContent='…';
+  document.getElementById('admin-queue-count').textContent='…';
+  document.getElementById('admin-agents-list').textContent='…';
+  try{
+    const [presRes, pollRes] = await Promise.all([
+      fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,password:appPassword,action:'presence'})}),
+      fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken||'',since:new Date(0).toISOString()})})
+    ]);
+    const pres=await presRes.json();
+    const poll=await pollRes.json().catch(()=>({}));
+    const presence=pres.presence||[];
+    const online=presence.filter(a=>a.status==='online'||a.status==='busy');
+    const waiting=(poll.waiting||[]).length;
+    document.getElementById('admin-online-count').textContent=online.length;
+    document.getElementById('admin-queue-count').textContent=waiting;
+    document.getElementById('admin-agents-list').innerHTML=online.length
+      ?online.map(a=>{const name=esc(a.agent_email.split('@')[0]);const busy=a.status==='busy';const n=a.activeChatCount||0;const chatBadge=n>0?` <span style="background:#f59e0b;color:white;border-radius:50px;font-size:.65rem;font-weight:700;padding:.1rem .45rem;margin-left:.3rem">${n} tchat${n>1?'s':''}</span>`:'';return`<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--sand)"><span>${name}${chatBadge}</span><span style="font-size:.7rem;color:${busy?'#f59e0b':'var(--green)'}">● ${busy?'En session':'En ligne'}</span></div>`;}).join('')
+      :'<span style="color:var(--mid)">Aucun agent connecté</span>';
+  }catch{document.getElementById('admin-agents-list').textContent='Erreur réseau';}
+}
+
+function updatePushBanner(){
+  const banner=document.getElementById('push-banner');
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)){ banner.style.display='none'; return; }
+  if(Notification.permission==='granted'){ banner.style.display='none'; return; }
+  if(Notification.permission==='denied'){ banner.style.display='none'; return; }
+  banner.style.display='flex';
+}
+
+async function subscribePush(){
+  if(!appToken){ alert('Mettez-vous en ligne d\'abord'); return; }
+  const permission=await Notification.requestPermission();
+  if(permission!=='granted'){ document.getElementById('push-banner').style.display='none'; return; }
+  try{
+    const keyRes=await fetch(`${API}/push-vapid-key`);
+    const {key}=await keyRes.json();
+    if(!key){ document.getElementById('push-banner').style.display='none'; return; }
+    const sw=await navigator.serviceWorker.ready;
+    const sub=await sw.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(key)});
+    await fetch(`${API}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,subscription:sub.toJSON()})});
+    document.getElementById('push-banner').style.display='none';
+  }catch(e){ console.error('push subscribe:',e); }
+}
+
+// ── ESCAPE HTML ──
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ── PWA INSTALL PROMPT ──
+let deferredInstallPrompt = null;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+if (!isStandalone) {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
+  const banner = document.getElementById('install-banner');
+  const bannerText = banner ? banner.querySelector('.push-banner-text') : null;
+  const bannerBtn = banner ? banner.querySelector('.push-banner-btn') : null;
+
+  if (isIOS && banner && bannerText && bannerBtn) {
+    bannerText.textContent = '📲 Installez l\'appli : appuyez sur le bouton Partager (⬜↑) en bas de Safari, puis "Sur l\'écran d\'accueil".';
+    bannerBtn.textContent = 'Compris';
+    banner.style.display = 'flex';
+  } else if (isSamsung && banner && bannerText && bannerBtn) {
+    bannerText.textContent = '📲 Installez l\'appli : appuyez sur le menu ⋮ en bas, puis "Ajouter page à" → "Écran d\'accueil".';
+    bannerBtn.textContent = 'Compris';
+    banner.style.display = 'flex';
+  } else {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      if (banner) banner.style.display = 'flex';
+    });
+    // Fallback Chrome : instructions manuelles si le prompt ne vient pas
+    setTimeout(() => {
+      if (banner && banner.style.display !== 'flex' && bannerText && bannerBtn) {
+        bannerText.textContent = '📲 Installez l\'appli : dans Chrome, appuyez sur ⋮ puis "Ajouter à l\'écran d\'accueil".';
+        bannerBtn.textContent = 'Compris';
+        banner.style.display = 'flex';
+      }
+    }, 3000);
+  }
+}
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.style.display = 'none';
+});
+
+async function installApp() {
+  const banner = document.getElementById('install-banner');
+  if (!deferredInstallPrompt) {
+    // iOS — just dismiss
+    if (banner) banner.style.display = 'none';
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  if (banner) banner.style.display = 'none';
+}
+
+// ── NOTIFICATIONS & BEEP ──
+async function triggerNotif(title, body){
+  if(Notification.permission!=='granted') return;
+  try{
+    // Android Chrome : new Notification() ne fonctionne pas, il faut le SW
+    if('serviceWorker' in navigator){
+      const sw=await navigator.serviceWorker.ready;
+      sw.showNotification(title,{body,icon:'/icons/icon-192.png',badge:'/icons/icon-192.png',vibrate:[200,100,200]});
+    } else {
+      new Notification(title,{body});
+    }
+  }catch{}
+}
+function playBeep(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value=880;
+    g.gain.setValueAtTime(.35,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.45);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime+.45);
+  }catch{}
+}
+
+// ── VISIBILITYCHANGE : re-go-online after screen lock ──
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) return;
+  if(appOnline && appToken){ poll(); return; }
+  if(localStorage.getItem('parlons_agent_online')==='1' && appEmail && appPassword && !appOnline) goOnline();
+});
+
+// ── SERVICE WORKER ──
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
+
+// ── AUTO-RECONNECT ──
+(function init(){
+  const savedEmail=localStorage.getItem('parlons_agent_email');
+  const savedPwd=localStorage.getItem('parlons_agent_pwd');
+  if(savedEmail&&savedPwd){
+    document.getElementById('login-email').value=savedEmail;
+    document.getElementById('login-password').value=savedPwd;
+    // Auto-login silently
+    appEmail=savedEmail; appPassword=savedPwd;
+    showLoading('Reconnexion…');
+    fetch(`${API}/agent-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:savedEmail,password:savedPwd})})
+      .then(r=>r.json())
+      .then(data=>{
+        if(data.error){ hideLoading(); return; }
+        statsData=data;
+        renderHeader();
+        showApp();
+        showView('home');
+        updatePushBanner();
+        hideLoading();
+        // Token partagé avec espace.html → reprendre la session sans nouveau goOnline()
+        const sharedToken=localStorage.getItem('parlons_agent_token');
+        const sharedEmail=localStorage.getItem('parlons_agent_token_email');
+        if(sharedToken && sharedEmail && sharedEmail.toLowerCase()===savedEmail.toLowerCase()){
+          appToken=sharedToken; appOnline=true;
+          localStorage.setItem('parlons_agent_online','1');
+          prevQueueIds=new Set(); queueInitialized=false;
+          updateStatusUI(); startPoll();
+        } else if(localStorage.getItem('parlons_agent_online')==='1'){
+          goOnline();
+        }
+      })
+      .catch(()=>hideLoading());
+  }
+})();
+</script>
+</body>
+</html>

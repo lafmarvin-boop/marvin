@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Salons de groupe · Parlons</title>
+  <title>Salons de groupe — Parlons | Écoute collective en ligne</title>
+  <meta name="description" content="Rejoignez un salon de groupe Parlons : des séances d'écoute collective animées par un écoutant bienveillant. Partagez, échangez et trouvez du soutien dans un espace bienveillant et confidentiel."/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <script src="https://js.stripe.com/v3/"></script>
@@ -34,7 +35,7 @@
     .pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.75);padding:.3rem .8rem;border-radius:50px;font-size:.72rem;}
     .rooms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;max-width:900px;margin:0 auto;padding:2rem 1.5rem 3rem;}
     @media(max-width:640px){.rooms-grid{grid-template-columns:1fr 1fr;}}
-    @media(max-width:380px){.rooms-grid{grid-template-columns:1fr;}}
+    @media(max-width:400px){.rooms-grid{grid-template-columns:1fr;}}
     .room-card{background:white;border-radius:18px;padding:1.6rem 1.2rem;border:1px solid var(--sand);cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;text-align:center;}
     .room-card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(44,31,20,.1);border-color:var(--terracotta);}
     .room-emoji{font-size:2.2rem;margin-bottom:.7rem;}
@@ -183,11 +184,27 @@
         <input type="checkbox" id="chk-agent" onchange="togglePwd()"> 🎧 Je suis un écoutant Parlons
       </label>
       <div class="agent-pwd" id="agent-pwd">
-        <input type="password" id="inp-agent-pwd" class="finput" placeholder="Mot de passe écoutant" style="margin-top:.7rem;margin-bottom:0">
+        <input type="email" id="inp-agent-email" class="finput" placeholder="Email écoutant" style="margin-top:.7rem;margin-bottom:.5rem;">
+        <input type="password" id="inp-agent-pwd" class="finput" placeholder="Mot de passe écoutant" style="margin-bottom:0">
       </div>
     </div>
     <button class="btn-primary" id="btn-join" onclick="doJoin()">Rejoindre · 5 min gratuites →</button>
     <p class="join-legal">En rejoignant, vous acceptez les <a href="/">CGV</a>. Votre pseudo est anonyme — aucun compte requis.</p>
+  </div>
+</div>
+
+<!-- ══ SCREEN: CREATE ══ -->
+<div id="s-create" class="screen">
+  <div class="join-wrap">
+    <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--terracotta);margin-bottom:.5rem;">Créer votre salon</h2>
+    <p style="font-size:.84rem;color:var(--mid);margin-bottom:1.4rem;line-height:1.55;">Donnez un nom à votre salon et rejoignez-le. Partagez ensuite l'URL pour inviter d'autres personnes.</p>
+    <label class="flabel">Emoji (optionnel)</label>
+    <input type="text" id="create-emoji" class="finput" placeholder="✨" maxlength="4" style="font-size:1.4rem;text-align:center;width:72px;">
+    <label class="flabel" style="margin-top:.9rem;">Nom du salon *</label>
+    <input type="text" id="create-name" class="finput" placeholder="Ex : Parentalité, Phobies, Addictions…" maxlength="40">
+    <label class="flabel" style="margin-top:.9rem;">Description courte (optionnelle)</label>
+    <input type="text" id="create-desc" class="finput" placeholder="De quoi souhaitez-vous parler ?">
+    <button class="btn-primary" style="margin-top:1.2rem;" onclick="doCreate()">Créer et rejoindre →</button>
   </div>
 </div>
 
@@ -243,7 +260,7 @@
 </div>
 
 <script>
-const STRIPE_KEY='pk_test_51TZB64Cob93hyzLhaymOSUpdD8pRdk4ElsIH23IfXcuiSb6XN5hXxYPpBzDYkKMEnwB9l9d6vhhTxglCJwjR0KYb00NoZpwzJl';
+const STRIPE_KEY='pk_live_51TZB64Cob93hyzLhnt58hZ8gwkCIsg7jD5HQM69ZtSO6ZKaCH7PRa9IPlt9NZb0PFyR7n5yF0QgHiY0Jfry9U86k00x8xGlf6i';
 const API='/.netlify/functions';
 
 const ROOMS={
@@ -287,6 +304,7 @@ function goBack(){
   const active=document.querySelector('.screen.active');
   if(!active) return;
   if(active.id==='s-join'){showScreen('rooms');return;}
+  if(active.id==='s-create'){showScreen('rooms');return;}
   if(active.id==='s-forum'){
     if(confirm('Quitter le salon ?')){leaveGroup();}
     return;
@@ -303,7 +321,23 @@ function renderRooms(){
       <div class="room-label">${r.label}</div>
       <div class="room-desc">${r.desc}</div>
       <div class="room-cta">Rejoindre · 5 min offertes</div>
-    </div>`).join('');
+    </div>`).join('')+
+  `<div class="room-card" onclick="showScreen('create')" style="border-style:dashed;opacity:.75;">
+    <div class="room-emoji">✏️</div>
+    <div class="room-label">Créer un salon</div>
+    <div class="room-desc">Votre propre thème. Partagez l'URL pour inviter d'autres personnes.</div>
+    <div class="room-cta">Créer →</div>
+  </div>`;
+}
+
+function doCreate(){
+  const emoji=document.getElementById('create-emoji').value.trim()||'✨';
+  const name=document.getElementById('create-name').value.trim();
+  const desc=document.getElementById('create-desc').value.trim()||'Salon personnalisé.';
+  if(!name||name.length<2){document.getElementById('create-name').focus();return;}
+  const roomId='custom_'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  ROOMS[roomId]={label:name,emoji,desc};
+  selectRoom(roomId);
 }
 
 function selectRoom(id){
@@ -322,7 +356,7 @@ function selectRoom(id){
 function togglePwd(){
   const on=document.getElementById('chk-agent').checked;
   document.getElementById('agent-pwd').style.display=on?'block':'none';
-  if(on) document.getElementById('inp-agent-pwd').focus();
+  if(on) document.getElementById('inp-agent-email').focus();
 }
 
 // ── JOIN ──
@@ -330,13 +364,14 @@ async function doJoin(){
   const pseudo=document.getElementById('inp-pseudo').value.trim();
   if(!pseudo||pseudo.length<2){document.getElementById('inp-pseudo').focus();return;}
   const agentChecked=document.getElementById('chk-agent').checked;
+  const agentEmail=document.getElementById('inp-agent-email').value.trim();
   const agentPwd=document.getElementById('inp-agent-pwd').value;
   const btn=document.getElementById('btn-join');
   btn.disabled=true;
   btn.innerHTML='<span class="spin"></span> Connexion…';
   try{
     const res=await fetch(`${API}/group-join`,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({pseudo,room_id:currentRoom,is_agent:agentChecked,agent_password:agentPwd})});
+      body:JSON.stringify({pseudo,room_id:currentRoom,is_agent:agentChecked,agent_email:agentEmail,agent_password:agentPwd})});
     const data=await res.json();
     if(!res.ok) throw new Error(data.error||'Erreur serveur');
     currentPseudo=data.pseudo;
@@ -366,7 +401,7 @@ async function doJoin(){
 function startForum(){
   knownMembers=new Set([currentPseudo]);
   document.getElementById('forum-msgs').innerHTML='';
-  const room=ROOMS[currentRoom];
+  const room=ROOMS[currentRoom]||{emoji:'✨',label:currentRoom};
   document.getElementById('fh-room').textContent=room.emoji+' '+room.label;
   addSysMsg('Bienvenue, '+currentPseudo+' ! Les messages de ce salon sont chiffrés et confidentiels.');
   loadMsgs(true);
@@ -570,13 +605,20 @@ function leaveGroup(){
 }
 
 // ── UTILS ──
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 // ── INIT ──
 renderRooms();
-// Support direct link: /groupe.html?room=anxiete
-const urlRoom=new URLSearchParams(location.search).get('room');
-if(urlRoom && ROOMS[urlRoom]) selectRoom(urlRoom);
+// Support direct link: /groupe.html?room=anxiete or ?create=1
+const _params=new URLSearchParams(location.search);
+const urlRoom=_params.get('room');
+const urlLabel=_params.get('label');
+const urlEmoji=_params.get('emoji');
+const urlDesc=_params.get('desc');
+if(urlRoom){
+  if(ROOMS[urlRoom]){selectRoom(urlRoom);}
+  else if(urlLabel){ROOMS[urlRoom]={label:urlLabel,emoji:urlEmoji||'✨',desc:urlDesc||'Salon personnalisé.'};selectRoom(urlRoom);}
+} else if(_params.get('create')){showScreen('create');}
 </script>
 </body>
 </html>

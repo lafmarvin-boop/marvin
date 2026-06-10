@@ -85,6 +85,59 @@ exports.handler = async (event) => {
       const { current_session_id: currentSessionId, status: agentStatus } = presence[0];
       const sinceIso = since ? new Date(since).toISOString() : new Date(0).toISOString();
 
+      // --- Réassignation : si un agent n'a pas envoyé de premier message dans les 2 min ---
+      const nowIso = new Date().toISOString();
+      const timedOut = await sbGet(
+        `chat_sessions?status=eq.active&response_deadline=lt.${encodeURIComponent(nowIso)}&select=id,agent_email&limit=10`
+      );
+      for (const ts of timedOut) {
+        // Chercher un agent disponible différent de celui qui a raté la session
+        const freeAgents = await sbGet(
+          `agent_presence?status=eq.online&current_session_id=is.null&agent_email=neq.${encodeURIComponent(ts.agent_email)}&select=agent_email&order=connected_since.asc&limit=1`
+        );
+        const newDeadline = new Date(Date.now() + 2 * 60 * 1000).toISOString();
+        if (freeAgents.length) {
+          // Réassigner à un autre agent (mise à jour conditionnelle pour éviter les races)
+          const pr = await fetch(
+            `${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(ts.id)}&status=eq.active&response_deadline=lt.${encodeURIComponent(nowIso)}`,
+            { method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+              body: JSON.stringify({ agent_email: freeAgents[0].agent_email, response_deadline: newDeadline, assigned_at: nowIso }) }
+          );
+          const patched = await pr.json();
+          if (Array.isArray(patched) && patched.length) {
+            Promise.all([
+              fetch(`${SB_URL}/rest/v1/agent_presence?agent_email=eq.${encodeURIComponent(freeAgents[0].agent_email)}`,
+                { method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                  body: JSON.stringify({ current_session_id: ts.id, status: 'busy', last_seen: nowIso }) }),
+              fetch(`${SB_URL}/rest/v1/agent_presence?agent_email=eq.${encodeURIComponent(ts.agent_email)}`,
+                { method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                  body: JSON.stringify({ current_session_id: null, status: 'online', last_seen: nowIso }) }),
+              fetch(`${SB_URL}/rest/v1/chat_messages`,
+                { method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                  body: JSON.stringify({ session_id: ts.id, content: 'Un autre écoutant va vous rejoindre dans quelques instants.', sender_type: 'system' }) })
+            ]).catch(() => {});
+          }
+        } else {
+          // Aucun agent dispo : remettre en attente
+          const pr = await fetch(
+            `${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(ts.id)}&status=eq.active&response_deadline=lt.${encodeURIComponent(nowIso)}`,
+            { method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+              body: JSON.stringify({ status: 'waiting', agent_email: null, response_deadline: null, assigned_at: null }) }
+          );
+          const patched = await pr.json();
+          if (Array.isArray(patched) && patched.length) {
+            Promise.all([
+              fetch(`${SB_URL}/rest/v1/agent_presence?agent_email=eq.${encodeURIComponent(ts.agent_email)}`,
+                { method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                  body: JSON.stringify({ current_session_id: null, status: 'online', last_seen: nowIso }) }),
+              fetch(`${SB_URL}/rest/v1/chat_messages`,
+                { method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                  body: JSON.stringify({ session_id: ts.id, content: 'Nous recherchons un écoutant disponible. Merci de patienter.', sender_type: 'system' }) })
+            ]).catch(() => {});
+          }
+        }
+      }
+
       // Sessions en attente (file)
       const waitingSessions = await sbGet(
         `chat_sessions?status=eq.waiting&select=id,pre_name,pre_topic,created_at&order=created_at.asc&limit=10`
@@ -92,7 +145,7 @@ exports.handler = async (event) => {
 
       // Toutes les sessions actives de cet agent
       const activeSessions = await sbGet(
-        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending&order=assigned_at.asc&limit=3`
+        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip&order=assigned_at.asc&limit=3`
       );
 
       // Pour chaque session active, récupérer les messages depuis sinceIso
@@ -114,7 +167,7 @@ exports.handler = async (event) => {
         } else {
           // currentSessionId présent mais pas dans les sessions actives — charger quand même
           const [sessRows, msgs] = await Promise.all([
-            sbGet(`chat_sessions?id=eq.${encodeURIComponent(currentSessionId)}&select=id,pre_name,pre_topic,status,created_at,session_label,duration_sec,assigned_at&limit=1`),
+            sbGet(`chat_sessions?id=eq.${encodeURIComponent(currentSessionId)}&select=id,pre_name,pre_topic,status,created_at,session_label,duration_sec,assigned_at,visitor_ip&limit=1`),
             sbGet(`chat_messages?session_id=eq.${encodeURIComponent(currentSessionId)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=100`)
           ]);
           currentSession = sessRows[0] || null;

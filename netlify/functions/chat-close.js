@@ -50,7 +50,6 @@ exports.handler = async (event) => {
 
     const now = new Date().toISOString();
     const updates = { status: 'closed', closed_at: now };
-    if (rating) { updates.rating = parseInt(rating); updates.rating_comment = ratingComment || null; }
 
     await sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, updates);
 
@@ -74,7 +73,7 @@ exports.handler = async (event) => {
           agent_email: agentMail,
           agent_name: agentName,
           resolved_at: now,
-          ...(rating ? { rating: parseInt(rating), rating_comment: ratingComment || null } : {})
+          ...(rating ? { rating: parseInt(rating), rating_comment: typeof ratingComment === 'string' ? ratingComment.trim().slice(0, 500) : null } : {})
         };
 
         const stripeId = chatSession.stripe_payment_id;

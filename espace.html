@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Espace Parlons</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23C4714A'/><rect x='14' y='13' width='72' height='56' rx='11' fill='white'/><polygon points='26,69 26,88 44,69' fill='white'/><text x='50' y='54' font-size='36' text-anchor='middle' font-family='Georgia,serif' fill='%23C4714A'>P</text></svg>"/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <style>
@@ -32,6 +33,10 @@
     .flabel{display:block;font-size:.77rem;font-weight:500;color:var(--mid);margin-bottom:.35rem;}
     .finput{width:100%;padding:.8rem 1rem;border:1.5px solid var(--sand);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--dark);background:white;outline:none;transition:border-color .2s;margin-bottom:1rem;}
     .finput:focus{border-color:var(--tc);}
+    .pwd-wrap{position:relative;margin-bottom:1rem;}
+    .pwd-wrap .finput{margin-bottom:0;padding-right:2.8rem;}
+    .pwd-eye{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#bfb0a0;padding:0;line-height:1;display:flex;align-items:center;}
+    .pwd-eye:hover{color:var(--dark);}
     .btn-prim{width:100%;background:var(--tc);color:white;border:none;border-radius:50px;padding:.88rem;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;}
     .btn-prim:hover{background:var(--rust);}
     .btn-prim:disabled{opacity:.6;cursor:not-allowed;}
@@ -174,6 +179,16 @@
     .afloat-header{background:var(--tc);padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;color:white;flex-shrink:0;gap:.5rem;}
     .afloat-header-title{font-family:'Playfair Display',serif;font-size:.95rem;flex:1;}
     .afloat-timer{background:rgba(0,0,0,.2);border-radius:50px;padding:.15rem .6rem;font-size:.8rem;font-weight:700;display:none;white-space:nowrap;}
+    .afloat-transfer-btn{background:none;border:1.5px solid rgba(255,255,255,.55);border-radius:50%;width:26px;height:26px;color:rgba(255,255,255,.9);font-size:.82rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;line-height:1;}
+    .afloat-transfer-btn:hover{background:rgba(255,255,255,.2);}
+    .afloat-transfer-wrap{position:relative;display:none;align-items:center;}
+    .afloat-transfer-wrap.visible{display:flex;}
+    .afloat-transfer-menu{position:absolute;top:calc(100% + 8px);right:0;background:white;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16);min-width:190px;z-index:9999;overflow:hidden;display:none;flex-direction:column;}
+    .afloat-transfer-menu.open{display:flex;}
+    .afloat-transfer-item{padding:.55rem .9rem;font-size:.8rem;font-family:'DM Sans',sans-serif;cursor:pointer;color:#2d2016;border-bottom:1px solid #f0e8e0;}
+    .afloat-transfer-item:last-child{border-bottom:none;}
+    .afloat-transfer-item:hover{background:#fef9f5;}
+    .afloat-transfer-empty{padding:.6rem .9rem;font-size:.78rem;color:#9a8778;font-style:italic;}
     .afloat-close{background:none;border:none;color:rgba(255,255,255,.8);font-size:1.05rem;cursor:pointer;padding:0;line-height:1;}
     .afloat-tabs{display:none;background:#f8f4f0;border-bottom:1px solid #e8e0d8;padding:.3rem .5rem;gap:.3rem;flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
     .afloat-tabs::-webkit-scrollbar{display:none;}
@@ -237,7 +252,7 @@
     <label class="flabel" for="login-email">Email</label>
     <input type="email" id="login-email" class="finput" placeholder="vous@email.com" onkeydown="if(event.key==='Enter')login()">
     <label class="flabel" for="login-pwd">Mot de passe <span style="font-weight:300;color:var(--light)">(abonnés : laissez vide)</span></label>
-    <input type="password" id="login-pwd" class="finput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()">
+    <div class="pwd-wrap"><input type="password" id="login-pwd" class="finput" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()"><button type="button" class="pwd-eye" onclick="togglePwd('login-pwd')" tabindex="-1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
     <div class="login-err" id="login-err"></div>
     <button class="btn-prim" id="login-btn" onclick="login()">Accéder à mon espace</button>
     <p class="login-hint">
@@ -278,11 +293,11 @@
       <div id="pwd-form" style="display:none;margin-top:1rem;">
         <div id="pwd-setup-note" style="display:none;font-size:.78rem;color:var(--mid);margin-bottom:.8rem;">Laissez "Mot de passe actuel" vide si c'est votre première connexion sans mot de passe.</div>
         <label class="flabel">Mot de passe actuel</label>
-        <input type="password" id="pwd-current" class="finput" placeholder="Laissez vide si premier accès">
+        <div class="pwd-wrap"><input type="password" id="pwd-current" class="finput" placeholder="Laissez vide si premier accès"><button type="button" class="pwd-eye" onclick="togglePwd('pwd-current')" tabindex="-1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         <label class="flabel">Nouveau mot de passe <span style="font-weight:300;color:var(--light)">(8 caractères min.)</span></label>
-        <input type="password" id="pwd-new" class="finput" placeholder="Choisissez un mot de passe">
+        <div class="pwd-wrap"><input type="password" id="pwd-new" class="finput" placeholder="Choisissez un mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('pwd-new')" tabindex="-1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         <label class="flabel">Confirmer le nouveau mot de passe</label>
-        <input type="password" id="pwd-confirm" class="finput" placeholder="Répétez le mot de passe">
+        <div class="pwd-wrap"><input type="password" id="pwd-confirm" class="finput" placeholder="Répétez le mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('pwd-confirm')" tabindex="-1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
         <div id="pwd-err" style="color:#ef4444;font-size:.78rem;margin-bottom:.6rem;min-height:1rem;"></div>
         <button onclick="changePassword()" style="width:100%;background:var(--dark);color:white;border:none;border-radius:50px;padding:.75rem;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;">Enregistrer le nouveau mot de passe</button>
         <div id="pwd-ok" style="display:none;color:#16a34a;font-size:.8rem;text-align:center;margin-top:.6rem;">✓ Mot de passe mis à jour avec succès !</div>
@@ -339,11 +354,6 @@
         <div class="stat-label">Ce mois-ci</div>
         <div class="stat-value" id="s-month-rev">—</div>
         <div class="stat-sub" id="s-month-comp"></div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Sessions payées</div>
-        <div class="stat-value" id="s-total-sess">—</div>
-        <div class="stat-sub" id="s-month-sess"></div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Abonnés actifs</div>
@@ -452,9 +462,9 @@
     </div>
     <p style="font-size:.82rem;color:var(--mid);margin-bottom:1.4rem;line-height:1.7;text-align:center;">Bienvenue ! Définissez un mot de passe pour sécuriser votre espace agent. Vous l'utiliserez à chaque connexion.</p>
     <label class="flabel">Nouveau mot de passe <span style="font-weight:300;color:var(--light)">(8 caractères min.)</span></label>
-    <input type="password" id="agent-pwd1" class="finput" placeholder="Choisissez un mot de passe">
+    <div class="pwd-wrap"><input type="password" id="agent-pwd1" class="finput" placeholder="Choisissez un mot de passe"><button type="button" class="pwd-eye" onclick="togglePwd('agent-pwd1')" tabindex="-1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
     <label class="flabel">Confirmer le mot de passe</label>
-    <input type="password" id="agent-pwd2" class="finput" placeholder="Répétez le mot de passe" onkeydown="if(event.key==='Enter')agentSetPassword()">
+    <div class="pwd-wrap"><input type="password" id="agent-pwd2" class="finput" placeholder="Répétez le mot de passe" onkeydown="if(event.key==='Enter')agentSetPassword()"><button type="button" class="pwd-eye" onclick="togglePwd('agent-pwd2')" tabindex="-1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
     <div class="login-err" id="agent-setup-err"></div>
     <button class="btn-prim" id="agent-setup-btn" onclick="agentSetPassword()">Créer mon mot de passe</button>
   </div>
@@ -470,6 +480,16 @@
         <div class="agent-hero-sub" id="agent-hero-sub">Tableau de bord personnel</div>
       </div>
     </div>
+
+    <!-- Bouton télécharger l'app -->
+    <a href="/agent-app.html" target="_blank" style="display:flex;align-items:center;gap:.85rem;background:linear-gradient(135deg,#C4714A,#a85c38);color:white;border-radius:14px;padding:1rem 1.2rem;text-decoration:none;margin-bottom:1.2rem;box-shadow:0 4px 14px rgba(196,113,74,.35);">
+      <div style="font-size:1.8rem;flex-shrink:0;">📱</div>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:.95rem;font-family:'DM Sans',sans-serif;">Application mobile Agent</div>
+        <div style="font-size:.75rem;opacity:.85;margin-top:.15rem;font-family:'DM Sans',sans-serif;">Installer sur votre téléphone · Notifications push</div>
+      </div>
+      <div style="font-size:.8rem;opacity:.75;font-family:'DM Sans',sans-serif;flex-shrink:0;">→</div>
+    </a>
 
     <!-- Alerte profil incomplet -->
     <div id="agent-profile-alert" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:1rem 1.2rem;font-size:.82rem;color:#1e40af;margin-bottom:1.5rem;line-height:1.6;">
@@ -494,7 +514,7 @@
     </div>
 
     <!-- Facture du mois -->
-    <div style="background:white;border:1px solid var(--sand);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;">
+    <div style="background:white;border:1px solid var(--sand);border-radius:14px;padding:1.4rem;margin-bottom:.8rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;">
         <div>
           <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);">Ma facture mensuelle</div>
@@ -503,6 +523,20 @@
         <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
           <select id="agent-pdf-month" style="border:1.5px solid var(--sand);border-radius:8px;padding:.35rem .7rem;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--dark);background:white;cursor:pointer;"></select>
           <button onclick="downloadAgentInvoice()" id="agent-invoice-btn" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.5rem 1.1rem;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📄 Télécharger ma facture</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Relevé URSSAF annuel -->
+    <div style="background:white;border:1px solid var(--sand);border-radius:14px;padding:1.4rem;margin-bottom:1.5rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;">
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--dark);">Relevé URSSAF annuel</div>
+          <div style="font-size:.75rem;color:var(--light);margin-top:.2rem;">Récapitulatif de votre chiffre d'affaires par trimestre</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
+          <select id="agent-urssaf-year" style="border:1.5px solid var(--sand);border-radius:8px;padding:.35rem .7rem;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--dark);background:white;cursor:pointer;"></select>
+          <button onclick="downloadUrssafStatement()" style="background:#2563eb;color:white;border:none;border-radius:50px;padding:.5rem 1.1rem;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📊 Télécharger mon relevé</button>
         </div>
       </div>
     </div>
@@ -557,6 +591,17 @@
         <input type="text" id="ap-siret" class="finput" placeholder="000 000 000 00000">
         <label class="flabel">IBAN (pour les virements)</label>
         <input type="text" id="ap-iban" class="finput" placeholder="FR76 0000 0000 0000 0000 0000 000">
+        <label class="flabel">Email de notification <span style="color:var(--tc);font-weight:600;">(demandes visiteurs)</span></label>
+        <input type="email" id="ap-notify-email" class="finput" placeholder="votre@email.com" style="margin-bottom:.9rem;">
+        <div id="ap-notify-row" onclick="toggleApNotify()" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;background:#faf8f5;border:1.5px solid var(--sand);border-radius:12px;padding:.85rem 1rem;cursor:pointer;transition:background .25s,border-color .25s;user-select:none;">
+          <div>
+            <div style="font-size:.82rem;font-weight:600;color:var(--dark);">Recevoir les demandes d'écoutant</div>
+            <div style="font-size:.74rem;color:var(--mid);margin-top:.1rem;line-height:1.4;">Alerté par email dès qu'un visiteur cherche un écoutant.</div>
+          </div>
+          <div id="ap-notify-sw" style="width:46px;height:26px;border-radius:13px;background:#ccc;position:relative;flex-shrink:0;transition:background .25s;">
+            <div id="ap-notify-dot" style="position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:4px;left:4px;transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:0 1px 3px rgba(0,0,0,.2);"></div>
+          </div>
+        </div>
         <div id="ap-err" style="color:#ef4444;font-size:.78rem;margin-bottom:.6rem;min-height:1rem;"></div>
         <div id="ap-ok" style="display:none;color:#16a34a;font-size:.8rem;margin-bottom:.6rem;">✓ Profil enregistré !</div>
         <button onclick="saveAgentProfile()" style="background:var(--dark);color:white;border:none;border-radius:50px;padding:.75rem 1.5rem;font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;">Enregistrer</button>
@@ -583,9 +628,11 @@ const API = '/.netlify/functions';
 let subEmailStored = '';
 let agentData = {};
 let agentEmailStored = '';
+function togglePwd(id){const el=document.getElementById(id);el.type=el.type==='password'?'text':'password';}
 let agentChatToken = null;
 let agentPollingInterval = null;
 let agentSessions = new Map(); // sessionId -> {id, name, topic, label, durationSec, assignedAt, messages, renderedIds, unread}
+const respondingExtensions = new Set(); // guard against double-click on extension buttons
 let agentActiveTabId = null;
 let agentFloatOpen = false;
 let agentFloatTimerInterval = null;
@@ -634,6 +681,15 @@ async function switchTab(tab) {
       }
       btn.textContent = '💬 Agent'; btn.disabled = false;
     }
+    // Reprendre session partagée avec agent-app.html si disponible
+    if (!agentChatToken) {
+      const sharedToken = localStorage.getItem('parlons_agent_token');
+      const sharedEmail = localStorage.getItem('parlons_agent_token_email');
+      if (sharedToken && sharedEmail && sharedEmail.toLowerCase() === agentEmailStored.toLowerCase()) {
+        agentChatToken = sharedToken;
+        startAgentPolling();
+      }
+    }
     if (agentChatToken && agentChatSessionId) { agentLastMsgTime = null; agentRenderedIds = new Set(); }
     renderAgentDash(agentEmailStored, adminAgentDataCache);
     showScreen('agent-dash');
@@ -643,11 +699,11 @@ async function switchTab(tab) {
 }
 
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function openAgentReviews(idx) {
-  const a = typeof idx === 'number' ? (window._agentList||[])[idx] : agentData[idx];
+  const a = typeof idx === 'object' && idx !== null ? idx : (typeof idx === 'number' ? (window._agentList||[])[idx] : agentData[idx]);
   if (!a) return;
   const avg = a.avgRating
     ? `<span style="color:#FFD700;font-size:1.1rem">${'★'.repeat(Math.round(a.avgRating))}${'☆'.repeat(5-Math.round(a.avgRating))}</span> ${a.avgRating.toFixed(1)}/5 · ${a.ratingCount} avis`
@@ -664,6 +720,12 @@ function openAgentReviews(idx) {
     : '<div style="color:var(--light);font-size:.84rem">Aucun commentaire pour cet agent.</div>';
   document.getElementById('reviews-overlay').classList.add('active');
   document.body.style.overflow = 'hidden';
+}
+
+function openMyAgentReviews() {
+  const a = window._myAgentReviews;
+  if (!a) return;
+  openAgentReviews(a);
 }
 
 function closeReviews() {
@@ -751,6 +813,8 @@ async function login() {
       document.getElementById('admin-tabs').style.display = 'block';
       renderDashboard(data);
       showScreen('admin-dash');
+      if (presRefreshInterval) clearInterval(presRefreshInterval);
+      presRefreshInterval = setInterval(refreshAgentPresence, 20000);
     } else if (data.role === 'subscriber') {
       localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
       subEmailStored = email;
@@ -1014,6 +1078,38 @@ function filterIpLogs(period) {
 }
 function fmtDate(s) { return s ? new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'; }
 
+let presRefreshInterval = null;
+async function refreshAgentPresence() {
+  const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
+  if (!saved.email || !saved.password) return;
+  try {
+    const res = await fetch(`${API}/admin-stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'presence' })
+    });
+    const data = await res.json();
+    if (!data.ok || !data.presence) return;
+    const colors = { online:'#22c55e', busy:'#f59e0b', offline:'#cbd5e1' };
+    const labels = { online:'En ligne', busy:'Occupé', offline:'Hors ligne' };
+    data.presence.forEach(p => {
+      const email = (p.agent_email || '').toLowerCase();
+      const status = p.status || 'offline';
+      const c = colors[status] || colors.offline;
+      const l = labels[status] || 'Hors ligne';
+      document.querySelectorAll(`[data-pres="${email}"]`).forEach(el => {
+        el.title = l;
+        el.querySelector('span:first-child').style.background = c;
+        el.querySelector('span:last-child').textContent = l;
+      });
+      // Mettre à jour le bouton déconnecter : show si online/busy, hide si offline
+      document.querySelectorAll(`[data-force-email="${email}"]`).forEach(btn => {
+        btn.style.display = (status === 'online' || status === 'busy') ? '' : 'none';
+      });
+    });
+  } catch {}
+}
+
 function renderDashboard(d) {
   window._adminSessions = d.sessions.list || [];
   initPdfMonthSelector();
@@ -1028,8 +1124,6 @@ function renderDashboard(d) {
     ? `<span class="${diff >= 0 ? 'stat-up' : 'stat-down'}">${diff >= 0 ? '+' : ''}${pct}%</span> vs mois dernier`
     : fmt(sessions.lastMonthRevenue) + ' mois dernier';
 
-  document.getElementById('s-total-sess').textContent = sessions.total;
-  document.getElementById('s-month-sess').textContent = sessions.monthCount + ' ce mois · ' + sessions.lastMonthCount + ' le mois dernier';
   document.getElementById('s-active-subs').textContent = subscribers.active;
   document.getElementById('s-total-subs').textContent = subscribers.total + ' abonné' + (subscribers.total > 1 ? 's' : '') + ' au total';
 
@@ -1090,6 +1184,15 @@ function renderDashboard(d) {
   ];
   const note = unassigned > 0 ? `<div style="font-size:.72rem;color:var(--light);margin-top:.8rem">${unassigned} session${unassigned>1?'s':''} sans agent enregistré</div>` : '';
   window._agentList = agentList;
+  function presenceDot(status, email) {
+    const colors = { online:'#22c55e', busy:'#f59e0b', offline:'#cbd5e1' };
+    const labels = { online:'En ligne', busy:'Occupé', offline:'Hors ligne' };
+    const c = colors[status] || colors.offline;
+    const l = labels[status] || 'Hors ligne';
+    const attr = email ? ` data-pres="${escHtml(email.toLowerCase())}"` : '';
+    return `<span${attr} title="${l}" style="display:inline-flex;align-items:center;gap:.35rem"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};flex-shrink:0"></span><span style="font-size:.72rem;color:var(--mid)">${l}</span></span>`;
+  }
+
   if (agentList.length === 0) {
     document.getElementById('agent-section').innerHTML = '<div style="color:var(--light);font-size:.82rem">Aucune session assignée à un agent pour l\'instant.</div>';
   } else if (window.innerWidth < 640) {
@@ -1102,6 +1205,10 @@ function renderDashboard(d) {
         if (!cnt) return '';
         return `<span style="background:var(--warm);border:1px solid var(--sand);border-radius:50px;padding:.15rem .55rem;font-size:.7rem;white-space:nowrap;">${c.label} <strong>${cnt}</strong></span>`;
       }).join('');
+      const isOnline = a.presenceStatus === 'online' || a.presenceStatus === 'busy';
+      const forceBtn = a.email
+        ? `<button data-force-email="${escHtml(a.email.toLowerCase())}" onclick="event.stopPropagation();forceOffline('${escHtml(a.email)}')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;${isOnline?'':'display:none'}">⏻ Déconnecter</button>`
+        : '';
       return `<div style="background:white;border:1px solid var(--sand);border-radius:12px;padding:1rem;margin-bottom:.8rem;" onclick="openAgentReviews(${idx})">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;">
           <div style="display:flex;align-items:center;gap:.6rem;">
@@ -1109,6 +1216,7 @@ function renderDashboard(d) {
             <div>
               <div style="font-weight:600;font-size:.88rem">${escHtml(a.displayName||a.name)}</div>
               <div style="font-size:.72rem;color:var(--light)">${avg} · ${a.ratingCount||0} avis</div>
+              <div style="display:flex;align-items:center;margin-top:.2rem">${presenceDot(a.presenceStatus, a.email)}</div>
             </div>
           </div>
           <div style="text-align:right">
@@ -1117,9 +1225,10 @@ function renderDashboard(d) {
           </div>
         </div>
         ${planBadges ? `<div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.7rem;">${planBadges}</div>` : ''}
-        <div style="display:flex;gap:.5rem;">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
           <button onclick="event.stopPropagation();generateAgentPDF(${idx})" style="flex:1;background:none;border:1px solid var(--sand);border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:var(--mid);">📄 Générer la fiche</button>
           <button onclick="event.stopPropagation();removeAgent(${idx})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:#c0392b;">✕ Retirer</button>
+          ${forceBtn}
         </div>
       </div>`;
     }).join('');
@@ -1134,11 +1243,18 @@ function renderDashboard(d) {
         const cnt = (a.plans[c.key] || 0) + (c.alt ? (a.plans[c.alt] || 0) : 0);
         return `<td style="text-align:center">${cnt > 0 ? `<strong>${cnt}</strong>` : '<span style="color:var(--sand)">—</span>'}</td>`;
       }).join('');
+      const isOnlineD = a.presenceStatus === 'online' || a.presenceStatus === 'busy';
+      const forceBtnD = a.email
+        ? `<button data-force-email="${escHtml(a.email.toLowerCase())}" onclick="forceOffline('${escHtml(a.email)}')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;margin-left:.3rem;${isOnlineD?'':'display:none'}">⏻ Déconnecter</button>`
+        : '';
       return `<tr class="agent-row" onclick="openAgentReviews(${idx})">
         <td>
           <div style="display:flex;align-items:center;gap:.5rem">
             <div style="width:28px;height:28px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.75rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
-            <span style="font-weight:600;font-size:.84rem">${escHtml(a.displayName||a.name)}</span>
+            <div>
+              <div style="font-weight:600;font-size:.84rem">${escHtml(a.displayName||a.name)}</div>
+              <div style="display:flex;align-items:center;margin-top:.1rem">${presenceDot(a.presenceStatus, a.email)}</div>
+            </div>
           </div>
         </td>
         <td><span class="stars-gold" title="${a.ratingCount||0} avis">${avg}</span></td>
@@ -1148,6 +1264,7 @@ function renderDashboard(d) {
         <td onclick="event.stopPropagation()" style="white-space:nowrap;">
           <button onclick="generateAgentPDF(${idx})" style="background:none;border:1px solid var(--sand);border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:var(--mid);">📄 Fiche</button>
           <button onclick="removeAgent(${idx})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:#c0392b;margin-left:.3rem;">✕ Retirer</button>
+          ${forceBtnD}
         </td>
       </tr>`;
     }).join('');
@@ -1253,6 +1370,8 @@ function renderAgentDash(email, d) {
     if (el && profile[f]) el.value = profile[f];
   });
   if (profile.code_postal) document.getElementById('ap-cp').value = profile.code_postal;
+  if (profile.notify_email) { const ne=document.getElementById('ap-notify-email'); if(ne) ne.value=profile.notify_email; }
+  setApNotify(!!profile.notify_requests);
 
   const initial = (profile.prenom || email).charAt(0).toUpperCase();
   const displayName = profile.prenom && profile.nom ? `${profile.prenom} ${profile.nom}` : email;
@@ -1261,6 +1380,7 @@ function renderAgentDash(email, d) {
   document.getElementById('agent-hero-sub').textContent = 'Espace agent · ' + new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   initAgentMonthSelector();
+  initAgentYearSelector();
 
   // Calcul honoraires par période
   const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
@@ -1305,11 +1425,14 @@ function renderAgentDash(email, d) {
     : '<div style="color:var(--light);font-size:.82rem">Aucune session pour l\'instant.</div>';
 
   const avg = d.avgRating;
+  const myReviews = (d.sessions||[]).filter(s => s.rating && s.rating_comment).map(s => ({ stars: s.rating, comment: s.rating_comment, pseudo: s.pseudo, formule: s.formule, date: s.started_at }));
+  window._myAgentReviews = { name: 'Mes avis', avgRating: avg, ratingCount: d.ratingCount, reviews: myReviews };
   document.getElementById('agent-rating').innerHTML = avg
     ? `<div style="text-align:center;padding:.5rem 0">
         <div style="font-size:2rem;color:#FFD700">${'★'.repeat(Math.round(avg))}${'☆'.repeat(5-Math.round(avg))}</div>
         <div style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--dark);margin:.4rem 0">${avg.toFixed(1)}<span style="font-size:.9rem;color:var(--light)">/5</span></div>
         <div style="font-size:.75rem;color:var(--light)">${d.ratingCount} avis reçu${d.ratingCount>1?'s':''}</div>
+        ${myReviews.length ? `<button onclick="openMyAgentReviews()" style="margin-top:.7rem;background:var(--tc);color:white;border:none;border-radius:50px;padding:.42rem 1.1rem;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;">Voir mes avis →</button>` : ''}
       </div>`
     : '<div style="color:var(--light);font-size:.82rem;text-align:center;padding:1rem">Aucune note pour l\'instant.</div>';
 
@@ -1340,6 +1463,160 @@ function initAgentMonthSelector() {
   }
 }
 
+function initAgentYearSelector() {
+  const sel = document.getElementById('agent-urssaf-year');
+  if (!sel || sel.options.length > 0) return;
+  const now = new Date();
+  for (let i = 0; i < 3; i++) {
+    const y = now.getFullYear() - i;
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function downloadUrssafStatement() {
+  if (!window.jspdf) { alert('PDF non disponible, rechargez la page.'); return; }
+
+  const profile = {
+    nom:    document.getElementById('ap-nom')?.value.trim() || '',
+    prenom: document.getElementById('ap-prenom')?.value.trim() || '',
+    siret:  document.getElementById('ap-siret')?.value.trim() || '',
+    adresse: document.getElementById('ap-adresse')?.value.trim() || '',
+    cp:     document.getElementById('ap-cp')?.value.trim() || '',
+    ville:  document.getElementById('ap-ville')?.value.trim() || '',
+  };
+
+  if (!profile.siret || !profile.nom) {
+    alert('Complétez votre profil (nom, SIRET) avant de générer le relevé.');
+    document.getElementById('agent-profile-form').style.display = 'block';
+    document.getElementById('agent-profile-chevron').textContent = '▲';
+    return;
+  }
+
+  const year = parseInt(document.getElementById('agent-urssaf-year')?.value || new Date().getFullYear());
+
+  const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+  function getRate(f) {
+    for (const [k, v] of Object.entries(RATES)) { if ((f||'').includes(k)) return v; }
+    return 0;
+  }
+
+  const quarters = [
+    { label: '1er trimestre (Jan – Mar)', months: [0,1,2] },
+    { label: '2e trimestre (Avr – Jun)',  months: [3,4,5] },
+    { label: '3e trimestre (Jul – Sep)',  months: [6,7,8] },
+    { label: '4e trimestre (Oct – Déc)', months: [9,10,11] },
+  ];
+
+  const qData = quarters.map(q => {
+    const sessions = agentSessionsCache.filter(s => {
+      if (!s.started_at) return false;
+      const d = new Date(s.started_at);
+      return d.getFullYear() === year && q.months.includes(d.getMonth());
+    });
+    const ca = sessions.reduce((sum, s) => sum + getRate(s.formule), 0);
+    return { ...q, count: sessions.length, ca };
+  });
+
+  const totalCA = qData.reduce((s, q) => s + q.ca, 0);
+  const totalSessions = qData.reduce((s, q) => s + q.count, 0);
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // En-tête
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(37, 99, 235);
+  doc.text('RELEVÉ URSSAF', 20, 26);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Chiffre d'affaires déclaré — Année ${year}`, 20, 34);
+
+  doc.setDrawColor(200, 220, 255);
+  doc.line(20, 40, 190, 40);
+
+  // Identité agent
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(44, 31, 20);
+  doc.text(`${profile.prenom} ${profile.nom}`, 20, 50);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  if (profile.adresse) doc.text(profile.adresse, 20, 57);
+  if (profile.cp || profile.ville) doc.text(`${profile.cp} ${profile.ville}`.trim(), 20, 63);
+  doc.text(agentEmailStored || '', 20, 69);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(37, 99, 235);
+  doc.text(`SIRET : ${profile.siret}`, 20, 75);
+
+  doc.setFontSize(8);
+  doc.setTextColor(140);
+  doc.text(`Donneur d'ordre : PARLONS · SIRET 105 179 360 000 18`, 20, 82);
+  doc.text(`Généré le : ${new Date().toLocaleDateString('fr-FR')}`, 20, 87);
+
+  // Tableau trimestriel
+  doc.autoTable({
+    startY: 95,
+    head: [['Trimestre', 'Sessions', "Chiffre d'affaires"]],
+    body: qData.map(q => [q.label, q.count, `${q.ca.toFixed(2)} €`]),
+    foot: [['TOTAL ANNUEL', totalSessions, `${totalCA.toFixed(2)} €`]],
+    styles: { fontSize: 10, cellPadding: 4 },
+    headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
+    footStyles: { fillColor: [230, 240, 255], textColor: [37, 99, 235], fontStyle: 'bold', fontSize: 11 },
+    alternateRowStyles: { fillColor: [245, 248, 255] },
+    columnStyles: { 2: { halign: 'right' } }
+  });
+
+  const y = doc.lastAutoTable.finalY + 12;
+
+  // Encadré récapitulatif
+  doc.setFillColor(230, 240, 255);
+  doc.roundedRect(20, y, 170, 22, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(37, 99, 235);
+  doc.text(`CA total à déclarer : ${totalCA.toFixed(2)} €`, 105, y + 9, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(80, 100, 160);
+  doc.text('Montant à reporter dans votre déclaration URSSAF auto-entrepreneur', 105, y + 16, { align: 'center' });
+
+  // Notes légales
+  const yn = y + 30;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(130);
+  doc.text('• TVA non applicable — article 293 B du CGI (franchise en base de TVA)', 20, yn);
+  doc.text('• Ce document récapitule les honoraires perçus via la plateforme Parlons.', 20, yn + 6);
+  doc.text('• Conservez vos factures mensuelles comme justificatifs comptables.', 20, yn + 12);
+  doc.text('• Pour déclarer : autoentrepreneur.urssaf.fr → Mon compte → Déclarer mon CA', 20, yn + 18);
+
+  // Pied
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7.5);
+  doc.setTextColor(160);
+  doc.text(`${profile.prenom} ${profile.nom} · SIRET ${profile.siret} · Relevé URSSAF ${year}`, 105, 288, { align: 'center' });
+
+  doc.save(`Releve_URSSAF_Parlons_${profile.nom}_${year}.pdf`);
+}
+
+let apNotifyOn = false;
+function setApNotify(val){
+  apNotifyOn = !!val;
+  const sw=document.getElementById('ap-notify-sw'), dot=document.getElementById('ap-notify-dot'), row=document.getElementById('ap-notify-row');
+  if(sw) sw.style.background = apNotifyOn ? '#22c55e' : '#ccc';
+  if(dot) dot.style.transform = apNotifyOn ? 'translateX(20px)' : 'none';
+  if(row){ row.style.borderColor = apNotifyOn ? '#22c55e' : 'var(--sand)'; row.style.background = apNotifyOn ? '#f0fdf4' : '#faf8f5'; }
+}
+function toggleApNotify(){ setApNotify(!apNotifyOn); }
+
 function toggleAgentProfile() {
   const f = document.getElementById('agent-profile-form');
   const c = document.getElementById('agent-profile-chevron');
@@ -1354,14 +1631,16 @@ async function saveAgentProfile() {
   err.textContent = ''; ok.style.display = 'none';
 
   const profile = {
-    pseudo:      document.getElementById('ap-pseudo').value.trim(),
-    nom:         document.getElementById('ap-nom').value.trim(),
-    prenom:      document.getElementById('ap-prenom').value.trim(),
-    adresse:     document.getElementById('ap-adresse').value.trim(),
-    code_postal: document.getElementById('ap-cp').value.trim(),
-    ville:       document.getElementById('ap-ville').value.trim(),
-    siret:       document.getElementById('ap-siret').value.trim(),
-    iban:        document.getElementById('ap-iban').value.trim(),
+    pseudo:           document.getElementById('ap-pseudo').value.trim(),
+    nom:              document.getElementById('ap-nom').value.trim(),
+    prenom:           document.getElementById('ap-prenom').value.trim(),
+    adresse:          document.getElementById('ap-adresse').value.trim(),
+    code_postal:      document.getElementById('ap-cp').value.trim(),
+    ville:            document.getElementById('ap-ville').value.trim(),
+    siret:            document.getElementById('ap-siret').value.trim(),
+    iban:             document.getElementById('ap-iban').value.trim(),
+    notify_email:     (document.getElementById('ap-notify-email')?.value||'').trim(),
+    notify_requests:  apNotifyOn,
   };
 
   if (!profile.nom || !profile.prenom) { err.textContent = 'Nom et prénom requis.'; return; }
@@ -1795,6 +2074,9 @@ async function agentGoOnline() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
     agentChatToken = data.token;
+    localStorage.setItem('parlons_agent_token', data.token);
+    localStorage.setItem('parlons_agent_token_email', agentEmailStored);
+    localStorage.setItem('parlons_agent_online', '1');
     updateAgentPresenceUI(true);
     startAgentPolling();
   } catch(e) {
@@ -1812,6 +2094,9 @@ async function agentGoOffline() {
       body: JSON.stringify({ agentEmail: agentEmailStored, agentToken: agentChatToken, status: 'offline' })
     });
   } catch {}
+  localStorage.removeItem('parlons_agent_token');
+  localStorage.removeItem('parlons_agent_token_email');
+  localStorage.removeItem('parlons_agent_online');
   clearInterval(agentPollingInterval); clearInterval(agentFloatTimerInterval);
   agentPollingInterval = null; agentChatToken = null;
   agentSessions.clear(); agentActiveTabId = null; agentFloatOpen = false;
@@ -1836,7 +2121,7 @@ async function pollAgentChat() {
     });
     const data = await res.json();
     if (!res.ok) {
-      if (res.status === 401) { clearInterval(agentPollingInterval); agentPollingInterval = null; agentChatToken = null; updateAgentPresenceUI(false); }
+      if (res.status === 401) { clearInterval(agentPollingInterval); agentPollingInterval = null; agentChatToken = null; localStorage.removeItem('parlons_agent_token'); localStorage.removeItem('parlons_agent_token_email'); updateAgentPresenceUI(false); }
       return;
     }
 
@@ -1876,17 +2161,31 @@ async function pollAgentChat() {
           label: s.session_label || '', durationSec: s.duration_sec || 1800,
           assignedAt: s.assigned_at, timerStartedAt: null, agentSessionEndAt: null,
           extensionPending: s.extension_pending || null,
+          visitorIp: s.visitor_ip || null,
           messages: [], renderedIds: new Set(), unread: 0
         });
       } else {
         if (s.duration_sec && s.duration_sec > existing.durationSec) {
           const added = s.duration_sec - existing.durationSec;
           existing.durationSec = s.duration_sec;
-          if (existing.agentSessionEndAt) existing.agentSessionEndAt += added * 1000;
+          // Reprendre depuis le temps gelé + le temps ajouté
+          if (existing.frozenRemainingMs !== undefined) {
+            existing.agentSessionEndAt = Date.now() + existing.frozenRemainingMs + added * 1000;
+            delete existing.frozenRemainingMs;
+          } else if (existing.agentSessionEndAt) {
+            existing.agentSessionEndAt += added * 1000;
+          }
         }
         const hadExtension = !!existing.extensionPending;
         existing.extensionPending = s.extension_pending || null;
         if (!hadExtension && existing.extensionPending) {
+          // Geler le timer : sauvegarder le temps restant au moment de la demande
+          const rem = existing.agentSessionEndAt
+            ? Math.max(0, existing.agentSessionEndAt - Date.now())
+            : existing.timerStartedAt
+              ? Math.max(0, existing.durationSec * 1000 - (Date.now() - existing.timerStartedAt))
+              : existing.durationSec * 1000;
+          existing.frozenRemainingMs = rem;
           agentActiveTabId = s.id;
           agentChatSessionId = s.id;
           anyNew = true;
@@ -1902,10 +2201,8 @@ async function pollAgentChat() {
           const lastTs = m.created_at;
           if (!agentPollSince || lastTs > agentPollSince) agentPollSince = lastTs;
         }
-        console.log('[poll] new msg:', m.sender_type, (m.content||'').substring(0,60));
         // Auto-open panel on new extension request
         if (m.sender_type === 'system' && m.content && m.content.includes('souhaite prolonger')) {
-          console.log('[poll] extension request detected, opening panel');
           agentActiveTabId = s.id; agentChatSessionId = s.id; anyNew = true;
         }
         // Unread: count if not this tab or panel closed
@@ -2024,44 +2321,68 @@ function renderAgentFloatMessages() {
   sess.messages.forEach((m, i) => {
     if (m.sender_type === 'system' && m.content && m.content.includes('souhaite prolonger')) lastExtIdx = i;
   });
-  console.log('[render] messages:', sess.messages.length, 'lastExtIdx:', lastExtIdx, 'msgs:', sess.messages.map(m=>(m.sender_type||'?')+':'+(m.content||'').substring(0,30)));
   const extResolved = lastExtIdx >= 0 && sess.messages.slice(lastExtIdx + 1).some(m =>
     m.sender_type === 'system' && (m.content.includes('prolongée') || m.content.includes("n'a pas pu"))
   );
+
+  // Helper to build extension buttons div
+  function makeExtButtons(text, sessionId) {
+    const wrap = document.createElement('div');
+    wrap.className = 'agent-msg system';
+    wrap.style.cssText = 'border:1.5px solid #fbbf24;background:#fff7ed;border-radius:12px;padding:.55rem .75rem;';
+    const txt = document.createElement('div');
+    txt.textContent = text;
+    wrap.appendChild(txt);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:.45rem;margin-top:.5rem;';
+    const btnA = document.createElement('button');
+    btnA.textContent = '✓ Prolonger';
+    btnA.style.cssText = 'flex:1;background:#22c55e;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
+    btnA.onclick = () => respondExtension(sessionId, true);
+    const btnR = document.createElement('button');
+    btnR.textContent = '↗ Passer à un autre';
+    btnR.style.cssText = 'flex:1;background:#f59e0b;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
+    btnR.onclick = () => respondExtension(sessionId, false);
+    row.appendChild(btnA);
+    row.appendChild(btnR);
+    wrap.appendChild(row);
+    return wrap;
+  }
 
   msgsEl.innerHTML = '';
   sess.messages.forEach((m, i) => {
     const div = document.createElement('div');
     const isActiveExt = (i === lastExtIdx && !extResolved);
     if (isActiveExt) {
-      div.className = 'agent-msg system';
-      div.style.cssText = 'border:1.5px solid #fbbf24;background:#fff7ed;border-radius:12px;padding:.55rem .75rem;';
-      const txt = document.createElement('div');
-      txt.textContent = m.content;
-      div.appendChild(txt);
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:.45rem;margin-top:.5rem;';
-      const btnA = document.createElement('button');
-      btnA.textContent = '✓ Prolonger';
-      btnA.style.cssText = 'flex:1;background:#22c55e;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
-      btnA.onclick = () => respondExtension(sess.id, true);
-      const btnR = document.createElement('button');
-      btnR.textContent = '↗ Passer à un autre';
-      btnR.style.cssText = 'flex:1;background:#f59e0b;color:white;border:none;border-radius:50px;padding:.3rem .6rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:"DM Sans",sans-serif;';
-      btnR.onclick = () => respondExtension(sess.id, false);
-      row.appendChild(btnA);
-      row.appendChild(btnR);
-      div.appendChild(row);
+      msgsEl.appendChild(makeExtButtons(m.content, sess.id));
     } else {
       div.className = 'agent-msg ' + (m.sender_type === 'agent' ? 'agent' : m.sender_type === 'system' ? 'system' : 'visitor');
       div.textContent = m.content;
+      msgsEl.appendChild(div);
     }
-    msgsEl.appendChild(div);
   });
 
+  // Fallback: si le message de prolongation n'est pas dans l'historique local
+  // mais que extension_pending JSONB est présent, afficher les boutons quand même
+  if (sess.extensionPending && lastExtIdx === -1) {
+    const mins = Math.floor((sess.extensionPending.newDurationSec || 1800) / 60);
+    const fallbackText = `⏳ Le visiteur souhaite prolonger la session de ${mins} min. En attente de votre accord.`;
+    msgsEl.appendChild(makeExtButtons(fallbackText, sess.id));
+  }
+
   msgsEl.scrollTop = msgsEl.scrollHeight;
+  const extPending = (lastExtIdx >= 0 && !extResolved) || (sess.extensionPending && lastExtIdx === -1);
   if (infoEl) {
-    infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong> · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
+    const ipBtn = sess.visitorIp
+      ? ` <button onclick="(function(btn,ip){navigator.clipboard.writeText(ip).then(()=>{btn.textContent='✓';setTimeout(()=>{btn.textContent='IP'},1200)}).catch(()=>{btn.textContent='IP'});})(this,'${escHtml(sess.visitorIp)}')" title="${escHtml(sess.visitorIp)}" style="background:#e8e0d8;border:none;border-radius:4px;padding:1px 5px;font-size:.68rem;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;color:var(--mid);vertical-align:middle;line-height:1.4;">IP</button>`
+      : '';
+    const extBtns = extPending
+      ? ` <span style="display:inline-flex;gap:.3rem;vertical-align:middle;margin-left:.2rem;">` +
+        `<button onclick="respondExtension('${escHtml(sess.id)}',true)" style="background:#22c55e;color:white;border:none;border-radius:4px;padding:1px 7px;font-size:.68rem;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;line-height:1.4;">✓ Prolonger</button>` +
+        `<button onclick="respondExtension('${escHtml(sess.id)}',false)" style="background:#f59e0b;color:white;border:none;border-radius:4px;padding:1px 7px;font-size:.68rem;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;line-height:1.4;">↗ Passer</button>` +
+        `</span>`
+      : '';
+    infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong>${ipBtn}${extBtns} · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
   }
   // Hide legacy bar — buttons are now inline
   const bar = document.getElementById('afloat-ext-bar');
@@ -2099,6 +2420,75 @@ function updateAgentExtBar() {
   if (bar) { bar.dataset.sessionId = ''; bar.style.display = 'none'; }
 }
 
+function updateTransferBtnVisibility() {
+  const wrap = document.getElementById('afloat-transfer-wrap');
+  if (!wrap) return;
+  const sess = agentSessions.get(agentActiveTabId);
+  const visible = !!(sess && sess.timerStartedAt);
+  wrap.classList.toggle('visible', visible);
+  if (!visible) closeTransferMenu();
+}
+
+function closeTransferMenu() {
+  const menu = document.getElementById('afloat-transfer-menu');
+  if (menu) menu.classList.remove('open');
+}
+
+async function toggleTransferMenu() {
+  const menu = document.getElementById('afloat-transfer-menu');
+  if (!menu) return;
+  if (menu.classList.contains('open')) { closeTransferMenu(); return; }
+
+  menu.innerHTML = '<div class="afloat-transfer-empty">Chargement…</div>';
+  menu.classList.add('open');
+
+  try {
+    const res = await fetch(`${API}/chat-transfer`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'list', agentEmail: agentEmailStored, agentToken: agentChatToken })
+    });
+    const data = await res.json();
+    if (!data.ok || !data.agents.length) {
+      menu.innerHTML = '<div class="afloat-transfer-empty">Aucun agent disponible</div>';
+      return;
+    }
+    menu.innerHTML = data.agents.map(a =>
+      `<div class="afloat-transfer-item" onclick="doTransfer('${agentActiveTabId}','${a.email.replace(/'/g,"\\'")}')">↗ ${a.name}</div>`
+    ).join('');
+  } catch(e) {
+    menu.innerHTML = '<div class="afloat-transfer-empty">Erreur de chargement</div>';
+  }
+}
+
+async function doTransfer(sessionId, targetEmail) {
+  closeTransferMenu();
+  if (!sessionId || !targetEmail) return;
+  try {
+    const res = await fetch(`${API}/chat-transfer`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'transfer', agentEmail: agentEmailStored, agentToken: agentChatToken, sessionId, targetEmail })
+    });
+    const data = await res.json();
+    if (!data.ok) { alert(data.error || 'Transfert échoué'); return; }
+    // Retirer la session transférée de la map locale
+    agentSessions.delete(sessionId);
+    if (agentActiveTabId === sessionId) {
+      agentActiveTabId = agentSessions.size > 0 ? agentSessions.keys().next().value : null;
+      agentChatSessionId = agentActiveTabId;
+    }
+    renderAgentFloatTabs();
+    renderAgentFloatMessages();
+    updateAgentFloatBubble();
+    updateTransferBtnVisibility();
+  } catch(e) { console.error('doTransfer:', e); }
+}
+
+// Fermer le menu si clic en dehors
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('afloat-transfer-wrap');
+  if (wrap && !wrap.contains(e.target)) closeTransferMenu();
+});
+
 function respondExtensionBar(accept) {
   const bar = document.getElementById('afloat-ext-bar');
   const sid = bar && bar.dataset.sessionId;
@@ -2110,7 +2500,17 @@ function updateAgentFloatTimer() {
   const timerEl = document.getElementById('afloat-timer');
   if (!timerEl) return;
   const sess = agentSessions.get(agentActiveTabId);
-  if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; return; }
+  if (!sess || !sess.timerStartedAt) { timerEl.style.display = 'none'; updateTransferBtnVisibility(); return; }
+  updateTransferBtnVisibility();
+  // Geler l'affichage si une demande de prolongation est en cours
+  if (sess.extensionPending && sess.frozenRemainingMs !== undefined) {
+    const rem = sess.frozenRemainingMs / 1000;
+    const m = Math.floor(rem / 60), s = Math.floor(rem % 60);
+    timerEl.style.display = 'inline';
+    timerEl.textContent = `⏸ ${m}:${String(s).padStart(2,'0')}`;
+    timerEl.style.background = 'rgba(0,0,0,.2)';
+    return;
+  }
   const remaining = sess.agentSessionEndAt
     ? Math.max(0, (sess.agentSessionEndAt - Date.now()) / 1000)
     : Math.max(0, sess.durationSec - (Date.now() - sess.timerStartedAt) / 1000);
@@ -2157,6 +2557,8 @@ async function endAgentFloatSession() {
 }
 
 async function respondExtension(sessionId, accept) {
+  if (respondingExtensions.has(sessionId)) return;
+  respondingExtensions.add(sessionId);
   try {
     const res = await fetch(`${API}/chat-extension-respond`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2164,7 +2566,11 @@ async function respondExtension(sessionId, accept) {
     });
     const data = await res.json();
     if (!data.ok) return;
-    if (!accept) {
+    if (accept) {
+      // Immediately clear local extensionPending so buttons disappear before next poll
+      const sess = agentSessions.get(sessionId);
+      if (sess) { sess.extensionPending = null; renderAgentFloatMessages(); }
+    } else {
       // L'ancienne session est fermée : la retirer de la Map
       agentSessions.delete(sessionId);
       if (agentActiveTabId === sessionId) {
@@ -2175,8 +2581,8 @@ async function respondExtension(sessionId, accept) {
       renderAgentFloatMessages();
       updateAgentFloatBubble();
     }
-    // Si accepté, le poll renverra duration_sec mis à jour et extensionPending=null
   } catch(e) { console.error('respondExtension:', e); }
+  finally { respondingExtensions.delete(sessionId); }
 }
 
 async function agentAcceptFromQueue(sessionId) {
@@ -2257,6 +2663,21 @@ async function confirmRemoveAgent() {
   } catch { err.textContent = 'Erreur réseau.'; btn.disabled = false; btn.textContent = 'Retirer'; }
 }
 
+async function forceOffline(agentEmail) {
+  if (!confirm(`Déconnecter ${agentEmail} et le mettre hors ligne ?`)) return;
+  try {
+    const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
+    const res = await fetch(`${API}/admin-force-offline`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminEmail: saved.email, adminPassword: saved.password, agentEmail })
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'Erreur serveur.'); return; }
+    location.reload();
+  } catch { alert('Erreur réseau.'); }
+}
+
 // ── AJOUTER UN AGENT ──
 function openAddAgentModal() {
   document.getElementById('add-agent-modal').style.display = 'flex';
@@ -2328,6 +2749,10 @@ async function submitAddAgent() {
   <div class="afloat-header">
     <span class="afloat-header-title" id="afloat-title">💬 Chat</span>
     <span class="afloat-timer" id="afloat-timer"></span>
+    <div class="afloat-transfer-wrap" id="afloat-transfer-wrap">
+      <button class="afloat-transfer-btn" id="afloat-transfer-btn" onclick="toggleTransferMenu()" title="Transférer à un autre agent">⇄</button>
+      <div class="afloat-transfer-menu" id="afloat-transfer-menu"></div>
+    </div>
     <button class="afloat-close" onclick="toggleAgentFloat()">✕</button>
   </div>
   <div class="afloat-tabs" id="afloat-tabs"></div>
@@ -2370,7 +2795,7 @@ async function submitAddAgent() {
     <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Email de l'agent</label>
     <input id="add-agent-email" type="email" placeholder="agent@email.com" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;margin-bottom:.9rem;">
     <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.3rem;">Mot de passe temporaire</label>
-    <input id="add-agent-pwd" type="password" placeholder="Min. 8 caractères" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;margin-bottom:.4rem;" onkeydown="if(event.key==='Enter')submitAddAgent()">
+    <div style="position:relative;margin-bottom:.4rem;"><input id="add-agent-pwd" type="password" placeholder="Min. 8 caractères" style="width:100%;box-sizing:border-box;border:1.5px solid #e8d5b0;border-radius:10px;padding:.7rem 2.8rem .7rem 1rem;font-family:'DM Sans',sans-serif;font-size:.9rem;" onkeydown="if(event.key==='Enter')submitAddAgent()"><button type="button" onclick="togglePwd('add-agent-pwd')" tabindex="-1" style="position:absolute;right:.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#bfb0a0;padding:0;line-height:1;display:flex;align-items:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
     <div id="add-agent-err" style="color:#c0392b;font-size:.78rem;min-height:1.1rem;margin-bottom:.5rem;"></div>
     <div id="add-agent-ok" style="display:none;color:#2d7a2d;font-size:.82rem;background:#e8f8e8;border-radius:8px;padding:.6rem .9rem;margin-bottom:.8rem;"></div>
     <button id="add-agent-btn" onclick="submitAddAgent()" style="width:100%;padding:.85rem;background:var(--tc);color:white;border:none;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:600;cursor:pointer;">Créer l'agent</button>
