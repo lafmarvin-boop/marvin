@@ -140,12 +140,12 @@ exports.handler = async (event) => {
 
       // Sessions en attente (file)
       const waitingSessions = await sbGet(
-        `chat_sessions?status=eq.waiting&select=id,pre_name,pre_topic,created_at&order=created_at.asc&limit=10`
+        `chat_sessions?status=eq.waiting&select=id,pre_name,pre_topic,created_at,loyalty_discount&order=created_at.asc&limit=10`
       );
 
       // Toutes les sessions actives de cet agent
       const activeSessions = await sbGet(
-        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip&order=assigned_at.asc&limit=3`
+        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip,loyalty_discount&order=assigned_at.asc&limit=3`
       );
 
       // Pour chaque session active, récupérer les messages depuis sinceIso

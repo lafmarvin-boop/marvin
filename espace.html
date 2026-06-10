@@ -2138,8 +2138,9 @@ async function pollAgentChat() {
         const name  = escHtml(s.pre_name || 'Anonyme');
         const hm    = new Date(s.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         const topic = s.pre_topic ? ` — <em style="color:var(--light)">${escHtml(s.pre_topic.substring(0,50))}</em>` : '';
+        const loyTag = s.loyalty_discount > 0 ? ` <span style="background:#fef9c3;border:1px solid #fde047;border-radius:4px;padding:0 4px;font-size:.65rem;font-weight:700;color:#854d0e;">🎁 -${s.loyalty_discount}%</span>` : '';
         return `<div style="background:var(--warm);border-radius:8px;padding:.35rem .65rem;font-size:.77rem;display:flex;align-items:center;gap:.4rem;">
-          <span style="color:#f59e0b">●</span> <strong>${name}</strong>${topic}
+          <span style="color:#f59e0b">●</span> <strong>${name}</strong>${loyTag}${topic}
           <span style="color:var(--light);font-size:.68rem;margin-left:auto">${hm}</span>
           ${canAccept ? `<button onclick="agentAcceptFromQueue('${escHtml(s.id)}')" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.15rem .55rem;font-size:.68rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;flex-shrink:0;">Accepter</button>` : ''}
         </div>`;
@@ -2163,6 +2164,7 @@ async function pollAgentChat() {
           assignedAt: s.assigned_at, timerStartedAt: null, agentSessionEndAt: null,
           extensionPending: s.extension_pending || null,
           visitorIp: s.visitor_ip || null,
+          loyaltyDiscount: s.loyalty_discount || 0,
           messages: [], renderedIds: new Set(), unread: 0
         });
       } else {
@@ -2383,7 +2385,10 @@ function renderAgentFloatMessages() {
         `<button onclick="respondExtension('${escHtml(sess.id)}',false)" style="background:#f59e0b;color:white;border:none;border-radius:4px;padding:1px 7px;font-size:.68rem;font-family:'DM Sans',sans-serif;font-weight:700;cursor:pointer;line-height:1.4;">↗ Passer</button>` +
         `</span>`
       : '';
-    infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong>${ipBtn}${extBtns} · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
+    const loyBadge = sess.loyaltyDiscount > 0
+      ? ` <span style="background:#fef9c3;border:1px solid #fde047;border-radius:4px;padding:1px 6px;font-size:.68rem;font-weight:700;color:#854d0e;vertical-align:middle;">🎁 -${sess.loyaltyDiscount}%</span>`
+      : '';
+    infoEl.innerHTML = `<strong>${escHtml(sess.name)}</strong>${ipBtn}${loyBadge}${extBtns} · ${escHtml(sess.label)}${sess.topic ? ` — <em>"${escHtml(sess.topic.substring(0,60))}"</em>` : ''}`;
   }
   // Hide legacy bar — buttons are now inline
   const bar = document.getElementById('afloat-ext-bar');

@@ -3146,7 +3146,8 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
   const pcpRatingEl=document.getElementById('pcp-rating');if(pcpRatingEl)pcpRatingEl.style.display='none';
   const visitorId=localStorage.getItem('parlons_visitor_id')||'';
   try{
-    const r=await fetch('/.netlify/functions/chat-start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId,name,sessionType,sessionLabel,durationSec,paymentId:paymentId||null})});
+    const loyalty=getLoyaltyInfo();
+    const r=await fetch('/.netlify/functions/chat-start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId,name,sessionType,sessionLabel,durationSec,paymentId:paymentId||null,loyaltyDiscount:loyalty.discount||0})});
     const d=await r.json();
     if(!d.sessionId)return;
     chatSessionId=d.sessionId;
