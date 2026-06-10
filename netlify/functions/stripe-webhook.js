@@ -172,7 +172,7 @@ async function patchSubscriberByEmail(email, patch) {
 
 async function patchSession(stripePaymentId, patch) {
   const res = await fetch(
-    `${process.env.SUPABASE_URL}/rest/v1/sessions?stripe_payment_id=eq.${stripePaymentId}`,
+    `${process.env.SUPABASE_URL}/rest/v1/sessions?stripe_payment_id=eq.${encodeURIComponent(stripePaymentId)}`,
     {
       method: 'PATCH',
       headers: {

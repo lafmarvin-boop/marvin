@@ -42,7 +42,7 @@ exports.handler = async (event) => {
       if (delaiOk && SB_URL && SB_KEY) {
         // Ne pas rembourser si un agent a déjà été assigné (il a donc répondu)
         const checkRes = await fetch(
-          `${SB_URL}/rest/v1/sessions?stripe_payment_id=eq.${encodeURIComponent(paymentId)}&agent_name=not.is.null&select=id&limit=1`,
+          `${SB_URL}/rest/v1/sessions?stripe_payment_id=eq.${encodeURIComponent(paymentId)}&agent_email=not.is.null&select=id&limit=1`,
           { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
         );
         const assigned = await checkRes.json();

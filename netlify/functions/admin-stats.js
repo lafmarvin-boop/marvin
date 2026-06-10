@@ -116,7 +116,7 @@ exports.handler = async (event) => {
       sbGet('suggestions?select=*&order=created_at.desc&limit=100'),
       sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors,total_chats'),
       sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,visited_at&order=visited_at.desc&limit=50000`),
-      sbGet(`chats?started_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=started_at&order=started_at.desc&limit=10000`),
+      sbGet(`chats?created_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=created_at&order=created_at.desc&limit=10000`),
       sbGet('visits?select=ip_address,country,city,region,visited_at,visitor_id,is_new&order=visited_at.desc&limit=200'),
       sbGet('agent_presence?select=agent_email,status,last_seen&limit=100')
     ]);
@@ -138,7 +138,7 @@ exports.handler = async (event) => {
       return { visits: f.length, unique: new Set(f.map(v => v.visitor_id)).size };
     }
     function periodChats(rows, from) {
-      return rows.filter(v => new Date(v.started_at) >= from).length;
+      return rows.filter(v => new Date(v.created_at) >= from).length;
     }
     const traffic = {
       today:   { ...periodVisits(visitsRows, startOfDay),  chats: periodChats(chatsRows, startOfDay) },

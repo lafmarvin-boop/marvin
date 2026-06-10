@@ -187,13 +187,14 @@ CREATE POLICY "no_public_read" ON agent_requests FOR ALL TO anon USING (false);
 
 -- Chat de groupe — accès membres
 CREATE TABLE IF NOT EXISTS group_access (
-  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
-  room_id     TEXT        NOT NULL,
-  pseudo      TEXT        NOT NULL,
-  is_agent    BOOLEAN     DEFAULT FALSE,
-  free_until  TIMESTAMPTZ,
-  paid_until  TIMESTAMPTZ,
-  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  id                 UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  room_id            TEXT        NOT NULL,
+  pseudo             TEXT        NOT NULL,
+  is_agent           BOOLEAN     DEFAULT FALSE,
+  free_until         TIMESTAMPTZ,
+  paid_until         TIMESTAMPTZ,
+  payment_intent_id  TEXT,
+  created_at         TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(room_id, pseudo)
 );
 CREATE INDEX IF NOT EXISTS idx_group_access_room ON group_access (room_id);
@@ -273,6 +274,15 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS transfer_session_id TEXT;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS response_deadline TIMESTAMPTZ;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS pre_topic TEXT;
+
+-- Colonnes sessions (fidélité, attribution agent, signalement lent)
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS agent_name TEXT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS agent_email TEXT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS visitor_id TEXT;
+
+-- Colonne group_access (traçabilité paiement groupe)
+ALTER TABLE group_access ADD COLUMN IF NOT EXISTS payment_intent_id TEXT;
 
 -- ============================================
 -- Push Subscriptions (notifications PWA agent)
