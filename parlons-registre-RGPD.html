@@ -28,7 +28,7 @@
 <body>
 <div class="container">
   <div class="logo">Par<span>lons</span></div>
-  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.1 · Juin 2026 · Document interne confidentiel</div>
+  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.2 · Juin 2026 · Document interne confidentiel</div>
 
   <h1>Registre des Activités de Traitement</h1>
   <p>Conformément à l'article 30 du Règlement Général sur la Protection des Données (RGPD — UE 2016/679), tout responsable de traitement doit tenir un registre documentant l'ensemble des traitements de données personnelles réalisés. Ce document constitue ce registre pour la micro-entreprise Parlons.</p>
@@ -105,7 +105,20 @@
     <tr><td><strong>Mesures sécurité</strong></td><td>Identifiant non déchiffrable, pas de cookies, pas de fingerprinting, pas de croisement inter-site</td></tr>
   </table>
 
-  <h2>Traitement n°6 — Candidatures écoutants</h2>
+  <h2>Traitement n°6 — Notifications push visiteurs</h2>
+  <table>
+    <tr><th>Élément</th><th>Détail</th></tr>
+    <tr><td><strong>Finalité</strong></td><td>Envoyer une notification push sur l'appareil du visiteur dès qu'un écoutant est disponible, uniquement si le visiteur a fait une demande explicite</td></tr>
+    <tr><td><strong>Base légale</strong></td><td>Consentement explicite (Art. 6.1.a RGPD) — la permission push est demandée au moment de la souscription</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Clé de souscription push (endpoint, clé publique, auth) générée par le navigateur — non liée à l'identité de la personne · Adresse email associée à la demande d'agent</td></tr>
+    <tr><td><strong>Personnes concernées</strong></td><td>Visiteurs ayant cliqué "Demander un agent" sur l'application mobile et accordé la permission de notifications</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme · Service de push Web Push API (navigateur) · Supabase (stockage de la souscription)</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>Supprimée après envoi de la notification (marquage notified_at), au plus 30 jours</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Supabase (USA) — clauses contractuelles types UE · Service push navigateur (Google FCM / Apple APNs selon appareil)</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Souscription chiffrée (VAPID), accès restreint par clé de service, suppression automatique après notification</td></tr>
+  </table>
+
+  <h2>Traitement n°7 — Candidatures écoutants</h2>
   <table>
     <tr><th>Élément</th><th>Détail</th></tr>
     <tr><td><strong>Finalité</strong></td><td>Traitement des candidatures pour devenir écoutant</td></tr>
@@ -118,7 +131,7 @@
     <tr><td><strong>Mesures sécurité</strong></td><td>Accès restreint à l'administrateur, stockage local sécurisé</td></tr>
   </table>
 
-  <h2>Traitement n°7 — Gestion des agents (écoutants)</h2>
+  <h2>Traitement n°8 — Gestion des agents (écoutants)</h2>
   <table>
     <tr><th>Élément</th><th>Détail</th></tr>
     <tr><td><strong>Finalité</strong></td><td>Gestion de la relation contractuelle avec les écoutants indépendants</td></tr>
@@ -156,10 +169,11 @@
     <tr><td>Avril 2026</td><td>1.0</td><td>Création du registre</td></tr>
     <tr><td>Mai 2026</td><td>2.0</td><td>Ajout traitements n°4 (journal IP/géoloc) et n°5 (visitorId localStorage) · Remplacement Tawk.to par Crisp · Ajout Supabase, ipwho.is, Resend dans sous-traitants · Correction références</td></tr>
     <tr><td>Juin 2026</td><td>2.1</td><td>Mise à jour traitement n°3 (alertes disponibilité) : précision des destinataires (Resend, agents), correction des transferts hors UE (Supabase + Resend USA), durée de conservation clarifiée à 30 jours après notification</td></tr>
+    <tr><td>Juin 2026</td><td>2.2</td><td>Ajout traitement n°6 (notifications push visiteurs) — souscription push liée aux demandes d'agent via app-visiteur.html · Renumérotation des traitements 6→7 (candidatures) et 7→8 (gestion agents)</td></tr>
   </table>
 
   <div class="footer">
-    Parlons · Registre RGPD v2.1 · Juin 2026 · Document interne confidentiel<br>
+    Parlons · Registre RGPD v2.2 · Juin 2026 · Document interne confidentiel<br>
     Ce registre doit être mis à jour à chaque nouveau traitement de données ou modification significative.
   </div>
 </div>
