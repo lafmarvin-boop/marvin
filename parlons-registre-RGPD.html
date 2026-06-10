@@ -28,7 +28,7 @@
 <body>
 <div class="container">
   <div class="logo">Par<span>lons</span></div>
-  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.5 · Juin 2026 · Document interne confidentiel</div>
+  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.6 · Juin 2026 · Document interne confidentiel</div>
 
   <h1>Registre des Activités de Traitement</h1>
   <p>Conformément à l'article 30 du Règlement Général sur la Protection des Données (RGPD — UE 2016/679), tout responsable de traitement doit tenir un registre documentant l'ensemble des traitements de données personnelles réalisés. Ce document constitue ce registre pour la micro-entreprise Parlons.</p>
@@ -45,10 +45,10 @@
     <tr><th>Élément</th><th>Détail</th></tr>
     <tr><td><strong>Finalité</strong></td><td>Mise en relation entre utilisateurs et écoutants pour des sessions d'écoute en ligne</td></tr>
     <tr><td><strong>Base légale</strong></td><td>Exécution d'un contrat (Art. 6.1.b RGPD)</td></tr>
-    <tr><td><strong>Données collectées</strong></td><td>Pseudonyme, horodatage de session, durée, formule choisie</td></tr>
-    <tr><td><strong>Personnes concernées</strong></td><td>Utilisateurs de la plateforme (clients)</td></tr>
-    <tr><td><strong>Destinataires</strong></td><td>Écoutants (pseudonyme uniquement), administrateur de la plateforme</td></tr>
-    <tr><td><strong>Durée conservation</strong></td><td>48h pour l'historique de chat, 5 ans pour les données comptables</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Pseudonyme, horodatage de session, durée, formule choisie, messages échangés (contenu textuel du chat entre le client et l'écoutant)</td></tr>
+    <tr><td><strong>Personnes concernées</strong></td><td>Utilisateurs de la plateforme (clients) et écoutants</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Écoutant assigné (pseudonyme uniquement), administrateur de la plateforme</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>Messages et historique de chat : <strong>48h</strong> puis suppression automatique · Données comptables (formule, montant, référence) : <strong>5 ans</strong> (obligation légale)</td></tr>
     <tr><td><strong>Transferts hors UE</strong></td><td>Supabase (USA) — clauses contractuelles types UE</td></tr>
     <tr><td><strong>Mesures sécurité</strong></td><td>Chiffrement HTTPS, accès restreint, pseudonymisation des utilisateurs</td></tr>
   </table>
@@ -144,6 +144,19 @@
     <tr><td><strong>Mesures sécurité</strong></td><td>Accès restreint par clé de service, IBAN chiffré au repos, mot de passe stocké uniquement sous forme hashée (PBKDF2-SHA512, sel aléatoire), accès limité à l'administrateur</td></tr>
   </table>
 
+  <h2>Traitement n°9 — Gestion des abonnés (pass mensuel)</h2>
+  <table>
+    <tr><th>Élément</th><th>Détail</th></tr>
+    <tr><td><strong>Finalité</strong></td><td>Gestion des abonnements mensuels et authentification des abonnés à leur espace personnel</td></tr>
+    <tr><td><strong>Base légale</strong></td><td>Exécution d'un contrat (Art. 6.1.b RGPD)</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Adresse email, pseudo, identifiants Stripe (customer_id, subscription_id), statut de l'abonnement, date d'expiration, mot de passe hashé (PBKDF2-SHA512, sel aléatoire)</td></tr>
+    <tr><td><strong>Personnes concernées</strong></td><td>Abonnés au pass mensuel Parlons</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme · Stripe (gestion renouvellement et résiliation)</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>Durée de l'abonnement + 5 ans pour les données comptables (obligation légale) · Mot de passe hashé : supprimé à la résiliation</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Stripe Inc. (USA) — Data Privacy Framework UE-USA + Clauses contractuelles types UE · Supabase (USA) — Clauses contractuelles types UE</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Mot de passe stocké uniquement sous forme hashée, accès restreint par clé de service, chiffrement HTTPS</td></tr>
+  </table>
+
   <h2>Droits des personnes concernées</h2>
   <p>Toute personne dont les données sont traitées peut exercer ses droits (accès, rectification, suppression, limitation, portabilité, opposition) en contactant :</p>
   <p><strong>contact.parlons.ecoute@gmail.com</strong> — Réponse sous 30 jours maximum.</p>
@@ -173,10 +186,11 @@
     <tr><td>Juin 2026</td><td>2.3</td><td>Suppression de Crisp (service non utilisé) — retrait du tableau des sous-traitants et correction traitement n°1</td></tr>
     <tr><td>Juin 2026</td><td>2.4</td><td>Correction sous-traitant géolocalisation : ipwho.is → ip-api.com (service effectivement utilisé dans le code)</td></tr>
     <tr><td>Juin 2026</td><td>2.5</td><td>Traitement n°2 : remplacement Privacy Shield (invalidé CJUE 2020) par Data Privacy Framework UE-USA · Traitement n°8 : ajout données manquantes (IBAN/RIB, mot de passe hashé, adresse) + transfert Supabase + mesures sécurité détaillées · Sous-traitants : Netlify CCT précisées, ip-api.com décision d'adéquation UK mentionnée</td></tr>
+    <tr><td>Juin 2026</td><td>2.6</td><td>Traitement n°1 : précision contenu historique chat (messages textuels, 48h) · Ajout traitement n°9 (abonnés pass mensuel : email, pseudo, Stripe IDs, mot de passe hashé) · Numérotation mise à jour</td></tr>
   </table>
 
   <div class="footer">
-    Parlons · Registre RGPD v2.5 · Juin 2026 · Document interne confidentiel<br>
+    Parlons · Registre RGPD v2.6 · Juin 2026 · Document interne confidentiel<br>
     Ce registre doit être mis à jour à chaque nouveau traitement de données ou modification significative.
   </div>
 </div>
