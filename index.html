@@ -1759,13 +1759,16 @@ document.getElementById('modal-demander').addEventListener('click',function(e){i
 // ── STRIPE ──
 try{stripe=Stripe(STRIPE_KEY);const el=stripe.elements();cardElement=el.create('card',{hidePostalCode:true,style:{base:{fontFamily:"'DM Sans',sans-serif",fontSize:'15px',color:'#2C1F14','::placeholder':{color:'#B09070'}}}});}catch(e){console.warn('Stripe:',e.message);}
 
-// ── FIDÉLITÉ (Option A — localStorage) ──
+// ── FIDÉLITÉ (Option A — localStorage, fenêtre glissante 3 mois) ──
 function getLoyaltyInfo() {
-  const count = parseInt(localStorage.getItem('parlons_session_count') || '0');
-  if (count >= 19) return { count, discount: 30, next: 'Statut VIP maximum !' };
+  const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+  let dates;
+  try { dates = JSON.parse(localStorage.getItem('parlons_session_dates') || '[]'); } catch { dates = []; }
+  const count = dates.filter(t => t > threeMonthsAgo).length;
+  if (count >= 19) return { count, discount: 30, next: 'Statut VIP sur 3 mois !' };
   if (count >= 9)  return { count, discount: 20, next: `Encore ${19-count} session${19-count>1?'s':''} pour -30%` };
   if (count >= 4)  return { count, discount: 10, next: `Encore ${9-count} session${9-count>1?'s':''} pour -20%` };
-  return { count, discount: 0, next: count > 0 ? `Encore ${4-count} session${4-count>1?'s':''} pour -10%` : '-10% dès la 5e session' };
+  return { count, discount: 0, next: count > 0 ? `Encore ${4-count} session${4-count>1?'s':''} pour -10%` : '-10% dès la 5e session sur 3 mois' };
 }
 
 function updateLoyaltyBadge() {
@@ -2226,9 +2229,10 @@ async function handlePayment(){
     }
 
     sessionStorage.setItem('parlons_payment_id', paymentIntent.id);
-    // Incrémenter le compteur de fidélité
-    const loyCount = parseInt(localStorage.getItem('parlons_session_count') || '0');
-    localStorage.setItem('parlons_session_count', String(loyCount + 1));
+    // Enregistrer la date de session pour la fidélité (fenêtre 3 mois glissants)
+    let loyDates; try { loyDates = JSON.parse(localStorage.getItem('parlons_session_dates') || '[]'); } catch { loyDates = []; }
+    loyDates.push(Date.now());
+    localStorage.setItem('parlons_session_dates', JSON.stringify(loyDates.filter(t => t > Date.now() - 2 * 365 * 24 * 60 * 60 * 1000)));
     updateLoyaltyBadge();
     // Tracker le tchat démarré
     fetch('/.netlify/functions/track-chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId:localStorage.getItem('parlons_visitor_id'),formule:selectedLabel})}).catch(function(){});
