@@ -28,7 +28,7 @@
 <body>
 <div class="container">
   <div class="logo">Par<span>lons</span></div>
-  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.7 · Juin 2026 · Document interne confidentiel</div>
+  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.8 · Juin 2026 · Document interne confidentiel</div>
 
   <h1>Registre des Activités de Traitement</h1>
   <p>Conformément à l'article 30 du Règlement Général sur la Protection des Données (RGPD — UE 2016/679), tout responsable de traitement doit tenir un registre documentant l'ensemble des traitements de données personnelles réalisés. Ce document constitue ce registre pour la micro-entreprise Parlons.</p>
@@ -168,7 +168,7 @@
   <h2>Sous-traitants</h2>
   <table>
     <tr><th>Sous-traitant</th><th>Pays</th><th>Finalité</th><th>Garanties</th></tr>
-    <tr><td><strong>Stripe</strong></td><td>USA</td><td>Paiements en ligne</td><td>PCI-DSS, Clauses contractuelles types UE</td></tr>
+    <tr><td><strong>Stripe</strong></td><td>USA</td><td>Paiements en ligne</td><td>Data Privacy Framework UE-USA · PCI-DSS · Clauses contractuelles types UE</td></tr>
 
     <tr><td><strong>Netlify</strong></td><td>USA</td><td>Hébergement du site et fonctions serverless</td><td>Clauses contractuelles types UE (DPA signable disponible sur netlify.com/gdpr)</td></tr>
     <tr><td><strong>Supabase</strong></td><td>USA</td><td>Base de données (sessions, abonnés, visites)</td><td>Clauses contractuelles types UE, chiffrement au repos</td></tr>
@@ -188,10 +188,11 @@
     <tr><td>Juin 2026</td><td>2.5</td><td>Traitement n°2 : remplacement Privacy Shield (invalidé CJUE 2020) par Data Privacy Framework UE-USA · Traitement n°8 : ajout données manquantes (IBAN/RIB, mot de passe hashé, adresse) + transfert Supabase + mesures sécurité détaillées · Sous-traitants : Netlify CCT précisées, ip-api.com décision d'adéquation UK mentionnée</td></tr>
     <tr><td>Juin 2026</td><td>2.6</td><td>Traitement n°1 : précision contenu historique chat (messages textuels, 48h) · Ajout traitement n°9 (abonnés pass mensuel : email, pseudo, Stripe IDs, mot de passe hashé) · Numérotation mise à jour</td></tr>
     <tr><td>Juin 2026</td><td>2.7</td><td>Traitement n°2 : correction "anonymisées" → "pseudonymisées" (données Stripe pseudonymes, non anonymes au sens CJUE) · Traitement n°7 (candidatures) : ajout de Resend (USA) dans destinataires et transferts hors UE — l'email de notification transite par Resend ; correction mesures de sécurité (aucun stockage en base, transit email uniquement)</td></tr>
+    <tr><td>Juin 2026</td><td>2.8</td><td>Sous-traitants (table récapitulative) : ajout du Data Privacy Framework UE-USA dans les garanties Stripe, en cohérence avec les traitements n°2 et n°9</td></tr>
   </table>
 
   <div class="footer">
-    Parlons · Registre RGPD v2.7 · Juin 2026 · Document interne confidentiel<br>
+    Parlons · Registre RGPD v2.8 · Juin 2026 · Document interne confidentiel<br>
     Ce registre doit être mis à jour à chaque nouveau traitement de données ou modification significative.
   </div>
 </div>
