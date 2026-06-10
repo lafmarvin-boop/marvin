@@ -65,7 +65,7 @@ exports.handler = async (event) => {
     }
 
     if (SB_URL && SB_KEY) {
-      await saveSignalement({ client, session, rembourse, paymentId });
+      await saveSignalement({ client, session, rembourse, paymentId, elapsedSec });
     }
 
     return {
@@ -93,6 +93,7 @@ async function saveSignalement(data) {
       formule: data.session,
       remboursement_effectue: data.rembourse,
       stripe_payment_id: data.paymentId,
+      delai_attente: data.elapsedSec != null ? Math.floor(data.elapsedSec) : null,
     }),
   });
   if (!res.ok) console.error('Supabase signalement error:', await res.text());
