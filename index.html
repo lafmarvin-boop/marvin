@@ -3014,7 +3014,7 @@ document.fonts && document.fonts.ready.then(stackBanners);
       return `<div class="testi-card">
         <div class="stars">${stars}${halfStar}</div>
         <blockquote>"${esc(r.rating_comment)}"</blockquote>
-        <div class="testi-author"><div class="testi-av" style="background:${color}">${initial}</div><div><strong>${label}</strong><span>${r.formule||'Session Parlons'}</span></div></div>
+        <div class="testi-author"><div class="testi-av" style="background:${color}">${initial}</div><div><strong>${label}</strong><span>${esc(r.formule||'Session Parlons')}</span></div></div>
       </div>`;
     }).join('');
   }).catch(()=>{});
