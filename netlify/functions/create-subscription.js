@@ -123,11 +123,12 @@ exports.handler = async (event) => {
       };
       if (passwordHash) { subData.password_hash = passwordHash; subData.password_salt = passwordSalt; }
 
-      await fetch(`${SB_URL}/rest/v1/subscribers`, {
+      const subRes = await fetch(`${SB_URL}/rest/v1/subscribers`, {
         method: 'POST',
         headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
         body: JSON.stringify(subData),
       });
+      if (!subRes.ok) console.error('create-subscription: Supabase upsert failed', await subRes.text());
     }
 
     // Envoyer l'email de bienvenue avec le mot de passe (une seule fois)

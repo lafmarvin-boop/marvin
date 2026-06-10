@@ -1078,6 +1078,38 @@ function filterIpLogs(period) {
 }
 function fmtDate(s) { return s ? new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'; }
 
+let presRefreshInterval = null;
+async function refreshAgentPresence() {
+  const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
+  if (!saved.email || !saved.password) return;
+  try {
+    const res = await fetch(`${API}/admin-stats`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'presence' })
+    });
+    const data = await res.json();
+    if (!data.ok || !data.presence) return;
+    const colors = { online:'#22c55e', busy:'#f59e0b', offline:'#cbd5e1' };
+    const labels = { online:'En ligne', busy:'Occupé', offline:'Hors ligne' };
+    data.presence.forEach(p => {
+      const email = (p.agent_email || '').toLowerCase();
+      const status = p.status || 'offline';
+      const c = colors[status] || colors.offline;
+      const l = labels[status] || 'Hors ligne';
+      document.querySelectorAll(`[data-pres="${email}"]`).forEach(el => {
+        el.title = l;
+        el.querySelector('span:first-child').style.background = c;
+        el.querySelector('span:last-child').textContent = l;
+      });
+      // Mettre à jour le bouton déconnecter : show si online/busy, hide si offline
+      document.querySelectorAll(`[data-force-email="${email}"]`).forEach(btn => {
+        btn.style.display = (status === 'online' || status === 'busy') ? '' : 'none';
+      });
+    });
+  } catch {}
+}
+
 function renderDashboard(d) {
   window._adminSessions = d.sessions.list || [];
   initPdfMonthSelector();
@@ -1159,38 +1191,6 @@ function renderDashboard(d) {
     const l = labels[status] || 'Hors ligne';
     const attr = email ? ` data-pres="${escHtml(email.toLowerCase())}"` : '';
     return `<span${attr} title="${l}" style="display:inline-flex;align-items:center;gap:.35rem"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};flex-shrink:0"></span><span style="font-size:.72rem;color:var(--mid)">${l}</span></span>`;
-  }
-
-  let presRefreshInterval = null;
-  async function refreshAgentPresence() {
-    const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
-    if (!saved.email || !saved.password) return;
-    try {
-      const res = await fetch(`${API}/admin-stats`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: saved.email, password: saved.password, action: 'presence' })
-      });
-      const data = await res.json();
-      if (!data.ok || !data.presence) return;
-      const colors = { online:'#22c55e', busy:'#f59e0b', offline:'#cbd5e1' };
-      const labels = { online:'En ligne', busy:'Occupé', offline:'Hors ligne' };
-      data.presence.forEach(p => {
-        const email = (p.agent_email || '').toLowerCase();
-        const status = p.status || 'offline';
-        const c = colors[status] || colors.offline;
-        const l = labels[status] || 'Hors ligne';
-        document.querySelectorAll(`[data-pres="${email}"]`).forEach(el => {
-          el.title = l;
-          el.querySelector('span:first-child').style.background = c;
-          el.querySelector('span:last-child').textContent = l;
-        });
-        // Mettre à jour le bouton déconnecter : show si online/busy, hide si offline
-        document.querySelectorAll(`[data-force-email="${email}"]`).forEach(btn => {
-          btn.style.display = (status === 'online' || status === 'busy') ? '' : 'none';
-        });
-      });
-    } catch {}
   }
 
   if (agentList.length === 0) {
