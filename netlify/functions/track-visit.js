@@ -57,6 +57,17 @@ exports.handler = async (event) => {
     // Géolocalisation ville/région (ipwho.is, gratuit, sans clé)
     const geo = await getGeoData(ip);
 
+    // Déduplication : ignorer si le même visitor_id a déjà été enregistré dans les 30 dernières secondes
+    const dedupeWindow = new Date(Date.now() - 30 * 1000).toISOString();
+    const dedupeRes = await fetch(
+      `${SB_URL}/rest/v1/visits?visitor_id=eq.${encodeURIComponent(visitorId)}&visited_at=gte.${encodeURIComponent(dedupeWindow)}&select=id&limit=1`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
+    );
+    const recent = await dedupeRes.json();
+    if (Array.isArray(recent) && recent.length > 0) {
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, deduped: true }) };
+    }
+
     // Vérifier côté serveur si ce visitorId a déjà été vu (plus fiable que isNew client)
     const checkRes = await fetch(
       `${SB_URL}/rest/v1/visits?visitor_id=eq.${encodeURIComponent(visitorId)}&select=id&limit=1`,
