@@ -9,7 +9,7 @@ Projet : service d'écoute anonyme en ligne (Netlify + Supabase + Stripe + Resen
 - `index.html` : paiement unique (Stripe), abonnement mensuel, groupe, notation, suggestions, fidélité Option A (localStorage), responsive mobile
 - `espace.html` : login unifié admin/abonné, dashboard admin (stats, tableau agents, suggestions, abonnés, sessions récentes), dashboard abonné (démarrer session, changer mdp, résilier), responsive mobile
 - `netlify/functions/` : create-payment-intent, create-subscription, stripe-webhook, cancel-subscription, change-password, subscriber-session, submit-suggestion, admin-stats
-- Documents juridiques : contrat prestation v2.5, protocole agents v2.0, charte écoutant v1.0, CGV v1.9, registre RGPD v2.8
+- Documents juridiques : contrat prestation v2.5, protocole agents v2.0, charte écoutant v1.0, CGV v2.0, registre RGPD v2.8
 - PDF contrat + annexes : `parlons-contrat-et-annexes.pdf`
 - Configuration Netlify env vars : ✅ fait
 - Resend : ✅ fait
@@ -52,15 +52,22 @@ ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS notify_email TEXT;
 ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS notify_requests BOOLEAN DEFAULT FALSE;
 
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS response_deadline TIMESTAMPTZ;
+
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS rating_comment TEXT;
+
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS loyalty_discount SMALLINT DEFAULT 0;
 ```
 
 ---
 
-## 🚧 Code à compléter (prochaines sessions)
+## ✅ Fonctionnalités complètes
 
-1. **Afficher le discount fidélité dans l'app agent** — quand un agent prend un chat, lui montrer si le client est en tarif réduit fidélité.
+- Discount fidélité affiché dans l'app agent (badge 🎁 dans panneau flottant + file d'attente)
+- Programme fidélité Option A : fenêtre glissante 3 mois (localStorage `parlons_session_dates`)
 
-2. **Fidélité Option B (futur)** — tracking par email (cross-device). Mis en attente.
+## 🚧 En attente
+
+1. **Fidélité Option B (futur)** — tracking par email (cross-device). Mis en attente.
 
 ---
 

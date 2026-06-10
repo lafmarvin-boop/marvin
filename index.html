@@ -1765,7 +1765,7 @@ function getLoyaltyInfo() {
   const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
   let dates;
   try { dates = JSON.parse(localStorage.getItem('parlons_session_dates') || '[]'); } catch { dates = []; }
-  const count = dates.filter(t => t > threeMonthsAgo).length;
+  const count = dates.filter(t => typeof t === 'number' && t > threeMonthsAgo).length;
   if (count >= 19) return { count, discount: 30, next: 'Statut VIP sur 3 mois !' };
   if (count >= 9)  return { count, discount: 20, next: `Encore ${19-count} session${19-count>1?'s':''} pour -30%` };
   if (count >= 4)  return { count, discount: 10, next: `Encore ${9-count} session${9-count>1?'s':''} pour -20%` };
@@ -3154,7 +3154,7 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
     const loyalty=getLoyaltyInfo();
     const r=await fetch('/.netlify/functions/chat-start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({visitorId,name,sessionType,sessionLabel,durationSec,paymentId:paymentId||null,loyaltyDiscount:loyalty.discount||0})});
     const d=await r.json();
-    if(!d.sessionId)return;
+    if(!d.sessionId){const sub=document.getElementById('pcp-subtitle');if(sub)sub.textContent='Erreur de connexion. Veuillez réessayer.';return;}
     chatSessionId=d.sessionId;
     sessionStorage.setItem('parlons_chat_session_id',chatSessionId);
     localStorage.setItem('parlons_chat_session_id',chatSessionId);
@@ -3163,7 +3163,7 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
     setChatState(d.agentAssigned?'active':'waiting');
     if(d.agentAssigned)agentConnected(null,null);
     startChatPolling();
-  }catch(e){console.error('startChatSession:',e);}
+  }catch(e){console.error('startChatSession:',e);const sub=document.getElementById('pcp-subtitle');if(sub)sub.textContent='Erreur de connexion. Veuillez réessayer.';}
 }
 async function extendChatSession(newDurationSec,paymentId,label,_retry){
   try{
@@ -3264,7 +3264,7 @@ async function sendChatMessage(){
   ta.value='';ta.style.height='auto';
   try{
     await fetch('/.netlify/functions/chat-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,content,senderType:'visitor'})});
-  }catch(e){}
+  }catch(e){if(ta)ta.value=content;}
 }
 function openAgentRequestForm(){
   const name=document.getElementById('user-name')?document.getElementById('user-name').value.trim():'Visiteur';

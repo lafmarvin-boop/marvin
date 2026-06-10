@@ -282,6 +282,10 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS agent_name TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS agent_email TEXT;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS visitor_id TEXT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS rating_comment TEXT;
+
+-- Programme fidélité (fenêtre glissante 3 mois)
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS loyalty_discount SMALLINT DEFAULT 0;
 
 -- Colonne group_access (traçabilité paiement groupe)
 ALTER TABLE group_access ADD COLUMN IF NOT EXISTS payment_intent_id TEXT;
