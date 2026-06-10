@@ -2,7 +2,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const crypto = require('crypto');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const SITE_URL = process.env.SITE_URL || 'https://parlons.fr';
+const SITE_URL = process.env.SITE_URL || 'https://parlonsecoute.fr';
 
 const CORS = {
   'Content-Type': 'application/json',

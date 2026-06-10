@@ -54,7 +54,7 @@ exports.handler = async (event) => {
   if (ip && DC_RE.test(ip) && isNew) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
 
   try {
-    // Géolocalisation ville/région (ipwho.is, gratuit, sans clé)
+    // Géolocalisation ville/région via ip-api.com
     const geo = await getGeoData(ip);
 
     // Déduplication : ignorer si le même visitor_id a déjà été enregistré dans les 30 dernières secondes
