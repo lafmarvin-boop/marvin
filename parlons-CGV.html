@@ -70,7 +70,7 @@
   <p>Parlons est une <strong>plateforme d'intermédiation</strong> mettant en relation des Clients avec des écoutants prestataires indépendants. Parlons agit en qualité de <strong>mandataire d'encaissement</strong> : elle collecte les règlements des Clients au nom et pour le compte des Écoutants prestataires, et retient une commission pour le service d'intermédiation rendu. Le contrat de service est conclu directement entre le Client et l'Écoutant prestataire indépendant. Parlons ne saurait être considérée comme le prestataire final des sessions d'écoute.</p>
   <p>Parlons propose un <strong>service d'écoute, de soutien conversationnel et de conseil bienveillant</strong>. Il ne constitue en aucun cas un service médical, psychiatrique, psychologique ou juridique, ni un service d'urgence.</p>
   <div class="highlight-box">
-    <strong>⚠️ En cas d'urgence ou de détresse grave</strong> : contactez immédiatement le <strong>15 (SAMU)</strong>, le <strong>3114 (prévention du suicide)</strong> ou le <strong>112 (urgences européennes)</strong>. Ces services sont gratuits et disponibles 24h/24.
+    <strong>⚠️ En cas d'urgence ou de détresse grave</strong> : contactez le <strong>15 (SAMU)</strong>, le <strong>3114 (prévention du suicide)</strong>, le <strong>112 (urgences européennes)</strong>, le <strong>3919 (Violences Femmes Info)</strong>, le <strong>3977 (Allô Maltraitance)</strong> ou le <strong>119 (Allô Enfance en Danger)</strong>. Ces services sont gratuits et disponibles 24h/24.
   </div>
 
   <h2><span class="article-num">Art. 1bis</span> Rôle d'intermédiaire et mandat</h2>
@@ -119,9 +119,9 @@
   <h2><span class="article-num">Art. 6</span> Remboursement et procédure de signalement</h2>
   <h3>6.1 Remboursement pour agent lent</h3>
   <div class="refund-box">
-    <strong>✅ Garantie remboursement :</strong> Si, après attribution de la conversation à un écoutant, celui-ci ne répond pas dans les <strong>2 minutes</strong>, un bouton de signalement apparaît automatiquement dans l'interface du Client. Ce signalement notifie l'administrateur en temps réel, qui vérifie le délai et procède au remboursement intégral si le retard est avéré.
+    <strong>✅ Garantie remboursement :</strong> Si aucun écoutant n'est attribué à la conversation dans les <strong>2 minutes suivant le paiement</strong>, un bouton de signalement apparaît automatiquement dans l'interface du Client. En cliquant sur ce bouton, le remboursement intégral est déclenché <strong>automatiquement</strong> par le système de paiement Stripe, sans intervention manuelle.
   </div>
-  <p>Le remboursement est traité <strong>manuellement par l'administrateur</strong> après vérification, et crédité sous 5 à 10 jours ouvrés sur le moyen de paiement utilisé.</p>
+  <p>Le remboursement est traité <strong>automatiquement par le système</strong> et crédité sous 5 à 10 jours ouvrés sur le moyen de paiement utilisé, selon les délais bancaires habituels. L'attribution peut intervenir automatiquement (si un écoutant est disponible au moment du paiement) ou manuellement (si un écoutant prend la session ultérieurement). La durée de 2 minutes est calculée à compter de la création du paiement.</p>
 
   <h3>6.2 Autres remboursements</h3>
   <p>En cas d'anomalie technique ayant provoqué un débit indu, le Client est remboursé intégralement sur simple demande.</p>
@@ -132,6 +132,7 @@
     <li>Sessions interrompues du fait du Client (fermeture de navigateur, déconnexion volontaire)</li>
     <li>Sessions interrompues pour non-respect des CGV par le Client (voir Art. 7)</li>
     <li>Sessions interrompues en raison d'une situation de détresse extrême (voir Art. 8)</li>
+    <li>Sessions interrompues à l'initiative de l'écoutant pour des motifs de sécurité psychologique ou de bien-être professionnel, sous réserve de signalement immédiat à l'administrateur</li>
     <li>Demandes formulées plus de 48h après la session sans signalement préalable</li>
   </ul>
 
@@ -179,7 +180,7 @@
 
   <h2><span class="article-num">Art. 9</span> Confidentialité et anonymat</h2>
   <p>Les conversations sont chiffrées. Aucun contenu n'est vendu ou transmis à des tiers, sauf obligation légale. Les écoutants sont soumis à une obligation de discrétion totale. L'utilisation d'un pseudonyme est possible et encouragée.</p>
-  <p><strong>Limite de confidentialité :</strong> en cas de risque imminent pour la vie du Client ou d'un tiers (idées suicidaires actives, menace grave), l'écoutant peut être amené à orienter vers les services d'urgence (3114, 15, 112). Cette obligation prime sur la confidentialité.</p>
+  <p><strong>Limite de confidentialité :</strong> en cas de risque imminent pour la vie du Client ou d'un tiers (idées suicidaires actives, menace grave), l'écoutant <strong>doit orienter</strong> vers les services d'urgence (3114, 15, 112). Cette obligation prime sur la confidentialité.</p>
 
   <h2><span class="article-num">Art. 10</span> Limitation de responsabilité</h2>
   <p>Parlons ne saurait être tenu responsable des conseils donnés lors des sessions, des interruptions techniques extérieures, de l'utilisation par un mineur, ni des situations où les urgences auraient dû être contactées.</p>
@@ -211,7 +212,7 @@
   <h2 id="art13"><span class="article-num">Art. 13</span> Données personnelles</h2>
   <p>Conformément au RGPD (UE 2016/679), les données suivantes sont collectées et traitées :</p>
   <ul style="margin:.5rem 0 .7rem 1.3rem;color:#4A3828;font-weight:300;font-size:.88rem;line-height:1.8;">
-    <li><strong>Session d'écoute :</strong> pseudonyme, horodatage, formule, référence de paiement Stripe anonymisée — messages du tchat conservés <strong>48 heures</strong> — données comptables (formule, montant, référence) conservées <strong>5 ans</strong> — base légale : exécution du contrat (Art. 6.1.b) + Obligation légale comptable (Art. 6.1.c).</li>
+    <li><strong>Session d'écoute :</strong> pseudonyme, horodatage, formule, référence de paiement Stripe pseudonymisée — messages du tchat conservés <strong>48 heures</strong> — données comptables (formule, montant, référence) conservées <strong>5 ans</strong> — base légale : exécution du contrat (Art. 6.1.b) + Obligation légale comptable (Art. 6.1.c).</li>
     <li><strong>Abonnement :</strong> adresse email, statut, date d'expiration — base légale : exécution du contrat (Art. 6.1.b).</li>
     <li><strong>Journal de connexion :</strong> adresse IP, pays, ville et région (géolocalisation approximative), horodatage — conservés <strong>30 jours maximum</strong>, puis suppression automatique — base légale : intérêt légitime (Art. 6.1.f) — sécurité de la plateforme et protection des utilisateurs vulnérables.</li>
     <li><strong>Identifiant de visite anonyme :</strong> identifiant aléatoire stocké dans le localStorage du navigateur, non lié à l'identité — base légale : intérêt légitime (Art. 6.1.f) — mesure d'audience interne, exemptée de consentement cookie (délibération CNIL 2020-091).</li>
@@ -224,7 +225,7 @@
     <li><strong>Supabase</strong> — base de données (AWS eu-west-1, Irlande)</li>
     <li><strong>Netlify</strong> — hébergement et fonctions (AWS us-east-1 — clauses contractuelles)</li>
     <li><strong>Resend</strong> — envoi d'emails transactionnels (États-Unis — clauses contractuelles)</li>
-<li><strong>ip-api.com</strong> — géolocalisation IP approximative (anonymisation à 30 jours)</li>
+    <li><strong>ip-api.com</strong> — géolocalisation IP approximative (Royaume-Uni — décision d'adéquation UE-UK · données supprimées automatiquement après 30 jours, aucun stockage côté tiers)</li>
   </ul>
   <p>Aucune donnée n'est revendue ni transmise à des tiers à des fins commerciales. Le Client dispose d'un droit d'accès, de rectification, de suppression et d'opposition, exercice par email à <strong>contact.parlons.ecoute@gmail.com</strong>. Réponse sous 30 jours. Recours possible auprès de la <strong>CNIL</strong> (cnil.fr).</p>
 

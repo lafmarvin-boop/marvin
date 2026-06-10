@@ -28,7 +28,7 @@
 <body>
 <div class="container">
   <div class="logo">Par<span>lons</span></div>
-  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.6 · Juin 2026 · Document interne confidentiel</div>
+  <div class="meta">Registre des Activités de Traitement · RGPD Art. 30 · Version 2.8 · Juin 2026 · Document interne confidentiel</div>
 
   <h1>Registre des Activités de Traitement</h1>
   <p>Conformément à l'article 30 du Règlement Général sur la Protection des Données (RGPD — UE 2016/679), tout responsable de traitement doit tenir un registre documentant l'ensemble des traitements de données personnelles réalisés. Ce document constitue ce registre pour la micro-entreprise Parlons.</p>
@@ -58,7 +58,7 @@
     <tr><th>Élément</th><th>Détail</th></tr>
     <tr><td><strong>Finalité</strong></td><td>Traitement des paiements en ligne pour les sessions et abonnements</td></tr>
     <tr><td><strong>Base légale</strong></td><td>Exécution d'un contrat (Art. 6.1.b) + Obligation légale comptable (Art. 6.1.c)</td></tr>
-    <tr><td><strong>Données collectées</strong></td><td>Données de paiement anonymisées (traitées par Stripe), montant, date, référence transaction</td></tr>
+    <tr><td><strong>Données collectées</strong></td><td>Données de paiement pseudonymisées (traitées par Stripe), montant, date, référence transaction</td></tr>
     <tr><td><strong>Personnes concernées</strong></td><td>Clients ayant effectué un paiement</td></tr>
     <tr><td><strong>Destinataires</strong></td><td>Stripe (sous-traitant) — aucune donnée bancaire stockée par Parlons</td></tr>
     <tr><td><strong>Durée conservation</strong></td><td>5 ans (obligation légale comptable)</td></tr>
@@ -125,10 +125,10 @@
     <tr><td><strong>Base légale</strong></td><td>Consentement (Art. 6.1.a) + Mesures précontractuelles à la demande de la personne concernée (Art. 6.1.b RGPD)</td></tr>
     <tr><td><strong>Données collectées</strong></td><td>Nom, prénom, email, pseudo, disponibilités, motivation, expérience</td></tr>
     <tr><td><strong>Personnes concernées</strong></td><td>Candidats au poste d'écoutant</td></tr>
-    <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme uniquement</td></tr>
-    <tr><td><strong>Durée conservation</strong></td><td>2 ans après la candidature, ou jusqu'à demande de suppression</td></tr>
-    <tr><td><strong>Transferts hors UE</strong></td><td>Aucun</td></tr>
-    <tr><td><strong>Mesures sécurité</strong></td><td>Accès restreint à l'administrateur, stockage local sécurisé</td></tr>
+    <tr><td><strong>Destinataires</strong></td><td>Administrateur de la plateforme · Resend (USA, acheminement de l'email de notification)</td></tr>
+    <tr><td><strong>Durée conservation</strong></td><td>2 ans après la candidature dans la boîte email de l'administrateur, ou jusqu'à demande de suppression</td></tr>
+    <tr><td><strong>Transferts hors UE</strong></td><td>Resend (USA) — envoi email de notification à l'administrateur, clauses contractuelles types UE</td></tr>
+    <tr><td><strong>Mesures sécurité</strong></td><td>Transit chiffré HTTPS · Aucun stockage en base de données · Email accessible uniquement à l'administrateur</td></tr>
   </table>
 
   <h2>Traitement n°8 — Gestion des agents (écoutants)</h2>
@@ -168,7 +168,7 @@
   <h2>Sous-traitants</h2>
   <table>
     <tr><th>Sous-traitant</th><th>Pays</th><th>Finalité</th><th>Garanties</th></tr>
-    <tr><td><strong>Stripe</strong></td><td>USA</td><td>Paiements en ligne</td><td>PCI-DSS, Clauses contractuelles types UE</td></tr>
+    <tr><td><strong>Stripe</strong></td><td>USA</td><td>Paiements en ligne</td><td>Data Privacy Framework UE-USA · PCI-DSS · Clauses contractuelles types UE</td></tr>
 
     <tr><td><strong>Netlify</strong></td><td>USA</td><td>Hébergement du site et fonctions serverless</td><td>Clauses contractuelles types UE (DPA signable disponible sur netlify.com/gdpr)</td></tr>
     <tr><td><strong>Supabase</strong></td><td>USA</td><td>Base de données (sessions, abonnés, visites)</td><td>Clauses contractuelles types UE, chiffrement au repos</td></tr>
@@ -187,10 +187,12 @@
     <tr><td>Juin 2026</td><td>2.4</td><td>Correction sous-traitant géolocalisation : ipwho.is → ip-api.com (service effectivement utilisé dans le code)</td></tr>
     <tr><td>Juin 2026</td><td>2.5</td><td>Traitement n°2 : remplacement Privacy Shield (invalidé CJUE 2020) par Data Privacy Framework UE-USA · Traitement n°8 : ajout données manquantes (IBAN/RIB, mot de passe hashé, adresse) + transfert Supabase + mesures sécurité détaillées · Sous-traitants : Netlify CCT précisées, ip-api.com décision d'adéquation UK mentionnée</td></tr>
     <tr><td>Juin 2026</td><td>2.6</td><td>Traitement n°1 : précision contenu historique chat (messages textuels, 48h) · Ajout traitement n°9 (abonnés pass mensuel : email, pseudo, Stripe IDs, mot de passe hashé) · Numérotation mise à jour</td></tr>
+    <tr><td>Juin 2026</td><td>2.7</td><td>Traitement n°2 : correction "anonymisées" → "pseudonymisées" (données Stripe pseudonymes, non anonymes au sens CJUE) · Traitement n°7 (candidatures) : ajout de Resend (USA) dans destinataires et transferts hors UE — l'email de notification transite par Resend ; correction mesures de sécurité (aucun stockage en base, transit email uniquement)</td></tr>
+    <tr><td>Juin 2026</td><td>2.8</td><td>Sous-traitants (table récapitulative) : ajout du Data Privacy Framework UE-USA dans les garanties Stripe, en cohérence avec les traitements n°2 et n°9</td></tr>
   </table>
 
   <div class="footer">
-    Parlons · Registre RGPD v2.6 · Juin 2026 · Document interne confidentiel<br>
+    Parlons · Registre RGPD v2.8 · Juin 2026 · Document interne confidentiel<br>
     Ce registre doit être mis à jour à chaque nouveau traitement de données ou modification significative.
   </div>
 </div>
