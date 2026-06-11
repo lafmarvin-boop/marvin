@@ -70,11 +70,19 @@ exports.handler = async (event) => {
 
     // Vérifier côté serveur si ce visitorId a déjà été vu (plus fiable que isNew client)
     const checkRes = await fetch(
-      `${SB_URL}/rest/v1/visits?visitor_id=eq.${encodeURIComponent(visitorId)}&select=id&limit=1`,
+      `${SB_URL}/rest/v1/visits?visitor_id=eq.${encodeURIComponent(visitorId)}&select=id,visited_at&order=visited_at.desc&limit=1`,
       { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
     );
     const existing = await checkRes.json();
     const isActuallyNew = !Array.isArray(existing) || existing.length === 0;
+
+    // Déduplication : une seule visite par visitorId toutes les 30 minutes
+    if (!isActuallyNew && Array.isArray(existing) && existing.length > 0) {
+      const lastVisit = new Date(existing[0].visited_at).getTime();
+      if (Date.now() - lastVisit < 30 * 60 * 1000) {
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
+      }
+    }
 
     // Enregistrer la visite (conservation 30 jours max — intérêt légitime RGPD)
     await fetch(`${SB_URL}/rest/v1/visits`, {
