@@ -1113,6 +1113,7 @@ async function refreshAgentPresence() {
 
 function renderDashboard(d) {
   window._adminSessions = d.sessions.list || [];
+  window._adminByAgentBase = d.sessions.byAgent || {};
   initPdfMonthSelector();
   const { sessions, subscribers, group } = d;
 
@@ -1172,106 +1173,8 @@ function renderDashboard(d) {
     return `<tr><td style="font-size:.8rem">${s.email || '—'}</td><td><span class="badge ${ok ? 'ok' : 'ko'}">${ok ? 'Actif' : 'Expiré'}</span></td><td style="font-size:.78rem;color:var(--mid)">${fmtDate(s.expires_at)}</td></tr>`;
   }).join('') || '<tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.2rem">Aucun abonné</td></tr>';
 
-  // Agent stats — table with per-plan columns
-  const byAgent = sessions.byAgent || {};
-  const agentList = Object.values(byAgent).sort((a, b) => b.revenue - a.revenue);
-  const unassigned = sessions.unassigned || 0;
-  const PLAN_COLS = [
-    { key: '10 min',      label: '10 min',   price: '2 €' },
-    { key: '30 min',      label: '30 min',   price: '5 €' },
-    { key: '1 heure',     label: '1 heure',  price: '9 €' },
-    { key: 'Pass mensuel',label: 'Mensuel',  price: '15 €' },
-    { key: 'Groupe 30min',label: 'Groupe',   price: '1,50 €', alt: 'Chat de groupe' },
-  ];
-  const note = unassigned > 0 ? `<div style="font-size:.72rem;color:var(--light);margin-top:.8rem">${unassigned} session${unassigned>1?'s':''} sans agent enregistré</div>` : '';
-  window._agentList = agentList;
-  function presenceDot(status, email) {
-    const colors = { online:'#22c55e', busy:'#f59e0b', offline:'#cbd5e1' };
-    const labels = { online:'En ligne', busy:'Occupé', offline:'Hors ligne' };
-    const c = colors[status] || colors.offline;
-    const l = labels[status] || 'Hors ligne';
-    const attr = email ? ` data-pres="${escHtml(email.toLowerCase())}"` : '';
-    return `<span${attr} title="${l}" style="display:inline-flex;align-items:center;gap:.35rem"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};flex-shrink:0"></span><span style="font-size:.72rem;color:var(--mid)">${l}</span></span>`;
-  }
-
-  if (agentList.length === 0) {
-    document.getElementById('agent-section').innerHTML = '<div style="color:var(--light);font-size:.82rem">Aucune session assignée à un agent pour l\'instant.</div>';
-  } else if (window.innerWidth < 640) {
-    // ── Affichage mobile : cartes ──
-    const cards = agentList.map((a, idx) => {
-      agentData[a.name] = a;
-      const avg = a.avgRating ? `<span style="color:#FFD700">${'★'.repeat(Math.round(a.avgRating))}</span> ${a.avgRating.toFixed(1)}` : '—';
-      const planBadges = PLAN_COLS.map(c => {
-        const cnt = (a.plans[c.key] || 0) + (c.alt ? (a.plans[c.alt] || 0) : 0);
-        if (!cnt) return '';
-        return `<span style="background:var(--warm);border:1px solid var(--sand);border-radius:50px;padding:.15rem .55rem;font-size:.7rem;white-space:nowrap;">${c.label} <strong>${cnt}</strong></span>`;
-      }).join('');
-      const isOnline = a.presenceStatus === 'online' || a.presenceStatus === 'busy';
-      const forceBtn = a.email
-        ? `<button data-force-email="${escHtml(a.email.toLowerCase())}" onclick="event.stopPropagation();forceOffline('${escHtml(a.email)}')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;${isOnline?'':'display:none'}">⏻ Déconnecter</button>`
-        : '';
-      return `<div style="background:white;border:1px solid var(--sand);border-radius:12px;padding:1rem;margin-bottom:.8rem;" onclick="openAgentReviews(${idx})">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;">
-          <div style="display:flex;align-items:center;gap:.6rem;">
-            <div style="width:34px;height:34px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.85rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
-            <div>
-              <div style="font-weight:600;font-size:.88rem">${escHtml(a.displayName||a.name)}</div>
-              <div style="font-size:.72rem;color:var(--light)">${avg} · ${a.ratingCount||0} avis</div>
-              <div style="display:flex;align-items:center;margin-top:.2rem">${presenceDot(a.presenceStatus, a.email)}</div>
-            </div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-weight:700;color:var(--tc);font-size:.95rem">${fmt(a.revenue)}</div>
-            <div style="font-size:.72rem;color:var(--light)">${a.sessions} session${a.sessions>1?'s':''}</div>
-          </div>
-        </div>
-        ${planBadges ? `<div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.7rem;">${planBadges}</div>` : ''}
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-          <button onclick="event.stopPropagation();generateAgentPDF(${idx})" style="flex:1;background:none;border:1px solid var(--sand);border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:var(--mid);">📄 Générer la fiche</button>
-          <button onclick="event.stopPropagation();removeAgent(${idx})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:#c0392b;">✕ Retirer</button>
-          ${forceBtn}
-        </div>
-      </div>`;
-    }).join('');
-    document.getElementById('agent-section').innerHTML = cards + note;
-  } else {
-    // ── Affichage desktop : tableau ──
-    const thCols = PLAN_COLS.map(c => `<th style="text-align:center">${c.label}<br><span style="font-weight:400;color:var(--light);font-size:.62rem">${c.price}</span></th>`).join('');
-    const rows = agentList.map((a, idx) => {
-      agentData[a.name] = a;
-      const avg = a.avgRating ? a.avgRating.toFixed(1) + ' ★' : '—';
-      const planCells = PLAN_COLS.map(c => {
-        const cnt = (a.plans[c.key] || 0) + (c.alt ? (a.plans[c.alt] || 0) : 0);
-        return `<td style="text-align:center">${cnt > 0 ? `<strong>${cnt}</strong>` : '<span style="color:var(--sand)">—</span>'}</td>`;
-      }).join('');
-      const isOnlineD = a.presenceStatus === 'online' || a.presenceStatus === 'busy';
-      const forceBtnD = a.email
-        ? `<button data-force-email="${escHtml(a.email.toLowerCase())}" onclick="forceOffline('${escHtml(a.email)}')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;margin-left:.3rem;${isOnlineD?'':'display:none'}">⏻ Déconnecter</button>`
-        : '';
-      return `<tr class="agent-row" onclick="openAgentReviews(${idx})">
-        <td>
-          <div style="display:flex;align-items:center;gap:.5rem">
-            <div style="width:28px;height:28px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.75rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
-            <div>
-              <div style="font-weight:600;font-size:.84rem">${escHtml(a.displayName||a.name)}</div>
-              <div style="display:flex;align-items:center;margin-top:.1rem">${presenceDot(a.presenceStatus, a.email)}</div>
-            </div>
-          </div>
-        </td>
-        <td><span class="stars-gold" title="${a.ratingCount||0} avis">${avg}</span></td>
-        ${planCells}
-        <td style="text-align:center;font-weight:700">${a.sessions}</td>
-        <td style="font-weight:700;color:var(--tc);white-space:nowrap">${fmt(a.revenue)}</td>
-        <td onclick="event.stopPropagation()" style="white-space:nowrap;">
-          <button onclick="generateAgentPDF(${idx})" style="background:none;border:1px solid var(--sand);border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:var(--mid);">📄 Fiche</button>
-          <button onclick="removeAgent(${idx})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:#c0392b;margin-left:.3rem;">✕ Retirer</button>
-          ${forceBtnD}
-        </td>
-      </tr>`;
-    }).join('');
-    document.getElementById('agent-section').innerHTML =
-      `<div style="overflow-x:auto"><table><thead><tr><th>Agent</th><th>Note</th>${thCols}<th style="text-align:center">Total</th><th>CA</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${note}`;
-  }
+  // Agent stats — rendu délégué à rebuildAgentSectionByMonth()
+  rebuildAgentSectionByMonth();
 
   // Journaux IP
   renderIpLogs(d.ipLogs || [], d.countryBreakdown || {});
@@ -1826,6 +1729,155 @@ function agentRate(formule) {
   return 0;
 }
 
+const PLAN_COLS = [
+  { key: '10 min',       label: '10 min',   price: '2 €' },
+  { key: '30 min',       label: '30 min',   price: '5 €' },
+  { key: '1 heure',      label: '1 heure',  price: '9 €' },
+  { key: 'Pass mensuel', label: 'Mensuel',  price: '15 €' },
+  { key: 'Groupe 30min', label: 'Groupe',   price: '1,50 €', alt: 'Chat de groupe' },
+];
+
+function presenceDot(status, email) {
+  const colors = { online:'#22c55e', busy:'#f59e0b', offline:'#cbd5e1' };
+  const labels = { online:'En ligne', busy:'Occupé', offline:'Hors ligne' };
+  const c = colors[status] || colors.offline;
+  const l = labels[status] || 'Hors ligne';
+  const attr = email ? ` data-pres="${escHtml(email.toLowerCase())}"` : '';
+  return `<span${attr} title="${l}" style="display:inline-flex;align-items:center;gap:.35rem"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};flex-shrink:0"></span><span style="font-size:.72rem;color:var(--mid)">${l}</span></span>`;
+}
+
+function renderAgentCards(agentList, unassigned) {
+  const note = unassigned > 0 ? `<div style="font-size:.72rem;color:var(--light);margin-top:.8rem">${unassigned} session${unassigned>1?'s':''} sans agent enregistré</div>` : '';
+  window._agentList = agentList;
+
+  if (agentList.length === 0) {
+    document.getElementById('agent-section').innerHTML = '<div style="color:var(--light);font-size:.82rem">Aucune session pour ce mois.</div>';
+    return;
+  }
+  if (window.innerWidth < 640) {
+    const cards = agentList.map((a, idx) => {
+      agentData[a.name] = a;
+      const avg = a.avgRating ? `<span style="color:#FFD700">${'★'.repeat(Math.round(a.avgRating))}</span> ${a.avgRating.toFixed(1)}` : '—';
+      const planBadges = PLAN_COLS.map(c => {
+        const cnt = (a.plans[c.key] || 0) + (c.alt ? (a.plans[c.alt] || 0) : 0);
+        if (!cnt) return '';
+        return `<span style="background:var(--warm);border:1px solid var(--sand);border-radius:50px;padding:.15rem .55rem;font-size:.7rem;white-space:nowrap;">${c.label} <strong>${cnt}</strong></span>`;
+      }).join('');
+      const isOnline = a.presenceStatus === 'online' || a.presenceStatus === 'busy';
+      const forceBtn = a.email
+        ? `<button data-force-email="${escHtml(a.email.toLowerCase())}" onclick="event.stopPropagation();forceOffline('${escHtml(a.email)}')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;${isOnline?'':'display:none'}">⏻ Déconnecter</button>`
+        : '';
+      return `<div style="background:white;border:1px solid var(--sand);border-radius:12px;padding:1rem;margin-bottom:.8rem;" onclick="openAgentReviews(${idx})">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem;">
+          <div style="display:flex;align-items:center;gap:.6rem;">
+            <div style="width:34px;height:34px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.85rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
+            <div>
+              <div style="font-weight:600;font-size:.88rem">${escHtml(a.displayName||a.name)}</div>
+              <div style="font-size:.72rem;color:var(--light)">${avg} · ${a.ratingCount||0} avis</div>
+              <div style="display:flex;align-items:center;margin-top:.2rem">${presenceDot(a.presenceStatus, a.email)}</div>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;color:var(--tc);font-size:.95rem">${fmt(a.revenue)}</div>
+            <div style="font-size:.72rem;color:var(--light)">${a.sessions} session${a.sessions>1?'s':''}</div>
+          </div>
+        </div>
+        ${planBadges ? `<div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.7rem;">${planBadges}</div>` : ''}
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <button onclick="event.stopPropagation();generateAgentPDF(${idx})" style="flex:1;background:none;border:1px solid var(--sand);border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:var(--mid);">📄 Générer la fiche</button>
+          <button onclick="event.stopPropagation();removeAgent(${idx})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.3rem .8rem;font-size:.74rem;cursor:pointer;color:#c0392b;">✕ Retirer</button>
+          ${forceBtn}
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('agent-section').innerHTML = cards + note;
+  } else {
+    const thCols = PLAN_COLS.map(c => `<th style="text-align:center">${c.label}<br><span style="font-weight:400;color:var(--light);font-size:.62rem">${c.price}</span></th>`).join('');
+    const rows = agentList.map((a, idx) => {
+      agentData[a.name] = a;
+      const avg = a.avgRating ? a.avgRating.toFixed(1) + ' ★' : '—';
+      const planCells = PLAN_COLS.map(c => {
+        const cnt = (a.plans[c.key] || 0) + (c.alt ? (a.plans[c.alt] || 0) : 0);
+        return `<td style="text-align:center">${cnt > 0 ? `<strong>${cnt}</strong>` : '<span style="color:var(--sand)">—</span>'}</td>`;
+      }).join('');
+      const isOnlineD = a.presenceStatus === 'online' || a.presenceStatus === 'busy';
+      const forceBtnD = a.email
+        ? `<button data-force-email="${escHtml(a.email.toLowerCase())}" onclick="forceOffline('${escHtml(a.email)}')" style="background:#ef4444;color:white;border:none;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;margin-left:.3rem;${isOnlineD?'':'display:none'}">⏻ Déconnecter</button>`
+        : '';
+      return `<tr class="agent-row" onclick="openAgentReviews(${idx})">
+        <td>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <div style="width:28px;height:28px;background:var(--tc);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:.75rem;flex-shrink:0">${escHtml((a.displayName||a.name).charAt(0).toUpperCase())}</div>
+            <div>
+              <div style="font-weight:600;font-size:.84rem">${escHtml(a.displayName||a.name)}</div>
+              <div style="display:flex;align-items:center;margin-top:.1rem">${presenceDot(a.presenceStatus, a.email)}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="stars-gold" title="${a.ratingCount||0} avis">${avg}</span></td>
+        ${planCells}
+        <td style="text-align:center;font-weight:700">${a.sessions}</td>
+        <td style="font-weight:700;color:var(--tc);white-space:nowrap">${fmt(a.revenue)}</td>
+        <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+          <button onclick="generateAgentPDF(${idx})" style="background:none;border:1px solid var(--sand);border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:var(--mid);">📄 Fiche</button>
+          <button onclick="removeAgent(${idx})" style="background:none;border:1px solid #f8c8c8;border-radius:6px;padding:.25rem .55rem;font-size:.72rem;cursor:pointer;color:#c0392b;margin-left:.3rem;">✕ Retirer</button>
+          ${forceBtnD}
+        </td>
+      </tr>`;
+    }).join('');
+    document.getElementById('agent-section').innerHTML =
+      `<div style="overflow-x:auto"><table><thead><tr><th>Agent</th><th>Note</th>${thCols}<th style="text-align:center">Total</th><th>CA</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${note}`;
+  }
+}
+
+function rebuildAgentSectionByMonth() {
+  const { month, year } = getSelectedMonth();
+  const allSessions = window._adminSessions || [];
+  const base = window._adminByAgentBase || {};
+
+  // Filtrer les sessions du mois sélectionné
+  const filtered = allSessions.filter(s => {
+    if (!s.agent_name) return false;
+    if (!s.started_at) return false;
+    const d = new Date(s.started_at);
+    return d.getFullYear() === year && d.getMonth() === month;
+  });
+
+  // Construire byAgent pour le mois
+  const byAgent = {};
+  filtered.forEach(s => {
+    const name = s.agent_name;
+    if (!byAgent[name]) {
+      const b = base[name] || {};
+      byAgent[name] = {
+        name, email: b.email || s.agent_email || null, displayName: b.displayName || null,
+        presenceStatus: b.presenceStatus || null,
+        avgRating: b.avgRating || null, ratingCount: b.ratingCount || 0, reviews: b.reviews || [],
+        sessions: 0, revenue: 0, plans: {}
+      };
+    }
+    byAgent[name].sessions++;
+    byAgent[name].revenue += s.montant || 0;
+    const p = s.formule || 'Autre';
+    byAgent[name].plans[p] = (byAgent[name].plans[p] || 0) + 1;
+  });
+
+  // Inclure tous les agents connus (même 0 session ce mois)
+  Object.entries(base).forEach(([name, b]) => {
+    if (!byAgent[name]) {
+      byAgent[name] = {
+        name, email: b.email || null, displayName: b.displayName || null,
+        presenceStatus: b.presenceStatus || null,
+        avgRating: b.avgRating || null, ratingCount: b.ratingCount || 0, reviews: b.reviews || [],
+        sessions: 0, revenue: 0, plans: {}
+      };
+    }
+  });
+
+  const agentList = Object.values(byAgent).sort((a, b) => b.revenue - a.revenue);
+  renderAgentCards(agentList, 0);
+}
+
 function initPdfMonthSelector() {
   const sel = document.getElementById('pdf-month');
   if (!sel) return;
@@ -1837,9 +1889,10 @@ function initPdfMonthSelector() {
     const opt = document.createElement('option');
     opt.value = `${d.getFullYear()}-${d.getMonth()}`;
     opt.textContent = label;
-    if (i === 1) opt.selected = true; // mois précédent par défaut
+    if (i === 0) opt.selected = true; // mois en cours par défaut
     sel.appendChild(opt);
   }
+  sel.onchange = rebuildAgentSectionByMonth;
 }
 
 function getSelectedMonth() {
