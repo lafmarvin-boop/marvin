@@ -7,6 +7,8 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+const H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
+
 async function getGeoData(ip) {
   if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168') || ip.startsWith('10.') || ip.startsWith('fe80')) return {};
   try {
@@ -18,21 +20,18 @@ async function getGeoData(ip) {
     if (d.status !== 'success') return {};
     const city = d.city || null;
     const region = d.regionName || null;
-    // Si pas de ville (mobile/IPv6), afficher l'opérateur FAI
     const isp = (!city && d.isp) ? d.isp : null;
     return { city: city || isp, region };
   } catch { return {}; }
 }
 
 const BOT_UA = /bot|crawl|spider|slurp|mediapartners|googlebot|bingbot|yandex|baidu|duckduck|netlify|checkbot|monitor|pingdom|uptimerobot|statuscake|curl|wget|python|axios|go-http|java\/|ruby|scrapy|phantomjs|headless|selenium|puppeteer|playwright/i;
-const DATACENTER = /^(3\.|52\.|54\.|18\.|34\.|35\.|44\.|13\.|15\.|100\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.source;
-const DC_RE = new RegExp(DATACENTER);
+const DC_RE = /^(3\.|52\.|54\.|18\.|34\.|35\.|44\.|13\.|15\.|100\.|172\.(1[6-9]|2[0-9]|3[01])\.)/;
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: CORS, body: 'Method Not Allowed' };
 
-  // Ignorer les bots et crawlers connus
   const ua = event.headers['user-agent'] || '';
   if (BOT_UA.test(ua)) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
 
@@ -50,63 +49,53 @@ exports.handler = async (event) => {
     || null;
   const country = (event.headers['x-country'] || '').toUpperCase() || null;
 
-  // Ignorer les IP de datacenter AWS/GCP/Azure qui arrivent toujours comme "nouveau" (pas de localStorage)
   if (ip && DC_RE.test(ip) && isNew) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
 
   try {
-    // Géolocalisation ville/région via ip-api.com
     const geo = await getGeoData(ip);
 
-    // Déduplication : ignorer si le même visitor_id a déjà été enregistré dans les 30 dernières secondes
-    const dedupeWindow = new Date(Date.now() - 30 * 1000).toISOString();
-    const dedupeRes = await fetch(
-      `${SB_URL}/rest/v1/visits?visitor_id=eq.${encodeURIComponent(visitorId)}&visited_at=gte.${encodeURIComponent(dedupeWindow)}&select=id&limit=1`,
-      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
-    );
-    const recent = await dedupeRes.json();
-    if (Array.isArray(recent) && recent.length > 0) {
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, deduped: true }) };
-    }
-
-    // Vérifier côté serveur si ce visitorId a déjà été vu (plus fiable que isNew client)
+    // Vérifier si ce visitorId a déjà été vu (pour is_new) et sa dernière visite (pour 30 min)
     const checkRes = await fetch(
       `${SB_URL}/rest/v1/visits?visitor_id=eq.${encodeURIComponent(visitorId)}&select=id,visited_at&order=visited_at.desc&limit=1`,
-      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
+      { headers: H }
     );
     const existing = await checkRes.json();
     const isActuallyNew = !Array.isArray(existing) || existing.length === 0;
 
-    // Déduplication : une seule visite par visitorId toutes les 30 minutes
-    if (!isActuallyNew && Array.isArray(existing) && existing.length > 0) {
+    // Déduplication 30 min (en plus de la contrainte unique horaire en base)
+    if (!isActuallyNew) {
       const lastVisit = new Date(existing[0].visited_at).getTime();
       if (Date.now() - lastVisit < 30 * 60 * 1000) {
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
       }
     }
 
-    // Enregistrer la visite (conservation 30 jours max — intérêt légitime RGPD)
-    await fetch(`${SB_URL}/rest/v1/visits`, {
+    // INSERT avec ON CONFLICT DO NOTHING (contrainte unique visitor_id + heure)
+    // Bloque les doublons IPv4/IPv6 simultanés même en cas de race condition
+    const insertRes = await fetch(`${SB_URL}/rest/v1/visits`, {
       method: 'POST',
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      headers: { ...H, 'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=representation' },
       body: JSON.stringify({ visitor_id: visitorId, is_new: isActuallyNew, ip_address: ip, country, city: geo.city, region: geo.region })
     });
+    const inserted = await insertRes.json();
+    const wasInserted = Array.isArray(inserted) && inserted.length > 0;
+
+    if (!wasInserted) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
 
     // Nettoyage automatique > 30 jours (fire-and-forget)
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     fetch(`${SB_URL}/rest/v1/visits?visited_at=lt.${encodeURIComponent(cutoff)}`, {
       method: 'DELETE',
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Prefer: 'return=minimal' }
+      headers: { ...H, Prefer: 'return=minimal' }
     }).catch(e => console.error('cleanup:', e.message));
 
-    // Compteurs globaux
-    const res = await fetch(`${SB_URL}/rest/v1/site_stats?id=eq.1&select=total_visits,unique_visitors`, {
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }
-    });
-    const rows = await res.json();
+    // Compteurs globaux (seulement si l'insertion a réellement eu lieu)
+    const statsRes = await fetch(`${SB_URL}/rest/v1/site_stats?id=eq.1&select=total_visits,unique_visitors`, { headers: H });
+    const rows = await statsRes.json();
     const s = rows[0] || { total_visits: 0, unique_visitors: 0 };
     await fetch(`${SB_URL}/rest/v1/site_stats?id=eq.1`, {
       method: 'PATCH',
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      headers: { ...H, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({
         total_visits: (s.total_visits || 0) + 1,
         unique_visitors: (s.unique_visitors || 0) + (isActuallyNew ? 1 : 0),
