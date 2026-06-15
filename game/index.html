@@ -2,63 +2,146 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>FOR THE EMPEROR! — Pixel Quest W40K</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
     background: #0a0600;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+  }
+  body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    min-height: 100vh;
+    justify-content: flex-start;
     font-family: 'Courier New', monospace;
     color: #c8a040;
   }
+  #header {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 0 2px;
+    flex-shrink: 0;
+  }
   h1 {
-    font-size: 1.6rem;
+    font-size: clamp(0.8rem, 3.5vw, 1.4rem);
     color: #c8a040;
-    text-shadow: 3px 3px 0 #7a3000, 0 0 20px #ff8800aa;
-    margin-bottom: 6px;
-    letter-spacing: 6px;
+    text-shadow: 2px 2px 0 #7a3000, 0 0 14px #ff8800aa;
+    letter-spacing: 4px;
     text-transform: uppercase;
   }
-  .sub { font-size: 0.7rem; color: #886622; letter-spacing: 4px; margin-bottom: 8px; }
+  .sub { font-size: clamp(0.5rem, 2vw, 0.65rem); color: #886622; letter-spacing: 3px; margin: 2px 0; }
   #ui {
     display: flex;
-    gap: 36px;
-    margin-bottom: 8px;
-    font-size: 1rem;
+    gap: 20px;
+    font-size: clamp(0.65rem, 2.5vw, 0.9rem);
     letter-spacing: 2px;
     border: 2px solid #7a3000;
-    padding: 4px 20px;
+    padding: 3px 14px;
     background: #0d0800;
   }
   #ui span { color: #c8a040; }
-  canvas {
-    border: 4px solid #7a3000;
-    image-rendering: pixelated;
-    box-shadow: 0 0 40px #ff880066, inset 0 0 20px #00000088;
+  #canvas-wrap {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
   }
-  #controls {
-    margin-top: 8px;
-    font-size: 0.7rem;
+  canvas {
+    border: 3px solid #7a3000;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    box-shadow: 0 0 30px #ff880055;
+    display: block;
+    touch-action: none;
+  }
+  /* Touch controls */
+  #touch-controls {
+    display: none;
+    width: 100%;
+    flex-shrink: 0;
+    padding: 8px 10px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .dpad {
+    display: grid;
+    grid-template-columns: 52px 52px;
+    grid-template-rows: 52px;
+    gap: 6px;
+  }
+  .btn {
+    background: rgba(100, 40, 0, 0.7);
+    border: 2px solid #c8a040;
+    border-radius: 8px;
+    color: #c8a040;
+    font-size: 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+    transition: background 0.05s;
+  }
+  .btn.active, .btn:active {
+    background: rgba(200, 80, 0, 0.85);
+    border-color: #ffcc44;
+  }
+  #btn-jump {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    font-size: 1.6rem;
+    background: rgba(100, 0, 0, 0.75);
+    border: 3px solid #c8a040;
+  }
+  #btn-jump.active {
+    background: rgba(220, 50, 0, 0.9);
+  }
+  #desktop-hint {
+    font-size: 0.6rem;
     color: #5a3a10;
     letter-spacing: 2px;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+  @media (pointer: coarse) {
+    #touch-controls { display: flex; }
+    #desktop-hint { display: none; }
   }
 </style>
 </head>
 <body>
-<h1>⚜ FOR THE EMPEROR ⚜</h1>
-<div class="sub">— WARHAMMER 40.000 : PIXEL CRUSADE —</div>
-<div id="ui">
-  <div>❤ <span id="lives">3</span></div>
-  <div>KILLS <span id="score">0</span></div>
-  <div>AQUILAS <span id="gems">0</span>/10</div>
+<div id="header">
+  <h1>⚜ FOR THE EMPEROR ⚜</h1>
+  <div class="sub">— WARHAMMER 40.000 : PIXEL CRUSADE —</div>
+  <div id="ui">
+    <div>❤ <span id="lives">3</span></div>
+    <div>KILLS <span id="score">0</span></div>
+    <div>AQUILAS <span id="gems">0</span>/10</div>
+  </div>
 </div>
-<canvas id="canvas" width="480" height="320"></canvas>
-<div id="controls">← → : MOVE &nbsp;|&nbsp; ↑ / Z / SPACE : JUMP &nbsp;|&nbsp; R : RESTART</div>
+<div id="canvas-wrap">
+  <canvas id="canvas" width="480" height="320"></canvas>
+</div>
+<div id="touch-controls">
+  <div class="dpad">
+    <div class="btn" id="btn-left">◀</div>
+    <div class="btn" id="btn-right">▶</div>
+  </div>
+  <div class="btn" id="btn-jump">▲</div>
+</div>
+<div id="desktop-hint">← → : MOVE &nbsp;|&nbsp; ↑ / Z / SPACE : JUMP &nbsp;|&nbsp; R : RESTART</div>
 
 <script>
 const canvas = document.getElementById('canvas');
@@ -68,11 +151,88 @@ ctx.imageSmoothingEnabled = false;
 const W = 480, H = 320;
 const GRAV = 0.45;
 const JUMP = -9.5;
-const S = 2; // sprite pixel size
+const S = 2;
+
+// ─── Responsive canvas sizing ─────────────────────────────────────────────
+
+function resizeCanvas() {
+  const header   = document.getElementById('header');
+  const touchCtl = document.getElementById('touch-controls');
+  const hint     = document.getElementById('desktop-hint');
+  const isTouch  = window.matchMedia('(pointer: coarse)').matches;
+
+  const hdrH  = header.offsetHeight;
+  const tctH  = isTouch ? 90 : 0;
+  const hintH = isTouch ? 0 : (hint.offsetHeight + 6);
+  const pad    = 8;
+
+  const availW = window.innerWidth  - pad * 2;
+  const availH = window.innerHeight - hdrH - tctH - hintH - pad * 2;
+
+  const scale = Math.min(availW / W, availH / H);
+  const cw = Math.floor(W * scale);
+  const ch = Math.floor(H * scale);
+
+  canvas.style.width  = cw + 'px';
+  canvas.style.height = ch + 'px';
+}
+
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 150));
+resizeCanvas();
+
+// ─── Touch controls ───────────────────────────────────────────────────────
+
+const touchKeys = { left: false, right: false, jump: false };
+
+function bindBtn(id, key) {
+  const el = document.getElementById(id);
+  function on(e) {
+    e.preventDefault();
+    touchKeys[key] = true;
+    el.classList.add('active');
+  }
+  function off(e) {
+    e.preventDefault();
+    touchKeys[key] = false;
+    el.classList.remove('active');
+  }
+  el.addEventListener('touchstart', on, { passive: false });
+  el.addEventListener('touchend',   off, { passive: false });
+  el.addEventListener('touchcancel',off, { passive: false });
+  // also support mouse for desktop testing
+  el.addEventListener('mousedown', on);
+  el.addEventListener('mouseup',   off);
+  el.addEventListener('mouseleave',off);
+}
+bindBtn('btn-left',  'left');
+bindBtn('btn-right', 'right');
+bindBtn('btn-jump',  'jump');
+
+// Jump on canvas tap (for quick play)
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  // tap right side = right, left side = left, top = jump
+  const rect = canvas.getBoundingClientRect();
+  const t = e.changedTouches[0];
+  const rx = (t.clientX - rect.left) / rect.width;
+  const ry = (t.clientY - rect.top)  / rect.height;
+  if (ry < 0.4) touchKeys.jump = true;
+  else if (rx < 0.4) touchKeys.left = true;
+  else if (rx > 0.6) touchKeys.right = true;
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  touchKeys.jump = false;
+  touchKeys.left = false;
+  touchKeys.right = false;
+}, { passive: false });
 
 // ─── Pixel sprites ────────────────────────────────────────────────────────
 
-function px(pixels, colors, x, y, s = S) {
+function px(pixels, colors, x, y, s) {
+  s = s || S;
   for (let r = 0; r < pixels.length; r++) {
     for (let c = 0; c < pixels[r].length; c++) {
       const k = pixels[r][c];
@@ -83,19 +243,19 @@ function px(pixels, colors, x, y, s = S) {
   }
 }
 
-// ── Space Marine (Ultramarine) 8x11 ──
+// Space Marine Ultramarine 8x11
 const MARINE_IDLE = [
-  [0,1,1,1,1,1,1,0],  // helm
-  [1,2,3,3,3,3,2,1],  // visor
-  [1,2,2,4,4,2,2,1],  // face
-  [0,2,2,2,2,2,2,0],  // neck
-  [1,5,2,2,2,2,5,1],  // pauldrons
-  [1,5,2,6,6,2,5,1],  // chest
-  [1,2,6,6,6,6,2,1],  // abdomen
-  [0,2,2,2,2,2,2,0],  // belt
-  [0,2,7,2,0,2,7,2],  // thighs
-  [0,2,7,0,0,7,2,0],  // shins
-  [0,2,2,0,0,2,2,0],  // boots
+  [0,1,1,1,1,1,1,0],
+  [1,2,3,3,3,3,2,1],
+  [1,2,2,4,4,2,2,1],
+  [0,2,2,2,2,2,2,0],
+  [1,5,2,2,2,2,5,1],
+  [1,5,2,6,6,2,5,1],
+  [1,2,6,6,6,6,2,1],
+  [0,2,2,2,2,2,2,0],
+  [0,2,7,2,0,2,7,2],
+  [0,2,7,0,0,7,2,0],
+  [0,2,2,0,0,2,2,0],
 ];
 const MARINE_RUN = [
   [0,1,1,1,1,1,1,0],
@@ -112,14 +272,14 @@ const MARINE_RUN = [
 ];
 const MC = {1:'#ccaa00',2:'#1a3a8a',3:'#88aaff',4:'#ffcc88',5:'#eecc22',6:'#2255cc',7:'#0d2266'};
 
-// ── Chaos Cultist (enemy) 8x10 ──
+// Chaos Cultist 8x10
 const CULTIST = [
-  [0,0,1,1,1,1,0,0],  // hood
+  [0,0,1,1,1,1,0,0],
   [0,1,2,2,2,2,1,0],
-  [0,1,2,3,3,2,1,0],  // glowing eyes
+  [0,1,2,3,3,2,1,0],
   [0,1,2,2,2,2,1,0],
-  [0,1,4,4,4,4,1,0],  // robes
-  [1,4,4,5,5,4,4,1],  // chaos symbol
+  [0,1,4,4,4,4,1,0],
+  [1,4,4,5,5,4,4,1],
   [0,1,4,4,4,4,1,0],
   [0,0,1,4,4,1,0,0],
   [0,0,1,6,1,6,1,0],
@@ -127,13 +287,13 @@ const CULTIST = [
 ];
 const CC = {1:'#220000',2:'#441100',3:'#ff2200',4:'#441111',5:'#882200',6:'#553333'};
 
-// ── Chaos Space Marine (heavy enemy) 8x11 ──
+// Chaos Space Marine 8x10
 const CHAOS_MARINE = [
-  [0,1,1,2,2,1,1,0],  // helm with horns
-  [1,0,1,2,2,1,0,1],  // horns
-  [0,1,3,3,3,3,1,0],  // visor
-  [1,4,4,4,4,4,4,1],  // shoulder
-  [1,4,5,6,6,5,4,1],  // chest chaos
+  [0,1,1,2,2,1,1,0],
+  [1,0,1,2,2,1,0,1],
+  [0,1,3,3,3,3,1,0],
+  [1,4,4,4,4,4,4,1],
+  [1,4,5,6,6,5,4,1],
   [1,4,6,5,5,6,4,1],
   [0,1,4,4,4,4,1,0],
   [0,1,7,1,1,7,1,0],
@@ -142,7 +302,7 @@ const CHAOS_MARINE = [
 ];
 const CHMC = {1:'#440000',2:'#cc0000',3:'#ff2200',4:'#1a0000',5:'#882200',6:'#440000',7:'#0d0000'};
 
-// ── Nurgling (small demon) 6x6 ──
+// Nurgling 6x6
 const NURGLING = [
   [0,1,1,1,1,0],
   [1,2,3,3,2,1],
@@ -153,7 +313,7 @@ const NURGLING = [
 ];
 const NC = {1:'#1a3300',2:'#335500',3:'#88cc00'};
 
-// ── Imperial Aquila (collectible) 8x7 ──
+// Imperial Aquila 8x7
 const AQUILA = [
   [0,1,0,1,1,0,1,0],
   [1,1,1,2,2,1,1,1],
@@ -165,7 +325,7 @@ const AQUILA = [
 ];
 const AQC = {1:'#aa7700',2:'#cc9900',3:'#ffee44'};
 
-// ── Power Cell (star equivalent) 7x8 ──
+// Power Cell 7x8
 const POWERCELL = [
   [0,0,1,1,1,0,0],
   [0,1,2,3,2,1,0],
@@ -178,13 +338,12 @@ const POWERCELL = [
 ];
 const PC = {1:'#004466',2:'#0088cc',3:'#44ddff'};
 
-// ─── World tiles ──────────────────────────────────────────────────────────
+// ─── World ────────────────────────────────────────────────────────────────
 
 const TILE_SIZE = 16;
 const COLS = W / TILE_SIZE;
 const ROWS = H / TILE_SIZE;
 
-// 0=air, 1=gothic stone, 2=dark stone, 3=metal floor, 4=blood-stained
 const LEVEL_MAP = [
   '000000000000000000000000000000',
   '000000000000000000000000000000',
@@ -208,8 +367,8 @@ const LEVEL_MAP = [
   '444444444444444444444444444444',
 ];
 
-function getCell(row, col) { return LEVEL_MAP[row]?.[col] ?? '2'; }
-function isSolid(row, col) { return getCell(row, col) !== '0'; }
+function getCell(r, c) { return LEVEL_MAP[r]?.[c] ?? '2'; }
+function isSolid(r, c) { return getCell(r, c) !== '0'; }
 
 const TPAL = {
   '1': {top:'#665544', mid:'#443322', bot:'#221100', detail:'#554433'},
@@ -229,14 +388,11 @@ function drawTile(row, col) {
   ctx.fillRect(x, y, TILE_SIZE, 3);
   ctx.fillStyle = p.bot;
   ctx.fillRect(x, y + TILE_SIZE - 2, TILE_SIZE, 2);
-  ctx.fillStyle = p.bot;
   ctx.fillRect(x + TILE_SIZE - 2, y, 2, TILE_SIZE);
-  // brick seams
   ctx.fillStyle = p.bot;
   const bh = (row * 7 + col) % 2 === 0 ? 8 : 0;
   ctx.fillRect(x + TILE_SIZE/2 - 1, y + bh, 2, 2);
   ctx.fillRect(x, y + 8 - bh, TILE_SIZE, 1);
-  // rune detail
   if ((row * 3 + col * 5) % 7 === 0) {
     ctx.fillStyle = p.detail;
     ctx.fillRect(x + 5, y + 5, 6, 6);
@@ -251,50 +407,31 @@ let player, enemies, collectibles, particles, state, score, lives, aquilasCollec
 let keys = {}, frameCount = 0, deathTimer = 0;
 
 function initGame() {
-  player = {
-    x:40, y:200, vx:0, vy:0,
-    w:16, h:22,
-    onGround:false, dir:1,
-    invincible:0,
-  };
-
+  player = { x:40, y:200, vx:0, vy:0, w:16, h:22, onGround:false, dir:1, invincible:0 };
   enemies = [
-    // Cultists patrol on ground row 18 (y=270)
-    {type:'cultist', x:180, y:272, vx:0.9,  w:14, h:20, startX:140, endX:260},
-    {type:'cultist', x:320, y:272, vx:-0.8, w:14, h:20, startX:270, endX:390},
-    {type:'cultist', x:70,  y:272, vx:0.7,  w:14, h:20, startX:20,  endX:140},
-    // Cultist on platform row 14 (y=214)
-    {type:'cultist', x:60,  y:218, vx:0.8,  w:14, h:20, startX:18,  endX:130},
-    // Nurglings (flying, sinusoidal)
-    {type:'nurgling', x:230, y:140, vx:1.1, w:12, h:12, baseY:140, t:0},
-    {type:'nurgling', x:380, y:100, vx:-1.2, w:12, h:12, baseY:100, t:60},
-    // Chaos Marine on big platform
-    {type:'chaosmarineL', x:380, y:216, vx:0.4, w:16, h:20, startX:320, endX:448},
+    {type:'cultist',      x:180, y:272, vx:0.9,  w:14, h:20, startX:140, endX:260},
+    {type:'cultist',      x:320, y:272, vx:-0.8, w:14, h:20, startX:270, endX:390},
+    {type:'cultist',      x:70,  y:272, vx:0.7,  w:14, h:20, startX:20,  endX:140},
+    {type:'cultist',      x:60,  y:218, vx:0.8,  w:14, h:20, startX:18,  endX:130},
+    {type:'nurgling',     x:230, y:140, vx:1.1,  w:12, h:12, baseY:140, t:0},
+    {type:'nurgling',     x:380, y:100, vx:-1.2, w:12, h:12, baseY:100, t:60},
+    {type:'chaosmarineL', x:380, y:216, vx:0.4,  w:16, h:20, startX:320, endX:448},
   ];
-
   collectibles = [
-    // Row 4 platform
     {type:'aquila',    x:242, y:48,  collected:false},
     {type:'aquila',    x:258, y:48,  collected:false},
-    // Row 6 platforms
     {type:'powercell', x:50,  y:82,  collected:false},
     {type:'aquila',    x:378, y:82,  collected:false},
-    // Row 8 platform
     {type:'aquila',    x:178, y:112, collected:false},
     {type:'aquila',    x:194, y:112, collected:false},
-    // Row 9
     {type:'aquila',    x:286, y:128, collected:false},
-    // Row 10
     {type:'powercell', x:18,  y:144, collected:false},
     {type:'aquila',    x:450, y:144, collected:false},
-    // Row 14 platforms
     {type:'aquila',    x:20,  y:208, collected:false},
     {type:'powercell', x:434, y:208, collected:false},
-    // Ground
     {type:'aquila',    x:140, y:264, collected:false},
     {type:'aquila',    x:340, y:264, collected:false},
   ];
-
   particles = [];
   score = 0; lives = 3; aquilasCollected = 0;
   state = 'playing'; deathTimer = 0;
@@ -304,7 +441,7 @@ function initGame() {
 function updateUI() {
   document.getElementById('lives').textContent = lives;
   document.getElementById('score').textContent = score;
-  document.getElementById('gems').textContent = aquilasCollected;
+  document.getElementById('gems').textContent  = aquilasCollected;
 }
 
 // ─── Physics ──────────────────────────────────────────────────────────────
@@ -312,13 +449,11 @@ function updateUI() {
 function tileCollide() {
   const p = player;
   p.onGround = false;
-
   const lCol = Math.floor((p.x + 2) / TILE_SIZE);
   const rCol = Math.floor((p.x + p.w - 2) / TILE_SIZE);
   const bRow = Math.floor((p.y + p.h) / TILE_SIZE);
   const tRow = Math.floor(p.y / TILE_SIZE);
   const mRow = Math.floor((p.y + p.h/2) / TILE_SIZE);
-
   if (p.vy >= 0 && (isSolid(bRow, lCol) || isSolid(bRow, rCol))) {
     const top = bRow * TILE_SIZE;
     if (p.y + p.h > top && p.y + p.h < top + TILE_SIZE) {
@@ -338,7 +473,7 @@ function tileCollide() {
 
 // ─── Particles ────────────────────────────────────────────────────────────
 
-function spawnParts(x, y, color, count = 10, col2 = null) {
+function spawnParts(x, y, color, count, col2) {
   for (let i = 0; i < count; i++) {
     const a = (Math.PI * 2 * i / count) + Math.random() * 0.4;
     const sp = 1.5 + Math.random() * 2.5;
@@ -362,10 +497,9 @@ function updateParticles() {
   }
 }
 
-// ─── Background — gothic ruin / daemon world ──────────────────────────────
+// ─── Background ───────────────────────────────────────────────────────────
 
 function drawBackground() {
-  // Dark crimson sky
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, '#0d0005');
   g.addColorStop(0.5, '#1a0208');
@@ -373,79 +507,50 @@ function drawBackground() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
-  // Eye of Terror / chaos moon
+  // Eye of Terror moon
   ctx.fillStyle = '#330011';
-  ctx.beginPath();
-  ctx.arc(380, 55, 34, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(380, 55, 34, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#660022';
-  ctx.beginPath();
-  ctx.arc(380, 55, 26, 0, Math.PI * 2);
-  ctx.fill();
-  // pupil / pupil slit
+  ctx.beginPath(); ctx.arc(380, 55, 26, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = '#ff2200';
-  ctx.beginPath();
-  ctx.arc(380, 55, 12, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#ff8800';
-  ctx.fillRect(376, 46, 8, 18);
-  ctx.fillStyle = '#ffcc00';
-  ctx.fillRect(378, 50, 4, 10);
-  // glow
-  ctx.globalAlpha = 0.15 + Math.sin(frameCount * 0.04) * 0.08;
+  ctx.beginPath(); ctx.arc(380, 55, 12, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#ff8800'; ctx.fillRect(376, 46, 8, 18);
+  ctx.fillStyle = '#ffcc00'; ctx.fillRect(378, 50, 4, 10);
+  ctx.globalAlpha = 0.12 + Math.sin(frameCount * 0.04) * 0.07;
   ctx.fillStyle = '#ff2200';
-  ctx.beginPath();
-  ctx.arc(380, 55, 55, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(380, 55, 55, 0, Math.PI*2); ctx.fill();
   ctx.globalAlpha = 1;
 
-  // Distant ruined cathedral silhouette
+  // Cathedral silhouette
   ctx.fillStyle = '#1a0a00';
-  // left spire
-  ctx.fillRect(20, 80, 12, 130);
-  ctx.fillRect(14, 78, 24, 8);
-  ctx.fillRect(25, 65, 4, 20);
-  // right spire
-  ctx.fillRect(440, 90, 14, 120);
-  ctx.fillRect(434, 88, 26, 8);
-  ctx.fillRect(446, 72, 5, 22);
-  // center ruin
-  ctx.fillRect(180, 100, 120, 110);
-  ctx.fillRect(200, 95, 80, 12);
+  ctx.fillRect(20, 80, 12, 130); ctx.fillRect(14, 78, 24, 8); ctx.fillRect(25, 65, 4, 20);
+  ctx.fillRect(440, 90, 14, 120); ctx.fillRect(434, 88, 26, 8); ctx.fillRect(446, 72, 5, 22);
+  ctx.fillRect(180, 100, 120, 110); ctx.fillRect(200, 95, 80, 12);
   ctx.fillStyle = '#0d0500';
-  // windows (arches)
-  ctx.fillRect(190, 110, 14, 22);
-  ctx.fillRect(220, 110, 14, 22);
-  ctx.fillRect(256, 110, 14, 22);
-  ctx.fillRect(285, 110, 14, 22);
-  // skull motif
-  ctx.fillStyle = '#2a1500';
-  for (let i = 0; i < 8; i++) {
-    ctx.fillRect(185 + i * 14, 96, 8, 6);
-  }
+  ctx.fillRect(190, 110, 14, 22); ctx.fillRect(220, 110, 14, 22);
+  ctx.fillRect(256, 110, 14, 22); ctx.fillRect(285, 110, 14, 22);
 
-  // Floating ash particles
+  // Ash particles
   for (let i = 0; i < 30; i++) {
     const ax = (i * 137 + frameCount * 0.3 + i * 7) % W;
     const ay = (i * 97  + frameCount * 0.15 * (1 + i % 3)) % (H * 0.7);
-    ctx.globalAlpha = 0.2 + Math.sin(frameCount * 0.05 + i) * 0.15;
+    ctx.globalAlpha = 0.15 + Math.sin(frameCount * 0.05 + i) * 0.1;
     ctx.fillStyle = '#664422';
     ctx.fillRect(ax, ay, 1, 1);
   }
   ctx.globalAlpha = 1;
 
-  // Ground fog / hellfire
+  // Ground hellfire
   const fg = ctx.createLinearGradient(0, H - 50, 0, H);
   fg.addColorStop(0, 'rgba(80,10,0,0)');
   fg.addColorStop(1, 'rgba(80,10,0,0.6)');
   ctx.fillStyle = fg;
   ctx.fillRect(0, H - 60, W, 60);
 
-  // Blood drips on ground tiles (decorative)
+  // Blood drips
   ctx.fillStyle = '#660000';
   for (let i = 0; i < 6; i++) {
-    const bx = 40 + i * 72;
-    const by = H - 32;
+    const bx = 40 + i * 72, by = H - 32;
     ctx.fillRect(bx, by, 3, 10 + i % 5);
     ctx.fillRect(bx - 1, by + 10 + i % 5, 5, 3);
   }
@@ -463,14 +568,13 @@ function drawPlayer() {
   const p = player;
   if (p.invincible > 0 && Math.floor(p.invincible / 3) % 2 === 0) return;
   ctx.save();
+  const spr = (p.onGround && Math.abs(p.vx) > 0.1) ? MARINE_RUN : MARINE_IDLE;
   if (p.dir < 0) {
     ctx.translate(Math.floor(p.x) + p.w, 0);
     ctx.scale(-1, 1);
-    const spr = (p.onGround && Math.abs(p.vx) > 0.1) ? MARINE_RUN : MARINE_IDLE;
-    px(spr, MC, -Math.floor(p.x), Math.floor(p.y), S);
+    px(spr, MC, -Math.floor(p.x), Math.floor(p.y));
   } else {
-    const spr = (p.onGround && Math.abs(p.vx) > 0.1) ? MARINE_RUN : MARINE_IDLE;
-    px(spr, MC, Math.floor(p.x), Math.floor(p.y), S);
+    px(spr, MC, Math.floor(p.x), Math.floor(p.y));
   }
   ctx.restore();
 }
@@ -478,37 +582,19 @@ function drawPlayer() {
 function drawEnemies() {
   enemies.forEach(e => {
     const bob = Math.abs(Math.sin(frameCount * 0.15)) * 2;
-    if (e.type === 'cultist') {
-      ctx.save();
-      if (e.vx < 0) {
-        ctx.translate(Math.floor(e.x) + e.w, 0);
-        ctx.scale(-1, 1);
-        px(CULTIST, CC, -Math.floor(e.x), Math.floor(e.y - bob), S);
-      } else {
-        px(CULTIST, CC, Math.floor(e.x), Math.floor(e.y - bob), S);
-      }
-      ctx.restore();
-    } else if (e.type === 'nurgling') {
-      ctx.save();
-      if (e.vx < 0) {
-        ctx.translate(Math.floor(e.x) + e.w, 0);
-        ctx.scale(-1, 1);
-        px(NURGLING, NC, -Math.floor(e.x), Math.floor(e.y), S);
-      } else {
-        px(NURGLING, NC, Math.floor(e.x), Math.floor(e.y), S);
-      }
-      ctx.restore();
-    } else if (e.type === 'chaosmarineL') {
-      ctx.save();
-      if (e.vx < 0) {
-        ctx.translate(Math.floor(e.x) + e.w, 0);
-        ctx.scale(-1, 1);
-        px(CHAOS_MARINE, CHMC, -Math.floor(e.x), Math.floor(e.y), S);
-      } else {
-        px(CHAOS_MARINE, CHMC, Math.floor(e.x), Math.floor(e.y), S);
-      }
-      ctx.restore();
+    let spr, col;
+    if (e.type === 'cultist') { spr = CULTIST; col = CC; }
+    else if (e.type === 'nurgling') { spr = NURGLING; col = NC; }
+    else { spr = CHAOS_MARINE; col = CHMC; }
+    ctx.save();
+    if (e.vx < 0) {
+      ctx.translate(Math.floor(e.x) + e.w, 0);
+      ctx.scale(-1, 1);
+      px(spr, col, -Math.floor(e.x), Math.floor(e.y - (e.type === 'nurgling' ? 0 : bob)));
+    } else {
+      px(spr, col, Math.floor(e.x), Math.floor(e.y - (e.type === 'nurgling' ? 0 : bob)));
     }
+    ctx.restore();
   });
 }
 
@@ -517,20 +603,19 @@ function drawCollectibles() {
     if (c.collected) return;
     const bob = Math.sin(frameCount * 0.07 + c.x * 0.1) * 3;
     if (c.type === 'aquila') {
-      // Glow
-      ctx.globalAlpha = 0.3 + Math.sin(frameCount * 0.1 + c.x) * 0.15;
+      ctx.globalAlpha = 0.25 + Math.sin(frameCount * 0.1 + c.x) * 0.12;
       ctx.fillStyle = '#ffaa00';
       ctx.fillRect(c.x - 2, c.y + bob - 2, 20, 18);
       ctx.globalAlpha = 1;
-      px(AQUILA, AQC, c.x, c.y + bob, S);
+      px(AQUILA, AQC, c.x, c.y + bob);
     } else {
-      ctx.globalAlpha = 0.3 + Math.sin(frameCount * 0.12 + c.x) * 0.15;
+      ctx.globalAlpha = 0.25 + Math.sin(frameCount * 0.12 + c.x) * 0.12;
       ctx.fillStyle = '#00aaff';
       ctx.fillRect(c.x - 2, c.y + bob - 2, 18, 20);
       ctx.globalAlpha = 1;
       const sc = Object.assign({}, PC);
       if (Math.floor(frameCount / 6) % 2 === 0) [sc[1], sc[3]] = [sc[3], sc[1]];
-      px(POWERCELL, sc, c.x, c.y + bob, S);
+      px(POWERCELL, sc, c.x, c.y + bob);
     }
   });
 }
@@ -548,9 +633,9 @@ function drawParticles() {
 
 function updatePlayer() {
   const p = player;
-  const left  = keys['ArrowLeft']  || keys['a'] || keys['A'];
-  const right = keys['ArrowRight'] || keys['d'] || keys['D'];
-  const jump  = keys['ArrowUp']    || keys['z'] || keys['Z'] || keys[' '];
+  const left  = keys['ArrowLeft']  || keys['a'] || keys['A'] || touchKeys.left;
+  const right = keys['ArrowRight'] || keys['d'] || keys['D'] || touchKeys.right;
+  const jump  = keys['ArrowUp']    || keys['z'] || keys['Z'] || keys[' '] || touchKeys.jump;
 
   if (left)  { p.vx -= 0.65; p.dir = -1; }
   if (right) { p.vx += 0.65; p.dir =  1; }
@@ -570,7 +655,6 @@ function updatePlayer() {
   if (p.x < 0) { p.x = 0; p.vx = 0; }
   if (p.x + p.w > W) { p.x = W - p.w; p.vx = 0; }
   if (p.y > H + 30) die();
-
   if (p.invincible > 0) p.invincible--;
 }
 
@@ -595,11 +679,9 @@ function overlap(a, b) {
 function checkCollisions() {
   const p = player;
   if (p.invincible > 0) return;
-
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
     if (!overlap(p, e)) continue;
-    // Stomp on cultist / nurgling from above
     const stompable = e.type === 'cultist' || e.type === 'nurgling';
     if (stompable && p.vy > 0 && p.y + p.h < e.y + e.h * 0.55) {
       spawnParts(e.x + e.w/2, e.y, '#cc0000', 12, '#440000');
@@ -611,10 +693,9 @@ function checkCollisions() {
       die(); return;
     }
   }
-
   for (let c of collectibles) {
     if (c.collected) continue;
-    const cr = {x: c.x+2, y: c.y+2, w:12, h:10};
+    const cr = {x:c.x+2, y:c.y+2, w:12, h:10};
     if (!overlap(p, cr)) continue;
     c.collected = true;
     if (c.type === 'aquila') {
@@ -642,28 +723,22 @@ function die() {
 // ─── Overlay ──────────────────────────────────────────────────────────────
 
 function drawOverlay(title, sub) {
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
   ctx.fillRect(0, 0, W, H);
-  // Border
-  ctx.strokeStyle = '#aa6600';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(20, H/2 - 60, W - 40, 110);
-  ctx.strokeStyle = '#661100';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(24, H/2 - 56, W - 48, 102);
-
+  ctx.strokeStyle = '#aa6600'; ctx.lineWidth = 3;
+  ctx.strokeRect(20, H/2 - 62, W - 40, 114);
+  ctx.strokeStyle = '#661100'; ctx.lineWidth = 1;
+  ctx.strokeRect(24, H/2 - 58, W - 48, 106);
   ctx.textAlign = 'center';
-  ctx.font = 'bold 28px "Courier New"';
+  ctx.font = 'bold 26px "Courier New"';
   ctx.fillStyle = '#cc8800';
-  ctx.fillText(title, W/2, H/2 - 15);
-
-  ctx.font = '13px "Courier New"';
+  ctx.fillText(title, W/2, H/2 - 16);
+  ctx.font = '12px "Courier New"';
   ctx.fillStyle = '#886622';
-  ctx.fillText(sub, W/2, H/2 + 10);
-
+  ctx.fillText(sub, W/2, H/2 + 8);
   ctx.font = '11px "Courier New"';
   ctx.fillStyle = '#553311';
-  ctx.fillText('[ R ] RESTART', W/2, H/2 + 34);
+  ctx.fillText('[ R ] RESTART', W/2, H/2 + 32);
 }
 
 // ─── Main loop ────────────────────────────────────────────────────────────
@@ -692,16 +767,14 @@ function draw() {
   drawEnemies();
   drawPlayer();
 
-  // HUD: bolter ammo bar
+  // Wounds bar HUD
   ctx.fillStyle = '#1a0800';
   ctx.fillRect(4, 4, 80, 8);
   ctx.fillStyle = '#cc4400';
-  const hpPct = lives / 5;
-  ctx.fillRect(4, 4, Math.floor(80 * hpPct), 8);
+  ctx.fillRect(4, 4, Math.floor(80 * lives / 5), 8);
   ctx.fillStyle = '#ff6600';
-  ctx.fillRect(4, 4, Math.floor(80 * hpPct * 0.6), 4);
-  ctx.strokeStyle = '#7a3000';
-  ctx.lineWidth = 1;
+  ctx.fillRect(4, 4, Math.floor(80 * lives / 5 * 0.6), 4);
+  ctx.strokeStyle = '#7a3000'; ctx.lineWidth = 1;
   ctx.strokeRect(4, 4, 80, 8);
   ctx.fillStyle = '#886644';
   ctx.font = '7px monospace';
@@ -724,12 +797,19 @@ function draw() {
 
 function loop() { update(); draw(); requestAnimationFrame(loop); }
 
+// ─── Keyboard input ───────────────────────────────────────────────────────
+
 window.addEventListener('keydown', e => {
   keys[e.key] = true;
   if (e.key === 'r' || e.key === 'R') initGame();
   if ([' ','ArrowUp','ArrowLeft','ArrowRight','ArrowDown'].includes(e.key)) e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// Restart on tap when game over / win
+canvas.addEventListener('touchend', e => {
+  if (state === 'gameover' || state === 'win') { e.preventDefault(); initGame(); }
+}, { passive: false });
 
 initGame();
 loop();
