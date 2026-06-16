@@ -358,7 +358,8 @@ function buildEnemyGroup(isBoss) {
     for (let i=0;i<escortCount;i++) enemies.push(scaledEnemy(randChoice(biome.trash), floorIndex, false));
     return enemies;
   }
-  const count = Math.min(6, 2 + Math.floor(floorIndex/3) + Math.floor(Math.random()*2));
+  const desired = 1 + Math.floor(floorIndex/2) + (Math.random()<0.4 ? 1 : 0);
+  const count = Math.min(6, Math.max(1, Math.min(desired, roster.length)));
   const enemies = [];
   for (let i=0;i<count;i++) enemies.push(scaledEnemy(randChoice(biome.trash), floorIndex, false));
   return enemies;
@@ -369,8 +370,8 @@ function buildEnemyGroup(isBoss) {
 function generatePath() {
   const p = [];
   for (let i=0;i<10;i++) p.push({type:'fight'});
-  p.splice(3, 0, {type:'recruit'});
-  p.splice(8, 0, {type:'recruit'});
+  p.splice(1, 0, {type:'recruit'});
+  p.splice(6, 0, {type:'recruit'});
   p.push({type:'boss'});
   return p;
 }
