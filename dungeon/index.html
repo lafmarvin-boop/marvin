@@ -88,7 +88,14 @@
   <div class="sub">— escouade impériale : croisade automatique —</div>
   <div id="hud"><span id="hudFloor">Étage 1</span><span id="hudNode">Noeud 1/13</span></div>
 
-  <div class="screen active" id="screen-map">
+  <div class="screen active" id="screen-select">
+    <div class="panel">
+      <h2>Choisissez votre Héros de départ</h2>
+      <div class="recruit-cards" id="selectCards"></div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-map">
     <div class="panel">
       <h2>Voie du Donjon</h2>
       <div class="path-row" id="pathRow"></div>
@@ -520,7 +527,8 @@ function renderRoster() {
     drawSprite(canvas, cls.tmpl, cls.pal);
     chip.appendChild(canvas);
     const hp = getMaxHp(c);
-    chip.innerHTML += `
+    const info = document.createElement('div');
+    info.innerHTML = `
       <div class="nm">${c.name}</div>
       <div class="lv">Niv.${c.level} — ${cls.short}</div>
       <div class="hpbar"><div class="hpfill" style="width:100%"></div></div>
@@ -528,6 +536,7 @@ function renderRoster() {
       <div style="color:#665533;">XP ${c.xp}/${xpToNext(c.level)} · ☠${c.kills}</div>
       <div style="color:#998855;">${c.weapon? '🗡'+c.weapon.name : ''} ${c.armor? '🛡'+c.armor.name : ''}</div>
     `;
+    chip.appendChild(info);
     list.appendChild(chip);
   });
 }
@@ -592,10 +601,12 @@ function buildUnitEl(u) {
   drawSprite(canvas, tmpl, pal);
   div.appendChild(canvas);
   const lvl = u.side==='team' ? ` Niv.${u.ref.level}` : '';
-  div.innerHTML += `
+  const info = document.createElement('div');
+  info.innerHTML = `
     <div class="uname">${u.name}${lvl}</div>
     <div class="hpbar"><div class="hpfill" id="hpfill-${u.id}" style="width:100%"></div></div>
   `;
+  div.appendChild(info);
   return div;
 }
 
@@ -762,10 +773,12 @@ function showRecruit() {
       const canvas = document.createElement('canvas');
       drawSprite(canvas, cls.tmpl, cls.pal);
       card.appendChild(canvas);
-      card.innerHTML += `
+      const info = document.createElement('div');
+      info.innerHTML = `
         <div class="nm">${cls.name}</div>
         <div class="stats">PV ${cls.base.hp} · ATQ ${cls.base.atk}<br>DEF ${cls.base.def} · VIT ${cls.base.spd}${cls.skill?'<br>Compétence spéciale':''}</div>
       `;
+      card.appendChild(info);
       const btn = document.createElement('button');
       btn.className = 'small-btn';
       btn.textContent = 'Recruter';
@@ -798,9 +811,35 @@ function renderGameOver() {
   `;
 }
 
-function resetGame() {
+function renderHeroSelect() {
+  const cards = document.getElementById('selectCards');
+  cards.innerHTML = '';
+  Object.keys(CLASS_DEFS).forEach(key => {
+    const cls = CLASS_DEFS[key];
+    const card = document.createElement('div');
+    card.className = 'recruit-card';
+    const canvas = document.createElement('canvas');
+    drawSprite(canvas, cls.tmpl, cls.pal);
+    card.appendChild(canvas);
+    const info = document.createElement('div');
+    info.innerHTML = `
+      <div class="nm">${cls.name}</div>
+      <div class="stats">PV ${cls.base.hp} · ATQ ${cls.base.atk}<br>DEF ${cls.base.def} · VIT ${cls.base.spd}${cls.skill?'<br>Compétence spéciale':''}</div>
+    `;
+    card.appendChild(info);
+    const btn = document.createElement('button');
+    btn.className = 'small-btn';
+    btn.textContent = 'Choisir';
+    btn.onclick = () => startGameWithHero(key);
+    card.appendChild(btn);
+    cards.appendChild(card);
+  });
+  switchScreen('select');
+}
+
+function startGameWithHero(classKey) {
   idCounter = 1;
-  roster = [createCharacter('marine', 1)];
+  roster = [createCharacter(classKey, 1)];
   inventory = [];
   floorIndex = 0;
   path = generatePath();
@@ -810,9 +849,9 @@ function resetGame() {
   renderMap();
 }
 
-document.getElementById('restartBtn').onclick = resetGame;
+document.getElementById('restartBtn').onclick = renderHeroSelect;
 
-resetGame();
+renderHeroSelect();
 </script>
 </body>
 </html>
