@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CRUSADE — Auto-Battler W40K</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { background:#0a0600; color:#c8a040; font-family:'Courier New',monospace; min-height:100vh; }
+  #app { max-width: 980px; margin: 0 auto; padding: 10px 12px 30px; }
+  h1 { font-size: clamp(1.1rem,4vw,1.6rem); text-align:center; letter-spacing:5px; text-shadow:2px 2px 0 #7a3000,0 0 14px #ff880088; text-transform:uppercase; margin-bottom:2px;}
+  .sub { text-align:center; font-size:0.65rem; color:#886622; letter-spacing:3px; margin-bottom:10px;}
+  .screen { display:none; }
+  .screen.active { display:block; }
+  .panel { border:2px solid #7a3000; background:#100a04; padding:10px; margin-bottom:12px; }
+  .panel h2 { font-size:0.9rem; color:#ffcc44; letter-spacing:2px; margin-bottom:8px; text-transform:uppercase; }
+
+  /* path / map */
+  .path-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:center; margin-bottom:10px;}
+  .node { width:46px; height:46px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; border:2px solid #3a2410; background:#1a1006; color:#553a1a; flex-shrink:0; }
+  .node.fight { } .node.recruit { } .node.boss { }
+  .node.done { background:#1a3a1a; border-color:#2a6a2a; color:#88cc88; }
+  .node.current { background:#5a1a00; border-color:#ffaa00; color:#ffcc44; box-shadow:0 0 12px #ff880088; animation:pulse 1.2s infinite; cursor:pointer; }
+  .node.locked { opacity:0.4; }
+  @keyframes pulse { 0%,100%{ box-shadow:0 0 6px #ff880066;} 50%{ box-shadow:0 0 18px #ff8800cc;} }
+  .big-btn { display:block; width:100%; padding:14px; font-size:1rem; letter-spacing:3px; background:#5a1a00; border:2px solid #ffaa00; color:#ffcc44; text-transform:uppercase; cursor:pointer; margin:8px 0; }
+  .big-btn:active { background:#aa3300; }
+  .big-btn:disabled { opacity:0.4; cursor:default; }
+  .small-btn { padding:8px 14px; font-size:0.75rem; background:#2a1a08; border:2px solid #7a5020; color:#ddbb66; cursor:pointer; letter-spacing:1px;}
+  .small-btn:active { background:#5a3a10; }
+
+  /* roster */
+  .roster-list { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { width:96px; border:2px solid #3a2410; background:#160e06; padding:5px; text-align:center; font-size:0.62rem; cursor:default; }
+  .chip canvas { width:64px; height:64px; image-rendering:pixelated; }
+  .chip .nm { color:#ffcc44; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .chip .lv { color:#88aacc; }
+  .hpbar { height:6px; background:#1a0800; border:1px solid #5a3a10; margin-top:2px; }
+  .hpfill { height:100%; background:#33cc33; }
+  .hpfill.mid { background:#ddaa22; }
+  .hpfill.low { background:#cc2222; }
+  .equip-row { display:flex; gap:2px; justify-content:center; margin-top:2px; font-size:0.85rem;}
+
+  /* inventory */
+  .inv-list { display:flex; flex-wrap:wrap; gap:8px; }
+  .item-card { width:120px; border:2px solid; padding:6px; font-size:0.6rem; background:#160e06; }
+  .item-card .nm { font-weight:bold; margin-bottom:3px; }
+  .item-card .desc { color:#aa9966; margin-bottom:5px; }
+  .target-row { display:flex; flex-wrap:wrap; gap:3px; }
+  .target-row button { font-size:0.55rem; padding:3px 5px; background:#2a1a08; border:1px solid #7a5020; color:#ddbb66; cursor:pointer; }
+
+  /* combat */
+  .battlefield { display:flex; flex-direction:column; gap:10px; }
+  .row-label { font-size:0.7rem; letter-spacing:2px; color:#aa8855; margin-bottom:4px; }
+  .unit-row { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; justify-content:center; min-height:140px; }
+  .unit { width:126px; display:flex; flex-direction:column; align-items:center; transition:transform 0.12s, filter 0.12s; }
+  .unit canvas { image-rendering:pixelated; display:block; }
+  .unit.attacking { transform:translateY(-8px) scale(1.06); filter:brightness(1.5); }
+  .unit.hit { filter:brightness(2.2) saturate(0); transform:translateX(-5px); }
+  .unit.dead { opacity:0.2; filter:grayscale(1); }
+  .unit .uname { font-size:0.6rem; color:#ddbb66; margin-top:3px; text-align:center; }
+  .unit .hpbar { width:100px; }
+  #log { height:120px; overflow-y:auto; background:#0a0500; border:1px solid #5a3a10; padding:6px; font-size:0.68rem; line-height:1.5; color:#bb9966; }
+  #log .l-kill { color:#ff6644; font-weight:bold; }
+  #log .l-crit { color:#ffcc00; }
+  #log .l-heal { color:#66ccff; }
+
+  /* result / recruit / gameover */
+  .center-title { text-align:center; font-size:1.4rem; letter-spacing:3px; color:#ffcc44; text-shadow:2px 2px 0 #7a3000; margin-bottom:10px;}
+  .xp-line { display:flex; justify-content:space-between; font-size:0.75rem; padding:3px 0; border-bottom:1px dashed #3a2410; }
+  .xp-line .up { color:#44ff44; }
+  .loot-card { border:3px solid #cc9900; background:#1a1206; padding:12px; text-align:center; margin:10px auto; max-width:260px; }
+  .loot-card .nm { font-size:1rem; margin-bottom:4px; }
+  .recruit-cards { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; }
+  .recruit-card { width:160px; border:2px solid #7a3000; background:#140d05; padding:10px; text-align:center; }
+  .recruit-card canvas { width:100px; height:100px; image-rendering:pixelated; margin-bottom:4px;}
+  .recruit-card .nm { color:#ffcc44; font-size:0.85rem; margin-bottom:4px;}
+  .recruit-card .stats { font-size:0.6rem; color:#aa9966; margin-bottom:8px; line-height:1.4;}
+  #hud { display:flex; justify-content:space-between; font-size:0.7rem; color:#aa8855; margin-bottom:8px; letter-spacing:1px;}
+  .rarity-common { border-color:#aaaaaa !important; color:#cccccc; }
+  .rarity-rare { border-color:#4488ff !important; color:#88bbff; }
+  .rarity-epic { border-color:#cc66ff !important; color:#dd99ff; }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>⚜ Crusade ⚜</h1>
+  <div class="sub">— escouade impériale : croisade automatique —</div>
+  <div id="hud"><span id="hudFloor">Étage 1</span><span id="hudNode">Noeud 1/13</span></div>
+
+  <div class="screen active" id="screen-map">
+    <div class="panel">
+      <h2>Voie du Donjon</h2>
+      <div class="path-row" id="pathRow"></div>
+      <button class="big-btn" id="advanceBtn">Avancer</button>
+    </div>
+    <div class="panel">
+      <h2>Escouade</h2>
+      <div class="roster-list" id="rosterList"></div>
+    </div>
+    <div class="panel">
+      <h2>Sac (Équipement &amp; Tomes)</h2>
+      <div class="inv-list" id="invList"></div>
+      <div id="invEmpty" style="font-size:0.7rem;color:#665533;">Le sac est vide.</div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-combat">
+    <div class="panel">
+      <div class="battlefield">
+        <div>
+          <div class="row-label">ENNEMIS</div>
+          <div class="unit-row" id="enemyRow"></div>
+        </div>
+        <div>
+          <div class="row-label">ESCOUADE</div>
+          <div class="unit-row" id="teamRow"></div>
+        </div>
+      </div>
+      <div id="log"></div>
+      <button class="small-btn" id="skipBtn" style="margin-top:8px;">Passer ⏩</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-result">
+    <div class="panel">
+      <div class="center-title" id="resultTitle">VICTOIRE</div>
+      <div id="xpList"></div>
+      <div id="lootArea"></div>
+      <button class="big-btn" id="continueBtn">Continuer</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-recruit">
+    <div class="panel">
+      <h2>Renforts disponibles</h2>
+      <div class="recruit-cards" id="recruitCards"></div>
+      <button class="small-btn" id="skipRecruitBtn" style="margin-top:12px;">Refuser et continuer</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-gameover">
+    <div class="panel">
+      <div class="center-title" style="color:#ff4444;">L'ESCOUADE EST TOMBÉE</div>
+      <div id="goStats" style="font-size:0.8rem; text-align:center; margin:10px 0; color:#aa8855;"></div>
+      <button class="big-btn" id="restartBtn">Nouvelle Croisade</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ───────────────────────── Sprite templates (14 cols wide => 126px at scale 9) ─────────────────────────
+const SCALE = 9;
+
+const TPL_GUN = [
+[0,0,0,0,1,1,1,1,1,1,0,0,0,0],
+[0,0,0,1,1,2,2,2,2,1,1,0,0,0],
+[0,0,0,1,2,4,4,4,4,2,1,0,0,0],
+[0,0,0,1,1,2,2,2,2,1,1,0,0,0],
+[0,0,8,8,1,2,2,2,2,1,8,8,0,0],
+[0,8,8,8,1,2,2,2,2,1,8,8,8,0],
+[0,0,7,2,2,2,2,2,2,2,6,6,0,0],
+[0,0,7,2,3,3,3,3,2,2,6,6,6,0],
+[0,0,7,2,2,2,2,2,2,2,6,0,0,0],
+[0,0,7,7,7,7,7,7,7,7,7,0,0,0],
+[0,0,0,7,7,0,0,0,7,7,0,0,0,0],
+[0,0,0,2,2,0,0,0,2,2,0,0,0,0],
+[0,0,0,2,2,0,0,0,2,2,0,0,0,0],
+[0,0,0,9,9,0,0,0,9,9,0,0,0,0],
+];
+
+const TPL_MELEE = [
+[0,0,0,0,1,1,1,1,1,1,0,0,0,0],
+[0,0,0,1,1,2,2,2,2,1,1,0,0,0],
+[0,0,0,1,2,4,4,4,4,2,1,0,0,0],
+[0,0,0,1,1,2,2,2,2,1,1,0,0,0],
+[0,0,8,8,1,2,2,2,2,1,8,8,0,0],
+[0,8,8,8,1,2,2,2,2,1,8,8,6,0],
+[0,0,7,2,2,2,2,2,2,2,2,6,6,0],
+[0,0,7,2,3,3,3,3,2,2,2,6,3,0],
+[0,0,7,2,2,2,2,2,2,2,2,6,0,0],
+[0,0,7,7,7,7,7,7,7,7,7,0,0,0],
+[0,0,0,7,7,0,0,0,7,7,0,0,0,0],
+[0,0,0,2,2,0,0,0,2,2,0,0,0,0],
+[0,0,0,2,2,0,0,0,2,2,0,0,0,0],
+[0,0,0,9,9,0,0,0,9,9,0,0,0,0],
+];
+
+const TPL_SMALL = [
+[0,0,0,1,1,1,1,1,1,1,0,0,0,0],
+[0,0,1,2,2,2,2,2,2,2,1,0,0,0],
+[0,0,1,2,4,4,2,2,4,4,2,1,0,0],
+[0,0,1,2,2,3,3,3,3,2,2,1,0,0],
+[0,0,0,1,2,2,2,2,2,2,1,0,0,0],
+[0,0,0,0,1,2,6,6,2,1,0,0,0,0],
+[0,0,0,0,1,2,2,2,2,1,0,0,0,0],
+[0,0,0,0,0,7,7,7,7,0,0,0,0,0],
+[0,0,0,0,0,2,0,0,2,0,0,0,0,0],
+[0,0,0,0,0,9,0,0,9,0,0,0,0,0],
+];
+
+const TPL_BOSS = [
+[0,1,0,0,0,1,1,1,1,0,0,0,1,0],
+[0,1,1,0,1,2,2,2,2,1,0,1,1,0],
+[0,0,1,1,2,2,2,2,2,2,1,1,0,0],
+[0,0,1,2,4,4,4,4,4,4,2,1,0,0],
+[0,0,1,2,2,2,2,2,2,2,2,1,0,0],
+[0,1,8,8,1,2,2,2,2,1,8,8,1,0],
+[1,8,8,8,1,2,2,2,2,1,8,8,8,1],
+[0,0,7,2,3,3,3,3,3,3,2,7,6,0],
+[0,0,7,2,2,5,5,5,5,2,2,7,6,6],
+[0,0,7,2,2,2,2,2,2,2,2,7,6,0],
+[0,0,0,7,7,7,7,7,7,7,7,0,0,0],
+[0,0,0,2,2,0,0,0,0,2,2,0,0,0],
+[0,0,0,2,2,0,0,0,0,2,2,0,0,0],
+[0,0,0,2,2,0,0,0,0,2,2,0,0,0],
+[0,0,0,9,9,0,0,0,0,9,9,0,0,0],
+[0,0,0,9,9,0,0,0,0,9,9,0,0,0],
+];
+
+const TEMPLATES = { gun:TPL_GUN, melee:TPL_MELEE, small:TPL_SMALL, boss:TPL_BOSS };
+
+function drawSprite(canvas, tmplKey, palette) {
+  const tmpl = TEMPLATES[tmplKey];
+  canvas.width = 14 * SCALE;
+  canvas.height = tmpl.length * SCALE;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for (let r=0;r<tmpl.length;r++){
+    for (let c=0;c<14;c++){
+      const k = tmpl[r][c];
+      if (!k) continue;
+      ctx.fillStyle = palette[k] || '#ff00ff';
+      ctx.fillRect(c*SCALE, r*SCALE, SCALE, SCALE);
+    }
+  }
+}
+
+// ───────────────────────── Palettes ─────────────────────────
+const fullPal = p => Object.assign({1:'#111',2:'#333',3:'#555',4:'#fff',5:'#888',6:'#999',7:'#222',8:'#aaa',9:'#222'}, p);
+
+const PAL_MARINE   = fullPal({1:'#0a1530',2:'#1a3a8a',3:'#2255cc',4:'#88ddff',6:'#888888',7:'#0d1b40',8:'#ccaa00',9:'#0d1b40'});
+const PAL_ASSAULT  = fullPal({1:'#200000',2:'#8a1010',3:'#cc2222',4:'#ffee88',6:'#aaaaaa',7:'#1a0000',8:'#ccaa00',9:'#1a0000'});
+const PAL_HEAVY    = fullPal({1:'#0a1a08',2:'#1a4a1a',3:'#2e7a2e',4:'#ffaa00',6:'#888888',7:'#0a1a08',8:'#aa8800',9:'#0a1a08'});
+const PAL_APOTH    = fullPal({1:'#222222',2:'#dddddd',3:'#ff2222',4:'#88ddff',6:'#cccccc',7:'#aaaaaa',8:'#ff2222',9:'#222222'});
+const PAL_TECH     = fullPal({1:'#1a0a00',2:'#7a1a0a',3:'#cc8800',4:'#ff8800',6:'#cc8800',7:'#1a0a00',8:'#cc8800',9:'#1a0a00'});
+const PAL_PSYKER   = fullPal({1:'#0a0020',2:'#2a1a6a',3:'#5a3acc',4:'#cc88ff',6:'#8844cc',7:'#0a0020',8:'#5a3acc',9:'#0a0020'});
+
+const PAL_CULTIST  = fullPal({1:'#1a0000',2:'#3a1414',3:'#882020',4:'#ff2200',6:'#666666',7:'#1a0000',8:'#3a1414',9:'#1a0000'});
+const PAL_CHMARINE = fullPal({1:'#330000',2:'#660000',3:'#aa0000',4:'#ff2200',6:'#888888',7:'#1a0000',8:'#cc0000',9:'#1a0000'});
+const PAL_ORKBOY   = fullPal({1:'#0a1a00',2:'#3a6a1a',3:'#6aa030',4:'#ffee00',6:'#555555',7:'#0a1a00',8:'#aa7700',9:'#0a1a00'});
+const PAL_GROT     = fullPal({1:'#0a1a00',2:'#3a6a1a',3:'#aa3333',4:'#ffee00',6:'#665522',7:'#0a1a00',9:'#0a1a00'});
+const PAL_TERMA    = fullPal({1:'#1a0a20',2:'#5a2a7a',3:'#aa3333',4:'#88ffaa',6:'#3a8a4a',7:'#1a0a20',9:'#1a0a20'});
+const PAL_HORMA    = fullPal({1:'#1a0a20',2:'#5a2a7a',3:'#8a4aaa',4:'#88ffaa',6:'#3a8a4a',7:'#1a0a20',8:'#5a2a7a',9:'#1a0a20'});
+
+const PAL_CHAOSLORD = fullPal({1:'#330000',2:'#7a0000',3:'#cc0000',4:'#ff6600',5:'#ffee00',6:'#888888',7:'#1a0000',8:'#cc8800',9:'#1a0000'});
+const PAL_WARBOSS    = fullPal({1:'#0a1a00',2:'#3a6a1a',3:'#6aa030',4:'#ffee00',5:'#cc2222',6:'#666666',7:'#0a1a00',8:'#aa7700',9:'#0a1a00'});
+const PAL_HIVETYRANT = fullPal({1:'#1a0a20',2:'#5a2a7a',3:'#8a4aaa',4:'#88ffaa',5:'#cc3355',6:'#3a8a4a',7:'#1a0a20',8:'#8a4aaa',9:'#1a0a20'});
+
+// ───────────────────────── Class & enemy defs ─────────────────────────
+
+const CLASS_DEFS = {
+  marine:     { name:'Space Marine',      short:'Tactique', tmpl:'gun',   pal:PAL_MARINE,  base:{hp:120,atk:16,def:11,spd:9},  growth:{hp:13,atk:2.0,def:1.5,spd:0.5}, skill:null },
+  assault:    { name:"Marine d'Assaut",   short:'Assaut',   tmpl:'melee', pal:PAL_ASSAULT, base:{hp:95, atk:18,def:7, spd:15}, growth:{hp:10,atk:2.2,def:1.0,spd:1.0}, skill:null },
+  heavy:      { name:'Dévastateur',       short:'Lourd',    tmpl:'gun',   pal:PAL_HEAVY,   base:{hp:140,atk:21,def:13,spd:6},  growth:{hp:16,atk:2.4,def:1.8,spd:0.4}, skill:null },
+  apothecary: { name:'Apothicaire',       short:'Soigneur', tmpl:'melee', pal:PAL_APOTH,   base:{hp:105,atk:10,def:9, spd:9},  growth:{hp:12,atk:1.2,def:1.4,spd:0.6}, skill:'heal' },
+  techmarine: { name:'Tech-Marine',       short:'Support',  tmpl:'gun',   pal:PAL_TECH,    base:{hp:110,atk:11,def:15,spd:8},  growth:{hp:13,atk:1.3,def:2.0,spd:0.5}, skill:'buffdef' },
+  psyker:     { name:'Bibliothécaire',    short:'Psyker',   tmpl:'melee', pal:PAL_PSYKER,  base:{hp:90, atk:20,def:6, spd:10}, growth:{hp:9, atk:2.6,def:0.8,spd:0.7}, skill:'aoe' },
+};
+
+const FIRST_NAMES = ['Marcus','Titus','Brutus','Cassius','Augustin','Leonid','Dante','Corvus','Maximus','Severus','Aurelius','Ignatius'];
+
+const BIOMES = [
+  { name:'Repaire Hérétique', trash:[
+      {key:'cultist', name:'Cultiste du Chaos', tmpl:'melee', pal:PAL_CULTIST, base:{hp:40,atk:8,def:3,spd:8}},
+      {key:'chmarine', name:'Marine du Chaos',  tmpl:'melee', pal:PAL_CHMARINE, base:{hp:70,atk:13,def:8,spd:7}},
+    ], boss:{key:'chaoslord', name:'Seigneur du Chaos', tmpl:'boss', pal:PAL_CHAOSLORD, base:{hp:220,atk:22,def:12,spd:9}} },
+  { name:'Bande Orks', trash:[
+      {key:'grot', name:'Gretchin', tmpl:'small', pal:PAL_GROT, base:{hp:25,atk:5,def:1,spd:10}},
+      {key:'orkboy', name:'Ork Boy', tmpl:'gun', pal:PAL_ORKBOY, base:{hp:80,atk:14,def:6,spd:6}},
+    ], boss:{key:'warboss', name:'Warboss Ork', tmpl:'boss', pal:PAL_WARBOSS, base:{hp:260,atk:24,def:14,spd:8}} },
+  { name:'Essaim Tyranide', trash:[
+      {key:'termagant', name:'Termagant', tmpl:'small', pal:PAL_TERMA, base:{hp:30,atk:9,def:2,spd:9}},
+      {key:'hormagaunt', name:'Hormagaunt', tmpl:'melee', pal:PAL_HORMA, base:{hp:55,atk:12,def:4,spd:13}},
+    ], boss:{key:'hivetyrant', name:'Tyran de la Ruche', tmpl:'boss', pal:PAL_HIVETYRANT, base:{hp:300,atk:26,def:16,spd:10}} },
+];
+
+// ───────────────────────── Game state ─────────────────────────
+
+let idCounter = 1;
+let roster, inventory, floorIndex, path, nodeIndex;
+let currentEnemies, currentIsBoss, currentSimResult, playbackTimer, pendingResult, totalKillsAllTime;
+
+function randChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function shuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+function createCharacter(classKey, level) {
+  level = level || 1;
+  const cls = CLASS_DEFS[classKey];
+  const c = {
+    id: 'c'+(idCounter++), classKey,
+    name: `${randChoice(FIRST_NAMES)} — ${cls.name}`,
+    level, xp:0, kills:0,
+    baseHp:cls.base.hp, baseAtk:cls.base.atk, baseDef:cls.base.def, baseSpd:cls.base.spd,
+    weapon:null, armor:null,
+  };
+  for (let i=1;i<level;i++){
+    c.baseHp+=cls.growth.hp; c.baseAtk+=cls.growth.atk; c.baseDef+=cls.growth.def; c.baseSpd+=cls.growth.spd;
+  }
+  return c;
+}
+
+function getMaxHp(c){ return Math.round(c.baseHp + (c.armor?c.armor.hpBonus:0)); }
+function getAtk(c){ return Math.round(c.baseAtk + (c.weapon?c.weapon.atkBonus:0)); }
+function getDef(c){ return Math.round(c.baseDef + (c.armor?c.armor.defBonus:0)); }
+function getSpd(c){ return Math.round(c.baseSpd); }
+function xpToNext(level){ return 60 + level*40; }
+
+function gainXp(c, amount) {
+  c.xp += amount;
+  let leveled = false;
+  while (c.xp >= xpToNext(c.level)) {
+    c.xp -= xpToNext(c.level);
+    c.level++;
+    const cls = CLASS_DEFS[c.classKey];
+    c.baseHp+=cls.growth.hp; c.baseAtk+=cls.growth.atk; c.baseDef+=cls.growth.def; c.baseSpd+=cls.growth.spd;
+    leveled = true;
+  }
+  return leveled;
+}
+
+function scaledEnemy(def, fIdx, isBoss) {
+  const mult = 1 + fIdx*0.35;
+  const hp = Math.round(def.base.hp*mult);
+  return {
+    id:'e'+(idCounter++), key:def.key, name:def.name, tmpl:def.tmpl, pal:def.pal,
+    maxHp:hp, hp,
+    atk: Math.round(def.base.atk*mult),
+    def: Math.round(def.base.def*mult),
+    spd: Math.round((def.base.spd + fIdx*0.4)*10)/10,
+    xpValue: Math.round((def.base.hp*0.6 + def.base.atk*2) * (1+fIdx*0.25) * (isBoss?3:1)),
+  };
+}
+
+function buildEnemyGroup(isBoss) {
+  const biome = BIOMES[floorIndex % BIOMES.length];
+  if (isBoss) {
+    const enemies = [scaledEnemy(biome.boss, floorIndex, true)];
+    const escortCount = floorIndex>=3 ? Math.min(2, 1+Math.floor(floorIndex/4)) : 0;
+    for (let i=0;i<escortCount;i++) enemies.push(scaledEnemy(randChoice(biome.trash), floorIndex, false));
+    return enemies;
+  }
+  const count = Math.min(6, 2 + Math.floor(floorIndex/3) + Math.floor(Math.random()*2));
+  const enemies = [];
+  for (let i=0;i<count;i++) enemies.push(scaledEnemy(randChoice(biome.trash), floorIndex, false));
+  return enemies;
+}
+
+// ───────────────────────── Path / map ─────────────────────────
+
+function generatePath() {
+  const p = [];
+  for (let i=0;i<10;i++) p.push({type:'fight'});
+  p.splice(3, 0, {type:'recruit'});
+  p.splice(8, 0, {type:'recruit'});
+  p.push({type:'boss'});
+  return p;
+}
+
+const NODE_ICON = {fight:'⚔', recruit:'✦', boss:'☠'};
+
+// ───────────────────────── Combat simulation ─────────────────────────
+
+function simulateCombat(rosterArr, enemies) {
+  const team = rosterArr.map(c => ({
+    ref:c, id:c.id, side:'team', classKey:c.classKey, name:c.name,
+    hp:getMaxHp(c), maxHp:getMaxHp(c), atk:getAtk(c), def:getDef(c), spd:getSpd(c),
+    alive:true, usedSkillOnce:false,
+  }));
+  const foes = enemies.map(e => ({
+    ref:e, id:e.id, side:'enemy', key:e.key, name:e.name,
+    hp:e.hp, maxHp:e.maxHp, atk:e.atk, def:e.def, spd:e.spd, xpValue:e.xpValue,
+    alive:true,
+  }));
+  const events = [];
+  const kills = {}; // id -> {count, bonusXp}
+  let safety = 0;
+
+  while (team.some(u=>u.alive) && foes.some(u=>u.alive) && safety<400) {
+    safety++;
+    const order = [...team,...foes].filter(u=>u.alive).sort((a,b)=>(b.spd-a.spd)||(Math.random()-0.5));
+    for (const actor of order) {
+      if (!actor.alive) continue;
+      const allies = actor.side==='team' ? team : foes;
+      const foeSide = actor.side==='team' ? foes : team;
+      if (!foeSide.some(u=>u.alive)) continue;
+      const cls = actor.side==='team' ? CLASS_DEFS[actor.classKey] : null;
+
+      if (cls && cls.skill==='heal') {
+        const tgt = allies.filter(u=>u.alive && u.hp<u.maxHp).sort((a,b)=>(a.hp/a.maxHp)-(b.hp/b.maxHp))[0];
+        if (tgt) {
+          const amt = Math.round(actor.atk*1.1);
+          tgt.hp = Math.min(tgt.maxHp, tgt.hp+amt);
+          events.push({t:'heal', actor:actor.id, target:tgt.id, amount:amt});
+          continue;
+        }
+      }
+      if (cls && cls.skill==='buffdef' && !actor.usedSkillOnce) {
+        actor.usedSkillOnce = true;
+        allies.forEach(u=>{ if (u.alive) u.def = Math.round(u.def*1.25); });
+        events.push({t:'buff', actor:actor.id});
+        continue;
+      }
+      if (cls && cls.skill==='aoe') {
+        const targets = foeSide.filter(u=>u.alive).sort(()=>Math.random()-0.5).slice(0,2);
+        targets.forEach(tgt => {
+          const dmg = Math.max(1, Math.round(actor.atk*0.75 - tgt.def*0.4));
+          tgt.hp -= dmg;
+          events.push({t:'attack', actor:actor.id, target:tgt.id, amount:dmg});
+          if (tgt.hp<=0 && tgt.alive) {
+            tgt.alive=false;
+            events.push({t:'kill', actor:actor.id, target:tgt.id});
+            if (actor.side==='team') {
+              kills[actor.id] = kills[actor.id] || {count:0,bonusXp:0};
+              kills[actor.id].count++; kills[actor.id].bonusXp += (tgt.xpValue||0)*0.5;
+            }
+          }
+        });
+        continue;
+      }
+      const tgt = foeSide.filter(u=>u.alive).sort((a,b)=>(a.hp/a.maxHp)-(b.hp/b.maxHp))[0];
+      if (!tgt) continue;
+      const crit = Math.random()<0.12;
+      let dmg = Math.max(1, Math.round(actor.atk - tgt.def*0.5));
+      if (crit) dmg = Math.round(dmg*1.6);
+      tgt.hp -= dmg;
+      events.push({t: crit?'crit':'attack', actor:actor.id, target:tgt.id, amount:dmg});
+      if (tgt.hp<=0 && tgt.alive) {
+        tgt.alive = false;
+        events.push({t:'kill', actor:actor.id, target:tgt.id});
+        if (actor.side==='team') {
+          kills[actor.id] = kills[actor.id] || {count:0,bonusXp:0};
+          kills[actor.id].count++; kills[actor.id].bonusXp += (tgt.xpValue||0)*0.5;
+        }
+      }
+    }
+  }
+  return { events, victory: foes.every(u=>!u.alive), kills, team, foes };
+}
+
+// ───────────────────────── Loot ─────────────────────────
+
+const RARITY = ['common','rare','epic'];
+const RARITY_W = [0.6,0.3,0.1];
+function rollRarity(){ const r=Math.random(); let acc=0; for(let i=0;i<RARITY.length;i++){ acc+=RARITY_W[i]; if(r<=acc) return RARITY[i]; } return 'common'; }
+const WEAPON_NAMES = {common:'Pistolet Bolter',rare:'Épée Tronçonneuse+',epic:'Lame Reliquaire'};
+const ARMOR_NAMES  = {common:'Plaque Renforcée',rare:'Armure Tactique+',epic:'Armure Reliquaire'};
+const BOOK_NAMES   = {common:'Tome de Combat',rare:'Codex Sacré',epic:"Tome de l'Imperator"};
+
+function rollLoot(isBoss) {
+  if (!isBoss && Math.random()>0.45) return null;
+  const rarity = rollRarity();
+  const mult = rarity==='common'?1:rarity==='rare'?1.8:2.8;
+  const floorBonus = 1+floorIndex*0.25;
+  const kind = randChoice(['weapon','armor','xpbook']);
+  if (kind==='weapon') return {id:'i'+(idCounter++), type:'weapon', rarity, name:WEAPON_NAMES[rarity], atkBonus:Math.round(4*mult*floorBonus)};
+  if (kind==='armor')  return {id:'i'+(idCounter++), type:'armor', rarity, name:ARMOR_NAMES[rarity], defBonus:Math.round(3*mult*floorBonus), hpBonus:Math.round(10*mult*floorBonus)};
+  return {id:'i'+(idCounter++), type:'xpbook', rarity, name:BOOK_NAMES[rarity], xpAmount:Math.round(50*mult*floorBonus)};
+}
+
+function itemDesc(item) {
+  if (item.type==='weapon') return `+${item.atkBonus} ATQ`;
+  if (item.type==='armor') return `+${item.defBonus} DEF, +${item.hpBonus} PV`;
+  return `+${item.xpAmount} XP instantané`;
+}
+
+// ───────────────────────── Rendering ─────────────────────────
+
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+}
+
+function hpClass(hp,maxHp){ const r=hp/maxHp; return r>0.5?'':r>0.2?'mid':'low'; }
+
+function renderHud() {
+  document.getElementById('hudFloor').textContent = `Étage ${floorIndex+1} — ${BIOMES[floorIndex%BIOMES.length].name}`;
+  document.getElementById('hudNode').textContent = `Noeud ${Math.min(nodeIndex+1,path.length)}/${path.length}`;
+}
+
+function renderMap() {
+  renderHud();
+  const row = document.getElementById('pathRow');
+  row.innerHTML = '';
+  path.forEach((node,i) => {
+    const el = document.createElement('div');
+    el.className = 'node ' + node.type + ' ' + (i<nodeIndex?'done':i===nodeIndex?'current':'locked');
+    el.textContent = NODE_ICON[node.type];
+    if (i===nodeIndex) el.onclick = handleNodeClick;
+    row.appendChild(el);
+  });
+  const advBtn = document.getElementById('advanceBtn');
+  advBtn.textContent = nodeIndex>=path.length ? 'Étage Terminé' :
+    path[nodeIndex].type==='fight' ? 'Engager le Combat' :
+    path[nodeIndex].type==='boss' ? 'Affronter le Boss' : 'Voir les Renforts';
+  advBtn.onclick = handleNodeClick;
+  renderRoster();
+  renderInventory();
+}
+
+function renderRoster() {
+  const list = document.getElementById('rosterList');
+  list.innerHTML = '';
+  roster.forEach(c => {
+    const cls = CLASS_DEFS[c.classKey];
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    const canvas = document.createElement('canvas');
+    drawSprite(canvas, cls.tmpl, cls.pal);
+    chip.appendChild(canvas);
+    const hp = getMaxHp(c);
+    chip.innerHTML += `
+      <div class="nm">${c.name}</div>
+      <div class="lv">Niv.${c.level} — ${cls.short}</div>
+      <div class="hpbar"><div class="hpfill" style="width:100%"></div></div>
+      <div style="color:#776644;">PV ${hp} · ATQ ${getAtk(c)} · DEF ${getDef(c)}</div>
+      <div style="color:#665533;">XP ${c.xp}/${xpToNext(c.level)} · ☠${c.kills}</div>
+      <div style="color:#998855;">${c.weapon? '🗡'+c.weapon.name : ''} ${c.armor? '🛡'+c.armor.name : ''}</div>
+    `;
+    list.appendChild(chip);
+  });
+}
+
+function renderInventory() {
+  const list = document.getElementById('invList');
+  const empty = document.getElementById('invEmpty');
+  list.innerHTML = '';
+  empty.style.display = inventory.length ? 'none' : 'block';
+  inventory.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'item-card rarity-'+item.rarity;
+    card.innerHTML = `<div class="nm">${item.name}</div><div class="desc">${itemDesc(item)}</div>`;
+    const row = document.createElement('div');
+    row.className = 'target-row';
+    roster.forEach(c => {
+      const b = document.createElement('button');
+      b.textContent = c.name.split(' — ')[0];
+      b.onclick = () => useItem(item.id, c.id);
+      row.appendChild(b);
+    });
+    card.appendChild(row);
+    list.appendChild(card);
+  });
+}
+
+function useItem(itemId, charId) {
+  const idx = inventory.findIndex(i=>i.id===itemId);
+  if (idx<0) return;
+  const item = inventory[idx];
+  const c = roster.find(r=>r.id===charId);
+  if (!c) return;
+  if (item.type==='xpbook') gainXp(c, item.xpAmount);
+  else if (item.type==='weapon') c.weapon = item;
+  else if (item.type==='armor') c.armor = item;
+  inventory.splice(idx,1);
+  renderRoster(); renderInventory();
+}
+
+function handleNodeClick() {
+  if (nodeIndex>=path.length) return;
+  const node = path[nodeIndex];
+  if (node.type==='fight') startCombat(false);
+  else if (node.type==='boss') startCombat(true);
+  else showRecruit();
+}
+
+// ───────────────────────── Combat screen ─────────────────────────
+
+function unitTmplPal(u) {
+  if (u.side==='team') { const cls=CLASS_DEFS[u.classKey]; return [cls.tmpl, cls.pal]; }
+  const def = u.ref;
+  return [def.tmpl, def.pal];
+}
+
+function buildUnitEl(u) {
+  const div = document.createElement('div');
+  div.className = 'unit';
+  div.id = 'unit-'+u.id;
+  const canvas = document.createElement('canvas');
+  const [tmpl, pal] = unitTmplPal(u);
+  drawSprite(canvas, tmpl, pal);
+  div.appendChild(canvas);
+  const lvl = u.side==='team' ? ` Niv.${u.ref.level}` : '';
+  div.innerHTML += `
+    <div class="uname">${u.name}${lvl}</div>
+    <div class="hpbar"><div class="hpfill" id="hpfill-${u.id}" style="width:100%"></div></div>
+  `;
+  return div;
+}
+
+function startCombat(isBoss) {
+  currentEnemies = buildEnemyGroup(isBoss);
+  currentIsBoss = isBoss;
+  switchScreen('combat');
+  document.getElementById('log').innerHTML = '';
+
+  const result = simulateCombat(roster, currentEnemies);
+  currentSimResult = result;
+
+  const enemyRow = document.getElementById('enemyRow');
+  const teamRow = document.getElementById('teamRow');
+  enemyRow.innerHTML = ''; teamRow.innerHTML = '';
+  result.foes.forEach(u => enemyRow.appendChild(buildUnitEl(u)));
+  result.team.forEach(u => teamRow.appendChild(buildUnitEl(u)));
+
+  playbackCombat(result);
+}
+
+function logLine(text, cls) {
+  const log = document.getElementById('log');
+  const div = document.createElement('div');
+  if (cls) div.className = cls;
+  div.textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function flash(id, cls) {
+  const el = document.getElementById('unit-'+id);
+  if (!el) return;
+  el.classList.add(cls);
+  setTimeout(()=>el.classList.remove(cls), 260);
+}
+
+function playbackCombat(result) {
+  const displayHp = {};
+  [...result.team, ...result.foes].forEach(u => displayHp[u.id] = u.maxHp);
+
+  let i = 0;
+  function nameOf(id) {
+    const u = [...result.team, ...result.foes].find(x=>x.id===id);
+    return u ? u.name : '???';
+  }
+  function applyEvent(ev) {
+    if (ev.t==='attack' || ev.t==='crit') {
+      displayHp[ev.target] = Math.max(0, displayHp[ev.target]-ev.amount);
+      updateHpBar(ev.target, displayHp);
+      flash(ev.actor,'attacking'); flash(ev.target,'hit');
+      logLine(`${nameOf(ev.actor)} ${ev.t==='crit'?'frappe CRITIQUEMENT':'attaque'} ${nameOf(ev.target)} (-${ev.amount})`, ev.t==='crit'?'l-crit':null);
+    } else if (ev.t==='heal') {
+      const u = [...currentSimResult.team, ...currentSimResult.foes].find(x=>x.id===ev.target);
+      displayHp[ev.target] = Math.min(u.maxHp, displayHp[ev.target]+ev.amount);
+      updateHpBar(ev.target, displayHp);
+      flash(ev.actor,'attacking');
+      logLine(`${nameOf(ev.actor)} soigne ${nameOf(ev.target)} (+${ev.amount})`, 'l-heal');
+    } else if (ev.t==='buff') {
+      flash(ev.actor,'attacking');
+      logLine(`${nameOf(ev.actor)} renforce les défenses de l'escouade !`, 'l-heal');
+    } else if (ev.t==='kill') {
+      const el = document.getElementById('unit-'+ev.target);
+      if (el) el.classList.add('dead');
+      logLine(`💀 ${nameOf(ev.target)} est terrassé par ${nameOf(ev.actor)} !`, 'l-kill');
+    }
+  }
+  function step() {
+    if (i>=result.events.length) {
+      clearInterval(playbackTimer);
+      setTimeout(()=>onCombatFinished(), 500);
+      return;
+    }
+    applyEvent(result.events[i]);
+    i++;
+  }
+  clearInterval(playbackTimer);
+  playbackTimer = setInterval(step, 480);
+
+  document.getElementById('skipBtn').onclick = () => {
+    clearInterval(playbackTimer);
+    while (i<result.events.length) { applyEvent(result.events[i]); i++; }
+    setTimeout(()=>onCombatFinished(), 200);
+  };
+}
+
+function updateHpBar(id, displayHp) {
+  const u = [...currentSimResult.team, ...currentSimResult.foes].find(x=>x.id===id);
+  if (!u) return;
+  const fill = document.getElementById('hpfill-'+id);
+  if (!fill) return;
+  const pct = Math.max(0, Math.min(100, (displayHp[id]/u.maxHp)*100));
+  fill.style.width = pct+'%';
+  fill.className = 'hpfill ' + hpClass(displayHp[id], u.maxHp);
+}
+
+function onCombatFinished() {
+  if (!currentSimResult.victory) {
+    renderGameOver();
+    switchScreen('gameover');
+    return;
+  }
+  const xpTotal = currentEnemies.reduce((s,e)=>s+e.xpValue,0);
+  const levelUps = {};
+  roster.forEach(c => { if (gainXp(c, xpTotal)) levelUps[c.id]=true; });
+  Object.entries(currentSimResult.kills).forEach(([id,info]) => {
+    const c = roster.find(r=>r.id===id);
+    if (!c) return;
+    c.kills += info.count;
+    totalKillsAllTime += info.count;
+    if (gainXp(c, Math.round(info.bonusXp))) levelUps[id]=true;
+  });
+  const loot = rollLoot(currentIsBoss);
+  if (loot) inventory.push(loot);
+  pendingResult = { xpTotal, levelUps, loot };
+  renderResult(pendingResult);
+  switchScreen('result');
+}
+
+function renderResult(res) {
+  document.getElementById('resultTitle').textContent = currentIsBoss ? '⚜ BOSS VAINCU ⚜' : 'VICTOIRE';
+  const xpList = document.getElementById('xpList');
+  xpList.innerHTML = roster.map(c => {
+    const up = res.levelUps[c.id] ? '<span class="up">⬆ NIVEAU '+c.level+' !</span>' : '';
+    return `<div class="xp-line"><span>${c.name}</span><span>+${res.xpTotal} XP ${up}</span></div>`;
+  }).join('');
+  const lootArea = document.getElementById('lootArea');
+  if (res.loot) {
+    lootArea.innerHTML = `<div class="loot-card rarity-${res.loot.rarity}">
+      <div class="nm">${res.loot.name}</div>
+      <div style="font-size:0.7rem;color:#aa9966;">${itemDesc(res.loot)}</div>
+      <div style="font-size:0.6rem;color:#665533;margin-top:6px;">Ajouté au sac — équipez-le depuis l'écran de la carte.</div>
+    </div>`;
+  } else {
+    lootArea.innerHTML = '';
+  }
+  document.getElementById('continueBtn').onclick = continueFromResult;
+}
+
+function continueFromResult() {
+  nodeIndex++;
+  if (currentIsBoss) {
+    floorIndex++;
+    nodeIndex = 0;
+    path = generatePath();
+  }
+  switchScreen('map');
+  renderMap();
+}
+
+// ───────────────────────── Recruit screen ─────────────────────────
+
+function showRecruit() {
+  const keys = shuffle(Object.keys(CLASS_DEFS)).slice(0,3);
+  const cards = document.getElementById('recruitCards');
+  cards.innerHTML = '';
+  if (roster.length>=8) {
+    cards.innerHTML = '<div style="font-size:0.8rem;color:#aa8855;">Effectifs maximum atteints (8/8). Aucun renfort disponible.</div>';
+  } else {
+    keys.forEach(key => {
+      const cls = CLASS_DEFS[key];
+      const card = document.createElement('div');
+      card.className = 'recruit-card';
+      const canvas = document.createElement('canvas');
+      drawSprite(canvas, cls.tmpl, cls.pal);
+      card.appendChild(canvas);
+      card.innerHTML += `
+        <div class="nm">${cls.name}</div>
+        <div class="stats">PV ${cls.base.hp} · ATQ ${cls.base.atk}<br>DEF ${cls.base.def} · VIT ${cls.base.spd}${cls.skill?'<br>Compétence spéciale':''}</div>
+      `;
+      const btn = document.createElement('button');
+      btn.className = 'small-btn';
+      btn.textContent = 'Recruter';
+      btn.onclick = () => recruitChoose(key);
+      card.appendChild(btn);
+      cards.appendChild(card);
+    });
+  }
+  document.getElementById('skipRecruitBtn').onclick = () => { nodeIndex++; switchScreen('map'); renderMap(); };
+  switchScreen('recruit');
+}
+
+function recruitChoose(classKey) {
+  if (roster.length<8) {
+    const avgLevel = Math.max(1, Math.round(roster.reduce((s,c)=>s+c.level,0)/roster.length)-1);
+    roster.push(createCharacter(classKey, avgLevel));
+  }
+  nodeIndex++;
+  switchScreen('map');
+  renderMap();
+}
+
+// ───────────────────────── Game over / restart ─────────────────────────
+
+function renderGameOver() {
+  document.getElementById('goStats').innerHTML = `
+    Étage atteint : ${floorIndex+1}<br>
+    Ennemis terrassés : ${totalKillsAllTime}<br>
+    Effectif final : ${roster.length} frères de bataille
+  `;
+}
+
+function resetGame() {
+  idCounter = 1;
+  roster = [createCharacter('marine', 1)];
+  inventory = [];
+  floorIndex = 0;
+  path = generatePath();
+  nodeIndex = 0;
+  totalKillsAllTime = 0;
+  switchScreen('map');
+  renderMap();
+}
+
+document.getElementById('restartBtn').onclick = resetGame;
+
+resetGame();
+</script>
+</body>
+</html>
