@@ -550,12 +550,13 @@ function renderInventory() {
   inventory.forEach(item => {
     const card = document.createElement('div');
     card.className = 'item-card rarity-'+item.rarity;
-    card.innerHTML = `<div class="nm">${item.name}</div><div class="desc">${itemDesc(item)}</div>`;
+    card.innerHTML = `<div class="nm">${item.name}</div><div class="desc">${itemDesc(item)}</div><div class="desc" style="margin-top:4px;">${item.type==='xpbook' ? 'Donner à :' : 'Équiper sur :'}</div>`;
     const row = document.createElement('div');
     row.className = 'target-row';
     roster.forEach(c => {
       const b = document.createElement('button');
       b.textContent = c.name.split(' — ')[0];
+      b.title = item.type==='xpbook' ? `Donner ${item.name} à ${c.name}` : `Équiper ${item.name} sur ${c.name}`;
       b.onclick = () => useItem(item.id, c.id);
       row.appendChild(b);
     });
@@ -735,14 +736,35 @@ function renderResult(res) {
     return `<div class="xp-line"><span>${c.name}</span><span>+${res.xpTotal} XP ${up}</span></div>`;
   }).join('');
   const lootArea = document.getElementById('lootArea');
+  lootArea.innerHTML = '';
   if (res.loot) {
-    lootArea.innerHTML = `<div class="loot-card rarity-${res.loot.rarity}">
-      <div class="nm">${res.loot.name}</div>
-      <div style="font-size:0.7rem;color:#aa9966;">${itemDesc(res.loot)}</div>
-      <div style="font-size:0.6rem;color:#665533;margin-top:6px;">Ajouté au sac — équipez-le depuis l'écran de la carte.</div>
-    </div>`;
-  } else {
-    lootArea.innerHTML = '';
+    const card = document.createElement('div');
+    card.className = 'loot-card rarity-'+res.loot.rarity;
+    const head = document.createElement('div');
+    head.innerHTML = `<div class="nm">${res.loot.name}</div><div style="font-size:0.7rem;color:#aa9966;">${itemDesc(res.loot)}</div>`;
+    card.appendChild(head);
+    if (inventory.find(i=>i.id===res.loot.id)) {
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size:0.6rem;color:#665533;margin-top:6px;';
+      label.textContent = res.loot.type==='xpbook' ? 'Donner à :' : 'Équiper sur :';
+      card.appendChild(label);
+      const row = document.createElement('div');
+      row.className = 'target-row';
+      roster.forEach(c => {
+        const b = document.createElement('button');
+        b.textContent = c.name.split(' — ')[0];
+        b.title = res.loot.type==='xpbook' ? `Donner ${res.loot.name} à ${c.name}` : `Équiper ${res.loot.name} sur ${c.name}`;
+        b.onclick = () => { useItem(res.loot.id, c.id); renderResult(res); };
+        row.appendChild(b);
+      });
+      card.appendChild(row);
+    } else {
+      const done = document.createElement('div');
+      done.style.cssText = 'font-size:0.6rem;color:#665533;margin-top:6px;';
+      done.textContent = 'Objet attribué.';
+      card.appendChild(done);
+    }
+    lootArea.appendChild(card);
   }
   document.getElementById('continueBtn').onclick = continueFromResult;
 }
