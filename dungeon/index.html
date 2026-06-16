@@ -244,26 +244,6 @@ function drawSprite(canvas, tmplKey, palette) {
   }
 }
 
-// CC0 "Space soldier" sprite (opengameart.org/content/space-soldier-sprite-sheet-32x32), recolored per class via canvas filters
-const TROOPER_IMG_SRC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAAAgCAYAAADaInAlAAAC3ElEQVR4nO2ZMU7DQBBFp+Maaahyg1RpkBAtDT1H4AJBnAAhcQHEHWiQaCiouQIVHQWiXLDj2ezOzjo23pmxYlsaJZHMvv9nPrazAZiP+ehxuI51qMek/bvXc3Du+ri9Hs8km2A5gEn7j8wbCbEcwNT97+CskAZ68+z8UViE9QCm7j9tQPUaNgGaBmATCgsYzQBgmv7bBTQw34CqCgsY9QDg8P3vBCCcXpJObj+8gOp9YQGjGcBE/cdQ2gQIGiBgPuJbD2Ci/mMRVAgKkAK3sZUG0KoBUv+HFsBUCNcASTDYBjDR0OLf3W2caghAMIDcYlHySgP36VEOYF//9fCvLrbF/O1gPZoBdIvFwi2XS7darcLFkocQFDEEltMA/QZQlN3XPw7+8vSn/oyvA7SZBrA2v16v66IghRBYB7CTf2STYbuvp6fBw7cOYA2uzKMAD242Hrh70j/NsnzrAHbxD0Gj3+/v/eCr9wP1WAdwK4IC6e4TFTIERtnGAQTo4J8OnzR+UACMAwjR5Se3Fy0YAOA4mgHs4h8Lm//99lbymcQygLtLEFkwMmo9AGn+Pv/AD78Y3zKAUQPChGkGwDqAof+wB8gXGn7CB/0A5gNAm681gDEEkAaB6pHiGwRw+zUEL0FjCoAWP/SPPGCCUPi+7/nGAdyKCBZNDGsPQJkPQPxXjDAEYR1gAFNB3ADCEhDABjDUoLAb6bVQv5mfZYsywS6AvJhM6jQS6B+AciHU4HcoMT4XQEX/cQDCIeBu1WazkRSR5WeqOD/cmeNKw3+PKi+AeyCDIADCTagHQPlcCIU0RAFAhmIIkgByGqT8Z5/IGxDbnJIC9mnINac0m6xt4p8ZtLT/1h8mgHyWuAwl/JatTwkNnp9prIr/Fob4raDLwu7h6Mi9/L1+CjRgT0lrGJX/iqOpwUPJwsl/QeacoSJmvi1/tzAWk67kHDyvQBJnvi3//wIy5878EfF/AYpxbkj1NO5dAAAAAElFTkSuQmCC';
-const trooperImg = new Image();
-trooperImg.src = TROOPER_IMG_SRC;
-
-function drawImageSprite(canvas, filterStr) {
-  canvas.width = 126;
-  canvas.height = 126;
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  const draw = () => {
-    ctx.clearRect(0,0,126,126);
-    ctx.filter = filterStr || 'none';
-    ctx.drawImage(trooperImg, 0,0,32,32, 0,0,126,126);
-    ctx.filter = 'none';
-  };
-  if (trooperImg.complete && trooperImg.naturalWidth) draw();
-  else trooperImg.addEventListener('load', draw, {once:true});
-}
-
 // ───────────────────────── Palettes ─────────────────────────
 const fullPal = p => Object.assign({1:'#111',2:'#333',3:'#555',4:'#fff',5:'#888',6:'#999',7:'#222',8:'#aaa',9:'#222'}, p);
 
@@ -288,12 +268,12 @@ const PAL_HIVETYRANT = fullPal({1:'#1a0a20',2:'#5a2a7a',3:'#8a4aaa',4:'#88ffaa',
 // ───────────────────────── Class & enemy defs ─────────────────────────
 
 const CLASS_DEFS = {
-  marine:     { name:'Space Marine',      short:'Tactique', tmpl:'gun',   pal:PAL_MARINE,  imgFilter:'hue-rotate(180deg) saturate(1.1)',                  base:{hp:120,atk:16,def:11,spd:9},  growth:{hp:13,atk:2.0,def:1.5,spd:0.5}, skill:null },
-  assault:    { name:"Marine d'Assaut",   short:'Assaut',   tmpl:'melee', pal:PAL_ASSAULT, imgFilter:'hue-rotate(330deg) saturate(1.4) brightness(0.95)', base:{hp:95, atk:18,def:7, spd:15}, growth:{hp:10,atk:2.2,def:1.0,spd:1.0}, skill:null },
-  heavy:      { name:'Dévastateur',       short:'Lourd',    tmpl:'gun',   pal:PAL_HEAVY,   imgFilter:'hue-rotate(90deg) saturate(1.2) brightness(0.9)',   base:{hp:140,atk:21,def:13,spd:6},  growth:{hp:16,atk:2.4,def:1.8,spd:0.4}, skill:null },
-  apothecary: { name:'Apothicaire',       short:'Soigneur', tmpl:'melee', pal:PAL_APOTH,   imgFilter:'saturate(0.15) brightness(1.5)',                    base:{hp:105,atk:10,def:9, spd:9},  growth:{hp:12,atk:1.2,def:1.4,spd:0.6}, skill:'heal' },
-  techmarine: { name:'Tech-Marine',       short:'Support',  tmpl:'gun',   pal:PAL_TECH,    imgFilter:'sepia(0.3) saturate(1.3) brightness(0.95)',         base:{hp:110,atk:11,def:15,spd:8},  growth:{hp:13,atk:1.3,def:2.0,spd:0.5}, skill:'buffdef' },
-  psyker:     { name:'Bibliothécaire',    short:'Psyker',   tmpl:'melee', pal:PAL_PSYKER,  imgFilter:'hue-rotate(245deg) saturate(1.5) brightness(0.9)',  base:{hp:90, atk:20,def:6, spd:10}, growth:{hp:9, atk:2.6,def:0.8,spd:0.7}, skill:'aoe' },
+  marine:     { name:'Space Marine',      short:'Tactique', tmpl:'gun',   pal:PAL_MARINE,  base:{hp:120,atk:16,def:11,spd:9},  growth:{hp:13,atk:2.0,def:1.5,spd:0.5}, skill:null },
+  assault:    { name:"Marine d'Assaut",   short:'Assaut',   tmpl:'melee', pal:PAL_ASSAULT, base:{hp:95, atk:18,def:7, spd:15}, growth:{hp:10,atk:2.2,def:1.0,spd:1.0}, skill:null },
+  heavy:      { name:'Dévastateur',       short:'Lourd',    tmpl:'gun',   pal:PAL_HEAVY,   base:{hp:140,atk:21,def:13,spd:6},  growth:{hp:16,atk:2.4,def:1.8,spd:0.4}, skill:null },
+  apothecary: { name:'Apothicaire',       short:'Soigneur', tmpl:'melee', pal:PAL_APOTH,   base:{hp:105,atk:10,def:9, spd:9},  growth:{hp:12,atk:1.2,def:1.4,spd:0.6}, skill:'heal' },
+  techmarine: { name:'Tech-Marine',       short:'Support',  tmpl:'gun',   pal:PAL_TECH,    base:{hp:110,atk:11,def:15,spd:8},  growth:{hp:13,atk:1.3,def:2.0,spd:0.5}, skill:'buffdef' },
+  psyker:     { name:'Bibliothécaire',    short:'Psyker',   tmpl:'melee', pal:PAL_PSYKER,  base:{hp:90, atk:20,def:6, spd:10}, growth:{hp:9, atk:2.6,def:0.8,spd:0.7}, skill:'aoe' },
 };
 
 const FIRST_NAMES = ['Marcus','Titus','Brutus','Cassius','Augustin','Leonid','Dante','Corvus','Maximus','Severus','Aurelius','Ignatius'];
@@ -545,7 +525,7 @@ function renderRoster() {
     const chip = document.createElement('div');
     chip.className = 'chip';
     const canvas = document.createElement('canvas');
-    drawImageSprite(canvas, cls.imgFilter);
+    drawSprite(canvas, cls.tmpl, cls.pal);
     chip.appendChild(canvas);
     const hp = getMaxHp(c);
     const info = document.createElement('div');
@@ -618,12 +598,8 @@ function buildUnitEl(u) {
   div.className = 'unit';
   div.id = 'unit-'+u.id;
   const canvas = document.createElement('canvas');
-  if (u.side==='team') {
-    drawImageSprite(canvas, CLASS_DEFS[u.classKey].imgFilter);
-  } else {
-    const [tmpl, pal] = unitTmplPal(u);
-    drawSprite(canvas, tmpl, pal);
-  }
+  const [tmpl, pal] = unitTmplPal(u);
+  drawSprite(canvas, tmpl, pal);
   div.appendChild(canvas);
   const lvl = u.side==='team' ? ` Niv.${u.ref.level}` : '';
   const info = document.createElement('div');
@@ -796,7 +772,7 @@ function showRecruit() {
       const card = document.createElement('div');
       card.className = 'recruit-card';
       const canvas = document.createElement('canvas');
-      drawImageSprite(canvas, cls.imgFilter);
+      drawSprite(canvas, cls.tmpl, cls.pal);
       card.appendChild(canvas);
       const info = document.createElement('div');
       info.innerHTML = `
@@ -844,7 +820,7 @@ function renderHeroSelect() {
     const card = document.createElement('div');
     card.className = 'recruit-card';
     const canvas = document.createElement('canvas');
-    drawImageSprite(canvas, cls.imgFilter);
+    drawSprite(canvas, cls.tmpl, cls.pal);
     card.appendChild(canvas);
     const info = document.createElement('div');
     info.innerHTML = `
