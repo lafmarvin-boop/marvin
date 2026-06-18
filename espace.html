@@ -682,7 +682,7 @@ async function switchTab(tab) {
       }
       btn.textContent = '💬 Agent'; btn.disabled = false;
     }
-    // Reprendre session partagée avec agent-app.html si disponible
+    // Reprendre session partagée avec agent-app.html si disponible (même navigateur)
     if (!agentChatToken) {
       const sharedToken = localStorage.getItem('parlons_agent_token');
       const sharedEmail = localStorage.getItem('parlons_agent_token_email');
@@ -690,6 +690,22 @@ async function switchTab(tab) {
         agentChatToken = sharedToken;
         startAgentPolling();
       }
+    }
+    // Reprendre session active depuis un autre appareil (ex : PWA mobile)
+    if (!agentChatToken && agentPasswordCache) {
+      try {
+        const rr = await fetch(`${API}/chat-presence`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agentEmail: agentEmailStored, password: agentPasswordCache, status: 'resume' })
+        });
+        const rd = await rr.json();
+        if (rd.ok && rd.online && rd.token) {
+          agentChatToken = rd.token;
+          localStorage.setItem('parlons_agent_token', rd.token);
+          localStorage.setItem('parlons_agent_token_email', agentEmailStored);
+          startAgentPolling();
+        }
+      } catch {}
     }
     if (agentChatToken && agentChatSessionId) { agentLastMsgTime = null; agentRenderedIds = new Set(); }
     renderAgentDash(agentEmailStored, adminAgentDataCache);
