@@ -692,11 +692,12 @@ async function switchTab(tab) {
       }
     }
     // Reprendre session active depuis un autre appareil (ex : PWA mobile)
-    if (!agentChatToken && agentPasswordCache) {
+    const _pwd = agentPasswordCache || (localStorage.getItem('parlons_espace_session') ? (JSON.parse(localStorage.getItem('parlons_espace_session')).password || '') : '');
+    if (!agentChatToken && _pwd) {
       try {
         const rr = await fetch(`${API}/chat-presence`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ agentEmail: agentEmailStored, password: agentPasswordCache, status: 'resume' })
+          body: JSON.stringify({ agentEmail: agentEmailStored, password: _pwd, status: 'resume' })
         });
         const rd = await rr.json();
         if (rd.ok && rd.online && rd.token) {
