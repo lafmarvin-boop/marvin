@@ -53,8 +53,13 @@ async def index():
 async def system_info():
     from pipelines.gpu_utils import get_system_info
     info = get_system_info()
-    from pipelines.lipsync import is_available as lipsync_ok
-    info["lipsync_available"] = lipsync_ok()
+    from pipelines.talking_head import best_available, hallo2_available, echomimic_available, latsync_available
+    info["talking_head_model"] = best_available()
+    info["hallo2"] = hallo2_available()
+    info["echomimic"] = echomimic_available()
+    info["latsync"] = latsync_available()
+    from pipelines.face_consistency import extract_face_embedding
+    info["ip_adapter"] = (BASE_DIR / "models" / "ip-adapter-faceid_sdxl.bin").exists()
     return info
 
 
@@ -173,6 +178,20 @@ def _job_animate(job_dir: Path, params: dict):
     enhance = params.get("enhance", True)
     color_preset = params.get("color_preset", "cinema")
 
+    # IP-Adapter FaceID : cohérence visage maximale avant animation
+    if avatar:
+        from pipelines.face_consistency import generate_with_face
+        face_img = str(job_dir / "face_consistent.png")
+        used_ip = generate_with_face(
+            face_image_path=avatar,
+            prompt=prompt,
+            output_path=face_img,
+            progress_cb=lambda p: _status(job_dir, "IP-Adapter FaceID…", int(5 + p * 0.2)),
+        )
+        if used_ip:
+            avatar = face_img
+            _status(job_dir, "Cohérence visage appliquée ✓", 25)
+
     if avatar:
         generate_from_image(
             image_path=avatar,
@@ -241,49 +260,63 @@ def _job_create(job_dir: Path, params: dict):
 
 def _job_presenter(job_dir: Path, params: dict):
     from pipelines.tts import synthesize_sync
-    from pipelines import lipsync
+    from pipelines.talking_head import generate_talking_head, best_available
+    from pipelines.face_consistency import crop_face_for_portrait
+    from pipelines.enhancer import enhance_video
 
     text = params["text"]
     voice = params["voice"]
     voice_rate = params["voice_rate"]
     avatar = params.get("avatar_path")
+    enhance = params.get("enhance", True)
 
     if not text:
         raise ValueError("Un texte est requis pour le mode présentateur.")
+    if not avatar:
+        raise ValueError("Une photo avatar est requise pour le mode présentateur.")
 
-    # 1. Générer l'audio TTS
-    _status(job_dir, "Synthèse vocale…", 10)
+    # 1. TTS
+    _status(job_dir, "Synthèse vocale…", 8)
     audio_path = str(job_dir / "speech.mp3")
     synthesize_sync(text, voice, audio_path, rate=voice_rate)
 
-    # 2. Générer une vidéo de base (avatar statique ou animé)
-    _status(job_dir, "Préparation de l'avatar…", 25)
-    base_video = str(job_dir / "base.mp4")
+    # 2. Préparer le portrait (crop du visage pour meilleurs résultats)
+    _status(job_dir, "Détection et recadrage du visage…", 15)
+    cropped_path = str(job_dir / "portrait.jpg")
+    ok = crop_face_for_portrait(avatar, cropped_path)
+    portrait = cropped_path if ok else avatar
 
-    if avatar:
-        _make_static_video(avatar, audio_path, base_video)
-    else:
-        raise ValueError("Une photo avatar est requise pour le mode présentateur.")
+    # 3. Talking head (Hallo2 > EchoMimic > LatentSync)
+    model_used = best_available()
+    _status(job_dir, f"Génération avatar ({model_used})…", 20)
+    raw_output = str(job_dir / "talking_raw.mp4")
 
-    # 3. Appliquer le lip sync avec LatentSync
+    def th_cb(pct):
+        _status(job_dir, f"{model_used} — animation en cours…", int(20 + pct * 0.6))
+
+    generate_talking_head(portrait, audio_path, raw_output, progress_cb=th_cb)
+
+    # 4. Post-processing
     output = str(job_dir / "output.mp4")
-
-    if lipsync.is_available():
-        _status(job_dir, "Lip sync LatentSync…", 50)
-        def ls_cb(pct): _status(job_dir, "LatentSync — synchronisation lèvres…", int(50 + pct * 0.45))
-        lipsync.run_lipsync(base_video, audio_path, output, progress_cb=ls_cb)
-    else:
-        # Pas de lip sync dispo → on retourne juste la vidéo de base
-        import shutil
-        shutil.copy(base_video, output)
-        _status(
-            job_dir,
-            "⚠️ LatentSync non installé — vidéo sans lip sync",
-            100
+    if enhance:
+        _status(job_dir, "Amélioration qualité…", 82)
+        def en_cb(pct):
+            _status(job_dir, "Post-processing…", int(82 + pct * 0.16))
+        enhance_video(
+            raw_output, output,
+            upscale=True,
+            face_enhance=True,
+            interpolate=True,
+            target_fps=60,
+            color_preset="cinema",
+            progress_cb=en_cb,
         )
-        return
+        Path(raw_output).unlink(missing_ok=True)
+    else:
+        import shutil
+        shutil.move(raw_output, output)
 
-    _status(job_dir, "Terminé ✅", 100)
+    _status(job_dir, f"Terminé ✅ (via {model_used})", 100)
 
 
 def _make_static_video(image_path: str, audio_path: str, output_path: str):

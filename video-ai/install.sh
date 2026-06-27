@@ -193,8 +193,95 @@ PYEOF
 
 ok "Real-ESRGAN + GFPGAN installés."
 
-# ── 8. LatentSync (lip sync) ─────────────────────────────────────────
-log "Installation de LatentSync (lip sync)…"
+# ── 8. IP-Adapter FaceID (cohérence visage) ──────────────────────────
+log "Installation IP-Adapter FaceID…"
+
+pip install -q ip-adapter insightface onnxruntime
+
+python3 << 'PYEOF'
+from huggingface_hub import hf_hub_download
+import os
+
+dest = os.path.join(os.path.dirname(__file__), "models")
+os.makedirs(dest, exist_ok=True)
+
+print("⬇ Téléchargement IP-Adapter FaceID SDXL (≈500 MB)…")
+hf_hub_download(
+    "h94/IP-Adapter-FaceID",
+    filename="ip-adapter-faceid_sdxl.bin",
+    local_dir=dest,
+)
+print("✓ IP-Adapter FaceID installé.")
+PYEOF
+
+ok "IP-Adapter FaceID installé."
+
+# ── 9. Hallo2 (talking head IA — expressions naturelles) ─────────────
+log "Installation Hallo2…"
+
+if [ ! -d "Hallo2" ]; then
+  git clone https://github.com/fudan-generative-vision/hallo2.git Hallo2
+fi
+
+cd Hallo2
+pip install -q -r requirements.txt 2>/dev/null || true
+
+python3 << 'PYEOF'
+from huggingface_hub import snapshot_download
+import os
+
+dest = os.path.join(os.path.dirname(__file__), "Hallo2", "pretrained_models")
+os.makedirs(dest, exist_ok=True)
+
+print("⬇ Téléchargement Hallo2 (≈10 GB)…")
+snapshot_download(
+    "fudan-generative-vision/hallo2",
+    local_dir=os.path.join(dest, "hallo2"),
+)
+
+# Dépendances communes Hallo2
+print("⬇ Téléchargement face_analysis…")
+snapshot_download(
+    "fudan-generative-vision/hallo2",
+    local_dir=os.path.join(dest, "face_analysis"),
+    ignore_patterns=["*.mp4"],
+)
+print("✓ Hallo2 téléchargé.")
+PYEOF
+
+cd "$SCRIPT_DIR"
+ok "Hallo2 installé."
+
+# ── 10. EchoMimic (talking head alternatif — ByteDance) ───────────────
+log "Installation EchoMimic…"
+
+if [ ! -d "EchoMimic" ]; then
+  git clone https://github.com/antgroup/echomimic.git EchoMimic
+fi
+
+cd EchoMimic
+pip install -q -r requirements.txt 2>/dev/null || true
+
+python3 << 'PYEOF'
+from huggingface_hub import snapshot_download
+import os
+
+dest = os.path.join(os.path.dirname(__file__), "EchoMimic", "pretrained_weights")
+os.makedirs(dest, exist_ok=True)
+
+print("⬇ Téléchargement EchoMimic weights (≈8 GB)…")
+snapshot_download(
+    "BadToBest/EchoMimic",
+    local_dir=dest,
+)
+print("✓ EchoMimic téléchargé.")
+PYEOF
+
+cd "$SCRIPT_DIR"
+ok "EchoMimic installé."
+
+# ── 12. LatentSync (lip sync — fallback si Hallo2/EchoMimic KO) ──────
+log "Installation de LatentSync (lip sync fallback)…"
 
 if [ ! -d "LatentSync" ]; then
   git clone https://github.com/bytedance/LatentSync.git
