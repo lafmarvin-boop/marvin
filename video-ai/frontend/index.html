@@ -1,306 +1,108 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0c1a" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <meta name="theme-color" content="#0a0c1a"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
   <title>Marvin Video AI</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#080a18;--s1:#0f1228;--s2:#181b35;--s3:#1e2240;
+      --accent:#6366f1;--accent2:#818cf8;--pink:#ec4899;--emerald:#10b981;
+      --text:#e2e8f0;--muted:#64748b;--danger:#ef4444;
+      --r:14px;--font:-apple-system,"SF Pro Display",Segoe UI,sans-serif;
+    }
+    body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100dvh;display:flex;flex-direction:column}
 
-    :root {
-      --bg: #0a0c1a;
-      --surface: #13152b;
-      --surface2: #1c1f3a;
-      --accent: #6366f1;
-      --accent2: #818cf8;
-      --text: #e2e8f0;
-      --muted: #64748b;
-      --success: #22c55e;
-      --radius: 16px;
-      --font: -apple-system, "SF Pro Display", Segoe UI, sans-serif;
-    }
+    /* Header */
+    header{padding:16px 16px 0;background:linear-gradient(180deg,#0c0e20 0%,transparent 100%)}
+    .logo{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),#a855f7);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px}
+    .logo h1{font-size:19px;font-weight:700;letter-spacing:-.5px}
+    .logo span{color:var(--accent2)}
+    .sys-pill{display:inline-flex;align-items:center;gap:5px;background:var(--s2);border:1px solid rgba(255,255,255,.06);border-radius:99px;padding:4px 10px;font-size:11px;color:var(--muted)}
+    .sys-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+    .sys-pill.ok .dot{background:var(--emerald)}
+    .sys-pill.warn .dot{background:#f59e0b}
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-    }
+    /* Mode tabs */
+    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 16px;margin:12px 0}
+    .tab{padding:10px 6px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:var(--s1);text-align:center;cursor:pointer;transition:all .2s;font-size:12px;font-weight:600;color:var(--muted)}
+    .tab .tab-icon{font-size:20px;display:block;margin-bottom:3px}
+    .tab.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 20px rgba(99,102,241,.4)}
 
-    /* ── Header ── */
-    header {
-      padding: 20px 20px 12px;
-      background: linear-gradient(180deg, #0f1123 0%, transparent 100%);
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .logo-icon {
-      width: 36px; height: 36px;
-      background: linear-gradient(135deg, var(--accent), #a855f7);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-    }
-    .logo h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
-    .logo span { color: var(--accent2); }
+    /* Main */
+    main{flex:1;overflow-y:auto;padding:0 16px 100px}
 
-    /* ── Main ── */
-    main {
-      flex: 1;
-      padding: 16px 16px 100px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      overflow-y: auto;
-    }
+    /* Sections */
+    .section{display:none}.section.visible{display:flex;flex-direction:column;gap:12px;padding-top:4px}
 
-    /* ── Cards ── */
-    .card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      padding: 18px;
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-    .card-title {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
+    /* Cards */
+    .card{background:var(--s1);border-radius:var(--r);padding:16px;border:1px solid rgba(255,255,255,.05)}
+    .card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px}
 
-    /* ── Textarea ── */
-    textarea {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 16px;
-      padding: 14px;
-      resize: none;
-      outline: none;
-      transition: border-color 0.2s;
-      min-height: 120px;
-    }
-    textarea:focus { border-color: var(--accent); }
-    .char-count { font-size: 12px; color: var(--muted); text-align: right; margin-top: 6px; }
+    /* Inputs */
+    textarea,input[type=text]{width:100%;background:var(--s2);border:1px solid rgba(255,255,255,.07);border-radius:10px;color:var(--text);font-family:var(--font);font-size:15px;padding:12px;outline:none;resize:none;transition:border-color .2s}
+    textarea:focus,input[type=text]:focus{border-color:var(--accent)}
+    textarea{min-height:100px}
+    .char-count{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
 
-    /* ── Voice selector ── */
-    select {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 15px;
-      padding: 12px 14px;
-      outline: none;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px center;
-    }
+    select{width:100%;background:var(--s2);border:1px solid rgba(255,255,255,.07);border-radius:10px;color:var(--text);font-family:var(--font);font-size:14px;padding:11px 14px;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 
-    /* ── Themes ── */
-    .themes {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 8px;
-    }
-    .theme-btn {
-      aspect-ratio: 1;
-      border-radius: 10px;
-      border: 2px solid transparent;
-      cursor: pointer;
-      transition: transform 0.15s, border-color 0.15s;
-      position: relative;
-      overflow: hidden;
-    }
-    .theme-btn.active { border-color: white; transform: scale(1.08); }
-    .theme-btn span {
-      position: absolute;
-      bottom: 3px; left: 0; right: 0;
-      font-size: 9px;
-      text-align: center;
-      color: rgba(255,255,255,0.85);
-      text-shadow: 0 1px 3px #000;
-    }
+    /* Avatar picker */
+    .av-drop{border:2px dashed rgba(255,255,255,.1);border-radius:10px;text-align:center;cursor:pointer;position:relative;transition:all .2s;padding:20px}
+    .av-drop:hover,.av-drop.drag{border-color:var(--accent);background:rgba(99,102,241,.05)}
+    .av-drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .av-drop .ai{font-size:32px;margin-bottom:6px}
+    .av-drop p{font-size:13px;color:var(--muted)}
+    .av-preview{display:none;align-items:center;gap:12px}
+    .av-preview img{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)}
+    .av-preview .av-name{font-size:13px;flex:1}
+    .av-remove{background:none;border:none;color:var(--danger);font-size:12px;cursor:pointer}
 
-    /* ── Avatar zone ── */
-    .avatar-drop {
-      border: 2px dashed rgba(255,255,255,0.12);
-      border-radius: 12px;
-      padding: 24px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      position: relative;
-    }
-    .avatar-drop:hover, .avatar-drop.drag-over {
-      border-color: var(--accent);
-      background: rgba(99,102,241,0.06);
-    }
-    .avatar-drop input[type=file] {
-      position: absolute; inset: 0; opacity: 0; cursor: pointer;
-    }
-    .avatar-drop .icon { font-size: 36px; margin-bottom: 8px; }
-    .avatar-drop p { font-size: 14px; color: var(--muted); }
-    .avatar-preview {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    .avatar-preview img {
-      width: 90px; height: 90px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 3px solid var(--accent);
-    }
-    .remove-btn {
-      font-size: 12px; color: #ef4444; cursor: pointer;
-      background: none; border: none; color: #ef4444;
-    }
+    /* Slider */
+    .slider-row{display:flex;align-items:center;gap:10px}
+    input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:99px;background:var(--s3);outline:none}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer}
+    .slider-val{font-size:13px;color:var(--accent2);font-weight:700;min-width:28px;text-align:right}
 
-    /* ── Generate button ── */
-    .gen-btn {
-      width: 100%;
-      padding: 18px;
-      background: linear-gradient(135deg, var(--accent), #7c3aed);
-      border: none;
-      border-radius: 14px;
-      color: white;
-      font-family: var(--font);
-      font-size: 17px;
-      font-weight: 700;
-      letter-spacing: 0.3px;
-      cursor: pointer;
-      transition: transform 0.15s, opacity 0.15s;
-      box-shadow: 0 8px 32px rgba(99,102,241,0.35);
-    }
-    .gen-btn:hover { transform: translateY(-1px); }
-    .gen-btn:active { transform: scale(0.98); }
-    .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    /* Generate button */
+    .gen{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),#7c3aed);border:none;border-radius:12px;color:#fff;font-family:var(--font);font-size:16px;font-weight:700;cursor:pointer;transition:transform .15s,opacity .15s;box-shadow:0 6px 24px rgba(99,102,241,.35);margin-top:4px}
+    .gen:hover{transform:translateY(-1px)}
+    .gen:active{transform:scale(.98)}
+    .gen:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-    /* ── Progress ── */
-    .progress-card {
-      display: none;
-    }
-    .progress-card.visible { display: block; }
-    .progress-bar-wrap {
-      background: var(--surface2);
-      border-radius: 99px;
-      height: 8px;
-      overflow: hidden;
-      margin: 12px 0 8px;
-    }
-    .progress-bar-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent), #a855f7);
-      border-radius: 99px;
-      width: 0%;
-      transition: width 0.4s ease;
-    }
-    .progress-step { font-size: 13px; color: var(--muted); }
+    /* Progress */
+    .prog{display:none}.prog.visible{display:block}
+    .prog-bar{background:var(--s3);border-radius:99px;height:6px;overflow:hidden;margin:10px 0 6px}
+    .prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),#a855f7);border-radius:99px;width:0%;transition:width .4s}
+    .prog-step{font-size:12px;color:var(--muted)}
 
-    /* ── Result ── */
-    .result-card {
-      display: none;
-    }
-    .result-card.visible { display: block; }
-    video {
-      width: 100%;
-      border-radius: 12px;
-      background: #000;
-      max-height: 60vh;
-    }
-    .action-row {
-      display: flex;
-      gap: 10px;
-      margin-top: 12px;
-    }
-    .action-btn {
-      flex: 1;
-      padding: 13px;
-      border-radius: 12px;
-      border: none;
-      font-family: var(--font);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.15s;
-      text-decoration: none;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-    .action-btn.primary {
-      background: var(--accent);
-      color: white;
-    }
-    .action-btn.secondary {
-      background: var(--surface2);
-      color: var(--text);
-      border: 1px solid rgba(255,255,255,0.08);
-    }
+    /* Result */
+    .result{display:none}.result.visible{display:block}
+    video{width:100%;border-radius:10px;background:#000;max-height:55vh}
+    .actions{display:flex;gap:8px;margin-top:10px}
+    .btn{flex:1;padding:12px;border-radius:10px;border:none;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center;gap:5px;text-decoration:none}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-secondary{background:var(--s2);color:var(--text);border:1px solid rgba(255,255,255,.07)}
 
-    /* ── Toast ── */
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: var(--surface2);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: var(--text);
-      padding: 12px 20px;
-      border-radius: 99px;
-      font-size: 14px;
-      white-space: nowrap;
-      transition: transform 0.3s ease;
-      z-index: 999;
-    }
-    .toast.visible { transform: translateX(-50%) translateY(0); }
+    /* Hint chips */
+    .hints{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .hint{background:var(--s2);border:1px solid rgba(255,255,255,.06);border-radius:99px;padding:5px 10px;font-size:11px;color:var(--muted);cursor:pointer;transition:all .15s}
+    .hint:hover{border-color:var(--accent);color:var(--accent2)}
 
-    /* ── History ── */
-    .history-row {
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-    }
-    .history-item {
-      flex-shrink: 0;
-      width: 80px;
-      text-align: center;
-      cursor: pointer;
-    }
-    .history-thumb {
-      width: 80px;
-      height: 60px;
-      background: var(--surface2);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-    .history-label { font-size: 10px; color: var(--muted); margin-top: 4px; }
+    /* Toast */
+    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--s2);border:1px solid rgba(255,255,255,.09);color:var(--text);padding:10px 18px;border-radius:99px;font-size:13px;white-space:nowrap;transition:transform .3s;z-index:99}
+    .toast.on{transform:translateX(-50%) translateY(0)}
+
+    /* History */
+    .hist-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .hist-item{aspect-ratio:.56;background:var(--s2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;border:1px solid rgba(255,255,255,.05);position:relative;overflow:hidden}
+    .hist-item video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.7}
+    .hist-item:hover{border-color:var(--accent)}
   </style>
 </head>
 <body>
@@ -310,101 +112,157 @@
     <div class="logo-icon">🎬</div>
     <h1>Marvin <span>Video AI</span></h1>
   </div>
+  <p class="sys-pill" id="sysPill"><span class="dot"></span><span id="sysLabel">Chargement…</span></p>
 </header>
 
-<main id="main">
-
-  <!-- Script -->
-  <div class="card">
-    <p class="card-title">Script / Texte</p>
-    <textarea id="textInput" placeholder="Écris le texte que ton avatar va prononcer…
-Ex: Bonjour ! Je suis ton assistant IA personnel. Aujourd'hui je vais te présenter une nouvelle fonctionnalité." maxlength="1500"></textarea>
-    <p class="char-count"><span id="charCount">0</span> / 1500</p>
+<!-- Mode selector -->
+<div class="tabs">
+  <div class="tab active" data-mode="animate">
+    <span class="tab-icon">🧑‍🎨</span>Animer
   </div>
+  <div class="tab" data-mode="create">
+    <span class="tab-icon">✨</span>Créer
+  </div>
+  <div class="tab" data-mode="presenter">
+    <span class="tab-icon">🎙</span>Présentateur
+  </div>
+</div>
 
-  <!-- Avatar -->
-  <div class="card">
-    <p class="card-title">Avatar (optionnel)</p>
-    <div class="avatar-drop" id="avatarDrop">
-      <input type="file" id="avatarInput" accept="image/*" />
-      <div class="avatar-drop-inner">
-        <div class="icon">🧑‍💼</div>
-        <p>Dépose une photo<br>ou appuie pour choisir</p>
-      </div>
-      <div class="avatar-preview" id="avatarPreview">
-        <img id="avatarImg" src="" alt="Avatar" />
-        <button class="remove-btn" id="removeAvatar">Supprimer</button>
+<main>
+
+  <!-- ── MODE : ANIMATE ── -->
+  <div class="section visible" id="sec-animate">
+    <div class="card">
+      <p class="card-title">Photo à animer</p>
+      <div class="av-drop" id="avDrop-animate">
+        <input type="file" accept="image/*" id="avFile-animate"/>
+        <div class="av-drop-inner">
+          <div class="ai">📸</div>
+          <p>Dépose une photo d'une personne<br>ou d'une scène</p>
+        </div>
+        <div class="av-preview" id="avPrev-animate">
+          <img id="avImg-animate" src=""/>
+          <div>
+            <p class="av-name" id="avName-animate">—</p>
+            <button class="av-remove" data-target="animate">Supprimer</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Voice -->
-  <div class="card">
-    <p class="card-title">Voix</p>
-    <select id="voiceSelect">
-      <option value="fr-FR-DeniseNeural">🇫🇷 Denise (Femme, FR)</option>
-      <option value="fr-FR-HenriNeural">🇫🇷 Henri (Homme, FR)</option>
-      <option value="fr-FR-EloiseNeural">🇫🇷 Éloïse (Femme, FR)</option>
-      <option value="fr-CA-SylvieNeural">🇨🇦 Sylvie (Femme, CA)</option>
-      <option value="en-US-JennyNeural">🇺🇸 Jenny (Femme, EN)</option>
-      <option value="en-GB-SoniaNeural">🇬🇧 Sonia (Femme, EN)</option>
-    </select>
-  </div>
-
-  <!-- Theme -->
-  <div class="card">
-    <p class="card-title">Thème</p>
-    <div class="themes">
-      <div class="theme-btn active" data-theme="dark" style="background:linear-gradient(135deg,#0a0c1a,#1c1f3a)">
-        <span>Sombre</span>
-      </div>
-      <div class="theme-btn" data-theme="ocean" style="background:linear-gradient(135deg,#06192e,#0e4f6a)">
-        <span>Océan</span>
-      </div>
-      <div class="theme-btn" data-theme="sunset" style="background:linear-gradient(135deg,#1e0a14,#7c1c4a)">
-        <span>Coucher</span>
-      </div>
-      <div class="theme-btn" data-theme="forest" style="background:linear-gradient(135deg,#081c12,#0f4c2a)">
-        <span>Forêt</span>
-      </div>
-      <div class="theme-btn" data-theme="light" style="background:linear-gradient(135deg,#f5f7ff,#dde4ff)">
-        <span style="color:#1e1e3f">Clair</span>
+    <div class="card">
+      <p class="card-title">Action / Description</p>
+      <textarea id="prompt-animate" placeholder="Ex: cette personne court dans un couloir sombre, éclairage cinématographique, ralenti" maxlength="500"></textarea>
+      <div class="hints">
+        <span class="hint" data-target="prompt-animate">court dans une forêt</span>
+        <span class="hint" data-target="prompt-animate">marche en ville la nuit</span>
+        <span class="hint" data-target="prompt-animate">danse dans un studio</span>
+        <span class="hint" data-target="prompt-animate">regarde la caméra, sourire</span>
       </div>
     </div>
+
+    <div class="card">
+      <p class="card-title">Durée</p>
+      <div class="slider-row">
+        <input type="range" id="dur-animate" min="2" max="8" value="4" step="1"/>
+        <span class="slider-val" id="durVal-animate">4s</span>
+      </div>
+    </div>
+
+    <button class="gen" id="genBtn-animate">✨ Générer la vidéo</button>
   </div>
 
-  <!-- Generate -->
-  <button class="gen-btn" id="generateBtn">
-    ✨ Générer la vidéo
-  </button>
+  <!-- ── MODE : CREATE ── -->
+  <div class="section" id="sec-create">
+    <div class="card">
+      <p class="card-title">Décris ta vidéo</p>
+      <textarea id="prompt-create" placeholder="Ex: une femme élégante marche dans Paris au coucher du soleil, style cinématographique, lumière dorée, 4K" maxlength="500"></textarea>
+      <div class="hints">
+        <span class="hint" data-target="prompt-create">homme en costume dans un bureau futuriste</span>
+        <span class="hint" data-target="prompt-create">femme sur la plage au lever du soleil</span>
+        <span class="hint" data-target="prompt-create">enfant jouant dans une forêt enchantée</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Durée</p>
+      <div class="slider-row">
+        <input type="range" id="dur-create" min="2" max="8" value="4" step="1"/>
+        <span class="slider-val" id="durVal-create">4s</span>
+      </div>
+    </div>
+
+    <button class="gen" id="genBtn-create">✨ Créer depuis zéro</button>
+  </div>
+
+  <!-- ── MODE : PRESENTER ── -->
+  <div class="section" id="sec-presenter">
+    <div class="card">
+      <p class="card-title">Photo de l'avatar</p>
+      <div class="av-drop" id="avDrop-presenter">
+        <input type="file" accept="image/*" id="avFile-presenter"/>
+        <div class="av-drop-inner">
+          <div class="ai">🧑‍💼</div>
+          <p>Photo du visage qui va parler<br>(plan rapproché pour meilleur résultat)</p>
+        </div>
+        <div class="av-preview" id="avPrev-presenter">
+          <img id="avImg-presenter" src=""/>
+          <div>
+            <p class="av-name" id="avName-presenter">—</p>
+            <button class="av-remove" data-target="presenter">Supprimer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Texte à prononcer</p>
+      <textarea id="text-presenter" placeholder="Ex: Bonjour, je suis votre assistant IA. Aujourd'hui je vais vous présenter notre nouvelle fonctionnalité révolutionnaire." maxlength="1000"></textarea>
+      <p class="char-count"><span id="cc-presenter">0</span>/1000</p>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Voix</p>
+      <select id="voice-presenter"></select>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Vitesse de parole</p>
+      <div class="slider-row">
+        <input type="range" id="rate-presenter" min="-30" max="30" value="0" step="5"/>
+        <span class="slider-val" id="rateVal-presenter">Normal</span>
+      </div>
+    </div>
+
+    <div class="card" id="lipsyncCard" style="display:none">
+      <p class="card-title">Lip Sync</p>
+      <p style="font-size:13px;color:#f59e0b">⚠️ LatentSync non détecté — la bouche ne bougera pas.<br>Lance <code>install.sh</code> pour l'activer.</p>
+    </div>
+
+    <button class="gen" id="genBtn-presenter">🎙 Générer l'avatar parlant</button>
+  </div>
 
   <!-- Progress -->
-  <div class="card progress-card" id="progressCard">
+  <div class="card prog" id="progCard">
     <p class="card-title">Génération en cours…</p>
-    <div class="progress-bar-wrap">
-      <div class="progress-bar-fill" id="progressFill"></div>
-    </div>
-    <p class="progress-step" id="progressStep">Initialisation…</p>
+    <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+    <p class="prog-step" id="progStep">Initialisation…</p>
   </div>
 
   <!-- Result -->
-  <div class="card result-card" id="resultCard">
-    <p class="card-title">Vidéo générée ✅</p>
+  <div class="card result" id="resultCard">
+    <p class="card-title">Vidéo prête ✅</p>
     <video id="resultVideo" controls playsinline></video>
-    <div class="action-row">
-      <a class="action-btn primary" id="downloadBtn" download="video.mp4">
-        ⬇ Télécharger
-      </a>
-      <button class="action-btn secondary" id="newVideoBtn">
-        + Nouvelle
-      </button>
+    <div class="actions">
+      <a class="btn btn-primary" id="dlBtn" download>⬇ Télécharger</a>
+      <button class="btn btn-secondary" id="newBtn">+ Nouvelle</button>
     </div>
   </div>
 
   <!-- History -->
-  <div class="card" id="historyCard" style="display:none">
+  <div class="card" id="histCard" style="display:none">
     <p class="card-title">Historique</p>
-    <div class="history-row" id="historyRow"></div>
+    <div class="hist-grid" id="histGrid"></div>
   </div>
 
 </main>
@@ -412,178 +270,261 @@ Ex: Bonjour ! Je suis ton assistant IA personnel. Aujourd'hui je vais te présen
 <div class="toast" id="toast"></div>
 
 <script>
-const API = window.location.origin;
-let selectedTheme = "dark";
-let avatarFile = null;
-let history = JSON.parse(localStorage.getItem("mvai_history") || "[]");
-let pollInterval = null;
+const API = location.origin;
+let avatarFiles = { animate: null, presenter: null };
+let activeMode = "animate";
+let pollTimer = null;
+let history = JSON.parse(localStorage.getItem("mvai_hist2") || "[]");
 
-// ── Avatar ────────────────────────────────────────────────────────────────────
-const avatarInput = document.getElementById("avatarInput");
-const avatarPreview = document.getElementById("avatarPreview");
-const avatarDropInner = document.querySelector(".avatar-drop-inner");
-const avatarImg = document.getElementById("avatarImg");
-const avatarDrop = document.getElementById("avatarDrop");
+// ── System info ───────────────────────────────────────────────────────────────
+async function loadSystemInfo() {
+  try {
+    const d = await fetch(`${API}/api/system`).then(r => r.json());
+    const pill = document.getElementById("sysPill");
+    const label = document.getElementById("sysLabel");
+    label.textContent = `${d.gpu} · ${d.vram_gb} GB · ${d.quality_label}`;
+    pill.className = "sys-pill " + (d.vram_gb >= 8 ? "ok" : "warn");
 
-avatarInput.addEventListener("change", e => setAvatar(e.target.files[0]));
-
-avatarDrop.addEventListener("dragover", e => { e.preventDefault(); avatarDrop.classList.add("drag-over"); });
-avatarDrop.addEventListener("dragleave", () => avatarDrop.classList.remove("drag-over"));
-avatarDrop.addEventListener("drop", e => {
-  e.preventDefault();
-  avatarDrop.classList.remove("drag-over");
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith("image/")) setAvatar(file);
-});
-
-document.getElementById("removeAvatar").addEventListener("click", e => {
-  e.stopPropagation();
-  avatarFile = null;
-  avatarImg.src = "";
-  avatarPreview.style.display = "none";
-  avatarDropInner.style.display = "";
-  avatarInput.value = "";
-});
-
-function setAvatar(file) {
-  if (!file) return;
-  avatarFile = file;
-  const url = URL.createObjectURL(file);
-  avatarImg.src = url;
-  avatarPreview.style.display = "flex";
-  avatarDropInner.style.display = "none";
+    if (!d.lipsync_available) {
+      document.getElementById("lipsyncCard").style.display = "block";
+    }
+  } catch(e) {
+    document.getElementById("sysLabel").textContent = "Serveur non connecté";
+  }
 }
 
-// ── Char count ────────────────────────────────────────────────────────────────
-const textInput = document.getElementById("textInput");
-textInput.addEventListener("input", () => {
-  document.getElementById("charCount").textContent = textInput.value.length;
+// ── Voices ───────────────────────────────────────────────────────────────────
+async function loadVoices() {
+  try {
+    const { voices } = await fetch(`${API}/api/voices`).then(r => r.json());
+    const sel = document.getElementById("voice-presenter");
+    sel.innerHTML = voices.map(v => `<option value="${v.id}">${v.label}</option>`).join("");
+  } catch(e) {}
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("visible"));
+    tab.classList.add("active");
+    activeMode = tab.dataset.mode;
+    document.getElementById(`sec-${activeMode}`).classList.add("visible");
+    clearResult();
+  });
 });
 
-// ── Themes ───────────────────────────────────────────────────────────────────
-document.querySelectorAll(".theme-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".theme-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    selectedTheme = btn.dataset.theme;
+// ── Avatar pickers ────────────────────────────────────────────────────────────
+["animate", "presenter"].forEach(mode => {
+  const input = document.getElementById(`avFile-${mode}`);
+  const drop = document.getElementById(`avDrop-${mode}`);
+
+  input.addEventListener("change", e => setAvatar(mode, e.target.files[0]));
+
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("drag"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("drag"));
+  drop.addEventListener("drop", e => {
+    e.preventDefault(); drop.classList.remove("drag");
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith("image/")) setAvatar(mode, f);
+  });
+
+  document.querySelector(`.av-remove[data-target="${mode}"]`).addEventListener("click", e => {
+    e.stopPropagation();
+    clearAvatar(mode);
+  });
+});
+
+function setAvatar(mode, file) {
+  if (!file) return;
+  avatarFiles[mode] = file;
+  const img = document.getElementById(`avImg-${mode}`);
+  img.src = URL.createObjectURL(file);
+  document.getElementById(`avPrev-${mode}`).style.display = "flex";
+  document.querySelector(`#avDrop-${mode} .av-drop-inner`).style.display = "none";
+  document.getElementById(`avName-${mode}`).textContent = file.name;
+}
+
+function clearAvatar(mode) {
+  avatarFiles[mode] = null;
+  document.getElementById(`avImg-${mode}`).src = "";
+  document.getElementById(`avPrev-${mode}`).style.display = "none";
+  document.querySelector(`#avDrop-${mode} .av-drop-inner`).style.display = "";
+  document.getElementById(`avFile-${mode}`).value = "";
+}
+
+// ── Sliders ───────────────────────────────────────────────────────────────────
+["animate", "create"].forEach(m => {
+  const slider = document.getElementById(`dur-${m}`);
+  const label = document.getElementById(`durVal-${m}`);
+  slider.addEventListener("input", () => { label.textContent = slider.value + "s"; });
+});
+
+const rateSlider = document.getElementById("rate-presenter");
+const rateLabel = document.getElementById("rateVal-presenter");
+rateSlider.addEventListener("input", () => {
+  const v = parseInt(rateSlider.value);
+  rateLabel.textContent = v === 0 ? "Normal" : (v > 0 ? `+${v}%` : `${v}%`);
+});
+
+// ── Char count ────────────────────────────────────────────────────────────────
+document.getElementById("text-presenter").addEventListener("input", function() {
+  document.getElementById("cc-presenter").textContent = this.value.length;
+});
+
+// ── Hint chips ────────────────────────────────────────────────────────────────
+document.querySelectorAll(".hint").forEach(h => {
+  h.addEventListener("click", () => {
+    const target = document.getElementById(h.dataset.target);
+    if (target) { target.value = h.textContent; target.dispatchEvent(new Event("input")); }
   });
 });
 
 // ── Generate ──────────────────────────────────────────────────────────────────
-document.getElementById("generateBtn").addEventListener("click", async () => {
-  const text = textInput.value.trim();
-  if (!text) { showToast("Écris un texte d'abord !"); return; }
+["animate", "create", "presenter"].forEach(mode => {
+  document.getElementById(`genBtn-${mode}`).addEventListener("click", () => generate(mode));
+});
 
-  const voice = document.getElementById("voiceSelect").value;
-
+async function generate(mode) {
   const fd = new FormData();
-  fd.append("text", text);
-  fd.append("voice", voice);
-  fd.append("theme", selectedTheme);
-  if (avatarFile) fd.append("avatar_file", avatarFile);
+  fd.append("mode", mode);
 
-  setGenerating(true);
+  if (mode === "animate") {
+    const prompt = document.getElementById("prompt-animate").value.trim();
+    const dur = document.getElementById("dur-animate").value;
+    if (!prompt) { toast("Décris l'action à réaliser !"); return; }
+    fd.append("prompt", prompt);
+    fd.append("duration", dur);
+    if (avatarFiles.animate) fd.append("avatar_file", avatarFiles.animate);
+
+  } else if (mode === "create") {
+    const prompt = document.getElementById("prompt-create").value.trim();
+    const dur = document.getElementById("dur-create").value;
+    if (!prompt) { toast("Décris la vidéo à créer !"); return; }
+    fd.append("prompt", prompt);
+    fd.append("duration", dur);
+
+  } else if (mode === "presenter") {
+    const text = document.getElementById("text-presenter").value.trim();
+    const voice = document.getElementById("voice-presenter").value;
+    const rate = rateSlider.value;
+    if (!text) { toast("Écris le texte à prononcer !"); return; }
+    if (!avatarFiles.presenter) { toast("Ajoute une photo avatar !"); return; }
+    fd.append("text", text);
+    fd.append("voice", voice);
+    fd.append("voice_rate", rate + "%");
+    fd.append("avatar_file", avatarFiles.presenter);
+  }
+
+  setLoading(true);
   showProgress("Envoi…", 2);
+  clearResult();
 
   try {
     const res = await fetch(`${API}/api/generate`, { method: "POST", body: fd });
     const data = await res.json();
-    if (!res.ok) { throw new Error(data.error || "Erreur serveur"); }
-
-    startPolling(data.job_id, data.video_url);
+    if (!res.ok) throw new Error(data.error || "Erreur serveur");
+    startPoll(data.job_id, data.video_url);
   } catch(e) {
-    setGenerating(false);
-    showToast("Erreur : " + e.message);
+    setLoading(false);
+    hideProgress();
+    toast("Erreur : " + e.message);
   }
-});
+}
 
-function startPolling(jobId, videoUrl) {
-  clearInterval(pollInterval);
-  pollInterval = setInterval(async () => {
+// ── Polling ───────────────────────────────────────────────────────────────────
+function startPoll(jobId, videoUrl) {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
     try {
-      const res = await fetch(`${API}/api/status/${jobId}`);
-      const data = await res.json();
-      showProgress(data.step, data.pct);
-      if (data.pct >= 100) {
-        clearInterval(pollInterval);
-        showResult(videoUrl);
-        addToHistory(jobId, videoUrl);
+      const d = await fetch(`${API}/api/status/${jobId}`).then(r => r.json());
+      showProgress(d.step, d.pct);
+      if (d.pct >= 100) {
+        clearInterval(pollTimer);
+        setLoading(false);
+        hideProgress();
+        if (d.error && d.error.length > 0) {
+          toast("Erreur : " + d.error);
+        } else {
+          showResult(videoUrl, jobId);
+        }
       }
-    } catch(e) { /* retry */ }
-  }, 800);
+    } catch(e) {}
+  }, 900);
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function setLoading(on) {
+  ["animate","create","presenter"].forEach(m => {
+    const btn = document.getElementById(`genBtn-${m}`);
+    btn.disabled = on;
+  });
 }
 
 function showProgress(step, pct) {
-  document.getElementById("progressCard").classList.add("visible");
-  document.getElementById("progressFill").style.width = pct + "%";
-  document.getElementById("progressStep").textContent = step;
+  const card = document.getElementById("progCard");
+  card.classList.add("visible");
+  document.getElementById("progFill").style.width = pct + "%";
+  document.getElementById("progStep").textContent = step;
 }
 
-function showResult(videoUrl) {
-  setGenerating(false);
-  document.getElementById("progressCard").classList.remove("visible");
+function hideProgress() {
+  document.getElementById("progCard").classList.remove("visible");
+}
+
+function clearResult() {
+  document.getElementById("resultCard").classList.remove("visible");
+  document.getElementById("resultVideo").src = "";
+}
+
+function showResult(videoUrl, jobId) {
   const card = document.getElementById("resultCard");
   card.classList.add("visible");
   const vid = document.getElementById("resultVideo");
-  vid.src = `${API}${videoUrl}`;
-  document.getElementById("downloadBtn").href = `${API}${videoUrl}`;
+  const full = `${API}${videoUrl}`;
+  vid.src = full;
+  document.getElementById("dlBtn").href = full;
+  document.getElementById("dlBtn").download = `marvin-${jobId}.mp4`;
   vid.play().catch(() => {});
-  card.scrollIntoView({ behavior: "smooth" });
+  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  addHistory(jobId, videoUrl);
 }
 
-function setGenerating(on) {
-  const btn = document.getElementById("generateBtn");
-  btn.disabled = on;
-  btn.textContent = on ? "⏳ Génération…" : "✨ Générer la vidéo";
-  if (!on) document.getElementById("progressCard").classList.remove("visible");
-}
-
-document.getElementById("newVideoBtn").addEventListener("click", () => {
-  document.getElementById("resultCard").classList.remove("visible");
-  textInput.focus();
+document.getElementById("newBtn").addEventListener("click", () => {
+  clearResult();
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
 // ── History ───────────────────────────────────────────────────────────────────
-function addToHistory(jobId, videoUrl) {
+function addHistory(jobId, videoUrl) {
   history.unshift({ jobId, videoUrl, ts: Date.now() });
-  if (history.length > 10) history = history.slice(0, 10);
-  localStorage.setItem("mvai_history", JSON.stringify(history));
+  if (history.length > 9) history = history.slice(0, 9);
+  localStorage.setItem("mvai_hist2", JSON.stringify(history));
   renderHistory();
 }
 
 function renderHistory() {
-  if (history.length === 0) return;
-  const card = document.getElementById("historyCard");
-  card.style.display = "block";
-  const row = document.getElementById("historyRow");
-  row.innerHTML = history.map((h, i) => `
-    <div class="history-item" onclick="playHistoryItem('${h.videoUrl}')">
-      <div class="history-thumb">🎬</div>
-      <p class="history-label">#${i+1}</p>
+  if (!history.length) return;
+  document.getElementById("histCard").style.display = "block";
+  document.getElementById("histGrid").innerHTML = history.map(h => `
+    <div class="hist-item" onclick="showResult('${h.videoUrl}','${h.jobId}')">
+      <video src="${API}${h.videoUrl}" muted loop playsinline></video>
     </div>
   `).join("");
-}
-
-function playHistoryItem(videoUrl) {
-  const card = document.getElementById("resultCard");
-  card.classList.add("visible");
-  const vid = document.getElementById("resultVideo");
-  vid.src = `${API}${videoUrl}`;
-  document.getElementById("downloadBtn").href = `${API}${videoUrl}`;
-  vid.play().catch(() => {});
-  card.scrollIntoView({ behavior: "smooth" });
+  document.querySelectorAll(".hist-item video").forEach(v => { v.play().catch(()=>{}); });
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
-function showToast(msg) {
+function toast(msg) {
   const t = document.getElementById("toast");
   t.textContent = msg;
-  t.classList.add("visible");
-  setTimeout(() => t.classList.remove("visible"), 3000);
+  t.classList.add("on");
+  setTimeout(() => t.classList.remove("on"), 3200);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+loadSystemInfo();
+loadVoices();
 renderHistory();
 </script>
 
