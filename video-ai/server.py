@@ -129,6 +129,8 @@ async def generate(
         "avatar_path": str(avatar_path) if avatar_path else None,
         "duration": duration,
         "quality": quality,
+        "enhance": quality != "fast",
+        "color_preset": "cinema",
     }
 
     loop = asyncio.get_event_loop()
@@ -168,12 +170,17 @@ def _job_animate(job_dir: Path, params: dict):
 
     _status(job_dir, "Chargement du modèle Wan2.1…", 5)
 
+    enhance = params.get("enhance", True)
+    color_preset = params.get("color_preset", "cinema")
+
     if avatar:
         generate_from_image(
             image_path=avatar,
             prompt=prompt,
             output_path=output,
             num_seconds=duration,
+            enhance=enhance,
+            color_preset=color_preset,
             progress_cb=cb,
         )
     else:
@@ -181,6 +188,8 @@ def _job_animate(job_dir: Path, params: dict):
             prompt=prompt,
             output_path=output,
             num_seconds=duration,
+            enhance=enhance,
+            color_preset=color_preset,
             progress_cb=cb,
         )
 
@@ -210,6 +219,8 @@ def _job_create(job_dir: Path, params: dict):
     # 2. Animer avec Wan2.1
     _status(job_dir, "Animation Wan2.1…", 40)
     output = str(job_dir / "output.mp4")
+    enhance = params.get("enhance", True)
+    color_preset = params.get("color_preset", "cinema")
 
     def vid_cb(pct): _status(job_dir, "Wan2.1 — animation…", int(40 + pct * 0.55))
 
@@ -218,6 +229,8 @@ def _job_create(job_dir: Path, params: dict):
         prompt=prompt + ", smooth motion, cinematic",
         output_path=output,
         num_seconds=duration,
+        enhance=enhance,
+        color_preset=color_preset,
         progress_cb=vid_cb,
     )
 

@@ -163,7 +163,37 @@ PYEOF
 
 ok "FLUX.1 installé."
 
-# ── 7. LatentSync (lip sync) ─────────────────────────────────────────
+# ── 7. Real-ESRGAN + GFPGAN (post-processing) ────────────────────────
+log "Installation Real-ESRGAN + GFPGAN…"
+
+pip install -q realesrgan basicsr gfpgan opencv-python-headless
+
+python3 << 'PYEOF'
+from huggingface_hub import hf_hub_download
+import os
+
+dest = os.path.join(os.path.dirname(__file__), "models")
+os.makedirs(dest, exist_ok=True)
+
+print("⬇ Téléchargement Real-ESRGAN x4plus (≈65 MB)…")
+hf_hub_download(
+    "ai-forever/Real-ESRGAN",
+    filename="RealESRGAN_x4plus.pth",
+    local_dir=dest,
+)
+
+print("⬇ Téléchargement GFPGAN v1.4 (≈330 MB)…")
+hf_hub_download(
+    "ai-forever/GFPGAN",
+    filename="GFPGANv1.4.pth",
+    local_dir=dest,
+)
+print("✓ Real-ESRGAN + GFPGAN installés.")
+PYEOF
+
+ok "Real-ESRGAN + GFPGAN installés."
+
+# ── 8. LatentSync (lip sync) ─────────────────────────────────────────
 log "Installation de LatentSync (lip sync)…"
 
 if [ ! -d "LatentSync" ]; then

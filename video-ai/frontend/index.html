@@ -89,6 +89,14 @@
     .btn-primary{background:var(--accent);color:#fff}
     .btn-secondary{background:var(--s2);color:var(--text);border:1px solid rgba(255,255,255,.07)}
 
+    /* Quality selector */
+    .quality-row{display:flex;flex-direction:column;gap:6px}
+    .q-btn{padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.07);background:var(--s2);cursor:pointer;transition:all .2s}
+    .q-btn span{font-size:13px;font-weight:600;display:block}
+    .q-btn small{font-size:11px;color:var(--muted)}
+    .q-btn.active{border-color:var(--accent);background:rgba(99,102,241,.1)}
+    .q-btn.active span{color:var(--accent2)}
+
     /* Hint chips */
     .hints{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
     .hint{background:var(--s2);border:1px solid rgba(255,255,255,.06);border-radius:99px;padding:5px 10px;font-size:11px;color:var(--muted);cursor:pointer;transition:all .15s}
@@ -169,6 +177,31 @@
       </div>
     </div>
 
+    <div class="card">
+      <p class="card-title">Qualité / Vitesse</p>
+      <div class="quality-row">
+        <div class="q-btn active" data-quality="best" data-mode="animate">
+          <span>⚡ Meilleure qualité</span>
+          <small>Upscaling + interpolation 60fps + color grading</small>
+        </div>
+        <div class="q-btn" data-quality="fast" data-mode="animate">
+          <span>🚀 Rapide</span>
+          <small>Sans post-processing (2× plus rapide)</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Style colorimétrique</p>
+      <select id="color-animate">
+        <option value="cinema">🎬 Cinéma</option>
+        <option value="vivid">✨ Vivid</option>
+        <option value="warm">🌅 Chaud</option>
+        <option value="cool">❄️ Froid</option>
+        <option value="neutral">⬜ Neutre</option>
+      </select>
+    </div>
+
     <button class="gen" id="genBtn-animate">✨ Générer la vidéo</button>
   </div>
 
@@ -190,6 +223,16 @@
         <input type="range" id="dur-create" min="2" max="8" value="4" step="1"/>
         <span class="slider-val" id="durVal-create">4s</span>
       </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Style visuel</p>
+      <select id="style-create">
+        <option value="realistic">📷 Ultra-réaliste</option>
+        <option value="cinematic">🎬 Cinématographique</option>
+        <option value="portrait">👤 Portrait</option>
+        <option value="outdoor">🌿 Extérieur</option>
+      </select>
     </div>
 
     <button class="gen" id="genBtn-create">✨ Créer depuis zéro</button>
@@ -395,6 +438,8 @@ async function generate(mode) {
     if (!prompt) { toast("Décris l'action à réaliser !"); return; }
     fd.append("prompt", prompt);
     fd.append("duration", dur);
+    fd.append("quality", getQuality("animate"));
+    fd.append("color_preset", document.getElementById("color-animate").value);
     if (avatarFiles.animate) fd.append("avatar_file", avatarFiles.animate);
 
   } else if (mode === "create") {
@@ -403,6 +448,7 @@ async function generate(mode) {
     if (!prompt) { toast("Décris la vidéo à créer !"); return; }
     fd.append("prompt", prompt);
     fd.append("duration", dur);
+    fd.append("style", document.getElementById("style-create").value);
 
   } else if (mode === "presenter") {
     const text = document.getElementById("text-presenter").value.trim();
@@ -520,6 +566,20 @@ function toast(msg) {
   t.textContent = msg;
   t.classList.add("on");
   setTimeout(() => t.classList.remove("on"), 3200);
+}
+
+// ── Quality buttons ───────────────────────────────────────────────────────────
+document.querySelectorAll(".q-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const mode = btn.dataset.mode;
+    document.querySelectorAll(`.q-btn[data-mode="${mode}"]`).forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+function getQuality(mode) {
+  const active = document.querySelector(`.q-btn.active[data-mode="${mode}"]`);
+  return active ? active.dataset.quality : "best";
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
