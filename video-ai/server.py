@@ -178,7 +178,38 @@ def _job_animate(job_dir: Path, params: dict):
     enhance = params.get("enhance", True)
     color_preset = params.get("color_preset", "cinema")
 
-    # IP-Adapter FaceID : cohérence visage maximale avant animation
+    # LivePortrait disponible + avatar → animation portrait ultra-réaliste
+    from pipelines.liveportrait import is_available as lp_ok
+    if avatar and lp_ok():
+        _status(job_dir, "LivePortrait — animation portrait…", 8)
+        lp_out = str(job_dir / "lp_animated.mp4")
+        try:
+            from pipelines.liveportrait import animate_from_image
+            animate_from_image(
+                source_image=avatar,
+                output_path=lp_out,
+                expression_preset="talking",
+                progress_cb=lambda p: _status(job_dir, "LivePortrait…", int(8 + p * 0.35)),
+            )
+            # Post-processing directement sur la vidéo LivePortrait
+            if enhance:
+                from pipelines.enhancer import enhance_video
+                enhance_video(
+                    lp_out, output,
+                    upscale=True, face_enhance=True,
+                    interpolate=True, target_fps=60,
+                    color_preset=color_preset,
+                    progress_cb=lambda p: _status(job_dir, "Post-processing…", int(45 + p * 0.54)),
+                )
+                Path(lp_out).unlink(missing_ok=True)
+            else:
+                import shutil; shutil.move(lp_out, output)
+            _status(job_dir, "Terminé ✅ (LivePortrait)", 100)
+            return
+        except Exception:
+            pass  # fallback Wan2.1
+
+    # IP-Adapter FaceID : cohérence visage maximale avant animation Wan2.1
     if avatar:
         from pipelines.face_consistency import generate_with_face
         face_img = str(job_dir / "face_consistent.png")

@@ -1,9 +1,11 @@
 """
 Talking head pipeline — portrait photo + audio → realistic video.
 Priority order (best → fallback):
-  1. Hallo2   (Fudan University, 2024) — best quality, natural expressions
-  2. EchoMimic (ByteDance, 2024)       — excellent, well maintained
-  3. LatentSync                        — lip sync only, always available
+  1. LivePortrait + MuseTalk (Kuaishou + ByteDance, 2024) — qualité maximale
+  2. MuseTalk seul          (ByteDance, 2024)             — lip sync production
+  3. Hallo2                 (Fudan University, 2024)      — expressions naturelles
+  4. EchoMimic              (ByteDance, 2024)             — bon alternatif
+  5. LatentSync                                           — fallback minimal
 
 Usage: generate_talking_head(image, audio, output)
 """
@@ -16,13 +18,23 @@ from pathlib import Path
 from typing import Callable
 
 
-BASE_DIR = Path(__file__).parent.parent
-HALLO2_DIR  = BASE_DIR / "Hallo2"
+BASE_DIR      = Path(__file__).parent.parent
+HALLO2_DIR    = BASE_DIR / "Hallo2"
 ECHOMIMIC_DIR = BASE_DIR / "EchoMimic"
-LATSYNC_DIR  = BASE_DIR / "LatentSync"
+LATSYNC_DIR   = BASE_DIR / "LatentSync"
 
 
 # ─── Availability checks ──────────────────────────────────────────────────────
+
+def liveportrait_available() -> bool:
+    from .liveportrait import is_available
+    return is_available()
+
+
+def musetalk_available() -> bool:
+    from .musetalk import is_available
+    return is_available()
+
 
 def hallo2_available() -> bool:
     ckpt = HALLO2_DIR / "pretrained_models" / "hallo2" / "net.pth"
@@ -40,6 +52,12 @@ def latsync_available() -> bool:
 
 
 def best_available() -> str:
+    if liveportrait_available() and musetalk_available():
+        return "liveportrait+musetalk"
+    if musetalk_available():
+        return "musetalk"
+    if liveportrait_available():
+        return "liveportrait"
     if hallo2_available():
         return "hallo2"
     if echomimic_available():
@@ -209,7 +227,16 @@ def generate_talking_head(
             "Aucun modèle talking head disponible. Lance install.sh."
         )
 
-    if model == "hallo2":
+    if model == "liveportrait+musetalk":
+        from .liveportrait import animate_with_audio
+        animate_with_audio(image_path, audio_path, output_path, progress_cb)
+    elif model == "liveportrait":
+        from .liveportrait import animate_with_audio
+        animate_with_audio(image_path, audio_path, output_path, progress_cb)
+    elif model == "musetalk":
+        from .musetalk import run_musetalk
+        run_musetalk(image_path, audio_path, output_path, progress_cb=progress_cb)
+    elif model == "hallo2":
         _run_hallo2(image_path, audio_path, output_path, progress_cb)
     elif model == "echomimic":
         _run_echomimic(image_path, audio_path, output_path, progress_cb)

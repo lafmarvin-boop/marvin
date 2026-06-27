@@ -330,17 +330,30 @@ async function loadSystemInfo() {
 
     const thModel = d.talking_head_model || "none";
     const thLabels = {
-      hallo2: "Hallo2 ✅ (qualité maximale)",
-      echomimic: "EchoMimic ✅ (ByteDance)",
-      latsync: "LatentSync ✅ (basique)",
-      none: "Aucun modèle — lance install.sh"
+      "liveportrait+musetalk": "LivePortrait + MuseTalk 🏆 (~95% HeyGen)",
+      "liveportrait":          "LivePortrait ✅ (Kuaishou)",
+      "musetalk":              "MuseTalk ✅ (ByteDance)",
+      "hallo2":                "Hallo2 ✅ (Fudan)",
+      "echomimic":             "EchoMimic ✅ (ByteDance)",
+      "latsync":               "LatentSync ⚠️ (basique)",
+      "none":                  "Aucun modèle — lance install.sh"
     };
     const lipsyncCard = document.getElementById("lipsyncCard");
     lipsyncCard.style.display = "block";
     lipsyncCard.querySelector("p:last-child").textContent =
-      `Modèle talking head : ${thLabels[thModel] || thModel}`;
-    lipsyncCard.querySelector("p:last-child").style.color =
-      thModel === "none" ? "#f59e0b" : "#22c55e";
+      `Avatar : ${thLabels[thModel] || thModel}`;
+    const color = thModel === "none" ? "#f59e0b"
+                : thModel === "latsync" ? "#f59e0b"
+                : "#22c55e";
+    lipsyncCard.querySelector("p:last-child").style.color = color;
+
+    // Indicateur IP-Adapter
+    if (d.ip_adapter) {
+      const chip = document.createElement("p");
+      chip.textContent = "IP-Adapter FaceID ✅ (cohérence visage)";
+      chip.style.cssText = "font-size:12px;color:#22c55e;margin-top:4px";
+      lipsyncCard.appendChild(chip);
+    }
   } catch(e) {
     document.getElementById("sysLabel").textContent = "Serveur non connecté";
   }

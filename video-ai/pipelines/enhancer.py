@@ -1,8 +1,8 @@
 """
 Post-processing pipeline for maximum realism:
-1. Real-ESRGAN  — 4x upscaling of every frame
-2. GFPGAN       — face restoration and enhancement
-3. FFmpeg       — frame interpolation (16fps → 60fps) + color grading
+1. CodeFormer   — restauration visage (meilleur que GFPGAN, plus naturel)
+2. Real-ESRGAN  — 4x upscaling de chaque frame
+3. FFmpeg       — interpolation frames (16fps → 60fps) + color grading
 """
 
 from __future__ import annotations
@@ -55,12 +55,73 @@ def upscale_image(input_path: str, output_path: str, scale: int = 4) -> bool:
         return False
 
 
-def enhance_faces(input_path: str, output_path: str) -> bool:
+def enhance_faces(input_path: str, output_path: str, fidelity: float = 0.7) -> bool:
     """
-    Restore and enhance faces with GFPGAN.
-    Requires: pip install gfpgan
-    Model: GFPGANv1.4.pth (downloaded by install.sh)
+    Restaure et améliore les visages.
+    Essaie CodeFormer en premier (meilleure qualité), sinon GFPGAN.
+
+    fidelity : 0.0 = max enhancement, 1.0 = max fidelity to original.
+               0.7 est le meilleur compromis qualité/naturalisme.
     """
+    # Essai CodeFormer (prioritaire)
+    if _enhance_with_codeformer(input_path, output_path, fidelity):
+        return True
+    # Fallback GFPGAN
+    return _enhance_with_gfpgan(input_path, output_path)
+
+
+def _enhance_with_codeformer(input_path: str, output_path: str, fidelity: float = 0.7) -> bool:
+    """CodeFormer — restauration faciale SOTA, résultats plus naturels que GFPGAN."""
+    try:
+        import subprocess, sys
+        from pathlib import Path
+
+        cf_dir = Path(__file__).parent.parent / "CodeFormer"
+        script  = cf_dir / "inference_codeformer.py"
+        ckpt    = cf_dir / "weights" / "CodeFormer" / "codeformer.pth"
+
+        if not script.exists() or not ckpt.exists():
+            return False
+
+        out_dir = Path(output_path).parent / "_cf_tmp"
+        out_dir.mkdir(exist_ok=True)
+
+        result = subprocess.run(
+            [
+                sys.executable, str(script),
+                "-w",            str(fidelity),
+                "--input_path",  input_path,
+                "--output_path", str(out_dir),
+                "--face_upsample",
+                "--bg_upsampler", "realesrgan",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(cf_dir),
+        )
+
+        if result.returncode != 0:
+            import shutil; shutil.rmtree(out_dir, ignore_errors=True)
+            return False
+
+        # CodeFormer écrit dans out_dir/restored_faces/ ou out_dir/final_results/
+        for sub in ("final_results", "restored_faces", ""):
+            found = list((out_dir / sub).glob("*.png")) if sub else list(out_dir.glob("*.png"))
+            if found:
+                import shutil
+                shutil.copy(str(found[0]), output_path)
+                shutil.rmtree(out_dir, ignore_errors=True)
+                return True
+
+        import shutil; shutil.rmtree(out_dir, ignore_errors=True)
+        return False
+
+    except Exception:
+        return False
+
+
+def _enhance_with_gfpgan(input_path: str, output_path: str) -> bool:
+    """GFPGAN — fallback si CodeFormer non disponible."""
     try:
         import cv2
         from gfpgan import GFPGANer
@@ -75,13 +136,10 @@ def enhance_faces(input_path: str, output_path: str) -> bool:
             arch="clean",
             channel_multiplier=2,
         )
-
         img = cv2.imread(input_path, cv2.IMREAD_COLOR)
         _, _, restored = restorer.enhance(img, has_aligned=False, only_center_face=False)
         cv2.imwrite(output_path, restored)
         return True
-    except ImportError:
-        return False
     except Exception:
         return False
 

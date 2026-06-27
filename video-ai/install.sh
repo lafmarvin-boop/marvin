@@ -216,7 +216,114 @@ PYEOF
 
 ok "IP-Adapter FaceID installé."
 
-# ── 9. Hallo2 (talking head IA — expressions naturelles) ─────────────
+# ── 9. LivePortrait (Kuaishou — meilleur portrait animation open source) ─
+log "Installation LivePortrait…"
+
+if [ ! -d "LivePortrait" ]; then
+  git clone https://github.com/KwaiVGI/LivePortrait.git
+fi
+
+cd LivePortrait
+pip install -q -r requirements.txt 2>/dev/null || true
+
+python3 << 'PYEOF'
+from huggingface_hub import snapshot_download
+import os
+
+dest = os.path.join(os.path.dirname(__file__), "LivePortrait", "pretrained_weights")
+os.makedirs(dest, exist_ok=True)
+
+print("⬇ Téléchargement LivePortrait weights (≈1.3 GB)…")
+snapshot_download(
+    "KwaiVGI/LivePortrait",
+    local_dir=os.path.join(dest, "liveportrait"),
+    ignore_patterns=["*.md", "*.txt"],
+)
+print("✓ LivePortrait téléchargé.")
+PYEOF
+
+cd "$SCRIPT_DIR"
+ok "LivePortrait installé."
+
+# ── 10. MuseTalk (ByteDance — lip sync qualité production) ────────────
+log "Installation MuseTalk…"
+
+if [ ! -d "MuseTalk" ]; then
+  git clone https://github.com/TMElyralab/MuseTalk.git
+fi
+
+cd MuseTalk
+pip install -q -r requirements.txt 2>/dev/null || true
+pip install -q mmengine mmcv 2>/dev/null || true
+
+mkdir -p models/musetalk models/sd-vae-ft-mse models/whisper models/dwpose
+
+python3 << 'PYEOF'
+from huggingface_hub import snapshot_download, hf_hub_download
+import os
+
+base = os.path.join(os.path.dirname(__file__), "MuseTalk", "models")
+
+print("⬇ MuseTalk UNet + VAE (≈1 GB)…")
+snapshot_download("TMElyralab/MuseTalk", local_dir=os.path.join(base, "musetalk"))
+
+print("⬇ SD VAE ft-mse (≈320 MB)…")
+snapshot_download("stabilityai/sd-vae-ft-mse", local_dir=os.path.join(base, "sd-vae-ft-mse"))
+
+print("⬇ Whisper tiny (≈75 MB)…")
+snapshot_download("openai/whisper-tiny", local_dir=os.path.join(base, "whisper"))
+
+print("⬇ DWPose (≈500 MB)…")
+snapshot_download("yzd-v/DWPose", local_dir=os.path.join(base, "dwpose"))
+
+print("✓ MuseTalk téléchargé.")
+PYEOF
+
+cd "$SCRIPT_DIR"
+ok "MuseTalk installé."
+
+# ── 11. CodeFormer (restauration visage SOTA) ─────────────────────────
+log "Installation CodeFormer…"
+
+if [ ! -d "CodeFormer" ]; then
+  git clone https://github.com/sczhou/CodeFormer.git
+fi
+
+cd CodeFormer
+pip install -q -r requirements.txt 2>/dev/null || true
+python basicsr/setup.py develop 2>/dev/null || true
+
+python3 << 'PYEOF'
+from huggingface_hub import hf_hub_download
+import os
+
+dest = os.path.join(os.path.dirname(__file__), "CodeFormer", "weights", "CodeFormer")
+os.makedirs(dest, exist_ok=True)
+
+print("⬇ CodeFormer weights (≈375 MB)…")
+hf_hub_download(
+    "sczhou/CodeFormer",
+    filename="codeformer.pth",
+    local_dir=dest,
+)
+
+# Modèles de détection faciale requis par CodeFormer
+det_dest = os.path.join(os.path.dirname(__file__), "CodeFormer", "weights", "facelib")
+os.makedirs(det_dest, exist_ok=True)
+for fname in ["detection_Resnet50_Final.pth", "parsing_parsenet.pth", "yolov5l-face.pth"]:
+    try:
+        hf_hub_download("sczhou/CodeFormer", filename=fname, local_dir=det_dest)
+        print(f"✓ {fname}")
+    except Exception:
+        pass
+
+print("✓ CodeFormer installé.")
+PYEOF
+
+cd "$SCRIPT_DIR"
+ok "CodeFormer installé."
+
+# ── 12. Hallo2 (talking head IA — expressions naturelles) ─────────────
 log "Installation Hallo2…"
 
 if [ ! -d "Hallo2" ]; then
