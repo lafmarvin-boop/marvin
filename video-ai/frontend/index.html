@@ -478,7 +478,8 @@ async function loadSystemInfo() {
     const d = await fetch(`${API}/api/system`).then(r => r.json());
     const pill = document.getElementById("sysPill");
     const label = document.getElementById("sysLabel");
-    label.textContent = `${d.gpu} · ${d.vram_gb} GB · ${d.quality_label}`;
+    const imgModel = d.image_model ? ` · ${d.image_model}` : "";
+    label.textContent = `${d.gpu} · ${d.vram_gb} GB · ${d.quality_label}${imgModel}`;
     pill.className = "sys-pill " + (d.vram_gb >= 8 ? "ok" : "warn");
 
     const thModel = d.talking_head_model || "none";

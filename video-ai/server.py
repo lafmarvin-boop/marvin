@@ -58,6 +58,7 @@ async def system_info():
     from pipelines.musetalk import is_available as muse_ok
     from pipelines.background import is_available as sam2_ok
     from pipelines.personalization import list_trained_persons
+    from pipelines.image_gen import get_active_model_name
     info["talking_head_model"] = best_available()
     info["hallo2"] = hallo2_available()
     info["echomimic"] = echomimic_available()
@@ -67,6 +68,7 @@ async def system_info():
     info["sam2"] = sam2_ok()
     info["ip_adapter"] = (BASE_DIR / "models" / "ip-adapter-faceid_sdxl.bin").exists()
     info["trained_persons"] = list_trained_persons()
+    info["image_model"] = get_active_model_name()
     return info
 
 
