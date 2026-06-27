@@ -1,0 +1,9 @@
+.venv/
+outputs/
+uploads/
+__pycache__/
+*.pyc
+Wav2Lip/
+SadTalker/
+*.pth
+*.pkl

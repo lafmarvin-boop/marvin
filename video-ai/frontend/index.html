@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0c1a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Marvin Video AI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0c1a;
+      --surface: #13152b;
+      --surface2: #1c1f3a;
+      --accent: #6366f1;
+      --accent2: #818cf8;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --success: #22c55e;
+      --radius: 16px;
+      --font: -apple-system, "SF Pro Display", Segoe UI, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 20px 20px 12px;
+      background: linear-gradient(180deg, #0f1123 0%, transparent 100%);
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .logo h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+    .logo span { color: var(--accent2); }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      padding: 16px 16px 100px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 18px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── Textarea ── */
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 16px;
+      padding: 14px;
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s;
+      min-height: 120px;
+    }
+    textarea:focus { border-color: var(--accent); }
+    .char-count { font-size: 12px; color: var(--muted); text-align: right; margin-top: 6px; }
+
+    /* ── Voice selector ── */
+    select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+      padding: 12px 14px;
+      outline: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+    }
+
+    /* ── Themes ── */
+    .themes {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .theme-btn {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .theme-btn.active { border-color: white; transform: scale(1.08); }
+    .theme-btn span {
+      position: absolute;
+      bottom: 3px; left: 0; right: 0;
+      font-size: 9px;
+      text-align: center;
+      color: rgba(255,255,255,0.85);
+      text-shadow: 0 1px 3px #000;
+    }
+
+    /* ── Avatar zone ── */
+    .avatar-drop {
+      border: 2px dashed rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .avatar-drop:hover, .avatar-drop.drag-over {
+      border-color: var(--accent);
+      background: rgba(99,102,241,0.06);
+    }
+    .avatar-drop input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+    .avatar-drop .icon { font-size: 36px; margin-bottom: 8px; }
+    .avatar-drop p { font-size: 14px; color: var(--muted); }
+    .avatar-preview {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .avatar-preview img {
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--accent);
+    }
+    .remove-btn {
+      font-size: 12px; color: #ef4444; cursor: pointer;
+      background: none; border: none; color: #ef4444;
+    }
+
+    /* ── Generate button ── */
+    .gen-btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-family: var(--font);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s;
+      box-shadow: 0 8px 32px rgba(99,102,241,0.35);
+    }
+    .gen-btn:hover { transform: translateY(-1px); }
+    .gen-btn:active { transform: scale(0.98); }
+    .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── Progress ── */
+    .progress-card {
+      display: none;
+    }
+    .progress-card.visible { display: block; }
+    .progress-bar-wrap {
+      background: var(--surface2);
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+      margin: 12px 0 8px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #a855f7);
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+    .progress-step { font-size: 13px; color: var(--muted); }
+
+    /* ── Result ── */
+    .result-card {
+      display: none;
+    }
+    .result-card.visible { display: block; }
+    video {
+      width: 100%;
+      border-radius: 12px;
+      background: #000;
+      max-height: 60vh;
+    }
+    .action-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .action-btn {
+      flex: 1;
+      padding: 13px;
+      border-radius: 12px;
+      border: none;
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      text-decoration: none;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .action-btn.primary {
+      background: var(--accent);
+      color: white;
+    }
+    .action-btn.secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      padding: 12px 20px;
+      border-radius: 99px;
+      font-size: 14px;
+      white-space: nowrap;
+      transition: transform 0.3s ease;
+      z-index: 999;
+    }
+    .toast.visible { transform: translateX(-50%) translateY(0); }
+
+    /* ── History ── */
+    .history-row {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .history-item {
+      flex-shrink: 0;
+      width: 80px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .history-thumb {
+      width: 80px;
+      height: 60px;
+      background: var(--surface2);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .history-label { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎬</div>
+    <h1>Marvin <span>Video AI</span></h1>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- Script -->
+  <div class="card">
+    <p class="card-title">Script / Texte</p>
+    <textarea id="textInput" placeholder="Écris le texte que ton avatar va prononcer…
+Ex: Bonjour ! Je suis ton assistant IA personnel. Aujourd'hui je vais te présenter une nouvelle fonctionnalité." maxlength="1500"></textarea>
+    <p class="char-count"><span id="charCount">0</span> / 1500</p>
+  </div>
+
+  <!-- Avatar -->
+  <div class="card">
+    <p class="card-title">Avatar (optionnel)</p>
+    <div class="avatar-drop" id="avatarDrop">
+      <input type="file" id="avatarInput" accept="image/*" />
+      <div class="avatar-drop-inner">
+        <div class="icon">🧑‍💼</div>
+        <p>Dépose une photo<br>ou appuie pour choisir</p>
+      </div>
+      <div class="avatar-preview" id="avatarPreview">
+        <img id="avatarImg" src="" alt="Avatar" />
+        <button class="remove-btn" id="removeAvatar">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Voice -->
+  <div class="card">
+    <p class="card-title">Voix</p>
+    <select id="voiceSelect">
+      <option value="fr-FR-DeniseNeural">🇫🇷 Denise (Femme, FR)</option>
+      <option value="fr-FR-HenriNeural">🇫🇷 Henri (Homme, FR)</option>
+      <option value="fr-FR-EloiseNeural">🇫🇷 Éloïse (Femme, FR)</option>
+      <option value="fr-CA-SylvieNeural">🇨🇦 Sylvie (Femme, CA)</option>
+      <option value="en-US-JennyNeural">🇺🇸 Jenny (Femme, EN)</option>
+      <option value="en-GB-SoniaNeural">🇬🇧 Sonia (Femme, EN)</option>
+    </select>
+  </div>
+
+  <!-- Theme -->
+  <div class="card">
+    <p class="card-title">Thème</p>
+    <div class="themes">
+      <div class="theme-btn active" data-theme="dark" style="background:linear-gradient(135deg,#0a0c1a,#1c1f3a)">
+        <span>Sombre</span>
+      </div>
+      <div class="theme-btn" data-theme="ocean" style="background:linear-gradient(135deg,#06192e,#0e4f6a)">
+        <span>Océan</span>
+      </div>
+      <div class="theme-btn" data-theme="sunset" style="background:linear-gradient(135deg,#1e0a14,#7c1c4a)">
+        <span>Coucher</span>
+      </div>
+      <div class="theme-btn" data-theme="forest" style="background:linear-gradient(135deg,#081c12,#0f4c2a)">
+        <span>Forêt</span>
+      </div>
+      <div class="theme-btn" data-theme="light" style="background:linear-gradient(135deg,#f5f7ff,#dde4ff)">
+        <span style="color:#1e1e3f">Clair</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generate -->
+  <button class="gen-btn" id="generateBtn">
+    ✨ Générer la vidéo
+  </button>
+
+  <!-- Progress -->
+  <div class="card progress-card" id="progressCard">
+    <p class="card-title">Génération en cours…</p>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <p class="progress-step" id="progressStep">Initialisation…</p>
+  </div>
+
+  <!-- Result -->
+  <div class="card result-card" id="resultCard">
+    <p class="card-title">Vidéo générée ✅</p>
+    <video id="resultVideo" controls playsinline></video>
+    <div class="action-row">
+      <a class="action-btn primary" id="downloadBtn" download="video.mp4">
+        ⬇ Télécharger
+      </a>
+      <button class="action-btn secondary" id="newVideoBtn">
+        + Nouvelle
+      </button>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="card" id="historyCard" style="display:none">
+    <p class="card-title">Historique</p>
+    <div class="history-row" id="historyRow"></div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = window.location.origin;
+let selectedTheme = "dark";
+let avatarFile = null;
+let history = JSON.parse(localStorage.getItem("mvai_history") || "[]");
+let pollInterval = null;
+
+// ── Avatar ────────────────────────────────────────────────────────────────────
+const avatarInput = document.getElementById("avatarInput");
+const avatarPreview = document.getElementById("avatarPreview");
+const avatarDropInner = document.querySelector(".avatar-drop-inner");
+const avatarImg = document.getElementById("avatarImg");
+const avatarDrop = document.getElementById("avatarDrop");
+
+avatarInput.addEventListener("change", e => setAvatar(e.target.files[0]));
+
+avatarDrop.addEventListener("dragover", e => { e.preventDefault(); avatarDrop.classList.add("drag-over"); });
+avatarDrop.addEventListener("dragleave", () => avatarDrop.classList.remove("drag-over"));
+avatarDrop.addEventListener("drop", e => {
+  e.preventDefault();
+  avatarDrop.classList.remove("drag-over");
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith("image/")) setAvatar(file);
+});
+
+document.getElementById("removeAvatar").addEventListener("click", e => {
+  e.stopPropagation();
+  avatarFile = null;
+  avatarImg.src = "";
+  avatarPreview.style.display = "none";
+  avatarDropInner.style.display = "";
+  avatarInput.value = "";
+});
+
+function setAvatar(file) {
+  if (!file) return;
+  avatarFile = file;
+  const url = URL.createObjectURL(file);
+  avatarImg.src = url;
+  avatarPreview.style.display = "flex";
+  avatarDropInner.style.display = "none";
+}
+
+// ── Char count ────────────────────────────────────────────────────────────────
+const textInput = document.getElementById("textInput");
+textInput.addEventListener("input", () => {
+  document.getElementById("charCount").textContent = textInput.value.length;
+});
+
+// ── Themes ───────────────────────────────────────────────────────────────────
+document.querySelectorAll(".theme-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".theme-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    selectedTheme = btn.dataset.theme;
+  });
+});
+
+// ── Generate ──────────────────────────────────────────────────────────────────
+document.getElementById("generateBtn").addEventListener("click", async () => {
+  const text = textInput.value.trim();
+  if (!text) { showToast("Écris un texte d'abord !"); return; }
+
+  const voice = document.getElementById("voiceSelect").value;
+
+  const fd = new FormData();
+  fd.append("text", text);
+  fd.append("voice", voice);
+  fd.append("theme", selectedTheme);
+  if (avatarFile) fd.append("avatar_file", avatarFile);
+
+  setGenerating(true);
+  showProgress("Envoi…", 2);
+
+  try {
+    const res = await fetch(`${API}/api/generate`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) { throw new Error(data.error || "Erreur serveur"); }
+
+    startPolling(data.job_id, data.video_url);
+  } catch(e) {
+    setGenerating(false);
+    showToast("Erreur : " + e.message);
+  }
+});
+
+function startPolling(jobId, videoUrl) {
+  clearInterval(pollInterval);
+  pollInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`${API}/api/status/${jobId}`);
+      const data = await res.json();
+      showProgress(data.step, data.pct);
+      if (data.pct >= 100) {
+        clearInterval(pollInterval);
+        showResult(videoUrl);
+        addToHistory(jobId, videoUrl);
+      }
+    } catch(e) { /* retry */ }
+  }, 800);
+}
+
+function showProgress(step, pct) {
+  document.getElementById("progressCard").classList.add("visible");
+  document.getElementById("progressFill").style.width = pct + "%";
+  document.getElementById("progressStep").textContent = step;
+}
+
+function showResult(videoUrl) {
+  setGenerating(false);
+  document.getElementById("progressCard").classList.remove("visible");
+  const card = document.getElementById("resultCard");
+  card.classList.add("visible");
+  const vid = document.getElementById("resultVideo");
+  vid.src = `${API}${videoUrl}`;
+  document.getElementById("downloadBtn").href = `${API}${videoUrl}`;
+  vid.play().catch(() => {});
+  card.scrollIntoView({ behavior: "smooth" });
+}
+
+function setGenerating(on) {
+  const btn = document.getElementById("generateBtn");
+  btn.disabled = on;
+  btn.textContent = on ? "⏳ Génération…" : "✨ Générer la vidéo";
+  if (!on) document.getElementById("progressCard").classList.remove("visible");
+}
+
+document.getElementById("newVideoBtn").addEventListener("click", () => {
+  document.getElementById("resultCard").classList.remove("visible");
+  textInput.focus();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+// ── History ───────────────────────────────────────────────────────────────────
+function addToHistory(jobId, videoUrl) {
+  history.unshift({ jobId, videoUrl, ts: Date.now() });
+  if (history.length > 10) history = history.slice(0, 10);
+  localStorage.setItem("mvai_history", JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  if (history.length === 0) return;
+  const card = document.getElementById("historyCard");
+  card.style.display = "block";
+  const row = document.getElementById("historyRow");
+  row.innerHTML = history.map((h, i) => `
+    <div class="history-item" onclick="playHistoryItem('${h.videoUrl}')">
+      <div class="history-thumb">🎬</div>
+      <p class="history-label">#${i+1}</p>
+    </div>
+  `).join("");
+}
+
+function playHistoryItem(videoUrl) {
+  const card = document.getElementById("resultCard");
+  card.classList.add("visible");
+  const vid = document.getElementById("resultVideo");
+  vid.src = `${API}${videoUrl}`;
+  document.getElementById("downloadBtn").href = `${API}${videoUrl}`;
+  vid.play().catch(() => {});
+  card.scrollIntoView({ behavior: "smooth" });
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("visible");
+  setTimeout(() => t.classList.remove("visible"), 3000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderHistory();
+</script>
+
+</body>
+</html>
