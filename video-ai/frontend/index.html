@@ -29,9 +29,9 @@
     .sys-pill.warn .dot{background:#f59e0b}
 
     /* Mode tabs */
-    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 16px;margin:12px 0}
-    .tab{padding:10px 6px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:var(--s1);text-align:center;cursor:pointer;transition:all .2s;font-size:12px;font-weight:600;color:var(--muted)}
-    .tab .tab-icon{font-size:20px;display:block;margin-bottom:3px}
+    .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:0 16px;margin:12px 0}
+    .tab{padding:9px 4px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:var(--s1);text-align:center;cursor:pointer;transition:all .2s;font-size:11px;font-weight:600;color:var(--muted)}
+    .tab .tab-icon{font-size:18px;display:block;margin-bottom:2px}
     .tab.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 20px rgba(99,102,241,.4)}
 
     /* Main */
@@ -97,6 +97,24 @@
     .q-btn.active{border-color:var(--accent);background:rgba(99,102,241,.1)}
     .q-btn.active span{color:var(--accent2)}
 
+    /* Background picker */
+    .bg-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+    .bg-btn{padding:8px 4px;border-radius:9px;border:1px solid rgba(255,255,255,.07);background:var(--s2);cursor:pointer;text-align:center;font-size:11px;color:var(--muted);transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:3px}
+    .bg-btn .bg-icon{font-size:18px}
+    .bg-btn.active{border-color:var(--accent);background:rgba(99,102,241,.1);color:var(--accent2)}
+    .bg-color-row{display:flex;align-items:center;gap:10px;margin-top:8px}
+    .bg-color-row input[type=color]{width:44px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;padding:0}
+    .bg-color-row span{font-size:13px;color:var(--muted)}
+    .bg-img-drop{border:1.5px dashed rgba(255,255,255,.1);border-radius:9px;padding:12px;text-align:center;cursor:pointer;position:relative;margin-top:8px;font-size:12px;color:var(--muted);transition:border-color .2s}
+    .bg-img-drop:hover{border-color:var(--accent)}
+    .bg-img-drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+    .bg-img-name{font-size:11px;color:var(--accent2);margin-top:4px}
+
+    /* Person selector */
+    .person-row{display:flex;gap:8px;align-items:flex-start}
+    .person-row select{flex:1}
+    .person-info{font-size:11px;color:var(--muted);margin-top:6px}
+
     /* Hint chips */
     .hints{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
     .hint{background:var(--s2);border:1px solid rgba(255,255,255,.06);border-radius:99px;padding:5px 10px;font-size:11px;color:var(--muted);cursor:pointer;transition:all .15s}
@@ -111,6 +129,17 @@
     .hist-item{aspect-ratio:.56;background:var(--s2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;border:1px solid rgba(255,255,255,.05);position:relative;overflow:hidden}
     .hist-item video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.7}
     .hist-item:hover{border-color:var(--accent)}
+
+    /* Training section */
+    .photo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+    .photo-thumb{aspect-ratio:1;border-radius:8px;object-fit:cover;width:100%;background:var(--s2);border:1px solid rgba(255,255,255,.06)}
+    .train-status{font-size:13px;color:var(--muted);margin-top:8px;min-height:20px}
+    .persons-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+    .person-card{display:flex;align-items:center;gap:10px;background:var(--s2);border-radius:9px;padding:10px 12px;border:1px solid rgba(255,255,255,.06)}
+    .person-card .p-name{font-size:13px;font-weight:600;flex:1}
+    .person-card .p-info{font-size:11px;color:var(--muted)}
+    .person-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#a855f7);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+    .pill-green{display:inline-block;background:rgba(16,185,129,.15);color:var(--emerald);border-radius:99px;padding:2px 8px;font-size:10px;font-weight:600}
   </style>
 </head>
 <body>
@@ -132,7 +161,10 @@
     <span class="tab-icon">✨</span>Créer
   </div>
   <div class="tab" data-mode="presenter">
-    <span class="tab-icon">🎙</span>Présentateur
+    <span class="tab-icon">🎙</span>Présent.
+  </div>
+  <div class="tab" data-mode="train">
+    <span class="tab-icon">🎓</span>Perso
   </div>
 </div>
 
@@ -158,6 +190,14 @@
       </div>
     </div>
 
+    <div class="card" id="personCard-animate">
+      <p class="card-title">Personne personnalisée (LoRA)</p>
+      <select id="person-animate">
+        <option value="">— Aucune (utiliser la photo) —</option>
+      </select>
+      <p class="person-info" id="personInfo-animate">Entraîne une IA sur ton visage dans l'onglet <strong>Perso</strong> pour une cohérence parfaite.</p>
+    </div>
+
     <div class="card">
       <p class="card-title">Action / Description</p>
       <textarea id="prompt-animate" placeholder="Ex: cette personne court dans un couloir sombre, éclairage cinématographique, ralenti" maxlength="500"></textarea>
@@ -166,6 +206,25 @@
         <span class="hint" data-target="prompt-animate">marche en ville la nuit</span>
         <span class="hint" data-target="prompt-animate">danse dans un studio</span>
         <span class="hint" data-target="prompt-animate">regarde la caméra, sourire</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Fond / Arrière-plan</p>
+      <div class="bg-row">
+        <div class="bg-btn active" data-bg="none" data-mode="animate"><span class="bg-icon">🎞</span>Original</div>
+        <div class="bg-btn" data-bg="blur" data-mode="animate"><span class="bg-icon">✨</span>Flou</div>
+        <div class="bg-btn" data-bg="color" data-mode="animate"><span class="bg-icon">🎨</span>Couleur</div>
+        <div class="bg-btn" data-bg="image" data-mode="animate"><span class="bg-icon">🖼</span>Image</div>
+      </div>
+      <div class="bg-color-row" id="bgColorRow-animate" style="display:none">
+        <input type="color" id="bgColor-animate" value="#1a1a2e"/>
+        <span>Couleur de fond</span>
+      </div>
+      <div class="bg-img-drop" id="bgImgDrop-animate" style="display:none">
+        <input type="file" accept="image/*" id="bgImgFile-animate"/>
+        📁 Dépose une image de fond
+        <p class="bg-img-name" id="bgImgName-animate"></p>
       </div>
     </div>
 
@@ -207,6 +266,14 @@
 
   <!-- ── MODE : CREATE ── -->
   <div class="section" id="sec-create">
+    <div class="card" id="personCard-create">
+      <p class="card-title">Personne personnalisée (LoRA)</p>
+      <select id="person-create">
+        <option value="">— Aucune (FLUX standard) —</option>
+      </select>
+      <p class="person-info" id="personInfo-create">Entraîne ton IA sur des photos dans <strong>Perso</strong> pour générer ton visage exact.</p>
+    </div>
+
     <div class="card">
       <p class="card-title">Décris ta vidéo</p>
       <textarea id="prompt-create" placeholder="Ex: une femme élégante marche dans Paris au coucher du soleil, style cinématographique, lumière dorée, 4K" maxlength="500"></textarea>
@@ -214,6 +281,25 @@
         <span class="hint" data-target="prompt-create">homme en costume dans un bureau futuriste</span>
         <span class="hint" data-target="prompt-create">femme sur la plage au lever du soleil</span>
         <span class="hint" data-target="prompt-create">enfant jouant dans une forêt enchantée</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Fond / Arrière-plan</p>
+      <div class="bg-row">
+        <div class="bg-btn active" data-bg="none" data-mode="create"><span class="bg-icon">🎞</span>Original</div>
+        <div class="bg-btn" data-bg="blur" data-mode="create"><span class="bg-icon">✨</span>Flou</div>
+        <div class="bg-btn" data-bg="color" data-mode="create"><span class="bg-icon">🎨</span>Couleur</div>
+        <div class="bg-btn" data-bg="image" data-mode="create"><span class="bg-icon">🖼</span>Image</div>
+      </div>
+      <div class="bg-color-row" id="bgColorRow-create" style="display:none">
+        <input type="color" id="bgColor-create" value="#1a1a2e"/>
+        <span>Couleur de fond</span>
+      </div>
+      <div class="bg-img-drop" id="bgImgDrop-create" style="display:none">
+        <input type="file" accept="image/*" id="bgImgFile-create"/>
+        📁 Dépose une image de fond
+        <p class="bg-img-name" id="bgImgName-create"></p>
       </div>
     </div>
 
@@ -277,12 +363,77 @@
       </div>
     </div>
 
+    <div class="card">
+      <p class="card-title">Fond / Arrière-plan</p>
+      <div class="bg-row">
+        <div class="bg-btn active" data-bg="none" data-mode="presenter"><span class="bg-icon">🎞</span>Original</div>
+        <div class="bg-btn" data-bg="blur" data-mode="presenter"><span class="bg-icon">✨</span>Flou</div>
+        <div class="bg-btn" data-bg="color" data-mode="presenter"><span class="bg-icon">🎨</span>Couleur</div>
+        <div class="bg-btn" data-bg="image" data-mode="presenter"><span class="bg-icon">🖼</span>Image</div>
+      </div>
+      <div class="bg-color-row" id="bgColorRow-presenter" style="display:none">
+        <input type="color" id="bgColor-presenter" value="#1a1a2e"/>
+        <span>Couleur de fond</span>
+      </div>
+      <div class="bg-img-drop" id="bgImgDrop-presenter" style="display:none">
+        <input type="file" accept="image/*" id="bgImgFile-presenter"/>
+        📁 Dépose une image de fond
+        <p class="bg-img-name" id="bgImgName-presenter"></p>
+      </div>
+    </div>
+
     <div class="card" id="lipsyncCard" style="display:none">
       <p class="card-title">Lip Sync</p>
-      <p style="font-size:13px;color:#f59e0b">⚠️ LatentSync non détecté — la bouche ne bougera pas.<br>Lance <code>install.sh</code> pour l'activer.</p>
+      <p id="lipsyncStatus" style="font-size:13px;color:#f59e0b">Chargement…</p>
     </div>
 
     <button class="gen" id="genBtn-presenter">🎙 Générer l'avatar parlant</button>
+  </div>
+
+  <!-- ── MODE : TRAIN (Personnalisation LoRA) ── -->
+  <div class="section" id="sec-train">
+    <div class="card">
+      <p class="card-title">Entraîner une IA sur ton visage</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Ajoute 10–20 photos variées d'une personne. L'IA apprendra ce visage et pourra le reproduire parfaitement dans toutes les vidéos (~45 min RTX 4090).</p>
+      <input type="text" id="personName" placeholder="Nom de la personne (ex: marie, jean_dupont)" style="margin-bottom:10px"/>
+      <div class="av-drop" style="padding:14px" id="photosDrop">
+        <input type="file" accept="image/*" multiple id="photosInput"/>
+        <div id="photosInner">
+          <div class="ai">🖼</div>
+          <p>Ajoute 10–20 photos variées<br>(différents angles, éclairages)</p>
+        </div>
+        <div class="photo-grid" id="photosGrid" style="display:none"></div>
+      </div>
+      <p id="photoCount" style="font-size:12px;color:var(--muted);margin-top:6px"></p>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Options avancées</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px">Steps d'entraînement</span>
+        <span style="font-size:13px;color:var(--accent2);font-weight:700" id="stepsVal">500</span>
+      </div>
+      <div class="slider-row">
+        <input type="range" id="trainSteps" min="200" max="1000" value="500" step="100"/>
+        <span class="slider-val" id="stepsLabel">500</span>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:6px">500 = bon équilibre qualité/temps · 1000 = ultra précis · 200 = rapide</p>
+    </div>
+
+    <button class="gen" id="trainBtn" style="background:linear-gradient(135deg,#a855f7,#ec4899)">🎓 Lancer l'entraînement</button>
+
+    <div class="card prog" id="trainProgCard">
+      <p class="card-title">Entraînement en cours…</p>
+      <div class="prog-bar"><div class="prog-fill" id="trainProgFill"></div></div>
+      <p class="prog-step" id="trainProgStep">Initialisation…</p>
+    </div>
+
+    <div class="card" id="personsListCard">
+      <p class="card-title">Personnes entraînées</p>
+      <div class="persons-list" id="personsList">
+        <p style="font-size:13px;color:var(--muted)">Aucune personne entraînée pour l'instant.</p>
+      </div>
+    </div>
   </div>
 
   <!-- Progress -->
@@ -315,6 +466,8 @@
 <script>
 const API = location.origin;
 let avatarFiles = { animate: null, presenter: null };
+let bgFiles = { animate: null, create: null, presenter: null };
+let trainPhotos = [];
 let activeMode = "animate";
 let pollTimer = null;
 let history = JSON.parse(localStorage.getItem("mvai_hist2") || "[]");
@@ -330,33 +483,83 @@ async function loadSystemInfo() {
 
     const thModel = d.talking_head_model || "none";
     const thLabels = {
-      "liveportrait+musetalk": "LivePortrait + MuseTalk 🏆 (~95% HeyGen)",
-      "liveportrait":          "LivePortrait ✅ (Kuaishou)",
-      "musetalk":              "MuseTalk ✅ (ByteDance)",
-      "hallo2":                "Hallo2 ✅ (Fudan)",
-      "echomimic":             "EchoMimic ✅ (ByteDance)",
-      "latsync":               "LatentSync ⚠️ (basique)",
+      "liveportrait+musetalk": "LivePortrait + MuseTalk 🏆",
+      "liveportrait":          "LivePortrait ✅",
+      "musetalk":              "MuseTalk ✅",
+      "hallo2":                "Hallo2 ✅",
+      "echomimic":             "EchoMimic ✅",
+      "latsync":               "LatentSync ⚠️",
       "none":                  "Aucun modèle — lance install.sh"
     };
     const lipsyncCard = document.getElementById("lipsyncCard");
     lipsyncCard.style.display = "block";
-    lipsyncCard.querySelector("p:last-child").textContent =
-      `Avatar : ${thLabels[thModel] || thModel}`;
-    const color = thModel === "none" ? "#f59e0b"
-                : thModel === "latsync" ? "#f59e0b"
-                : "#22c55e";
-    lipsyncCard.querySelector("p:last-child").style.color = color;
+    const lipsyncStatus = document.getElementById("lipsyncStatus");
+    lipsyncStatus.textContent = `Avatar : ${thLabels[thModel] || thModel}`;
+    lipsyncStatus.style.color = thModel === "none" || thModel === "latsync" ? "#f59e0b" : "#22c55e";
 
-    // Indicateur IP-Adapter
     if (d.ip_adapter) {
       const chip = document.createElement("p");
       chip.textContent = "IP-Adapter FaceID ✅ (cohérence visage)";
       chip.style.cssText = "font-size:12px;color:#22c55e;margin-top:4px";
       lipsyncCard.appendChild(chip);
     }
+    if (d.sam2) {
+      const chip = document.createElement("p");
+      chip.textContent = "SAM2 ✅ (remplacement fond)";
+      chip.style.cssText = "font-size:12px;color:#22c55e;margin-top:4px";
+      lipsyncCard.appendChild(chip);
+    }
+
+    // Charger les personnes entraînées
+    if (d.trained_persons && d.trained_persons.length > 0) {
+      updatePersonSelectors(d.trained_persons);
+      renderPersonsList(d.trained_persons);
+    }
   } catch(e) {
     document.getElementById("sysLabel").textContent = "Serveur non connecté";
   }
+}
+
+// ── Persons (LoRA) ────────────────────────────────────────────────────────────
+function updatePersonSelectors(persons) {
+  ["animate", "create"].forEach(mode => {
+    const sel = document.getElementById(`person-${mode}`);
+    const current = sel.value;
+    // keep the first "none" option
+    while (sel.options.length > 1) sel.remove(1);
+    persons.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p.name;
+      opt.textContent = `${p.name} (${p.photos} photos · ${p.steps} steps)`;
+      sel.appendChild(opt);
+    });
+    sel.value = current;
+  });
+}
+
+function renderPersonsList(persons) {
+  const list = document.getElementById("personsList");
+  if (!persons.length) {
+    list.innerHTML = `<p style="font-size:13px;color:var(--muted)">Aucune personne entraînée pour l'instant.</p>`;
+    return;
+  }
+  list.innerHTML = persons.map(p => `
+    <div class="person-card">
+      <div class="person-avatar">👤</div>
+      <div style="flex:1">
+        <p class="p-name">${p.name} <span class="pill-green">LoRA prêt</span></p>
+        <p class="p-info">${p.photos} photos · ${p.steps} steps · ${p.version}</p>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function loadPersons() {
+  try {
+    const { persons } = await fetch(`${API}/api/persons`).then(r => r.json());
+    updatePersonSelectors(persons);
+    renderPersonsList(persons);
+  } catch(e) {}
 }
 
 // ── Voices ───────────────────────────────────────────────────────────────────
@@ -419,6 +622,37 @@ function clearAvatar(mode) {
   document.getElementById(`avFile-${mode}`).value = "";
 }
 
+// ── Background picker ─────────────────────────────────────────────────────────
+document.querySelectorAll(".bg-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const mode = btn.dataset.mode;
+    const bg = btn.dataset.bg;
+    document.querySelectorAll(`.bg-btn[data-mode="${mode}"]`).forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(`bgColorRow-${mode}`).style.display = bg === "color" ? "flex" : "none";
+    document.getElementById(`bgImgDrop-${mode}`).style.display = bg === "image" ? "block" : "none";
+  });
+});
+
+["animate", "create", "presenter"].forEach(mode => {
+  const fileInput = document.getElementById(`bgImgFile-${mode}`);
+  if (fileInput) {
+    fileInput.addEventListener("change", e => {
+      const f = e.target.files[0];
+      if (f) {
+        bgFiles[mode] = f;
+        document.getElementById(`bgImgName-${mode}`).textContent = f.name;
+      }
+    });
+  }
+});
+
+function getBgParams(mode) {
+  const active = document.querySelector(`.bg-btn.active[data-mode="${mode}"]`);
+  const bgType = active ? active.dataset.bg : "none";
+  return { bgType, bgColor: document.getElementById(`bgColor-${mode}`)?.value || "#1a1a2e", bgFile: bgFiles[mode] };
+}
+
 // ── Sliders ───────────────────────────────────────────────────────────────────
 ["animate", "create"].forEach(m => {
   const slider = document.getElementById(`dur-${m}`);
@@ -433,6 +667,12 @@ rateSlider.addEventListener("input", () => {
   rateLabel.textContent = v === 0 ? "Normal" : (v > 0 ? `+${v}%` : `${v}%`);
 });
 
+const trainStepsSlider = document.getElementById("trainSteps");
+const stepsLabel = document.getElementById("stepsLabel");
+trainStepsSlider.addEventListener("input", () => {
+  stepsLabel.textContent = trainStepsSlider.value;
+});
+
 // ── Char count ────────────────────────────────────────────────────────────────
 document.getElementById("text-presenter").addEventListener("input", function() {
   document.getElementById("cc-presenter").textContent = this.value.length;
@@ -445,6 +685,93 @@ document.querySelectorAll(".hint").forEach(h => {
     if (target) { target.value = h.textContent; target.dispatchEvent(new Event("input")); }
   });
 });
+
+// ── Photos picker (training) ──────────────────────────────────────────────────
+document.getElementById("photosInput").addEventListener("change", e => {
+  trainPhotos = Array.from(e.target.files);
+  renderPhotoThumbs();
+});
+
+document.getElementById("photosDrop").addEventListener("dragover", e => { e.preventDefault(); });
+document.getElementById("photosDrop").addEventListener("drop", e => {
+  e.preventDefault();
+  trainPhotos = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/"));
+  renderPhotoThumbs();
+});
+
+function renderPhotoThumbs() {
+  const grid = document.getElementById("photosGrid");
+  const inner = document.getElementById("photosInner");
+  const count = document.getElementById("photoCount");
+  if (!trainPhotos.length) {
+    grid.style.display = "none";
+    inner.style.display = "";
+    count.textContent = "";
+    return;
+  }
+  inner.style.display = "none";
+  grid.style.display = "grid";
+  grid.innerHTML = trainPhotos.slice(0, 12).map(f => {
+    const url = URL.createObjectURL(f);
+    return `<img class="photo-thumb" src="${url}"/>`;
+  }).join("");
+  const extra = trainPhotos.length > 12 ? ` (+${trainPhotos.length - 12} autres)` : "";
+  count.textContent = `${trainPhotos.length} photo(s) sélectionnée(s)${extra}`;
+  count.style.color = trainPhotos.length < 3 ? "#ef4444" : trainPhotos.length >= 10 ? "#22c55e" : "#f59e0b";
+}
+
+// ── Training ──────────────────────────────────────────────────────────────────
+document.getElementById("trainBtn").addEventListener("click", async () => {
+  const name = document.getElementById("personName").value.trim().toLowerCase().replace(/\s+/g, "_");
+  if (!name) { toast("Saisis un nom pour cette personne."); return; }
+  if (trainPhotos.length < 3) { toast("Minimum 3 photos requises."); return; }
+
+  const fd = new FormData();
+  fd.append("person_name", name);
+  trainPhotos.forEach(f => fd.append("photos", f));
+
+  document.getElementById("trainBtn").disabled = true;
+  document.getElementById("trainProgCard").classList.add("visible");
+  showTrainProgress("Envoi des photos…", 2);
+
+  try {
+    const res = await fetch(`${API}/api/train`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Erreur serveur");
+    startTrainPoll(data.job_id, name);
+  } catch(e) {
+    document.getElementById("trainBtn").disabled = false;
+    document.getElementById("trainProgCard").classList.remove("visible");
+    toast("Erreur : " + e.message);
+  }
+});
+
+let trainPollTimer = null;
+function startTrainPoll(jobId, personName) {
+  clearInterval(trainPollTimer);
+  trainPollTimer = setInterval(async () => {
+    try {
+      const d = await fetch(`${API}/api/status/${jobId}`).then(r => r.json());
+      showTrainProgress(d.step, d.pct);
+      if (d.pct >= 100) {
+        clearInterval(trainPollTimer);
+        document.getElementById("trainBtn").disabled = false;
+        if (d.error && d.error.length > 0) {
+          toast("Erreur : " + d.error);
+        } else {
+          toast(`✅ LoRA '${personName}' entraîné !`);
+          loadPersons();
+        }
+        document.getElementById("trainProgCard").classList.remove("visible");
+      }
+    } catch(e) {}
+  }, 2000);
+}
+
+function showTrainProgress(step, pct) {
+  document.getElementById("trainProgFill").style.width = pct + "%";
+  document.getElementById("trainProgStep").textContent = step;
+}
 
 // ── Generate ──────────────────────────────────────────────────────────────────
 ["animate", "create", "presenter"].forEach(mode => {
@@ -464,6 +791,9 @@ async function generate(mode) {
     fd.append("quality", getQuality("animate"));
     fd.append("color_preset", document.getElementById("color-animate").value);
     if (avatarFiles.animate) fd.append("avatar_file", avatarFiles.animate);
+    const personName = document.getElementById("person-animate").value;
+    if (personName) fd.append("person_name", personName);
+    appendBgParams(fd, "animate");
 
   } else if (mode === "create") {
     const prompt = document.getElementById("prompt-create").value.trim();
@@ -472,6 +802,9 @@ async function generate(mode) {
     fd.append("prompt", prompt);
     fd.append("duration", dur);
     fd.append("style", document.getElementById("style-create").value);
+    const personName = document.getElementById("person-create").value;
+    if (personName) fd.append("person_name", personName);
+    appendBgParams(fd, "create");
 
   } else if (mode === "presenter") {
     const text = document.getElementById("text-presenter").value.trim();
@@ -483,6 +816,7 @@ async function generate(mode) {
     fd.append("voice", voice);
     fd.append("voice_rate", rate + "%");
     fd.append("avatar_file", avatarFiles.presenter);
+    appendBgParams(fd, "presenter");
   }
 
   setLoading(true);
@@ -499,6 +833,13 @@ async function generate(mode) {
     hideProgress();
     toast("Erreur : " + e.message);
   }
+}
+
+function appendBgParams(fd, mode) {
+  const { bgType, bgColor, bgFile } = getBgParams(mode);
+  fd.append("background_type", bgType);
+  if (bgType === "color") fd.append("background_color", bgColor);
+  if ((bgType === "image" || bgType === "custom") && bgFile) fd.append("background_file", bgFile);
 }
 
 // ── Polling ───────────────────────────────────────────────────────────────────

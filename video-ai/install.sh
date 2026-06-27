@@ -387,7 +387,74 @@ PYEOF
 cd "$SCRIPT_DIR"
 ok "EchoMimic installé."
 
-# ── 12. LatentSync (lip sync — fallback si Hallo2/EchoMimic KO) ──────
+# ── 12b. SAM2 (Meta — segmentation fond vidéo) ───────────────────────
+log "Installation SAM2…"
+
+pip install -q "samv2" 2>/dev/null || pip install -q "git+https://github.com/facebookresearch/sam2.git" 2>/dev/null || true
+
+if [ ! -d "sam2" ]; then
+  git clone https://github.com/facebookresearch/sam2.git
+  cd sam2
+  pip install -q -e . 2>/dev/null || true
+  cd "$SCRIPT_DIR"
+fi
+
+mkdir -p sam2/checkpoints
+python3 << 'PYEOF'
+from huggingface_hub import hf_hub_download
+import os
+
+dest = os.path.join(os.path.dirname(__file__), "sam2", "checkpoints")
+os.makedirs(dest, exist_ok=True)
+
+ckpt = os.path.join(dest, "sam2.1_hiera_large.pt")
+if not os.path.exists(ckpt):
+    print("⬇ Téléchargement SAM2.1 hiera_large (≈900 MB)…")
+    hf_hub_download(
+        "facebook/sam2.1-hiera-large",
+        filename="sam2.1_hiera_large.pt",
+        local_dir=dest,
+    )
+    print("✓ SAM2 téléchargé.")
+else:
+    print("✓ SAM2 déjà présent.")
+PYEOF
+
+ok "SAM2 installé."
+
+# ── 12c. Audio enhancement (débruitage voix) ─────────────────────────
+log "Installation packages audio (noisereduce, soundfile, rembg)…"
+
+pip install -q noisereduce soundfile rembg 2>/dev/null || true
+
+ok "Packages audio installés."
+
+# ── 12d. DreamBooth LoRA training (personnalisation visage) ──────────
+log "Installation script DreamBooth LoRA…"
+
+DREAMBOOTH_SCRIPT="train_dreambooth_lora_flux.py"
+if [ ! -f "$DREAMBOOTH_SCRIPT" ]; then
+  # Téléchargement depuis diffusers examples
+  DREAMBOOTH_URL="https://raw.githubusercontent.com/huggingface/diffusers/main/examples/dreambooth/train_dreambooth_lora_flux.py"
+  if command -v wget &>/dev/null; then
+    wget -q "$DREAMBOOTH_URL" -O "$DREAMBOOTH_SCRIPT" 2>/dev/null || true
+  elif command -v curl &>/dev/null; then
+    curl -sL "$DREAMBOOTH_URL" -o "$DREAMBOOTH_SCRIPT" 2>/dev/null || true
+  fi
+
+  if [ -f "$DREAMBOOTH_SCRIPT" ]; then
+    ok "Script DreamBooth LoRA téléchargé."
+  else
+    warn "Script DreamBooth non téléchargé — utilise: pip install diffusers[training]"
+  fi
+fi
+
+pip install -q "diffusers[training]" bitsandbytes 2>/dev/null || true
+
+mkdir -p loras
+ok "DreamBooth LoRA prêt."
+
+# ── 13. LatentSync (lip sync — fallback si Hallo2/EchoMimic KO) ──────
 log "Installation de LatentSync (lip sync fallback)…"
 
 if [ ! -d "LatentSync" ]; then
@@ -432,7 +499,7 @@ PYEOF
 cd "$SCRIPT_DIR"
 ok "LatentSync installé."
 
-# ── 8. Résumé final ───────────────────────────────────────────────────
+# ── 15. Résumé final ──────────────────────────────────────────────────
 LOCAL_IP=$(hostname -I | awk '{print $1}' 2>/dev/null || ip route get 1 2>/dev/null | awk '{print $7}' | head -1)
 
 echo ""
