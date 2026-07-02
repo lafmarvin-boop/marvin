@@ -14,7 +14,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers };
 
   const H = SB_URL && SB_KEY ? { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } : null;
-  const freshCutoff = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+  const freshCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
   // GET — lire le statut de disponibilité
   if (event.httpMethod === 'GET') {
