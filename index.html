@@ -1040,7 +1040,7 @@
         <span class="resource-read">Lire l'article →</span>
       </div>
     </div>
-    <div class="resource-card" onclick="openArticle(1)">
+<div class="resource-card" onclick="openArticle(1)">
       <div class="resource-top">
         <div class="resource-tag">Deuil</div>
         <h3>Comment traverser un deuil sans se perdre : les étapes clés</h3>
@@ -1050,6 +1050,7 @@
         <span class="resource-read">Lire l'article →</span>
       </div>
     </div>
+    <div id="articles-extra" style="display:none;">
     <div class="resource-card" onclick="openArticle(2)">
       <div class="resource-top">
         <div class="resource-tag">Relations</div>
@@ -1160,6 +1161,11 @@
         <span class="resource-read">Lire l'article →</span>
       </div>
     </div>
+    </div>
+    <div style="text-align:center;margin-top:1.5rem;">
+      <button id="articles-toggle-btn" onclick="(function(){var e=document.getElementById('articles-extra'),b=document.getElementById('articles-toggle-btn');var open=e.style.display!=='none'&&e.style.display!=='';e.style.display=open?'none':'block';b.textContent=open?'Voir tous les articles (11 de plus) ↓':'Masquer ↑';})()" style="background:none;border:1.5px solid var(--terracotta);color:var(--terracotta);padding:.65rem 1.6rem;border-radius:50px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s,color .2s;" onmouseover="this.style.background='var(--terracotta)';this.style.color='white'" onmouseout="this.style.background='none';this.style.color='var(--terracotta)'">Voir tous les articles (11 de plus) ↓</button>
+    </div>
+
   </div>
 </section>
 
