@@ -14,30 +14,19 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers };
 
   const H = SB_URL && SB_KEY ? { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } : null;
-  const freshCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
   // GET — lire le statut de disponibilité
   if (event.httpMethod === 'GET') {
     if (!H) return { statusCode: 200, headers, body: JSON.stringify({ online: false }) };
     try {
       const res = await fetch(
-        `${SB_URL}/rest/v1/agent_presence?status=in.(online,busy)&last_seen=gte.${encodeURIComponent(freshCutoff)}&select=agent_email,status&limit=20`,
+        `${SB_URL}/rest/v1/agent_presence?status=in.(online,busy)&select=agent_email,status&limit=20`,
         { headers: H }
       );
       const agents = await res.json();
       const list = Array.isArray(agents) ? agents : [];
       const online = list.length > 0;
       const freeCount = list.filter(a => a.status === 'online').length;
-
-      // Auto-expirer les agents fantômes (fire-and-forget)
-      fetch(
-        `${SB_URL}/rest/v1/agent_presence?status=in.(online,busy)&last_seen=lt.${encodeURIComponent(freshCutoff)}`,
-        {
-          method: 'PATCH',
-          headers: { ...H, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({ status: 'offline', current_session_id: null, session_token: null })
-        }
-      ).catch(() => {});
 
       return { statusCode: 200, headers, body: JSON.stringify({ online, freeCount, source: 'agent_presence' }) };
     } catch (e) {
