@@ -7,7 +7,7 @@ exports.handler = async (event) => {
   if (!url || !key) return { statusCode: 200, headers: CORS, body: '[]' };
   try {
     const r = await fetch(
-      `${url}/rest/v1/sessions?statut=eq.paid&rating=gte.4&rating_comment=not.is.null&select=rating,rating_comment,client_pseudo,formule,started_at&order=started_at.desc&limit=20`,
+      `${url}/rest/v1/sessions?statut=in.(paid,ended)&rating=gte.4&rating_comment=not.is.null&select=rating,rating_comment,client_pseudo,formule,started_at&order=started_at.desc&limit=20`,
       { headers: { apikey: key, Authorization: `Bearer ${key}` } }
     );
     const data = await r.json();

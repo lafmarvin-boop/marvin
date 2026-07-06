@@ -67,6 +67,20 @@ exports.handler = async (event) => {
       }).catch(() => {});
     }
 
+    // Message visiteur : notifier l'agent par push (fire-and-forget)
+    if (senderType === 'visitor') {
+      const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.fr';
+      fetch(`${siteUrl}/.netlify/functions/push-notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: '💬 Nouveau message',
+          message: content.trim().slice(0, 80),
+          url: '/agent-app.html'
+        })
+      }).catch(() => {});
+    }
+
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
   } catch (e) {
     console.error('chat-send:', e.message);
