@@ -682,7 +682,7 @@ async function switchTab(tab) {
       }
       btn.textContent = '💬 Agent'; btn.disabled = false;
     }
-    // Reprendre session partagée avec agent-app.html si disponible
+    // Reprendre session partagée avec agent-app.html si disponible (même navigateur)
     if (!agentChatToken) {
       const sharedToken = localStorage.getItem('parlons_agent_token');
       const sharedEmail = localStorage.getItem('parlons_agent_token_email');
@@ -691,11 +691,29 @@ async function switchTab(tab) {
         startAgentPolling();
       }
     }
+    // Reprendre session active depuis un autre appareil (ex : PWA mobile)
+    const _pwd = agentPasswordCache || (localStorage.getItem('parlons_espace_session') ? (JSON.parse(localStorage.getItem('parlons_espace_session')).password || '') : '');
+    if (!agentChatToken && _pwd) {
+      try {
+        const rr = await fetch(`${API}/chat-presence`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agentEmail: agentEmailStored, password: _pwd, status: 'resume' })
+        });
+        const rd = await rr.json();
+        if (rd.ok && rd.online && rd.token) {
+          agentChatToken = rd.token;
+          localStorage.setItem('parlons_agent_token', rd.token);
+          localStorage.setItem('parlons_agent_token_email', agentEmailStored);
+          startAgentPolling();
+        }
+      } catch {}
+    }
     if (agentChatToken && agentChatSessionId) { agentLastMsgTime = null; agentRenderedIds = new Set(); }
     renderAgentDash(agentEmailStored, adminAgentDataCache);
     showScreen('agent-dash');
     document.getElementById('admin-tabs').style.display = 'block';
     updateAgentPresenceUI(!!agentChatToken);
+    startBgSync();
   }
 }
 
@@ -1080,6 +1098,36 @@ function filterIpLogs(period) {
 function fmtDate(s) { return s ? new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'; }
 
 let presRefreshInterval = null;
+let bgSyncInterval = null;
+
+async function _bgSyncPresence() {
+  if (agentChatToken) return; // déjà en ligne, rien à faire
+  const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
+  if (!saved.email || !saved.password) return;
+  try {
+    const r = await fetch(`${API}/chat-presence`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentEmail: saved.email, password: saved.password, status: 'resume' })
+    });
+    const d = await r.json();
+    if (d.ok && d.online && d.token) {
+      agentChatToken = d.token;
+      localStorage.setItem('parlons_agent_token', d.token);
+      localStorage.setItem('parlons_agent_token_email', saved.email);
+      updateAgentPresenceUI(true);
+      startAgentPolling();
+    }
+  } catch {}
+}
+
+function startBgSync() {
+  if (bgSyncInterval) clearInterval(bgSyncInterval);
+  bgSyncInterval = setInterval(_bgSyncPresence, 5000);
+}
+
+function stopBgSync() {
+  if (bgSyncInterval) { clearInterval(bgSyncInterval); bgSyncInterval = null; }
+}
 async function refreshAgentPresence() {
   const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
   if (!saved.email || !saved.password) return;
@@ -2158,9 +2206,11 @@ async function agentGoOffline() {
   agentLastMsgTime = null; agentRenderedIds = new Set();
   document.getElementById('afloat-panel').classList.remove('open');
   updateAgentPresenceUI(false);
+  startBgSync();
 }
 
 function startAgentPolling() {
+  stopBgSync();
   if (agentPollingInterval) clearInterval(agentPollingInterval);
   pollAgentChat();
   agentPollingInterval = setInterval(pollAgentChat, 3000);
@@ -2175,7 +2225,7 @@ async function pollAgentChat() {
     });
     const data = await res.json();
     if (!res.ok) {
-      if (res.status === 401) { clearInterval(agentPollingInterval); agentPollingInterval = null; agentChatToken = null; localStorage.removeItem('parlons_agent_token'); localStorage.removeItem('parlons_agent_token_email'); updateAgentPresenceUI(false); }
+      if (res.status === 401) { clearInterval(agentPollingInterval); agentPollingInterval = null; agentChatToken = null; localStorage.removeItem('parlons_agent_token'); localStorage.removeItem('parlons_agent_token_email'); updateAgentPresenceUI(false); startBgSync(); }
       return;
     }
 

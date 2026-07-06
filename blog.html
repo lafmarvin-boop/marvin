@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Blog Parlons — Bien-être, écoute et soutien psychologique</title>
+  <meta name="description" content="Conseils et articles sur le bien-être mental, la gestion du stress, l'anxiété et le soutien psychologique. Blog du service d'écoute en ligne Parlons."/>
+  <meta name="robots" content="index, follow"/>
+  <link rel="canonical" href="https://parlonsecoute.fr/blog.html"/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:url" content="https://parlonsecoute.fr/blog.html"/>
+  <meta property="og:title" content="Blog Parlons — Bien-être et soutien psychologique"/>
+  <meta property="og:description" content="Conseils pratiques pour prendre soin de votre santé mentale. Articles sur l'anxiété, le stress, la solitude et l'écoute bienveillante."/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23C4714A'/><rect x='14' y='13' width='72' height='56' rx='11' fill='white'/><polygon points='26,69 26,88 44,69' fill='white'/><text x='50' y='54' font-size='36' text-anchor='middle' font-family='Georgia,serif' fill='%23C4714A'>P</text></svg>"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--terracotta:#C4714A;--dark:#2D1A0E;--sand:#E8DDD2;--warm:#F0E8DE;--mid:#9A8070;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:#faf8f5;color:var(--dark);}
+    a{color:var(--terracotta);text-decoration:none;}
+    a:hover{text-decoration:underline;}
+    nav{background:white;border-bottom:1px solid var(--sand);padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+    .logo{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--dark);}
+    .logo span{color:var(--terracotta);}
+    .nav-links{display:flex;gap:1.5rem;align-items:center;}
+    .nav-links a{font-size:.85rem;color:var(--mid);}
+    .btn{background:var(--terracotta);color:white!important;padding:.5rem 1.2rem;border-radius:50px;font-weight:600;font-size:.83rem;}
+    .btn:hover{text-decoration:none;opacity:.9;}
+    .hero{background:var(--dark);padding:4rem 2rem;text-align:center;}
+    .hero h1{font-family:'Playfair Display',serif;font-size:2.2rem;color:white;margin-bottom:.8rem;}
+    .hero p{color:var(--mid);font-size:.95rem;max-width:500px;margin:0 auto;}
+    .container{max-width:860px;margin:0 auto;padding:3rem 1.5rem;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.5rem;}
+    .card{background:white;border-radius:16px;overflow:hidden;border:1px solid var(--sand);transition:box-shadow .2s,transform .2s;}
+    .card:hover{box-shadow:0 8px 32px rgba(196,113,74,.12);transform:translateY(-2px);}
+    .card-img{background:var(--warm);height:160px;display:flex;align-items:center;justify-content:center;font-size:3rem;}
+    .card-body{padding:1.3rem;}
+    .card-tag{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--terracotta);margin-bottom:.5rem;}
+    .card h2{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--dark);margin-bottom:.6rem;line-height:1.4;}
+    .card p{font-size:.82rem;color:var(--mid);line-height:1.6;margin-bottom:1rem;}
+    .card-meta{font-size:.72rem;color:#C0B0A0;}
+    .article{max-width:680px;margin:0 auto;}
+    .article-header{text-align:center;padding:3rem 1.5rem 2rem;}
+    .article-header h1{font-family:'Playfair Display',serif;font-size:2rem;color:var(--dark);line-height:1.3;margin-bottom:1rem;}
+    .article-header .meta{font-size:.8rem;color:var(--mid);}
+    .article-body{padding:0 1.5rem 4rem;line-height:1.85;font-size:.95rem;color:#3D2A1E;}
+    .article-body h2{font-family:'Playfair Display',serif;font-size:1.3rem;margin:2rem 0 .8rem;color:var(--dark);}
+    .article-body p{margin-bottom:1.1rem;}
+    .article-body ul{padding-left:1.5rem;margin-bottom:1.1rem;}
+    .article-body ul li{margin-bottom:.4rem;}
+    .article-body .highlight{background:var(--warm);border-left:3px solid var(--terracotta);padding:1rem 1.2rem;border-radius:0 10px 10px 0;margin:1.5rem 0;font-style:italic;}
+    .back-btn{display:inline-flex;align-items:center;gap:.4rem;color:var(--mid);font-size:.83rem;margin-bottom:1.5rem;}
+    footer{background:var(--dark);padding:2rem;text-align:center;}
+    footer p{color:var(--mid);font-size:.78rem;}
+    footer a{color:var(--mid);}
+    .cta-box{background:var(--terracotta);border-radius:16px;padding:2rem;text-align:center;margin:3rem 0;}
+    .cta-box h3{color:white;font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:.6rem;}
+    .cta-box p{color:rgba(255,255,255,.8);font-size:.85rem;margin-bottom:1.2rem;}
+    .cta-box a{background:white;color:var(--terracotta)!important;padding:.7rem 1.8rem;border-radius:50px;font-weight:700;display:inline-block;}
+    @media(max-width:600px){.hero h1{font-size:1.6rem;}.nav-links a:not(.btn){display:none;}}
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "name": "Blog Parlons",
+    "url": "https://parlonsecoute.fr/blog.html",
+    "description": "Conseils et articles sur le bien-être mental, la gestion du stress et le soutien psychologique.",
+    "publisher": {"@type": "Organization", "name": "Parlons", "url": "https://parlonsecoute.fr"}
+  }
+  </script>
+</head>
+<body>
+<nav>
+  <a href="/" class="logo">Par<span>lons</span></a>
+  <div class="nav-links">
+    <a href="/blog.html">Blog</a>
+    <a href="/#faq">FAQ</a>
+    <a href="/" class="btn">Parler maintenant →</a>
+  </div>
+</nav>
+
+<div id="blog-list">
+  <div class="hero">
+    <h1>Blog Parlons</h1>
+    <p>Conseils pratiques pour prendre soin de votre santé mentale, mieux gérer le stress et ne plus vous sentir seul(e).</p>
+  </div>
+  <div class="container">
+    <div class="grid">
+      <div class="card" onclick="showArticle('anxiete')" style="cursor:pointer;">
+        <div class="card-img">😮‍💨</div>
+        <div class="card-body">
+          <div class="card-tag">Anxiété</div>
+          <h2>5 signes que vous avez besoin de parler à quelqu'un</h2>
+          <p>Reconnaître les signaux d'alerte et savoir quand demander de l'aide est la première étape vers le mieux-être.</p>
+          <div class="card-meta">5 min de lecture</div>
+        </div>
+      </div>
+      <div class="card" onclick="showArticle('solitude')" style="cursor:pointer;">
+        <div class="card-img">🌙</div>
+        <div class="card-body">
+          <div class="card-tag">Solitude</div>
+          <h2>Se sentir seul(e) : pourquoi ça arrive et comment s'en sortir</h2>
+          <p>La solitude est une expérience universelle. Comprendre ses causes permet de mieux y faire face.</p>
+          <div class="card-meta">6 min de lecture</div>
+        </div>
+      </div>
+      <div class="card" onclick="showArticle('stress')" style="cursor:pointer;">
+        <div class="card-img">🧘</div>
+        <div class="card-body">
+          <div class="card-tag">Stress</div>
+          <h2>Comment gérer le stress au quotidien : 7 techniques concrètes</h2>
+          <p>Des outils simples, testés et efficaces pour retrouver calme et sérénité même dans les périodes difficiles.</p>
+          <div class="card-meta">7 min de lecture</div>
+        </div>
+      </div>
+      <div class="card" onclick="showArticle('ecoute')" style="cursor:pointer;">
+        <div class="card-img">💬</div>
+        <div class="card-body">
+          <div class="card-tag">Écoute</div>
+          <h2>Pourquoi parler à quelqu'un aide vraiment (même en ligne)</h2>
+          <p>La science derrière l'écoute active et pourquoi le simple fait de se confier change tout.</p>
+          <div class="card-meta">5 min de lecture</div>
+        </div>
+      </div>
+      <div class="card" onclick="showArticle('burnout')" style="cursor:pointer;">
+        <div class="card-img">🔥</div>
+        <div class="card-body">
+          <div class="card-tag">Travail</div>
+          <h2>Burn-out : reconnaître les symptômes avant qu'il soit trop tard</h2>
+          <p>Le burn-out ne survient pas du jour au lendemain. Voici comment détecter les signaux faibles.</p>
+          <div class="card-meta">6 min de lecture</div>
+        </div>
+      </div>
+      <div class="card" onclick="showArticle('relation')" style="cursor:pointer;">
+        <div class="card-img">💔</div>
+        <div class="card-body">
+          <div class="card-tag">Relations</div>
+          <h2>Traverser une rupture : les étapes du deuil amoureux</h2>
+          <p>Une rupture est une vraie douleur. Comprendre les phases du deuil permet de mieux les traverser.</p>
+          <div class="card-meta">5 min de lecture</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ARTICLES -->
+<div id="article-content" style="display:none;">
+  <div class="container">
+    <a href="#" class="back-btn" onclick="showList();return false;">← Retour aux articles</a>
+  </div>
+  <div id="article-body"></div>
+</div>
+
+<footer>
+  <p>© 2026 <a href="/">Parlons</a> — Service d'écoute en ligne · <a href="/#faq">FAQ</a> · <a href="mailto:contact.parlons.ecoute@gmail.com">Contact</a></p>
+</footer>
+
+<script>
+const ARTICLES = {
+  anxiete: {
+    tag: 'Anxiété', emoji: '😮‍💨',
+    title: '5 signes que vous avez besoin de parler à quelqu'un',
+    body: `
+      <p>Nous passons tous par des moments difficiles. Mais comment savoir si ce que vous ressentez dépasse la simple "mauvaise passe" ? Voici 5 signes qui indiquent que parler à quelqu'un pourrait vraiment vous aider.</p>
+      <h2>1. Vous ne dormez plus normalement</h2>
+      <p>L'anxiété et le stress non traités se manifestent souvent la nuit. Si vous avez du mal à vous endormir, si vous vous réveillez avec des pensées envahissantes ou si vous dormez excessivement pour "fuir", c'est un signal à prendre au sérieux.</p>
+      <h2>2. Vous n'en parlez à personne</h2>
+      <p>Quand vous gardez tout pour vous — par peur de déranger, d'être jugé(e) ou de paraître faible — les émotions s'accumulent. L'isolement émotionnel est l'un des premiers facteurs aggravants de la souffrance psychologique.</p>
+      <div class="highlight">"On ne guérit pas seul de la solitude. Mettre des mots sur ce qu'on ressent, même à un inconnu bienveillant, libère quelque chose."</div>
+      <h2>3. Vos pensées tournent en boucle</h2>
+      <p>Vous repensez sans cesse à la même situation, au même problème, sans trouver de solution ? Cette rumination mentale épuise et empêche d'avancer. En parler à voix haute, même à un inconnu, interrompt ce cycle.</p>
+      <h2>4. Vous avez perdu goût à des choses que vous aimiez</h2>
+      <p>La perte d'intérêt pour les activités habituelles — sport, amis, loisirs — est un signe que quelque chose ne va pas. Ce n'est pas une fatalité, mais un signal d'alarme qui mérite attention.</p>
+      <h2>5. Vous vous sentez incompris(e) par vos proches</h2>
+      <p>Parfois, ceux qu'on aime le plus sont les moins bien placés pour nous écouter : ils ont peur pour nous, ils minimisent ou au contraire dramatisent. Un écoutant extérieur, sans enjeu affectif, peut offrir une écoute différente et souvent plus apaisante.</p>
+      <div class="cta-box"><h3>Vous vous reconnaissez dans ces signes ?</h3><p>Un écoutant bienveillant est disponible dès maintenant, anonymement.</p><a href="/">Parler maintenant →</a></div>
+    `
+  },
+  solitude: {
+    tag: 'Solitude', emoji: '🌙',
+    title: 'Se sentir seul(e) : pourquoi ça arrive et comment s'en sortir',
+    body: `
+      <p>La solitude est l'une des expériences les plus douloureuses qui soit — et pourtant l'une des moins avouées. En France, plus d'un adulte sur cinq déclare se sentir seul régulièrement. Vous n'êtes pas seul(e) à vous sentir seul(e).</p>
+      <h2>La différence entre être seul et se sentir seul</h2>
+      <p>On peut être entouré de monde et souffrir d'une profonde solitude. Inversement, on peut vivre seul et se sentir pleinement connecté. La solitude est avant tout un sentiment subjectif de manque de connexion authentique avec les autres.</p>
+      <h2>Pourquoi la solitude fait-elle si mal ?</h2>
+      <p>Des études en neurosciences ont montré que la douleur sociale active les mêmes zones cérébrales que la douleur physique. Notre cerveau est câblé pour la connexion — l'isolement est vécu comme une menace.</p>
+      <div class="highlight">"La solitude n'est pas l'absence des autres. C'est l'absence de quelqu'un à qui montrer ce qu'on ressent vraiment."</div>
+      <h2>Les causes les plus fréquentes</h2>
+      <ul>
+        <li>Un déménagement ou une rupture qui brise les habitudes sociales</li>
+        <li>Un travail isolant (télétravail, horaires décalés)</li>
+        <li>Des difficultés à nouer des liens malgré les tentatives</li>
+        <li>Le sentiment d'être différent ou incompris par son entourage</li>
+        <li>La pudeur ou la honte d'exprimer ses émotions</li>
+      </ul>
+      <h2>Ce qui aide vraiment</h2>
+      <p>La première étape est de mettre des mots sur ce qu'on ressent — à quelqu'un, n'importe qui. Parler à un écoutant bienveillant, même en ligne, brise l'isolement émotionnel et crée un espace pour être entendu sans jugement.</p>
+      <div class="cta-box"><h3>Vous n'avez pas à rester seul(e) avec ça</h3><p>Parlez à quelqu'un maintenant, anonymement, à partir de 5€.</p><a href="/">Commencer →</a></div>
+    `
+  },
+  stress: {
+    tag: 'Stress', emoji: '🧘',
+    title: 'Comment gérer le stress au quotidien : 7 techniques concrètes',
+    body: `
+      <p>Le stress est inévitable. Ce qui varie, c'est notre capacité à le gérer. Voici 7 techniques validées par la recherche qui peuvent vraiment changer votre quotidien.</p>
+      <h2>1. La respiration cohérente cardiaque</h2>
+      <p>Inspirez 5 secondes, expirez 5 secondes. Répétez pendant 5 minutes. Cette technique synchronise votre cœur et votre cerveau et réduit le cortisol (hormone du stress) de façon mesurable.</p>
+      <h2>2. La règle des 2 minutes</h2>
+      <p>Si une tâche prend moins de 2 minutes, faites-la maintenant. Les petites choses non faites s'accumulent dans l'esprit et créent une charge mentale invisible mais épuisante.</p>
+      <h2>3. Nommer ses émotions</h2>
+      <p>Des études montrent que le simple fait de mettre un mot sur une émotion — "je ressens de l'anxiété" — réduit son intensité. Tenir un journal ou parler à quelqu'un produit cet effet.</p>
+      <div class="highlight">"Le stress ne vient pas des événements. Il vient de l'écart entre ce qui se passe et ce qu'on croyait qui devait se passer."</div>
+      <h2>4. Bouger son corps</h2>
+      <p>20 minutes de marche suffisent à libérer des endorphines et à réduire l'anxiété. Pas besoin de sport intensif : l'important est la régularité.</p>
+      <h2>5. Limiter les informations</h2>
+      <p>L'exposition continue aux actualités négatives entretient un état d'alerte chronique. Limitez-vous à deux créneaux d'information par jour, maximum.</p>
+      <h2>6. Parler à quelqu'un</h2>
+      <p>Externaliser ses préoccupations — les dire à voix haute à quelqu'un qui écoute — libère l'esprit. C'est pour ça que les personnes qui parlent de leurs problèmes s'en sortent mieux que celles qui les gardent pour elles.</p>
+      <h2>7. Dormir en priorité</h2>
+      <p>Le manque de sommeil multiplie par trois la réactivité au stress. Protégez vos nuits comme un investissement, pas comme une variable d'ajustement.</p>
+      <div class="cta-box"><h3>Le stress s'allège quand on en parle</h3><p>Un écoutant disponible maintenant, anonymement.</p><a href="/">Parler maintenant →</a></div>
+    `
+  },
+  ecoute: {
+    tag: 'Écoute', emoji: '💬',
+    title: 'Pourquoi parler à quelqu'un aide vraiment (même en ligne)',
+    body: `
+      <p>On entend souvent "parles-en à quelqu'un" sans vraiment comprendre pourquoi ça aide. La réponse est à la fois simple et fascinante.</p>
+      <h2>Ce qui se passe dans le cerveau quand on parle</h2>
+      <p>Mettre des mots sur une expérience douloureuse active le cortex préfrontal — la partie rationnelle du cerveau — et réduit l'activité de l'amygdale, le centre des émotions et de la peur. En termes simples : parler calme le cerveau émotionnel.</p>
+      <h2>L'effet de "mise en récit"</h2>
+      <p>Quand vous racontez ce que vous vivez, vous organisez le chaos émotionnel en une histoire cohérente. Cette mise en ordre crée du sens et réduit la souffrance associée à l'expérience.</p>
+      <div class="highlight">"Les émotions qu'on n'exprime pas ne disparaissent pas. Elles s'accumulent, se transforment et ressortent autrement."</div>
+      <h2>Pourquoi parler à un inconnu peut être plus efficace</h2>
+      <p>À un ami proche, on se censure. On anticipe sa réaction, on gère son anxiété à lui, on minimise pour ne pas inquiéter. Un écoutant professionnel ou formé à l'écoute active ne porte pas ce poids relationnel. Il peut être pleinement présent pour vous.</p>
+      <h2>Et en ligne, ça marche vraiment ?</h2>
+      <p>Oui. Des études sur les thérapies en ligne et les services de soutien à distance montrent des résultats comparables au présentiel pour le soutien émotionnel. L'anonymat du digital permet même à certaines personnes de s'ouvrir plus facilement.</p>
+      <div class="cta-box"><h3>Essayez par vous-même</h3><p>30 minutes d'écoute bienveillante, anonyme, à partir de 5€.</p><a href="/">Commencer →</a></div>
+    `
+  },
+  burnout: {
+    tag: 'Travail', emoji: '🔥',
+    title: 'Burn-out : reconnaître les symptômes avant qu'il soit trop tard',
+    body: `
+      <p>Le burn-out touche des millions de personnes en France, mais il reste souvent non identifié jusqu'à l'effondrement. Apprendre à reconnaître ses signaux précoces peut tout changer.</p>
+      <h2>Ce que le burn-out n'est pas</h2>
+      <p>Le burn-out n'est pas un simple surmenage. C'est un état d'épuisement profond — physique, émotionnel et mental — causé par un stress chronique au travail non résolu. Il s'installe progressivement, souvent chez les personnes les plus engagées.</p>
+      <h2>Les signaux précoces à surveiller</h2>
+      <ul>
+        <li><strong>Cynisme croissant</strong> : vous devenez amer(e) sur votre travail, vos collègues, l'entreprise</li>
+        <li><strong>Fatigue persistante</strong> : vous dormez mais n'êtes jamais reposé(e)</li>
+        <li><strong>Sentiment d'inefficacité</strong> : plus rien ne semble avoir de sens ou d'impact</li>
+        <li><strong>Détachement émotionnel</strong> : vous n'avez plus de réaction aux choses qui vous touchaient</li>
+        <li><strong>Symptômes physiques</strong> : maux de tête, tensions, troubles digestifs récurrents</li>
+      </ul>
+      <div class="highlight">"Le burn-out arrive quand on donne plus qu'on ne reçoit, trop longtemps, sans le reconnaître."</div>
+      <h2>Que faire si vous vous reconnaissez ?</h2>
+      <p>La première étape est d'en parler — à quelqu'un, n'importe qui. Mettre des mots sur ce qu'on ressent est déjà une forme d'action. Ensuite, consulter un médecin généraliste qui pourra évaluer la situation et vous orienter.</p>
+      <h2>Le rôle de l'écoute dans la prévention</h2>
+      <p>Beaucoup de burn-outs auraient pu être évités si la personne avait eu un espace pour exprimer sa fatigue, ses doutes et sa surcharge avant l'effondrement. Parler régulièrement à quelqu'un de bienveillant est une forme de prévention.</p>
+      <div class="cta-box"><h3>Ne gardez pas ça pour vous</h3><p>Un écoutant disponible maintenant pour parler de votre situation au travail.</p><a href="/">Parler maintenant →</a></div>
+    `
+  },
+  relation: {
+    tag: 'Relations', emoji: '💔',
+    title: 'Traverser une rupture : les étapes du deuil amoureux',
+    body: `
+      <p>Une rupture est une vraie douleur. Ce n'est pas une faiblesse de souffrir — c'est une réponse normale à une perte réelle. Comprendre les étapes de ce deuil permet de mieux les traverser.</p>
+      <h2>Le deuil amoureux : une douleur réelle</h2>
+      <p>Des études en imagerie cérébrale ont montré que la douleur d'une rupture active les mêmes zones du cerveau que la douleur physique. Se sentir "brisé(e)" n'est pas une métaphore — c'est presque littéralement vrai.</p>
+      <h2>Les étapes classiques</h2>
+      <ul>
+        <li><strong>Le déni</strong> : "Ce n'est pas vraiment fini, il/elle va revenir"</li>
+        <li><strong>La colère</strong> : envers l'autre, envers soi, envers la situation</li>
+        <li><strong>La négociation</strong> : "Et si je changeais ça ? Et si j'essayais encore ?"</li>
+        <li><strong>La tristesse</strong> : le moment le plus douloureux, mais aussi le plus nécessaire</li>
+        <li><strong>L'acceptation</strong> : pas l'oubli, mais la paix avec ce qui s'est passé</li>
+      </ul>
+      <div class="highlight">"On ne guérit pas d'une rupture en accélérant les étapes. On guérit en les traversant, à son rythme."</div>
+      <h2>Ce qui aide (et ce qui n'aide pas)</h2>
+      <p><strong>Ce qui aide :</strong> pleurer (vraiment), parler à quelqu'un de bienveillant, maintenir une routine physique, s'accorder du temps sans culpabilité.</p>
+      <p><strong>Ce qui n'aide pas :</strong> surveiller les réseaux sociaux de l'ex, noyer la douleur dans l'alcool ou la suractivité, s'isoler totalement.</p>
+      <h2>Quand demander de l'aide</h2>
+      <p>Si la tristesse dure plus de quelques semaines sans s'atténuer, si elle affecte votre travail ou vos relations, parler à quelqu'un peut faire une vraie différence. Vous n'avez pas à traverser ça seul(e).</p>
+      <div class="cta-box"><h3>Vous traversez une rupture difficile ?</h3><p>Un écoutant disponible maintenant pour vous accompagner, anonymement.</p><a href="/">Parler maintenant →</a></div>
+    `
+  }
+};
+
+function showArticle(id) {
+  const a = ARTICLES[id];
+  if (!a) return;
+  document.getElementById('blog-list').style.display = 'none';
+  document.getElementById('article-content').style.display = 'block';
+  document.getElementById('article-body').innerHTML = `
+    <div class="article-header">
+      <div style="font-size:3rem;margin-bottom:.8rem">${a.emoji}</div>
+      <div class="card-tag">${a.tag}</div>
+      <h1>${a.title}</h1>
+      <div class="meta">Parlons · Blog bien-être · 2026</div>
+    </div>
+    <div class="article container article-body">${a.body}</div>
+  `;
+  window.scrollTo(0, 0);
+}
+
+function showList() {
+  document.getElementById('blog-list').style.display = 'block';
+  document.getElementById('article-content').style.display = 'none';
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>

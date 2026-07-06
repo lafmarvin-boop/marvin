@@ -144,6 +144,25 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, token }) };
     }
 
+    // ── REPRENDRE SESSION EXISTANTE (depuis autre appareil/onglet) ──
+    if (status === 'resume') {
+      if (!password) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
+
+      const isAdmin = ADMIN_EMAIL && agentEmail.toLowerCase() === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD;
+      if (!isAdmin) {
+        const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(agentEmail)}&select=password_hash,password_salt&limit=1`);
+        if (!pwdRows.length) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Agent non autorisé' }) };
+        const hash = hashPassword(password, pwdRows[0].password_salt);
+        if (hash !== pwdRows[0].password_hash) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe incorrect' }) };
+      }
+
+      const presence = await sbGet(`agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}&select=status,session_token,current_session_id&limit=1`);
+      if (!presence.length || presence[0].status === 'offline' || !presence[0].session_token)
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, online: false }) };
+
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, online: true, token: presence[0].session_token, currentSessionId: presence[0].current_session_id }) };
+    }
+
     // ── PASSER HORS LIGNE : vérifie le token ──
     if (status === 'offline') {
       if (!agentToken) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Token requis' }) };
