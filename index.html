@@ -1279,8 +1279,8 @@
 <section class="testimonials" id="avis">
   <div class="section-label">Témoignages</div>
   <h2>Ce qu'ils en disent</h2>
-  <p>Des milliers de personnes ont trouvé du réconfort grâce à Parlons.</p>
-  <div class="testi-grid">
+  <p>Des personnes ont trouvé du réconfort grâce à Parlons.</p>
+  <div class="testi-grid" id="testi-grid">
     <div class="testi-card">
       <div class="stars">★★★★★</div>
       <blockquote>"Je ne savais pas à qui parler à 2h du matin. J'ai trouvé quelqu'un en moins d'une minute. Un vrai soulagement."</blockquote>
@@ -2616,8 +2616,23 @@ function renderReviews(apiReviews){
   }).join('');
 }
 // Charger les vrais avis depuis Supabase, sinon localStorage
+const AV_COLORS=['linear-gradient(135deg,#C4714A,#A8502E)','linear-gradient(135deg,#5B8DB8,#3A6A9A)','linear-gradient(135deg,#7A9A5A,#5A7A3A)','linear-gradient(135deg,#B87A5A,#8A5A3A)','linear-gradient(135deg,#8A6AB8,#6A4A9A)'];
+function renderTestimonials(reviews){
+  const grid=document.getElementById('testi-grid');
+  if(!grid||!reviews||!reviews.length)return;
+  const top=reviews.filter(r=>(r.stars||r.rating||0)>=4&&(r.text||r.rating_comment||'').length>10).slice(0,3);
+  if(!top.length)return;
+  grid.innerHTML=top.map((r,i)=>{
+    const stars=r.stars||r.rating||5;
+    const text=r.text||r.rating_comment||'';
+    const name=r.name||(r.client_pseudo?r.client_pseudo:'Utilisateur');
+    const letter=(name.charAt(0)||'U').toUpperCase();
+    const starsHtml='★'.repeat(stars)+'☆'.repeat(5-stars);
+    return `<div class="testi-card"><div class="stars">${starsHtml}</div><blockquote>"${escHtml(text)}"</blockquote><div class="testi-author"><div class="testi-av" style="background:${AV_COLORS[i%AV_COLORS.length]}">${letter}</div><div><strong>${escHtml(name)}</strong><span>Avis vérifié</span></div></div></div>`;
+  }).join('');
+}
 fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
-  if(Array.isArray(data)&&data.length)renderReviews(data);
+  if(Array.isArray(data)&&data.length){renderReviews(data);renderTestimonials(data);}
   else renderReviews();
 }).catch(()=>renderReviews());
 updateLoyaltyBadge();
