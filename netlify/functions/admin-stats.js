@@ -109,7 +109,7 @@ exports.handler = async (event) => {
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
     const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows, ipLogs, agentPresenceRows] = await Promise.all([
-      sbGet('sessions?statut=eq.paid&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
+      sbGet('sessions?statut=in.(paid,ended)&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
       sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
       sbGet('group_messages?select=room_id,created_at,author&order=created_at.desc&limit=2000'),
       sbGet('group_access?select=room_id,pseudo,free_until,paid_until,is_agent&order=created_at.desc&limit=300'),
@@ -312,7 +312,7 @@ exports.handler = async (event) => {
   const needsPasswordSetup = !sub.password_hash;
 
   const subSessions = sub.pseudo
-    ? await sbGet(`sessions?statut=eq.paid&client_pseudo=eq.${encodeURIComponent(sub.pseudo)}&select=formule,started_at,rating,rating_comment,agent_name&order=started_at.desc&limit=50`)
+    ? await sbGet(`sessions?statut=in.(paid,ended)&client_pseudo=eq.${encodeURIComponent(sub.pseudo)}&select=formule,started_at,rating,rating_comment,agent_name&order=started_at.desc&limit=50`)
     : [];
 
   return {

@@ -33,7 +33,7 @@ async function buildAgentStats(email) {
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const [sessions, profileRows] = await Promise.all([
-    sbGet(`sessions?statut=eq.paid&agent_email=eq.${encodeURIComponent(email)}&select=formule,montant,client_pseudo,started_at,rating,rating_comment&order=started_at.desc&limit=500`),
+    sbGet(`sessions?statut=in.(paid,ended)&agent_email=eq.${encodeURIComponent(email)}&select=formule,montant,client_pseudo,started_at,rating,rating_comment&order=started_at.desc&limit=500`),
     sbGet(`agent_profiles?email=eq.${encodeURIComponent(email)}&select=*&limit=1`)
   ]);
 
