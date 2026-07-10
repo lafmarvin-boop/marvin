@@ -282,6 +282,10 @@
     .avis-dots{display:flex;gap:.4rem;align-items:center;}
     .avis-dot{width:6px;height:6px;border-radius:50%;background:#d9cdc4;transition:background .2s,width .2s;}
     .avis-dot.active{background:var(--terracotta);width:18px;border-radius:4px;}
+    .avis-filters{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;}
+    .avis-chip{background:none;border:1.5px solid var(--sand);border-radius:50px;padding:.25rem .65rem;font-size:.74rem;font-weight:600;cursor:pointer;color:var(--mid);font-family:'DM Sans',sans-serif;transition:background .15s,border-color .15s,color .15s;white-space:nowrap;}
+    .avis-chip.active{background:var(--terracotta);border-color:var(--terracotta);color:white;}
+    .avis-empty{text-align:center;padding:2rem 0;color:var(--mid);font-size:.85rem;}
 
     /* ── CHAT MOCKUP ── */
     .hero-right{position:relative;z-index:1;animation:fadeUp .8s .2s ease both;}
@@ -3696,10 +3700,11 @@ if('serviceWorker' in navigator){
 }
 
 // ── MODAL AVIS CAROUSEL ──
-let avisData=[], avisIndex=0;
+let avisData=[], avisIndex=0, avisFilter=0;
 function openAvisModal(){
   if(!avisData.length) return;
-  avisIndex=0;
+  avisIndex=0; avisFilter=0;
+  renderAvisFilters();
   renderAvisModal();
   document.getElementById('modal-avis').classList.add('active');
   document.body.style.overflow='hidden';
@@ -3708,11 +3713,36 @@ function closeAvisModal(){
   document.getElementById('modal-avis').classList.remove('active');
   document.body.style.overflow='';
 }
+function setAvisFilter(n){
+  avisFilter=n; avisIndex=0;
+  renderAvisFilters();
+  renderAvisModal();
+}
+function renderAvisFilters(){
+  const wrap=document.getElementById('avis-filters');
+  if(!wrap)return;
+  const counts={};
+  avisData.forEach(r=>{ const s=r.stars||r.rating||5; counts[s]=(counts[s]||0)+1; });
+  const ratings=[5,4,3,2,1].filter(n=>counts[n]);
+  let html=`<button class="avis-chip${avisFilter===0?' active':''}" onclick="setAvisFilter(0)">Tous (${avisData.length})</button>`;
+  ratings.forEach(n=>{
+    html+=`<button class="avis-chip${avisFilter===n?' active':''}" onclick="setAvisFilter(${n})">${'★'.repeat(n)} <span style="font-size:.68rem;opacity:.75">${counts[n]}</span></button>`;
+  });
+  wrap.innerHTML=html;
+}
 function renderAvisModal(){
   const track=document.getElementById('avis-track');
   const dots=document.getElementById('avis-dots');
-  if(!track||!avisData.length)return;
-  track.innerHTML=avisData.map((r,i)=>{
+  if(!track)return;
+  const filtered=avisFilter?avisData.filter(r=>(r.stars||r.rating||5)===avisFilter):avisData;
+  if(!filtered.length){
+    track.innerHTML=`<div class="avis-slide"><div class="avis-empty">Aucun avis pour cette note.</div></div>`;
+    dots.innerHTML='';
+    document.getElementById('avis-prev').disabled=true;
+    document.getElementById('avis-next').disabled=true;
+    return;
+  }
+  track.innerHTML=filtered.map((r,i)=>{
     const stars=r.stars||r.rating||5;
     const text=r.text||r.rating_comment||'';
     const name=r.name||r.client_pseudo||'Anonyme';
@@ -3720,21 +3750,19 @@ function renderAvisModal(){
     const color=AV_COLORS[i%AV_COLORS.length];
     const d=r.date||(r.started_at?new Date(r.started_at):null);
     let dateStr='';
-    if(d){
-      const dt=d instanceof Date?d:new Date(d);
-      dateStr=dt.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' · '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    }
+    if(d){const dt=d instanceof Date?d:new Date(d);dateStr=dt.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' · '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
     return `<div class="avis-slide"><div class="avis-card"><div class="avis-stars">${'★'.repeat(stars)}${'☆'.repeat(5-stars)}</div><div class="avis-text">"${escHtml(text)}"</div><div class="avis-meta"><div class="avis-av" style="background:${color}">${letter}</div><div><div class="avis-name">${escHtml(name)}</div>${dateStr?`<div class="avis-date">${dateStr}</div>`:''}</div></div></div></div>`;
   }).join('');
-  dots.innerHTML=avisData.map((_,i)=>`<div class="avis-dot${i===0?' active':''}" id="avis-dot-${i}"></div>`).join('');
+  dots.innerHTML=filtered.map((_,i)=>`<div class="avis-dot${i===0?' active':''}" id="avis-dot-${i}"></div>`).join('');
   moveAvis(0);
 }
 function moveAvis(idx){
-  avisIndex=Math.max(0,Math.min(idx,avisData.length-1));
+  const filtered=avisFilter?avisData.filter(r=>(r.stars||r.rating||5)===avisFilter):avisData;
+  avisIndex=Math.max(0,Math.min(idx,filtered.length-1));
   document.getElementById('avis-track').style.transform=`translateX(-${avisIndex*100}%)`;
   document.querySelectorAll('.avis-dot').forEach((d,i)=>d.classList.toggle('active',i===avisIndex));
   document.getElementById('avis-prev').disabled=avisIndex===0;
-  document.getElementById('avis-next').disabled=avisIndex===avisData.length-1;
+  document.getElementById('avis-next').disabled=avisIndex>=filtered.length-1;
 }
 // Swipe touch
 (function(){
@@ -3752,6 +3780,7 @@ function moveAvis(idx){
   <div class="avis-sheet" onclick="event.stopPropagation()">
     <button onclick="closeAvisModal()" style="position:absolute;top:.9rem;right:1rem;background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--mid);line-height:1;">×</button>
     <div class="avis-sheet-handle"></div>
+    <div class="avis-filters" id="avis-filters"></div>
     <div class="avis-carousel-wrap">
       <div class="avis-track" id="avis-track"></div>
     </div>
