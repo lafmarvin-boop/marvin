@@ -28,7 +28,14 @@ exports.handler = async (ev) => {
   try {
     const H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
-    // Get stripe_payment_id from chat_sessions
+    // Toujours sauvegarder dans chat_sessions (fonctionne pour sessions gratuites ET payantes)
+    await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(chatSessionId)}`, {
+      method: 'PATCH',
+      headers: { ...H, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ rating: safeRating, rating_comment: safeComment })
+    });
+
+    // Si session payante Stripe, aussi mettre à jour la table sessions
     const r = await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(chatSessionId)}&select=stripe_payment_id`, { headers: H });
     const rows = await r.json();
     const paymentId = rows?.[0]?.stripe_payment_id;
