@@ -710,9 +710,9 @@ function processPoll(d){
       if(tmpIdx!==-1) sess.messages.splice(tmpIdx,1);
       sess.messages.push(m);
       if(s.id!==activeChatId||(document.getElementById('chat-view')&&!document.getElementById('chat-view').classList.contains('active'))) sess.unread++;
-      // Start timer on first agent msg — use assignedAt or message timestamp as reference, not polling time
+      // Start timer on first agent msg — use message timestamp (same reference as visitor side)
       if(!sess.timerStartedAt&&m.sender_type==='agent'){
-        const ref=sess.assignedAt?new Date(sess.assignedAt).getTime():(m.created_at?new Date(m.created_at).getTime():Date.now());
+        const ref=m.created_at?new Date(m.created_at).getTime():Date.now();
         sess.timerStartedAt=ref;
         sess.sessionEndAt=ref+sess.durationSec*1000;
       }
@@ -938,7 +938,7 @@ async function sendMsg(){
   ta.value=''; ta.style.height='auto';
   const sess=appSessions.get(sessionId);
   if(sess&&!sess.timerStartedAt){
-    const ref=sess.assignedAt?new Date(sess.assignedAt).getTime():Date.now();
+    const ref=Date.now();
     sess.timerStartedAt=ref;
     sess.sessionEndAt=ref+sess.durationSec*1000;
     startChatTimer(sessionId);
