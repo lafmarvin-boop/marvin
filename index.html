@@ -3603,8 +3603,17 @@ async function pollChat(){
       setChatState('ended');
       if(sessionTimer!==null){clearInterval(sessionTimer);sessionTimer=null;}
       clearInterval(chatPollingInterval);chatPollingInterval=null;
-      showChatPanel(false);
-      const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
+      const sessionIdToRate=chatSessionId;
+      sessionStorage.removeItem('parlons_chat_session_id');
+      localStorage.removeItem('parlons_chat_session_id');
+      chatSessionId=null;
+      if(sessionIdToRate){
+        showChatPanel(true);
+        showPcpRating(sessionIdToRate);
+      } else {
+        showChatPanel(false);
+        const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
+      }
     }
   }catch(e){}
 }
