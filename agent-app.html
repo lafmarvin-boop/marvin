@@ -892,20 +892,28 @@ function renderExtBar(sessionId){
 // ── CHAT TIMER ──
 function startSessionEndCountdown(sessionId){
   if(sessionEndTimers.has(sessionId)) return;
-  // Ouvrir la vue chat sur la bonne session si l'agent n'y est pas déjà
-  if(sessionId && activeChatId!==sessionId) openChatView(sessionId);
-  else if(sessionId && !document.getElementById('chat-view').classList.contains('active')){
-    document.getElementById('chat-view').classList.add('active');
-    document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
-    document.getElementById('nav-chat').classList.add('active');
-    renderChatMessages(sessionId);
+
+  const isForeground = activeChatId===sessionId;
+  const isOrphaned   = !activeChatId; // agent sur l'écran d'accueil
+
+  if(isForeground || isOrphaned){
+    // Session visible : ouvrir la vue si besoin et afficher le banner
+    if(isOrphaned && sessionId) openChatView(sessionId);
+    else if(isForeground && !document.getElementById('chat-view').classList.contains('active')){
+      document.getElementById('chat-view').classList.add('active');
+      document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+      document.getElementById('nav-chat').classList.add('active');
+      renderChatMessages(sessionId);
+    }
+    const msgs=document.getElementById('chat-msgs');
+    if(msgs){
+      let banner=document.getElementById('session-end-banner');
+      if(!banner){ banner=document.createElement('div'); banner.id='session-end-banner'; banner.style.cssText='text-align:center;padding:.65rem;background:#fef2f2;border-radius:10px;margin:.5rem 0;font-size:.8rem;color:#991b1b;font-weight:500;'; msgs.appendChild(banner); msgs.scrollTop=msgs.scrollHeight; }
+      banner.textContent='⏱ Session terminée — fermeture dans 5s';
+    }
   }
-  const msgs=document.getElementById('chat-msgs');
-  if(msgs&&activeChatId===sessionId){
-    let banner=document.getElementById('session-end-banner');
-    if(!banner){ banner=document.createElement('div'); banner.id='session-end-banner'; banner.style.cssText='text-align:center;padding:.65rem;background:#fef2f2;border-radius:10px;margin:.5rem 0;font-size:.8rem;color:#991b1b;font-weight:500;'; msgs.appendChild(banner); msgs.scrollTop=msgs.scrollHeight; }
-    banner.textContent='⏱ Session terminée — fermeture dans 5s';
-  }
+  // Sinon (arrière-plan) : fermeture silencieuse, l'agent reste sur sa session active
+
   let n=5;
   sessionEndTimers.set(sessionId, setInterval(()=>{
     n--;
@@ -917,10 +925,11 @@ function startSessionEndCountdown(sessionId){
       clearInterval(sessionEndTimers.get(sessionId)); sessionEndTimers.delete(sessionId);
       clearInterval(chatTimers.get(sessionId)); chatTimers.delete(sessionId);
       const sid=sessionId;
+      const sidName=appSessions.get(sid)?.name||'ce visiteur';
       if(sid&&appToken) fetch(`${API}/chat-close`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid,agentEmail:appEmail,agentToken:appToken,closedBy:'agent'})}).catch(()=>{});
       if(sid){ appSessions.delete(sid); delete renderedIds[sid]; }
       if(activeChatId===sid) closeChatView();
-      renderSessions(); updateStatusUI();
+      else { triggerNotif('⏱ Session terminée', `La session de ${sidName} a expiré`); renderSessions(); updateStatusUI(); }
     }
   },1000));
 }
