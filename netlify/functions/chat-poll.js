@@ -145,8 +145,20 @@ exports.handler = async (event) => {
 
       // Toutes les sessions actives de cet agent
       const activeSessions = await sbGet(
-        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip,loyalty_discount&order=assigned_at.asc&limit=3`
+        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip,loyalty_discount,response_deadline&order=assigned_at.asc&limit=3`
       );
+
+      // L'agent poll = il voit ses sessions : lever response_deadline si encore actif
+      const withDeadline = activeSessions.filter(s => s.response_deadline);
+      if (withDeadline.length) {
+        await Promise.all(withDeadline.map(s =>
+          fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(s.id)}`, {
+            method: 'PATCH',
+            headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify({ response_deadline: null })
+          }).catch(() => {})
+        ));
+      }
 
       // Pour chaque session active, récupérer les messages depuis sinceIso
       const sessions = await Promise.all(activeSessions.map(async (s) => {
