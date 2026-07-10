@@ -428,14 +428,14 @@ let appStats = null;
 let activeChatId = null;       // session currently open in chat view
 let pollTimer = null;
 let pollSince = null;
-let chatTimerInterval = null;
+let chatTimers = new Map();      // sessionId → intervalId
 let renderedIds = {};           // sessionId → Set of rendered message ids
 let statsData = null;
 let currentPeriod = 'today';
 const respondingExt = new Set();
 let prevQueueIds = new Set();
 let queueInitialized = false;
-let sessionEndTimer = null;
+let sessionEndTimers = new Map(); // sessionId → intervalId
 let autoTaking = false;
 let pendingOffline = false;
 let _reconnecting = false;
@@ -522,6 +522,8 @@ async function doLogout(){
   localStorage.removeItem('parlons_agent_email');
   localStorage.removeItem('parlons_agent_pwd');
   appSessions.clear();
+  chatTimers.forEach(id=>clearInterval(id)); chatTimers.clear();
+  sessionEndTimers.forEach(id=>clearInterval(id)); sessionEndTimers.clear();
   showLogin();
 }
 
@@ -588,6 +590,8 @@ async function goOffline(){
   appToken=null; appOnline=false;
   stopPoll();
   appSessions.clear();
+  chatTimers.forEach(id=>clearInterval(id)); chatTimers.clear();
+  sessionEndTimers.forEach(id=>clearInterval(id)); sessionEndTimers.clear();
   activeChatId=null;
   document.getElementById('chat-view').classList.remove('active');
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
@@ -674,8 +678,14 @@ function processPoll(d){
   const incoming=d.sessions||[];
   const newIds=new Set(incoming.map(s=>s.id));
 
-  // Remove closed sessions
-  [...appSessions.keys()].forEach(id=>{ if(!newIds.has(id)) appSessions.delete(id); });
+  // Remove closed sessions and clean up their timers
+  [...appSessions.keys()].forEach(id=>{
+    if(!newIds.has(id)){
+      clearInterval(chatTimers.get(id)); chatTimers.delete(id);
+      clearInterval(sessionEndTimers.get(id)); sessionEndTimers.delete(id);
+      appSessions.delete(id);
+    }
+  });
   // Si le chat actif a disparu (visiteur parti / session expirée), décompte auto
   if(activeChatId && !appSessions.has(activeChatId)) startSessionEndCountdown(activeChatId);
 
@@ -842,10 +852,8 @@ function openChatView(sessionId){
 }
 
 function closeChatView(){
-  if(sessionEndTimer){ clearInterval(sessionEndTimer); sessionEndTimer=null; }
   document.getElementById('chat-view').classList.remove('active');
   activeChatId=null;
-  clearInterval(chatTimerInterval); chatTimerInterval=null;
   document.getElementById('chat-timer').style.display='none';
   // Retour accueil
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
@@ -883,7 +891,7 @@ function renderExtBar(sessionId){
 
 // ── CHAT TIMER ──
 function startSessionEndCountdown(sessionId){
-  if(sessionEndTimer) return;
+  if(sessionEndTimers.has(sessionId)) return;
   // Ouvrir la vue chat sur la bonne session si l'agent n'y est pas déjà
   if(sessionId && activeChatId!==sessionId) openChatView(sessionId);
   else if(sessionId && !document.getElementById('chat-view').classList.contains('active')){
@@ -893,42 +901,57 @@ function startSessionEndCountdown(sessionId){
     renderChatMessages(sessionId);
   }
   const msgs=document.getElementById('chat-msgs');
-  if(msgs){
+  if(msgs&&activeChatId===sessionId){
     let banner=document.getElementById('session-end-banner');
     if(!banner){ banner=document.createElement('div'); banner.id='session-end-banner'; banner.style.cssText='text-align:center;padding:.65rem;background:#fef2f2;border-radius:10px;margin:.5rem 0;font-size:.8rem;color:#991b1b;font-weight:500;'; msgs.appendChild(banner); msgs.scrollTop=msgs.scrollHeight; }
     banner.textContent='⏱ Session terminée — fermeture dans 5s';
   }
   let n=5;
-  sessionEndTimer=setInterval(()=>{
+  sessionEndTimers.set(sessionId, setInterval(()=>{
     n--;
-    const b=document.getElementById('session-end-banner');
-    if(b) b.textContent=`⏱ Session terminée — fermeture dans ${n}s`;
+    if(activeChatId===sessionId){
+      const b=document.getElementById('session-end-banner');
+      if(b) b.textContent=`⏱ Session terminée — fermeture dans ${n}s`;
+    }
     if(n<=0){
-      clearInterval(sessionEndTimer); sessionEndTimer=null;
+      clearInterval(sessionEndTimers.get(sessionId)); sessionEndTimers.delete(sessionId);
+      clearInterval(chatTimers.get(sessionId)); chatTimers.delete(sessionId);
       const sid=sessionId;
       if(sid&&appToken) fetch(`${API}/chat-close`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid,agentEmail:appEmail,agentToken:appToken,closedBy:'agent'})}).catch(()=>{});
       if(sid){ appSessions.delete(sid); delete renderedIds[sid]; }
       if(activeChatId===sid) closeChatView();
       renderSessions(); updateStatusUI();
     }
-  },1000);
+  },1000));
 }
 
 function startChatTimer(sessionId){
-  clearInterval(chatTimerInterval); chatTimerInterval=null;
   const timerEl=document.getElementById('chat-timer');
   function tick(){
     const sess=appSessions.get(sessionId);
-    if(!sess||!sess.timerStartedAt){ timerEl.style.display='none'; return; }
-    const rem=sessionRemaining(sess);
-    const frozen=sess.extensionPending&&sess.frozenRemMs!==undefined;
-    timerEl.style.display='inline';
-    timerEl.textContent=(frozen?'⏸ ':'')+fmtTime(rem);
-    timerEl.style.background=(!frozen&&rem<=120)?'rgba(239,68,68,.35)':'rgba(0,0,0,.2)';
-    if(rem<=0&&!frozen) startSessionEndCountdown(sessionId);
+    if(!sess){ clearInterval(chatTimers.get(sessionId)); chatTimers.delete(sessionId); return; }
+    // Mettre à jour l'affichage seulement si c'est la session active
+    if(activeChatId===sessionId){
+      if(!sess.timerStartedAt){ timerEl.style.display='none'; }
+      else {
+        const rem=sessionRemaining(sess);
+        const frozen=sess.extensionPending&&sess.frozenRemMs!==undefined;
+        timerEl.style.display='inline';
+        timerEl.textContent=(frozen?'⏸ ':'')+fmtTime(rem);
+        timerEl.style.background=(!frozen&&rem<=120)?'rgba(239,68,68,.35)':'rgba(0,0,0,.2)';
+      }
+    }
+    // Toujours déclencher le décompte si la session expire (même en arrière-plan)
+    if(sess.timerStartedAt){
+      const rem=sessionRemaining(sess);
+      const frozen=sess.extensionPending&&sess.frozenRemMs!==undefined;
+      if(rem<=0&&!frozen) startSessionEndCountdown(sessionId);
+    }
   }
-  tick();
-  chatTimerInterval=setInterval(tick,1000);
+  if(!chatTimers.has(sessionId)){
+    chatTimers.set(sessionId, setInterval(tick,1000));
+  }
+  tick(); // mise à jour immédiate de l'affichage (utile lors du changement de session)
 }
 
 // ── SEND MESSAGE ──
