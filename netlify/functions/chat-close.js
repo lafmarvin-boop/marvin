@@ -53,14 +53,17 @@ exports.handler = async (event) => {
 
     await sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, updates);
 
-    // Libérer l'agent (repasse en ligne, prêt pour la session suivante)
+    // Libérer l'agent — mais seulement si c'est sa dernière session active
     const chatSession = sessions[0];
     const agentMail = chatSession.agent_email;
     if (agentMail) {
-      await sbPatch(`agent_presence?agent_email=eq.${encodeURIComponent(agentMail)}`, {
-        status: 'online',
-        current_session_id: null
-      });
+      const remaining = await sbGet(
+        `chat_sessions?agent_email=eq.${encodeURIComponent(agentMail)}&status=eq.active&id=neq.${encodeURIComponent(sessionId)}&select=id&limit=3`
+      );
+      const presenceUpdate = remaining.length > 0
+        ? { status: 'busy', current_session_id: remaining[0].id }
+        : { status: 'online', current_session_id: null };
+      await sbPatch(`agent_presence?agent_email=eq.${encodeURIComponent(agentMail)}`, presenceUpdate);
 
       // ── Enregistrer la session dans la table sessions (stats agent/admin) ──
       if (chatSession.session_type !== 'test') {

@@ -66,15 +66,24 @@ exports.handler = async (event) => {
     if (!session?.id) throw new Error('Création session échouée');
     const sessionId = session.id;
 
-    // Trouver le meilleur agent : en ligne, sans session, connecté depuis le plus longtemps
-    const agents = await sbGet(
-      `agent_presence?status=eq.online&current_session_id=is.null&select=agent_email,connected_since&order=connected_since.asc&limit=1`
+    // Trouver le meilleur agent disponible (online ou busy avec < 3 sessions actives)
+    const candidates = await sbGet(
+      `agent_presence?status=in.(online,busy)&select=agent_email,connected_since&order=connected_since.asc&limit=10`
     );
 
     let assignedAgent = null;
     let agentPseudo = null;
-    if (agents.length) {
-      assignedAgent = agents[0].agent_email;
+    for (const candidate of candidates) {
+      const activeSessions = await sbGet(
+        `chat_sessions?agent_email=eq.${encodeURIComponent(candidate.agent_email)}&status=eq.active&select=id&limit=4`
+      );
+      if (activeSessions.length < 3) {
+        assignedAgent = candidate.agent_email;
+        break;
+      }
+    }
+
+    if (assignedAgent) {
       const now = new Date().toISOString();
       const [profiles] = await Promise.all([
         sbGet(`agent_profiles?email=eq.${encodeURIComponent(assignedAgent)}&select=pseudo,prenom&limit=1`),
