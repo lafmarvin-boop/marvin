@@ -3737,11 +3737,11 @@ function moveAvis(idx){
     if(Math.abs(dx)>40){dx>0?moveAvis(avisIndex+1):moveAvis(avisIndex-1);}
   },{passive:true});
 })();
-document.getElementById('modal-avis').addEventListener('click',function(e){if(e.target===this)closeAvisModal();});
 </script>
 
-<div id="modal-avis" onclick="">
-  <div class="avis-sheet">
+<div id="modal-avis" onclick="if(event.target===this)closeAvisModal()">
+  <div class="avis-sheet" onclick="event.stopPropagation()">
+    <button onclick="closeAvisModal()" style="position:absolute;top:.9rem;right:1rem;background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--mid);line-height:1;">×</button>
     <div class="avis-sheet-handle"></div>
     <div class="avis-carousel-wrap">
       <div class="avis-track" id="avis-track"></div>
