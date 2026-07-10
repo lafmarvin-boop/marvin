@@ -2313,6 +2313,7 @@ function agentConnected(pseudo, assignedAt){
   sessionSeconds=sessionDurationSec; updateSessionUI();
   const sub=document.getElementById('pcp-subtitle');
   if(sub&&pseudo)sub.textContent=pseudo+' vous écoute';
+  startSessionCountdown(assignedAt||null);
 }
 function startSessionCountdown(assignedAt){
   if(sessionTimer!==null)return;
