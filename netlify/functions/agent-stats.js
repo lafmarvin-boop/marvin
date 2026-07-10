@@ -32,13 +32,15 @@ async function buildAgentStats(email) {
   startOfWeek.setDate(startOfDay.getDate() - (dow === 0 ? 6 : dow - 1));
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [sessions, profileRows] = await Promise.all([
+  const [sessions, chatSessions, profileRows] = await Promise.all([
     sbGet(`sessions?statut=in.(paid,ended)&agent_email=eq.${encodeURIComponent(email)}&select=formule,montant,client_pseudo,started_at,rating,rating_comment&order=started_at.desc&limit=500`),
+    sbGet(`chat_sessions?agent_email=eq.${encodeURIComponent(email)}&rating=not.is.null&select=session_label,pre_name,assigned_at,rating,rating_comment&order=assigned_at.desc&limit=200`),
     sbGet(`agent_profiles?email=eq.${encodeURIComponent(email)}&select=*&limit=1`)
   ]);
 
   const profile = profileRows[0] || null;
 
+  // Sessions payantes (revenus + comptage)
   function periodRows(from) {
     return sessions.filter(s => s.started_at && new Date(s.started_at) >= from);
   }
@@ -64,10 +66,27 @@ async function buildAgentStats(email) {
     byPlan[k].revenue += s.montant || 0;
   });
 
-  const rated = sessions.filter(s => s.rating);
-  const avgRating = rated.length > 0
-    ? Math.round((rated.reduce((s, r) => s + r.rating, 0) / rated.length) * 10) / 10
+  // Notes : fusionner sessions payantes + sessions chat (gratuites ou payantes)
+  const chatReviews = chatSessions.map(s => ({
+    pseudo: s.pre_name,
+    formule: s.session_label,
+    montant: 0,
+    started_at: s.assigned_at,
+    rating: s.rating,
+    rating_comment: s.rating_comment
+  }));
+
+  // Dédupliquer : les sessions payantes ont leur note dans `sessions`, pas dans chatSessions
+  const paidRated = sessions.filter(s => s.rating);
+  const allRated = [...paidRated, ...chatReviews];
+  const avgRating = allRated.length > 0
+    ? Math.round((allRated.reduce((s, r) => s + r.rating, 0) / allRated.length) * 10) / 10
     : null;
+
+  const allSessions = [
+    ...sessions.map(s => ({ pseudo: s.client_pseudo, formule: s.formule, montant: s.montant, started_at: s.started_at, rating: s.rating, rating_comment: s.rating_comment })),
+    ...chatReviews
+  ].sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
 
   return {
     role: 'agent',
@@ -76,15 +95,8 @@ async function buildAgentStats(email) {
     periods,
     byPlan,
     avgRating,
-    ratingCount: rated.length,
-    sessions: sessions.map(s => ({
-      pseudo: s.client_pseudo,
-      formule: s.formule,
-      montant: s.montant,
-      started_at: s.started_at,
-      rating: s.rating,
-      rating_comment: s.rating_comment
-    }))
+    ratingCount: allRated.length,
+    sessions: allSessions
   };
 }
 
