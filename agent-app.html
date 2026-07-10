@@ -1185,9 +1185,28 @@ async function renderAdminView(){
 function updatePushBanner(){
   const banner=document.getElementById('push-banner');
   if(!('serviceWorker' in navigator)||!('PushManager' in window)){ banner.style.display='none'; return; }
-  if(Notification.permission==='granted'){ banner.style.display='none'; return; }
   if(Notification.permission==='denied'){ banner.style.display='none'; return; }
+  if(Notification.permission==='granted'){
+    banner.style.display='none';
+    // Permission déjà accordée : s'assurer que la souscription est bien enregistrée
+    if(appToken) _autoSubscribePush().catch(()=>{});
+    return;
+  }
   banner.style.display='flex';
+}
+
+async function _autoSubscribePush(){
+  try{
+    const sw=await navigator.serviceWorker.ready;
+    let sub=await sw.pushManager.getSubscription();
+    if(!sub){
+      const keyRes=await fetch(`${API}/push-vapid-key`);
+      const {key}=await keyRes.json();
+      if(!key) return;
+      sub=await sw.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(key)});
+    }
+    await fetch(`${API}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,subscription:sub.toJSON()})});
+  }catch(e){ console.error('auto push subscribe:',e); }
 }
 
 async function subscribePush(){
@@ -1195,11 +1214,14 @@ async function subscribePush(){
   const permission=await Notification.requestPermission();
   if(permission!=='granted'){ document.getElementById('push-banner').style.display='none'; return; }
   try{
-    const keyRes=await fetch(`${API}/push-vapid-key`);
-    const {key}=await keyRes.json();
-    if(!key){ document.getElementById('push-banner').style.display='none'; return; }
     const sw=await navigator.serviceWorker.ready;
-    const sub=await sw.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(key)});
+    let sub=await sw.pushManager.getSubscription();
+    if(!sub){
+      const keyRes=await fetch(`${API}/push-vapid-key`);
+      const {key}=await keyRes.json();
+      if(!key){ document.getElementById('push-banner').style.display='none'; return; }
+      sub=await sw.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(key)});
+    }
     await fetch(`${API}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,subscription:sub.toJSON()})});
     document.getElementById('push-banner').style.display='none';
   }catch(e){ console.error('push subscribe:',e); }
