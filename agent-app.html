@@ -677,7 +677,7 @@ function processPoll(d){
   // Remove closed sessions
   [...appSessions.keys()].forEach(id=>{ if(!newIds.has(id)) appSessions.delete(id); });
   // Si le chat actif a disparu (visiteur parti / session expirée), décompte auto
-  if(activeChatId && !appSessions.has(activeChatId)) startSessionEndCountdown();
+  if(activeChatId && !appSessions.has(activeChatId)) startSessionEndCountdown(activeChatId);
 
   incoming.forEach(s=>{
     if(!renderedIds[s.id]) renderedIds[s.id]=new Set();
@@ -882,14 +882,15 @@ function renderExtBar(sessionId){
 }
 
 // ── CHAT TIMER ──
-function startSessionEndCountdown(){
+function startSessionEndCountdown(sessionId){
   if(sessionEndTimer) return;
-  // Ouvrir la vue chat si l'agent n'y est pas déjà
-  if(activeChatId && !document.getElementById('chat-view').classList.contains('active')){
+  // Ouvrir la vue chat sur la bonne session si l'agent n'y est pas déjà
+  if(sessionId && activeChatId!==sessionId) openChatView(sessionId);
+  else if(sessionId && !document.getElementById('chat-view').classList.contains('active')){
     document.getElementById('chat-view').classList.add('active');
     document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
     document.getElementById('nav-chat').classList.add('active');
-    if(activeChatId) renderChatMessages(activeChatId);
+    renderChatMessages(sessionId);
   }
   const msgs=document.getElementById('chat-msgs');
   if(msgs){
@@ -904,10 +905,11 @@ function startSessionEndCountdown(){
     if(b) b.textContent=`⏱ Session terminée — fermeture dans ${n}s`;
     if(n<=0){
       clearInterval(sessionEndTimer); sessionEndTimer=null;
-      const sid=activeChatId;
+      const sid=sessionId;
       if(sid&&appToken) fetch(`${API}/chat-close`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:sid,agentEmail:appEmail,agentToken:appToken,closedBy:'agent'})}).catch(()=>{});
       if(sid){ appSessions.delete(sid); delete renderedIds[sid]; }
-      closeChatView(); renderSessions(); updateStatusUI();
+      if(activeChatId===sid) closeChatView();
+      renderSessions(); updateStatusUI();
     }
   },1000);
 }
@@ -923,7 +925,7 @@ function startChatTimer(sessionId){
     timerEl.style.display='inline';
     timerEl.textContent=(frozen?'⏸ ':'')+fmtTime(rem);
     timerEl.style.background=(!frozen&&rem<=120)?'rgba(239,68,68,.35)':'rgba(0,0,0,.2)';
-    if(rem<=0&&!frozen) startSessionEndCountdown();
+    if(rem<=0&&!frozen) startSessionEndCountdown(sessionId);
   }
   tick();
   chatTimerInterval=setInterval(tick,1000);
