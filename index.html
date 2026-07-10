@@ -260,6 +260,28 @@
     /* loyalty badge */
     .loyalty-badge{margin-top:1rem;display:inline-flex;align-items:center;gap:.5rem;background:#FFF8E1;border:1px solid #FFD700;padding:.4rem .9rem;border-radius:50px;font-size:.75rem;font-weight:500;color:#7a6000;animation:fadeUp .6s .5s ease both;}
     .free-offer-banner{display:none;margin-top:.9rem;align-items:center;gap:.6rem;background:linear-gradient(135deg,rgba(76,175,80,.12),rgba(56,142,60,.08));border:1.5px solid rgba(76,175,80,.5);padding:.55rem 1.1rem;border-radius:50px;font-size:.78rem;font-weight:500;color:#2e7d32;animation:fadeUp .6s .4s ease both;}
+    #modal-avis{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:flex-end;justify-content:center;padding:0;}
+    #modal-avis.active{display:flex;}
+    .avis-sheet{background:white;border-radius:24px 24px 0 0;width:100%;max-width:540px;padding:1.6rem 1.4rem 2.2rem;position:relative;max-height:88vh;overflow:hidden;animation:slideUp .3s ease;}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .avis-sheet-handle{width:40px;height:4px;background:#e0d6cc;border-radius:4px;margin:0 auto 1.2rem;}
+    .avis-carousel-wrap{overflow:hidden;width:100%;}
+    .avis-track{display:flex;transition:transform .32s cubic-bezier(.4,0,.2,1);}
+    .avis-slide{min-width:100%;padding:.2rem .1rem;}
+    .avis-card{background:#FDFAF7;border:1px solid var(--sand);border-radius:16px;padding:1.3rem 1.2rem;}
+    .avis-stars{color:#f59e0b;font-size:1.1rem;margin-bottom:.7rem;}
+    .avis-text{font-family:'Playfair Display',serif;font-style:italic;font-size:.95rem;color:var(--dark);line-height:1.65;margin-bottom:1rem;}
+    .avis-meta{display:flex;align-items:center;gap:.7rem;}
+    .avis-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:white;flex-shrink:0;}
+    .avis-name{font-size:.82rem;font-weight:600;color:var(--dark);}
+    .avis-date{font-size:.72rem;color:var(--mid);margin-top:.1rem;}
+    .avis-nav{display:flex;align-items:center;justify-content:space-between;margin-top:1.1rem;}
+    .avis-arrow{background:none;border:1.5px solid var(--sand);border-radius:50%;width:36px;height:36px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--dark);transition:background .15s;}
+    .avis-arrow:hover{background:var(--sand);}
+    .avis-arrow:disabled{opacity:.3;cursor:default;}
+    .avis-dots{display:flex;gap:.4rem;align-items:center;}
+    .avis-dot{width:6px;height:6px;border-radius:50%;background:#d9cdc4;transition:background .2s,width .2s;}
+    .avis-dot.active{background:var(--terracotta);width:18px;border-radius:4px;}
 
     /* ── CHAT MOCKUP ── */
     .hero-right{position:relative;z-index:1;animation:fadeUp .8s .2s ease both;}
@@ -820,7 +842,7 @@
 <!-- HERO -->
 <section class="hero" id="accueil">
   <div>
-    <a href="#avis" id="hero-rating-btn" style="display:none;text-decoration:none;margin-bottom:.6rem;display:none;align-items:center;gap:.45rem;background:white;border:1px solid var(--sand);padding:.35rem .9rem;border-radius:50px;font-size:.78rem;font-weight:600;color:var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;" onclick="document.getElementById('avis').scrollIntoView({behavior:'smooth'});return false;"><span id="hero-rating-stars" style="color:#f59e0b;letter-spacing:1px"></span><span id="hero-rating-text" style="color:var(--mid)"></span></a>
+    <button id="hero-rating-btn" style="display:none;margin-bottom:.6rem;align-items:center;gap:.45rem;background:white;border:1px solid var(--sand);padding:.35rem .9rem;border-radius:50px;font-size:.78rem;font-weight:600;color:var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;font-family:'DM Sans',sans-serif;" onclick="openAvisModal()"><span id="hero-rating-stars" style="color:#f59e0b;letter-spacing:1px"></span><span id="hero-rating-text" style="color:var(--mid);margin-left:.2rem"></span></button>
     <div class="hero-tag" id="hero-tag"><span class="dot" id="hero-dot"></span><span id="hero-tag-text"> Des écoutants disponibles maintenant</span></div>
     <h1>Besoin de parler ?<br><em>Quelqu'un vous attend.</em></h1>
     <p>Parfois, on a juste besoin d'une oreille attentive. Discutez en direct avec quelqu'un de bienveillant, sans jugement, en toute confidentialité.</p>
@@ -2668,8 +2690,8 @@ fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
   if(Array.isArray(data)&&data.length){
     renderReviews(data);
     renderTestimonials(data);
-    // Badge note dans le hero
-    const rated=data.filter(r=>(r.stars||r.rating||0)>0);
+    avisData=data.filter(r=>(r.stars||r.rating||0)>0&&(r.text||r.rating_comment||'').length>5);
+    const rated=avisData;
     if(rated.length){
       const avg=Math.round(rated.reduce((s,r)=>s+(r.stars||r.rating||0),0)/rated.length*10)/10;
       const btn=document.getElementById('hero-rating-btn');
@@ -3718,6 +3740,73 @@ function pwaLinkAction(){
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').catch(function(){});
 }
+
+// ── MODAL AVIS CAROUSEL ──
+let avisData=[], avisIndex=0;
+function openAvisModal(){
+  if(!avisData.length) return;
+  avisIndex=0;
+  renderAvisModal();
+  document.getElementById('modal-avis').classList.add('active');
+  document.body.style.overflow='hidden';
+}
+function closeAvisModal(){
+  document.getElementById('modal-avis').classList.remove('active');
+  document.body.style.overflow='';
+}
+function renderAvisModal(){
+  const track=document.getElementById('avis-track');
+  const dots=document.getElementById('avis-dots');
+  if(!track||!avisData.length)return;
+  track.innerHTML=avisData.map((r,i)=>{
+    const stars=r.stars||r.rating||5;
+    const text=r.text||r.rating_comment||'';
+    const name=r.name||r.client_pseudo||'Anonyme';
+    const letter=(name.charAt(0)||'A').toUpperCase();
+    const color=AV_COLORS[i%AV_COLORS.length];
+    const d=r.date||(r.started_at?new Date(r.started_at):null);
+    let dateStr='';
+    if(d){
+      const dt=d instanceof Date?d:new Date(d);
+      dateStr=dt.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' · '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    }
+    return `<div class="avis-slide"><div class="avis-card"><div class="avis-stars">${'★'.repeat(stars)}${'☆'.repeat(5-stars)}</div><div class="avis-text">"${escHtml(text)}"</div><div class="avis-meta"><div class="avis-av" style="background:${color}">${letter}</div><div><div class="avis-name">${escHtml(name)}</div>${dateStr?`<div class="avis-date">${dateStr}</div>`:''}</div></div></div></div>`;
+  }).join('');
+  dots.innerHTML=avisData.map((_,i)=>`<div class="avis-dot${i===0?' active':''}" id="avis-dot-${i}"></div>`).join('');
+  moveAvis(0);
+}
+function moveAvis(idx){
+  avisIndex=Math.max(0,Math.min(idx,avisData.length-1));
+  document.getElementById('avis-track').style.transform=`translateX(-${avisIndex*100}%)`;
+  document.querySelectorAll('.avis-dot').forEach((d,i)=>d.classList.toggle('active',i===avisIndex));
+  document.getElementById('avis-prev').disabled=avisIndex===0;
+  document.getElementById('avis-next').disabled=avisIndex===avisData.length-1;
+}
+// Swipe touch
+(function(){
+  let sx=0;
+  document.addEventListener('touchstart',e=>{if(document.getElementById('modal-avis').classList.contains('active'))sx=e.touches[0].clientX;},{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!document.getElementById('modal-avis').classList.contains('active'))return;
+    const dx=sx-e.changedTouches[0].clientX;
+    if(Math.abs(dx)>40){dx>0?moveAvis(avisIndex+1):moveAvis(avisIndex-1);}
+  },{passive:true});
+})();
+document.getElementById('modal-avis').addEventListener('click',function(e){if(e.target===this)closeAvisModal();});
 </script>
+
+<div id="modal-avis" onclick="">
+  <div class="avis-sheet">
+    <div class="avis-sheet-handle"></div>
+    <div class="avis-carousel-wrap">
+      <div class="avis-track" id="avis-track"></div>
+    </div>
+    <div class="avis-nav">
+      <button class="avis-arrow" id="avis-prev" onclick="moveAvis(avisIndex-1)">‹</button>
+      <div class="avis-dots" id="avis-dots"></div>
+      <button class="avis-arrow" id="avis-next" onclick="moveAvis(avisIndex+1)">›</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
