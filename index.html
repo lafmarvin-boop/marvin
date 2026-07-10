@@ -2629,7 +2629,7 @@ async function submitReview(){
   fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
     if(Array.isArray(data)&&data.length){
       renderReviews(data);
-      avisData=data.filter(r=>(r.stars||r.rating||0)>0&&(r.text||r.rating_comment||'').length>5);
+      avisData=data.filter(r=>(r.text||r.rating_comment||'').length>5);
       const rated=avisData;
       if(rated.length){
         const avg=Math.round(rated.reduce((s,r)=>s+(r.stars||r.rating||0),0)/rated.length*10)/10;
@@ -2662,7 +2662,7 @@ const AV_COLORS=['linear-gradient(135deg,#C4714A,#A8502E)','linear-gradient(135d
 fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
   if(Array.isArray(data)&&data.length){
     renderReviews(data);
-    avisData=data.filter(r=>(r.stars||r.rating||0)>0&&(r.text||r.rating_comment||'').length>5);
+    avisData=data.filter(r=>(r.text||r.rating_comment||'').length>5);
     const rated=avisData;
     if(rated.length){
       const avg=Math.round(rated.reduce((s,r)=>s+(r.stars||r.rating||0),0)/rated.length*10)/10;
