@@ -2612,12 +2612,32 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeA
 let selectedStars=0;
 const savedReviews=JSON.parse(localStorage.getItem('parlons_reviews')||'[]');
 function setStars(n){selectedStars=n;document.querySelectorAll('#star-picker span').forEach((s,i)=>s.classList.toggle('active',i<n));}
-function submitReview(){
+async function submitReview(){
   const name=document.getElementById('review-name').value.trim(),age=document.getElementById('review-age').value.trim(),text=document.getElementById('review-text').value.trim();
   if(!name||!text||!selectedStars){alert('Merci de remplir prénom, note et commentaire.');return;}
-  savedReviews.unshift({name:name+(age?', '+age+' ans':''),stars:selectedStars,text,date:new Date().toLocaleDateString('fr-FR')});
-  localStorage.setItem('parlons_reviews',JSON.stringify(savedReviews));renderReviews();
+  const fullName=name+(age?', '+age+' ans':'');
+  const btn=document.querySelector('.review-submit');
+  if(btn)btn.disabled=true;
+  try{
+    await fetch('/.netlify/functions/submit-manual-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:fullName,stars:selectedStars,text})});
+  }catch(e){}
+  // Refresh ratings to update hero badge and carousel
+  fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
+    if(Array.isArray(data)&&data.length){
+      renderReviews(data);
+      avisData=data.filter(r=>(r.stars||r.rating||0)>0&&(r.text||r.rating_comment||'').length>5);
+      const rated=avisData;
+      if(rated.length){
+        const avg=Math.round(rated.reduce((s,r)=>s+(r.stars||r.rating||0),0)/rated.length*10)/10;
+        const btn2=document.getElementById('hero-rating-btn');
+        const stars2=document.getElementById('hero-rating-stars');
+        const txt2=document.getElementById('hero-rating-text');
+        if(btn2&&stars2&&txt2){stars2.textContent='★'.repeat(Math.round(avg));txt2.textContent=avg.toFixed(1)+' · '+rated.length+' avis';btn2.style.display='inline-flex';}
+      }
+    }
+  }).catch(()=>{});
   document.getElementById('review-name').value='';document.getElementById('review-age').value='';document.getElementById('review-text').value='';setStars(0);
+  if(btn)btn.disabled=false;
   document.getElementById('review-ok').style.display='block';setTimeout(()=>document.getElementById('review-ok').style.display='none',4000);
 }
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
