@@ -386,18 +386,6 @@
     .resource-body p{font-size:.82rem;color:var(--mid);line-height:1.65;font-weight:300;}
     .resource-read{font-size:.78rem;color:var(--terracotta);font-weight:500;margin-top:.8rem;display:inline-block;}
 
-    /* ── TESTIMONIALS ── */
-    .testimonials{padding:5.5rem 2.5rem;background:var(--warm);}
-    .testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;max-width:960px;margin:0 auto;}
-    .testi-card{background:white;border-radius:18px;padding:1.8rem;border:1px solid var(--sand);transition:transform .2s;}
-    .testi-card:hover{transform:translateY(-4px);}
-    .stars{color:var(--terracotta);font-size:.9rem;margin-bottom:.9rem;}
-    .testi-card blockquote{font-family:'Playfair Display',serif;font-style:italic;font-size:.95rem;color:var(--dark);line-height:1.6;margin-bottom:1.3rem;}
-    .testi-author{display:flex;align-items:center;gap:.75rem;}
-    .testi-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:white;}
-    .testi-author strong{display:block;font-size:.82rem;color:var(--dark);}
-    .testi-author span{font-size:.72rem;color:var(--light);}
-
     /* ── FAQ ── */
     .faq-section{padding:5.5rem 2.5rem;}
     .faq-list{max-width:660px;margin:0 auto;display:flex;flex-direction:column;gap:.9rem;}
@@ -581,13 +569,13 @@
     [data-theme="dark"] body{background:#0F0A05;color:#F0E8D8;}
     [data-theme="dark"] nav{background:rgba(15,10,5,.97);}
     [data-theme="dark"] .nav-espace-btn{color:#F0E8D8;background:rgba(240,232,216,.08);border-color:rgba(240,232,216,.25);}
-    [data-theme="dark"] .chat-card,[data-theme="dark"] .step,[data-theme="dark"] .testi-card,[data-theme="dark"] .review-form-card,[data-theme="dark"] .review-card,[data-theme="dark"] .modal,[data-theme="dark"] .legal-box,[data-theme="dark"] .cgv-box,[data-theme="dark"] .faq-item,[data-theme="dark"] .resource-card,[data-theme="dark"] .loyalty-step{background:#1E140A;border-color:#3D2A1A;}
+    [data-theme="dark"] .chat-card,[data-theme="dark"] .step,[data-theme="dark"] .review-form-card,[data-theme="dark"] .review-card,[data-theme="dark"] .modal,[data-theme="dark"] .legal-box,[data-theme="dark"] .cgv-box,[data-theme="dark"] .faq-item,[data-theme="dark"] .resource-card,[data-theme="dark"] .loyalty-step{background:#1E140A;border-color:#3D2A1A;}
     [data-theme="dark"] .msg.them{background:#2C1F14;}
     [data-theme="dark"] .chat-footer,[data-theme="dark"] .chat-input{background:#150E05;}
     [data-theme="dark"] .form-group input,[data-theme="dark"] .form-group select,[data-theme="dark"] .form-group textarea,[data-theme="dark"] .review-textarea,[data-theme="dark"] .review-row input,[data-theme="dark"] .notify-input{background:#2C1F14;border-color:#3D2A1A;color:#F0E8D8;}
     [data-theme="dark"] .resources-section,[data-theme="dark"] .reviews-section,[data-theme="dark"] .cta-section,[data-theme="dark"] .loyalty-section,[data-theme="dark"] .faq-section{background:#0F0A05;}
     [data-theme="dark"] .resource-top{background:#2C1F14;}
-    [data-theme="dark"] .testimonials,[data-theme="dark"] .warm-bg{background:#150E05;}
+    [data-theme="dark"] .warm-bg{background:#150E05;}
     [data-theme="dark"] footer{background:#080502!important;}
     [data-theme="dark"] footer p,[data-theme="dark"] footer a{color:#9A8070!important;}
     [data-theme="dark"] footer a[style*="terracotta"],[data-theme="dark"] footer a[onclick*="showAgent"]{color:var(--terracotta)!important;}
@@ -701,7 +689,7 @@
       /* Sections */
       .section{padding:3rem 1.2rem;}
       .pricing-section{padding:3rem 1.2rem;}
-      .testimonials{padding:3rem 1.2rem;}
+
       .faq-section{padding:3rem 1.2rem;}
       .reviews-section{padding:3rem 1.2rem;}
       .loyalty-section{padding:3rem 1.2rem;}
@@ -711,7 +699,7 @@
       .steps{grid-template-columns:1fr;max-width:100%;}
       .pricing-grid{grid-template-columns:1fr;max-width:100%;}
       .pricing-grid .pricing-card[style*="span 2"]{grid-column:span 1!important;max-width:100%!important;}
-      .testi-grid{grid-template-columns:1fr;max-width:100%;}
+
       .resources-grid{grid-template-columns:1fr;max-width:100%;}
       .loyalty-steps{grid-template-columns:1fr 1fr;max-width:100%;}
       .quality-banner{grid-template-columns:1fr;padding:2.5rem 1.2rem;}
@@ -816,7 +804,7 @@
     <li><a href="#tarifs">Tarifs</a></li>
     <li class="nav-tab-hide"><a href="#groupes">Groupes</a></li>
     <li class="nav-tab-hide"><a href="#ressources">Ressources</a></li>
-    <li class="nav-tab-hide"><a href="#avis">Avis</a></li>
+
     <li><a href="#ecoutants">Nos écoutants</a></li>
     <li class="nav-tab-hide"><a href="#contact">Contact</a></li>
     <li class="nav-tab-hide"><a href="#" class="nav-agent" onclick="showAgentPage();return false;">🎙️ Devenir écoutant</a></li>
@@ -1306,30 +1294,6 @@
   <div class="qi"><div class="qi-icon">💡</div><h4>Conseils bienveillants</h4><p>Besoin d'un regard extérieur ? Nos écoutants partagent des conseils concrets et adaptés, sans jamais vous juger.</p></div>
   <div class="qi"><div class="qi-icon">🛡️</div><h4>Remboursé si délai dépassé</h4><p>Si un écoutant met plus de 2 minutes à répondre après attribution, signalez-le. Nous vérifions et remboursons si confirmé.</p></div>
 </div>
-
-<!-- TESTIMONIALS -->
-<section class="testimonials" id="avis">
-  <div class="section-label">Témoignages</div>
-  <h2>Ce qu'ils en disent</h2>
-  <p>Des personnes ont trouvé du réconfort grâce à Parlons.</p>
-  <div class="testi-grid" id="testi-grid">
-    <div class="testi-card">
-      <div class="stars">★★★★★</div>
-      <blockquote>"Je ne savais pas à qui parler à 2h du matin. J'ai trouvé quelqu'un en moins d'une minute. Un vrai soulagement."</blockquote>
-      <div class="testi-author"><div class="testi-av" style="background:linear-gradient(135deg,#C4714A,#A8502E)">M</div><div><strong>Marie, 34 ans</strong><span>Utilisatrice depuis 3 mois</span></div></div>
-    </div>
-    <div class="testi-card">
-      <div class="stars">★★★★★</div>
-      <blockquote>"Simple, rapide, et vraiment humain. L'écoutante était patiente et bienveillante. Je recommande à 100%."</blockquote>
-      <div class="testi-author"><div class="testi-av" style="background:linear-gradient(135deg,#5B8DB8,#3A6A9A)">T</div><div><strong>Thomas, 28 ans</strong><span>Utilisateur régulier</span></div></div>
-    </div>
-    <div class="testi-card">
-      <div class="stars">★★★★☆</div>
-      <blockquote>"Parfois on a juste besoin que quelqu'un écoute sans conseiller. C'est exactement ça. Le prix est très accessible."</blockquote>
-      <div class="testi-author"><div class="testi-av" style="background:linear-gradient(135deg,#7A9A5A,#5A7A3A)">C</div><div><strong>Clara, 41 ans</strong><span>Utilisatrice occasionnelle</span></div></div>
-    </div>
-  </div>
-</section>
 
 <!-- FAQ -->
 
@@ -2670,26 +2634,10 @@ function renderReviews(apiReviews){
     return `<div class="review-card"><div class="r-stars">${'★'.repeat(stars)}${'☆'.repeat(5-stars)}</div><blockquote>"${escHtml(text)}"</blockquote><div class="reviewer">${escHtml(name)} · ${date}</div></div>`;
   }).join('');
 }
-// Charger les vrais avis depuis Supabase, sinon localStorage
 const AV_COLORS=['linear-gradient(135deg,#C4714A,#A8502E)','linear-gradient(135deg,#5B8DB8,#3A6A9A)','linear-gradient(135deg,#7A9A5A,#5A7A3A)','linear-gradient(135deg,#B87A5A,#8A5A3A)','linear-gradient(135deg,#8A6AB8,#6A4A9A)'];
-function renderTestimonials(reviews){
-  const grid=document.getElementById('testi-grid');
-  if(!grid||!reviews||!reviews.length)return;
-  const top=reviews.filter(r=>(r.stars||r.rating||0)>=4&&(r.text||r.rating_comment||'').length>10).slice(0,3);
-  if(!top.length)return;
-  grid.innerHTML=top.map((r,i)=>{
-    const stars=r.stars||r.rating||5;
-    const text=r.text||r.rating_comment||'';
-    const name=r.name||(r.client_pseudo?r.client_pseudo:'Utilisateur');
-    const letter=(name.charAt(0)||'U').toUpperCase();
-    const starsHtml='★'.repeat(stars)+'☆'.repeat(5-stars);
-    return `<div class="testi-card"><div class="stars">${starsHtml}</div><blockquote>"${escHtml(text)}"</blockquote><div class="testi-author"><div class="testi-av" style="background:${AV_COLORS[i%AV_COLORS.length]}">${letter}</div><div><strong>${escHtml(name)}</strong><span>Avis vérifié</span></div></div></div>`;
-  }).join('');
-}
 fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
   if(Array.isArray(data)&&data.length){
     renderReviews(data);
-    renderTestimonials(data);
     avisData=data.filter(r=>(r.stars||r.rating||0)>0&&(r.text||r.rating_comment||'').length>5);
     const rated=avisData;
     if(rated.length){
@@ -2737,7 +2685,7 @@ function showAgentPage(){
   const toHide = [
     '.emergency-bar','.disclaimer-bar',
     '.hero','#comment','#tarifs','#fidelite','#groupes',
-    '#notif','#ressources','.quality-banner','.testimonials',
+    '#notif','#ressources','.quality-banner',
     '.faq-section','#retours','#ecoutants',
     '.cta-section','footer'
   ];
@@ -2756,7 +2704,7 @@ function hideAgentPage(){
   const toShow = [
     '.emergency-bar','.disclaimer-bar',
     '.hero','#comment','#tarifs','#fidelite','#groupes',
-    '#notif','#ressources','.quality-banner','.testimonials',
+    '#notif','#ressources','.quality-banner',
     '.faq-section','#retours','#ecoutants',
     '.cta-section','footer'
   ];
@@ -3392,29 +3340,6 @@ window.addEventListener('resize', stackBanners);
 document.fonts && document.fonts.ready.then(stackBanners);
 
 // ── AVIS RÉELS ──
-(function loadRealReviews(){
-  const COLORS=['linear-gradient(135deg,#C4714A,#A8502E)','linear-gradient(135deg,#5B8DB8,#3A6A9A)','linear-gradient(135deg,#7A9A5A,#5A7A3A)','linear-gradient(135deg,#A87850,#8A5A30)','linear-gradient(135deg,#7A6AAA,#5A4A8A)'];
-  const STARS=['','★','★★','★★★','★★★★','★★★★★'];
-  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-  fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
-    if(!Array.isArray(data)||data.length<2)return;
-    const grid=document.querySelector('#avis .testi-grid');
-    if(!grid)return;
-    const pick=data.slice(0,3);
-    grid.innerHTML=pick.map((r,i)=>{
-      const label=r.client_pseudo?esc(r.client_pseudo):'Utilisateur';
-      const color=COLORS[i%COLORS.length];
-      const initial=label.charAt(0).toUpperCase();
-      const stars=STARS[Math.max(1,Math.min(5,r.rating||5))];
-      const halfStar=r.rating===4?'☆':'';
-      return `<div class="testi-card">
-        <div class="stars">${stars}${halfStar}</div>
-        <blockquote>"${esc(r.rating_comment)}"</blockquote>
-        <div class="testi-author"><div class="testi-av" style="background:${color}">${initial}</div><div><strong>${label}</strong><span>${esc(r.formule||'Session Parlons')}</span></div></div>
-      </div>`;
-    }).join('');
-  }).catch(()=>{});
-})();
 </script>
 
 <!-- WIDGET CHAT CUSTOM -->
