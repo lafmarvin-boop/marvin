@@ -25,12 +25,13 @@ exports.handler = async (event) => {
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
 
-  const { title = 'Nouveau tchat', message = 'Un visiteur attend votre aide', url = '/agent-app.html' } = body;
+  const { title = 'Nouveau tchat', message = 'Un visiteur attend votre aide', url = '/agent-app.html', agentEmail } = body;
 
   webpush.setVapidDetails(vapidEmail, vapidPublic, vapidPrivate);
 
   try {
-    const res = await fetch(`${SB_URL}/rest/v1/push_subscriptions?select=subscription`, { headers: H() });
+    const filter = agentEmail ? `agent_email=eq.${encodeURIComponent(agentEmail)}&` : '';
+    const res = await fetch(`${SB_URL}/rest/v1/push_subscriptions?${filter}select=subscription`, { headers: H() });
     const rows = await res.json();
     if (!Array.isArray(rows) || !rows.length) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, sent: 0 }) };
 

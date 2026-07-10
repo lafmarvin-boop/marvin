@@ -115,18 +115,17 @@ exports.handler = async (event) => {
         body: JSON.stringify({ session_id: sessionId, content: greeting, sender_type: 'system' })
       });
 
-      if (!assignedAgent) {
-        const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.fr';
-        fetch(`${siteUrl}/.netlify/functions/push-notify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: '🎁 Nouvelle conversation gratuite',
-            message: `${name} attend (offre découverte 10 min)`,
-            url: '/agent-app.html'
-          })
-        }).catch(() => {});
-      }
+      const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.fr';
+      fetch(`${siteUrl}/.netlify/functions/push-notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: assignedAgent ? '🎁 Tchat gratuit assigné' : '🎁 Nouvelle conversation gratuite',
+          message: `${name} attend (offre découverte 10 min)`,
+          url: '/agent-app.html',
+          ...(assignedAgent ? { agentEmail: assignedAgent } : {})
+        })
+      }).catch(() => {});
 
       return {
         statusCode: 200, headers: CORS,

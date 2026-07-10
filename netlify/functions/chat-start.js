@@ -106,19 +106,18 @@ exports.handler = async (event) => {
       })
     });
 
-    // Push notification aux agents si personne n'était disponible
-    if (!assignedAgent) {
-      const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.netlify.app';
-      fetch(`${siteUrl}/.netlify/functions/push-notify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: '💬 Nouveau tchat en attente',
-          message: `${name} attend votre aide`,
-          url: '/agent-app.html'
-        })
-      }).catch(() => {});
-    }
+    // Push notification : à l'agent assigné, ou à tous si personne n'était disponible
+    const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.netlify.app';
+    fetch(`${siteUrl}/.netlify/functions/push-notify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: assignedAgent ? '💬 Nouveau tchat assigné' : '💬 Nouveau tchat en attente',
+        message: `${name} attend votre aide`,
+        url: '/agent-app.html',
+        ...(assignedAgent ? { agentEmail: assignedAgent } : {})
+      })
+    }).catch(() => {});
 
     return {
       statusCode: 200, headers: CORS,
