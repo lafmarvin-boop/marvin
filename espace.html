@@ -1338,6 +1338,7 @@ function renderAgentDash(email, d) {
   const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
   function calcHonoraires(sessions) {
     return sessions.reduce((s, r) => {
+      if ((r.formule||'').includes('GRATUIT')) return s;
       for (const [k, v] of Object.entries(RATES)) { if ((r.formule||'').includes(k)) return s + v; }
       return s;
     }, 0);
@@ -1389,7 +1390,7 @@ function renderAgentDash(email, d) {
     : '<div style="color:var(--light);font-size:.82rem;text-align:center;padding:1rem">Aucune note pour l\'instant.</div>';
 
   document.getElementById('agent-sessions-tbody').innerHTML = agentSessionsCache.slice(0,50).map(s => {
-    const hon = (() => { for (const [k,v] of Object.entries(RATES)) { if ((s.formule||'').includes(k)) return v.toFixed(2)+' €'; } return '—'; })();
+    const hon = (() => { if ((s.formule||'').includes('GRATUIT')) return 'Offre d\'essai'; for (const [k,v] of Object.entries(RATES)) { if ((s.formule||'').includes(k)) return v.toFixed(2)+' €'; } return '—'; })();
     const stars = s.rating ? `<span style="color:#FFD700">${'★'.repeat(s.rating)}</span>` : '—';
     return `<tr>
       <td style="font-size:.8rem;font-weight:500">${escHtml(s.pseudo||'—')}</td>
@@ -1642,6 +1643,7 @@ function downloadAgentInvoice() {
 
   const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
   function getRate(formule) {
+    if ((formule||'').includes('GRATUIT')) return 0;
     for (const [k,v] of Object.entries(RATES)) { if ((formule||'').includes(k)) return v; }
     return null;
   }
@@ -1770,7 +1772,7 @@ function downloadAgentInvoice() {
 const AGENT_RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
 
 function agentRate(formule) {
-  if (!formule) return 0;
+  if (!formule || formule.includes('GRATUIT')) return 0;
   for (const [k, v] of Object.entries(AGENT_RATES)) {
     if (formule.includes(k)) return v;
   }
