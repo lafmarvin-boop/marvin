@@ -118,7 +118,7 @@ exports.handler = async (event) => {
 
       const greeting = assignedAgent
         ? `${agentPseudo || 'Un écoutant'} vous a rejoint. La session peut commencer.`
-        : 'Demande enregistrée. Un écoutant vous rejoindra dès que possible.';
+        : 'Votre demande est bien enregistrée. Un écoutant vous rejoindra dans les 2 prochaines minutes — restez bien en ligne !';
       await fetch(`${SB_URL}/rest/v1/chat_messages`, {
         method: 'POST',
         headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },

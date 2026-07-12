@@ -3432,7 +3432,7 @@ document.fonts && document.fonts.ready.then(stackBanners);
 
 <script>
 // ── WIDGET CHAT PARLONS ──
-let chatSessionId=null,chatPollingInterval=null,chatLastMsgTime=null,chatRenderedIds=new Set();
+let chatSessionId=null,chatPollingInterval=null,chatLastMsgTime=null,chatRenderedIds=new Set(),chatRenderedContent=new Set();
 let chatPanelOpen=false,chatUnreadCount=0,chatPreTopicSent=false,chatState='idle';
 let chatExtensionPending=false,chatExtensionNewDuration=0;
 
@@ -3469,6 +3469,8 @@ function appendChatMsg(msg){
   const area=document.getElementById('pcp-msgs');
   if(!area)return;
   if(msg.id){if(chatRenderedIds.has(msg.id))return;chatRenderedIds.add(msg.id);}
+  if(msg.sender_type==='system'&&msg.content&&chatRenderedContent.has(msg.content)) return;
+  if(msg.sender_type==='system'&&msg.content) chatRenderedContent.add(msg.content);
   const div=document.createElement('div');
   div.className='pcp-msg '+msg.sender_type;
   div.textContent=msg.content;
@@ -3484,7 +3486,7 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
   sessionEndAt=0;sessionSeconds=durationSec||sessionDurationSec;
   sessionDbDurationSec=durationSec||sessionDurationSec;
   chatExtensionPending=false;chatExtensionNewDuration=0;
-  chatRenderedIds=new Set();chatLastMsgTime=null;
+  chatRenderedIds=new Set();chatRenderedContent=new Set();chatLastMsgTime=null;
   const pcpRenew=document.getElementById('pcp-renew-btn');if(pcpRenew)pcpRenew.style.display='none';
   const pcpRatingEl=document.getElementById('pcp-rating');if(pcpRatingEl)pcpRatingEl.style.display='none';
   const visitorId=localStorage.getItem('parlons_visitor_id')||'';
@@ -3499,7 +3501,8 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
     document.getElementById('parlons-chat-btn').style.display='flex';
     showChatPanel(true);
     setChatState(d.agentAssigned?'active':'waiting');
-    if(d.agentAssigned)agentConnected(null,null);
+    if(d.agentAssigned){ agentConnected(null,null); }
+    else { appendChatMsg({sender_type:'system',content:'Votre demande est bien enregistrée. Un écoutant vous rejoindra dans les 2 prochaines minutes — restez bien en ligne !'}); }
     startChatPolling();
   }catch(e){console.error('startChatSession:',e);const sub=document.getElementById('pcp-subtitle');if(sub)sub.textContent='Erreur de connexion. Veuillez réessayer.';}
 }
@@ -3507,7 +3510,7 @@ async function startFreeChatSession(name){
   if(sessionTimer!==null){clearInterval(sessionTimer);sessionTimer=null;}
   sessionEndAt=0;sessionSeconds=600;sessionDbDurationSec=600;
   chatExtensionPending=false;chatExtensionNewDuration=0;
-  chatRenderedIds=new Set();chatLastMsgTime=null;
+  chatRenderedIds=new Set();chatRenderedContent=new Set();chatLastMsgTime=null;
   selectedLabel='10 min GRATUIT';sessionDurationSec=600;
   const visitorId=localStorage.getItem('parlons_visitor_id')||'';
   try{
@@ -3521,7 +3524,8 @@ async function startFreeChatSession(name){
     document.getElementById('parlons-chat-btn').style.display='flex';
     showChatPanel(true);
     setChatState(d.agentAssigned?'active':'waiting');
-    if(d.agentAssigned)agentConnected(null,null);
+    if(d.agentAssigned){ agentConnected(null,null); }
+    else { appendChatMsg({sender_type:'system',content:'Votre demande est bien enregistrée. Un écoutant vous rejoindra dans les 2 prochaines minutes — restez bien en ligne !'}); }
     startChatPolling();
     // Masquer l'offre gratuite (déjà utilisée)
     const freeOpt=document.querySelector('#session-select option[value="free"]');
@@ -3591,7 +3595,7 @@ async function pollChat(){
         chatSessionId=d.transferSessionId;
         sessionStorage.setItem('parlons_chat_session_id',d.transferSessionId);
         localStorage.setItem('parlons_chat_session_id',d.transferSessionId);
-        chatRenderedIds=new Set();chatLastMsgTime=null;
+        chatRenderedIds=new Set();chatRenderedContent=new Set();chatLastMsgTime=null;
         setChatState('waiting');
         showChatPanel(true);
         if(sub)sub.textContent='En attente d\'un nouvel écoutant…';
