@@ -524,6 +524,7 @@
     .pcp-msg.agent{align-self:flex-start;background:#f0ece8;color:var(--dark);border-bottom-left-radius:3px;}
     .pcp-msg.system{align-self:center;background:#f5f0ea;color:#7a6050;font-size:.7rem;border-radius:8px;text-align:center;padding:.28rem .65rem;max-width:92%;}
     .pcp-msg.system.welcome{background:#fee2e2;color:#991b1b;font-weight:600;border:1px solid #fca5a5;}
+    .pcp-msg.system.farewell{background:#ede9fe;color:#5b21b6;font-weight:600;border:1px solid #c4b5fd;text-align:center;}
     .pcp-waiting{padding:1.1rem;display:flex;flex-direction:column;gap:.7rem;flex-shrink:0;}
     .pcp-spinner{display:flex;justify-content:center;margin:.3rem 0;}
     .pcp-spinner::after{content:'';width:26px;height:26px;border:3px solid #f0e8e0;border-top-color:var(--terracotta);border-radius:50%;animation:pcp-spin .8s linear infinite;}
@@ -591,6 +592,7 @@
     [data-theme="dark"] .pcp-msg.agent{background:#2C1F14;color:#F0E8D8;}
     [data-theme="dark"] .pcp-msg.system{background:#3D2A1A;color:#C4A882;}
     [data-theme="dark"] .pcp-msg.system.welcome{background:#7f1d1d;color:#fca5a5;border-color:#991b1b;}
+    [data-theme="dark"] .pcp-msg.system.farewell{background:#2e1065;color:#c4b5fd;border-color:#5b21b6;}
     [data-theme="dark"] .pcp-input{background:#1A1208;border-top-color:#3D2A1A;}
     [data-theme="dark"] .pcp-input-ta{background:#2C1F14;border-color:#3D2A1A;color:#F0E8D8;}
     [data-theme="dark"] .pcp-input-ta::placeholder{color:#8A7060;}
@@ -2270,12 +2272,17 @@ function _closeSessionNow(){
   }
   clearInterval(chatPollingInterval);chatPollingInterval=null;
   if(sessionIdToRate){
-    showChatPanel(true);
-    showPcpRating(sessionIdToRate);
+    showFarewell(sessionIdToRate);
   } else {
     showChatPanel(false);
     const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
   }
+}
+
+function showFarewell(sessionId){
+  showChatPanel(true);
+  appendChatMsg({sender_type:'system',farewell:true,content:'💙 Merci pour cette session. Prendre soin de soi, c\'est déjà un grand pas — nous serons toujours là pour vous écouter. À très bientôt !'});
+  setTimeout(()=>showPcpRating(sessionId),3000);
 }
 
 let pcpRatingVal=0;
@@ -3475,7 +3482,7 @@ function appendChatMsg(msg){
   if(msg.sender_type==='system'&&msg.content&&chatRenderedContent.has(msg.content)) return;
   if(msg.sender_type==='system'&&msg.content) chatRenderedContent.add(msg.content);
   const div=document.createElement('div');
-  div.className='pcp-msg '+msg.sender_type+(msg.welcome?' welcome':'');
+  div.className='pcp-msg '+msg.sender_type+(msg.welcome?' welcome':'')+(msg.farewell?' farewell':'');
   div.textContent=msg.content;
   area.appendChild(div);
   area.scrollTop=area.scrollHeight;
@@ -3623,8 +3630,7 @@ async function pollChat(){
       localStorage.removeItem('parlons_chat_session_id');
       chatSessionId=null;
       if(sessionIdToRate){
-        showChatPanel(true);
-        showPcpRating(sessionIdToRate);
+        showFarewell(sessionIdToRate);
       } else {
         showChatPanel(false);
         const chatBtn=document.getElementById('parlons-chat-btn');if(chatBtn)chatBtn.style.display='none';
