@@ -319,11 +319,12 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 
     <!-- ADMIN VIEW -->
     <div class="view" id="view-admin">
-      <div class="section-head">Administration</div>
-      <a href="/espace.html" class="admin-link-card">
-        <div class="admin-link-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
-        <div><div class="admin-link-title">Dashboard complet</div><div class="admin-link-sub">Agents · Stats · Abonnés · Suggestions</div></div>
-      </a>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.1rem">
+        <div class="section-head" style="margin:0">Administration</div>
+        <button onclick="renderAdminView()" style="background:none;border:none;color:var(--mid);font-size:.8rem;cursor:pointer;font-family:'DM Sans',sans-serif;padding:.2rem .4rem;">↻</button>
+      </div>
+
+      <div class="section-head">En temps réel</div>
       <div class="admin-stat-row">
         <div class="stat-card" style="flex:1"><div class="stat-card-label">Agents en ligne</div><div class="stat-card-value" id="admin-online-count">—</div></div>
         <div class="stat-card" style="flex:1"><div class="stat-card-label">File d'attente</div><div class="stat-card-value" id="admin-queue-count">—</div></div>
@@ -332,6 +333,29 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
         <div class="stat-card-label">Agents connectés</div>
         <div id="admin-agents-list" style="margin-top:.5rem;font-size:.82rem;color:var(--mid)">—</div>
       </div>
+
+      <div class="section-head">Performance</div>
+      <div class="admin-stat-row">
+        <div class="stat-card" style="flex:1"><div class="stat-card-label">Sessions totales</div><div class="stat-card-value" id="admin-total-sessions">—</div></div>
+        <div class="stat-card" style="flex:1"><div class="stat-card-label">CA total</div><div class="stat-card-value" id="admin-total-revenue">—</div><div class="stat-card-sub">€</div></div>
+      </div>
+      <div class="admin-stat-row">
+        <div class="stat-card" style="flex:1"><div class="stat-card-label">Ce mois</div><div class="stat-card-value" id="admin-month-sessions">—</div><div class="stat-card-sub">sessions</div></div>
+        <div class="stat-card" style="flex:1"><div class="stat-card-label">CA mois</div><div class="stat-card-value" id="admin-month-revenue">—</div><div class="stat-card-sub">€</div></div>
+      </div>
+      <div class="admin-stat-row">
+        <div class="stat-card" style="flex:1"><div class="stat-card-label">Abonnés actifs</div><div class="stat-card-value" id="admin-active-subs">—</div></div>
+        <div class="stat-card" style="flex:1"><div class="stat-card-label">Note moyenne</div><div class="stat-card-value" id="admin-avg-rating">—</div></div>
+      </div>
+
+      <div class="section-head">Sessions récentes</div>
+      <div id="admin-recent-sessions" style="font-size:.8rem;color:var(--mid)">—</div>
+
+      <div class="section-head">Abonnés</div>
+      <div id="admin-subscribers-list" style="font-size:.8rem;color:var(--mid)">—</div>
+
+      <div class="section-head">Suggestions clients</div>
+      <div id="admin-suggestions-list" style="font-size:.8rem;color:var(--mid)">—</div>
     </div>
 
     <!-- PROFIL VIEW -->
@@ -1200,22 +1224,73 @@ async function renderAdminView(){
   document.getElementById('admin-online-count').textContent='…';
   document.getElementById('admin-queue-count').textContent='…';
   document.getElementById('admin-agents-list').textContent='…';
+  ['admin-total-sessions','admin-total-revenue','admin-month-sessions','admin-month-revenue','admin-active-subs','admin-avg-rating'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='…';});
+
   try{
-    const [presRes, pollRes] = await Promise.all([
+    const [presRes, pollRes, statsRes] = await Promise.all([
       fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,password:appPassword,action:'presence'})}),
-      fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken||'',since:new Date(0).toISOString()})})
+      fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken||'',since:new Date(0).toISOString()})}),
+      fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,password:appPassword})})
     ]);
     const pres=await presRes.json();
     const poll=await pollRes.json().catch(()=>({}));
+    const stats=await statsRes.json();
+
+    // ── Temps réel ──
     const presence=pres.presence||[];
     const online=presence.filter(a=>a.status==='online'||a.status==='busy');
-    const waiting=(poll.waiting||[]).length;
+    const waiting=(poll.waitingSessions||[]).length;
     document.getElementById('admin-online-count').textContent=online.length;
     document.getElementById('admin-queue-count').textContent=waiting;
     document.getElementById('admin-agents-list').innerHTML=online.length
       ?online.map(a=>{const name=esc(a.agent_email.split('@')[0]);const busy=a.status==='busy';const n=a.activeChatCount||0;const chatBadge=n>0?` <span style="background:#f59e0b;color:white;border-radius:50px;font-size:.65rem;font-weight:700;padding:.1rem .45rem;margin-left:.3rem">${n} tchat${n>1?'s':''}</span>`:'';return`<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid var(--sand)"><span>${name}${chatBadge}</span><span style="font-size:.7rem;color:${busy?'#f59e0b':'var(--green)'}">● ${busy?'En session':'En ligne'}</span></div>`;}).join('')
       :'<span style="color:var(--mid)">Aucun agent connecté</span>';
-  }catch{document.getElementById('admin-agents-list').textContent='Erreur réseau';}
+
+    if(stats.role!=='admin') return;
+
+    // ── Performance ──
+    const s=stats.sessions||{};
+    document.getElementById('admin-total-sessions').textContent=s.total||0;
+    document.getElementById('admin-total-revenue').textContent=(s.totalRevenue||0).toFixed(2);
+    document.getElementById('admin-month-sessions').textContent=s.monthCount||0;
+    document.getElementById('admin-month-revenue').textContent=(s.monthRevenue||0).toFixed(2);
+    document.getElementById('admin-active-subs').textContent=(stats.subscribers||{}).active||0;
+    const rated=(s.list||[]).filter(r=>r.rating);
+    const avg=rated.length?Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10:null;
+    document.getElementById('admin-avg-rating').textContent=avg?avg+'★':'—';
+
+    // ── Sessions récentes ──
+    const recent=(s.recent||[]).slice(0,10);
+    document.getElementById('admin-recent-sessions').innerHTML=recent.length
+      ?recent.map(r=>{
+        const d=r.started_at?new Date(r.started_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—';
+        const m=(r.montant||0).toFixed(2);
+        const agent=r.agent_name||r.agent_email?.split('@')[0]||'—';
+        const stars=r.rating?'★'.repeat(r.rating):'';
+        return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:.45rem 0;border-bottom:1px solid var(--sand);gap:.5rem"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.client_pseudo||'Visiteur')}</div><div style="color:var(--mid);font-size:.72rem">${esc(r.formule||'—')} · ${esc(agent)}</div>${stars?`<div style="color:#f59e0b;font-size:.68rem">${stars}</div>`:''}</div><div style="text-align:right;flex-shrink:0"><div style="font-weight:600;font-size:.8rem">${m}€</div><div style="color:var(--mid);font-size:.72rem">${d}</div></div></div>`;
+      }).join('')
+      :'<span style="color:var(--mid)">Aucune session</span>';
+
+    // ── Abonnés ──
+    const subs=((stats.subscribers||{}).list||[]).slice(0,15);
+    document.getElementById('admin-subscribers-list').innerHTML=subs.length
+      ?subs.map(r=>{
+        const d=r.created_at?new Date(r.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+        const active=r.status==='active';
+        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--sand)"><div><div style="font-size:.8rem;font-weight:600">${esc(r.email||'—')}</div><div style="font-size:.72rem;color:var(--mid)">${d}</div></div><span style="font-size:.65rem;font-weight:700;padding:.15rem .5rem;border-radius:50px;background:${active?'rgba(45,110,45,.12)':'rgba(150,100,80,.12)'};color:${active?'var(--green)':'var(--mid)'}">${active?'Actif':'Expiré'}</span></div>`;
+      }).join('')
+      :'<span style="color:var(--mid)">Aucun abonné</span>';
+
+    // ── Suggestions ──
+    const suggs=(stats.suggestions||[]).slice(0,10);
+    document.getElementById('admin-suggestions-list').innerHTML=suggs.length
+      ?suggs.map(r=>{
+        const d=r.created_at?new Date(r.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—';
+        return`<div style="padding:.45rem 0;border-bottom:1px solid var(--sand)"><div style="font-size:.79rem;color:var(--dark);line-height:1.45">${esc(r.content||'')}</div><div style="font-size:.68rem;color:var(--mid);margin-top:.2rem">${d}</div></div>`;
+      }).join('')
+      :'<span style="color:var(--mid)">Aucune suggestion</span>';
+
+  }catch(e){document.getElementById('admin-agents-list').textContent='Erreur réseau';}
 }
 
 function updatePushBanner(){
