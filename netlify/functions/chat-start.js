@@ -110,7 +110,7 @@ exports.handler = async (event) => {
       headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({
         session_id: sessionId,
-        content: assignedAgent ? greeting : 'Votre demande est bien enregistrée. Un écoutant vous rejoindra dans les 2 prochaines minutes — restez bien en ligne !',
+        content: assignedAgent ? greeting : 'Votre demande est bien enregistrée. Un écoutant vous rejoindra dès que possible — restez bien en ligne !',
         sender_type: 'system'
       })
     });
