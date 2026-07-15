@@ -1270,8 +1270,8 @@ async function renderAdminView(){
     document.getElementById('admin-month-sessions').textContent=s.monthCount||0;
     document.getElementById('admin-month-revenue').textContent=(s.monthRevenue||0).toFixed(2);
     document.getElementById('admin-active-subs').textContent=(stats.subscribers||{}).active||0;
-    const rated=(s.list||[]).filter(r=>r.rating);
-    const avg=rated.length?Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10:null;
+    const allAgentReviews=Object.values(s.byAgent||{}).flatMap(a=>a.reviews||[]);
+    const avg=allAgentReviews.length?Math.round(allAgentReviews.reduce((a,r)=>a+(r.stars||0),0)/allAgentReviews.length*10)/10:null;
     document.getElementById('admin-avg-rating').textContent=avg?avg+'★':'—';
 
     // ── Sessions récentes ──
