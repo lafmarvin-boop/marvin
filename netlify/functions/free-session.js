@@ -125,7 +125,7 @@ exports.handler = async (event) => {
         body: JSON.stringify({ session_id: sessionId, content: greeting, sender_type: 'system' })
       });
 
-      const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.fr';
+      const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
       fetch(`${siteUrl}/.netlify/functions/push-notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -116,7 +116,7 @@ exports.handler = async (event) => {
     });
 
     // Push notification : à l'agent assigné, ou à tous si personne n'était disponible
-    const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.netlify.app';
+    const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
     fetch(`${siteUrl}/.netlify/functions/push-notify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

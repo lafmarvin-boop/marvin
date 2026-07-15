@@ -251,6 +251,9 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
         <button class="push-banner-btn" onclick="subscribePush()">Activer</button>
       </div>
 
+      <!-- Push status bar -->
+      <div id="push-status-bar" style="display:none;align-items:center;gap:.6rem;padding:.45rem .9rem;border-radius:8px;font-size:.78rem;font-weight:500;margin:.4rem .8rem 0;"></div>
+
       <!-- Install PWA banner -->
       <div class="push-banner" id="install-banner" style="display:none;background:linear-gradient(135deg,#2d1f14,#4a2e1a);">
         <div class="push-banner-text" style="color:white;">📲 Installer l'appli sur votre téléphone pour un accès rapide et les notifications.</div>
@@ -385,6 +388,15 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
       <button class="profil-save-btn" onclick="saveProfilSettings()">Enregistrer</button>
       <div id="profil-msg" style="display:none;text-align:center;font-size:.82rem;color:#2d6e2d;padding:.4rem;"></div>
       <div id="profil-err" style="display:none;text-align:center;font-size:.82rem;color:#8b2020;padding:.4rem;"></div>
+
+      <div class="section-head" style="margin-top:.75rem">Notifications push</div>
+      <div class="stat-card" style="gap:.5rem">
+        <div id="push-diag-status" style="font-size:.8rem;color:var(--mid)">Vérification…</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.3rem">
+          <button onclick="diagPush()" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.38rem 1rem;font-size:.76rem;font-weight:600;cursor:pointer">🔔 Tester la notif</button>
+          <button onclick="resubscribePush()" style="background:white;color:var(--tc);border:1.5px solid var(--tc);border-radius:50px;padding:.38rem 1rem;font-size:.76rem;font-weight:600;cursor:pointer">↺ Réactiver</button>
+        </div>
+      </div>
 
       <div class="section-head" style="margin-top:.75rem">Mes raccourcis chat</div>
       <div class="stat-card" style="padding:.85rem">
@@ -534,6 +546,7 @@ async function doLogin(){
     showApp();
     showView('home');
     updatePushBanner();
+    updatePushDiag();
     // Auto-passer en ligne si action=online dans l'URL
     if(new URLSearchParams(location.search).get('action')==='online') toggleOnline();
   }catch(e){ err.textContent='Erreur réseau'; }
@@ -598,6 +611,7 @@ async function goOnline(){
     startPoll();
     if(Notification.permission==='granted') _autoSubscribePush().catch(()=>{});
     else if(Notification.permission==='default') Notification.requestPermission().then(()=>updatePushBanner()).catch(()=>{});
+    updatePushDiag();
     if(data.assignedSession){ await refreshSessions(); openChatView(data.assignedSession); }
   }catch(e){ alert('Erreur réseau'); }
   hideLoading();
@@ -1337,6 +1351,71 @@ async function subscribePush(){
     await fetch(`${API}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,subscription:sub.toJSON()})});
     document.getElementById('push-banner').style.display='none';
   }catch(e){ console.error('push subscribe:',e); }
+}
+
+async function resubscribePush(){
+  if(!appToken){ alert('Mettez-vous en ligne d\'abord'); return; }
+  try{
+    const sw = await navigator.serviceWorker.ready;
+    const existing = await sw.pushManager.getSubscription();
+    if(existing) await existing.unsubscribe();
+    const keyRes = await fetch(`${API}/push-vapid-key`);
+    const {key} = await keyRes.json();
+    if(!key){ alert('Clé VAPID manquante — vérifiez les variables d\'environnement Netlify'); return; }
+    const sub = await sw.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(key)});
+    const res = await fetch(`${API}/push-subscribe`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({agentEmail:appEmail, agentToken:appToken, subscription:sub.toJSON()})});
+    const d = await res.json();
+    if(d.ok) alert('✅ Souscription push renouvelée avec succès');
+    else alert('Erreur : ' + (d.error||'inconnue'));
+    updatePushDiag();
+  }catch(e){ alert('Erreur : ' + e.message); }
+}
+
+async function diagPush(){
+  if(!appToken){ alert('Mettez-vous en ligne d\'abord'); return; }
+  const el = document.getElementById('push-diag-status');
+  if(el) el.textContent = '⏳ Envoi en cours…';
+  try{
+    const res = await fetch(`${API}/push-notify`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title:'🔔 Test Parlons', message:'Les notifications fonctionnent correctement !', url:'/agent-app.html', agentEmail:appEmail})});
+    const d = await res.json();
+    if(el){
+      if(d.skipped) el.textContent = '⚠️ VAPID non configuré — variables d\'environnement manquantes sur Netlify';
+      else if(d.sent > 0) el.textContent = '✅ Notification envoyée (' + d.sent + ') — vérifiez votre téléphone';
+      else if(d.sent === 0) el.textContent = '❌ Aucune souscription en base — cliquez "Réactiver"';
+      else el.textContent = JSON.stringify(d);
+    }
+  }catch(e){ if(el) el.textContent = 'Erreur réseau : ' + e.message; }
+}
+
+async function updatePushDiag(){
+  const el = document.getElementById('push-diag-status');
+  const bar = document.getElementById('push-status-bar');
+  if(!el) return;
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    el.textContent = '❌ Push non supporté sur ce navigateur';
+    return;
+  }
+  if(Notification.permission === 'denied'){
+    el.textContent = '🚫 Notifications bloquées — autorisez-les dans les paramètres du navigateur';
+    if(bar){ bar.style.display='flex'; bar.style.background='#fee2e2'; bar.style.color='#991b1b'; bar.innerHTML='🚫 Notifications bloquées dans ce navigateur'; }
+    return;
+  }
+  if(Notification.permission !== 'granted'){
+    el.textContent = '⚠️ Permission non accordée — cliquez "Réactiver"';
+    if(bar){ bar.style.display='flex'; bar.style.background='#fef3c7'; bar.style.color='#92400e'; bar.innerHTML='⚠️ Notifications non activées — <button onclick="subscribePush()" style="background:none;border:none;color:inherit;font-weight:700;cursor:pointer;text-decoration:underline">Activer</button>'; }
+    return;
+  }
+  try{
+    const sw = await navigator.serviceWorker.ready;
+    const sub = await sw.pushManager.getSubscription();
+    if(sub){
+      el.textContent = '✅ Push actif — Cliquez "Tester" pour vérifier la réception';
+      if(bar){ bar.style.display='flex'; bar.style.background='#dcfce7'; bar.style.color='#166534'; bar.textContent='✅ Notifications push actives'; }
+    } else {
+      el.textContent = '❌ Pas de souscription locale — cliquez "Réactiver"';
+      if(bar){ bar.style.display='flex'; bar.style.background='#fee2e2'; bar.style.color='#991b1b'; bar.innerHTML='❌ Push non enregistré — <button onclick="resubscribePush()" style="background:none;border:none;color:inherit;font-weight:700;cursor:pointer;text-decoration:underline">Réactiver</button>'; }
+    }
+  }catch(e){ el.textContent = 'Erreur SW : ' + e.message; }
 }
 
 // ── ESCAPE HTML ──
