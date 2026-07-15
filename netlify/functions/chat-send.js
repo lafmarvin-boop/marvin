@@ -67,16 +67,17 @@ exports.handler = async (event) => {
       }).catch(() => {});
     }
 
-    // Message visiteur : notifier l'agent par push (fire-and-forget)
-    if (senderType === 'visitor') {
-      const siteUrl = process.env.SITE_URL || 'https://parlonsecoute.fr';
+    // Message visiteur : notifier l'agent assigné par push (fire-and-forget)
+    if (senderType === 'visitor' && sessions[0].agent_email) {
+      const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
       fetch(`${siteUrl}/.netlify/functions/push-notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: '💬 Nouveau message',
           message: content.trim().slice(0, 80),
-          url: '/agent-app.html'
+          url: '/agent-app.html',
+          agentEmail: sessions[0].agent_email
         })
       }).catch(() => {});
     }

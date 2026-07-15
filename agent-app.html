@@ -1331,7 +1331,8 @@ async function _autoSubscribePush(){
       if(!key) return;
       sub=await sw.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(key)});
     }
-    await fetch(`${API}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,subscription:sub.toJSON()})});
+    const r=await fetch(`${API}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,subscription:sub.toJSON()})});
+    if(!r.ok) console.error('push-subscribe failed:', r.status, await r.text());
   }catch(e){ console.error('auto push subscribe:',e); }
 }
 
@@ -1483,7 +1484,7 @@ async function triggerNotif(title, body){
     // Android Chrome : new Notification() ne fonctionne pas, il faut le SW
     if('serviceWorker' in navigator){
       const sw=await navigator.serviceWorker.ready;
-      sw.showNotification(title,{body,icon:'/icons/icon-192.png',badge:'/icons/icon-192.png',vibrate:[200,100,200]});
+      sw.showNotification(title,{body,icon:'/icons/icon-192.svg',badge:'/icons/icon-192.svg',vibrate:[200,100,200]});
     } else {
       new Notification(title,{body});
     }
@@ -1541,6 +1542,8 @@ if('serviceWorker' in navigator){
           localStorage.setItem('parlons_agent_online','1');
           prevQueueIds=new Set(); queueInitialized=false;
           updateStatusUI(); startPoll();
+          if(Notification.permission==='granted') _autoSubscribePush().catch(()=>{});
+          updatePushDiag();
         } else if(localStorage.getItem('parlons_agent_online')==='1'){
           goOnline();
         }
