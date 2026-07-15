@@ -2282,7 +2282,7 @@ function _closeSessionNow(){
 function showFarewell(sessionId){
   showChatPanel(true);
   appendChatMsg({sender_type:'system',farewell:true,content:'💙 Merci pour cette session. Prendre soin de soi, c\'est déjà un grand pas — nous serons toujours là pour vous écouter. À très bientôt !'});
-  setTimeout(()=>showPcpRating(sessionId),3000);
+  setTimeout(()=>showPcpRating(sessionId),500);
 }
 
 let pcpRatingVal=0;
