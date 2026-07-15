@@ -1335,7 +1335,7 @@ function renderAgentDash(email, d) {
   initAgentYearSelector();
 
   // Calcul honoraires par période
-  const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+  const RATES = { '10 min': 0.50, '30 min': 1.50, '1 heure': 2.50 };
   function calcHonoraires(sessions) {
     return sessions.reduce((s, r) => {
       if ((r.formule||'').includes('GRATUIT')) return s;
@@ -1451,7 +1451,7 @@ function downloadUrssafStatement() {
 
   const year = parseInt(document.getElementById('agent-urssaf-year')?.value || new Date().getFullYear());
 
-  const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+  const RATES = { '10 min': 0.50, '30 min': 1.50, '1 heure': 2.50 };
   function getRate(f) {
     for (const [k, v] of Object.entries(RATES)) { if ((f||'').includes(k)) return v; }
     return 0;
@@ -1641,7 +1641,7 @@ function downloadAgentInvoice() {
     return d.getMonth() === month && d.getFullYear() === year;
   });
 
-  const RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+  const RATES = { '10 min': 0.50, '30 min': 1.50, '1 heure': 2.50 };
   function getRate(formule) {
     if ((formule||'').includes('GRATUIT')) return 0;
     for (const [k,v] of Object.entries(RATES)) { if ((formule||'').includes(k)) return v; }
@@ -1769,7 +1769,7 @@ function downloadAgentInvoice() {
 }
 
 // ── PDF GENERATION ──
-const AGENT_RATES = { '10 min': 1.00, '30 min': 3.50, '1 heure': 7.50 };
+const AGENT_RATES = { '10 min': 0.50, '30 min': 1.50, '1 heure': 2.50 };
 
 function agentRate(formule) {
   if (!formule || formule.includes('GRATUIT')) return 0;
@@ -1780,9 +1780,9 @@ function agentRate(formule) {
 }
 
 const PLAN_COLS = [
-  { key: '10 min',       label: '10 min',   price: '2 €' },
-  { key: '30 min',       label: '30 min',   price: '5 €' },
-  { key: '1 heure',      label: '1 heure',  price: '9 €' },
+  { key: '10 min',       label: '10 min',   price: '1 €' },
+  { key: '30 min',       label: '30 min',   price: '3 €' },
+  { key: '1 heure',      label: '1 heure',  price: '5 €' },
   { key: 'Pass mensuel', label: 'Mensuel',  price: '15 €' },
   { key: 'Groupe 30min', label: 'Groupe',   price: '1,50 €', alt: 'Chat de groupe' },
 ];
