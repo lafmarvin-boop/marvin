@@ -40,7 +40,14 @@ exports.handler = async (event) => {
       rows.map(row => {
         try {
           const sub = typeof row.subscription === 'string' ? JSON.parse(row.subscription) : row.subscription;
-          return webpush.sendNotification(sub, payload);
+          return webpush.sendNotification(sub, payload).catch(async err => {
+            if (err.statusCode === 410 || err.statusCode === 404) {
+              await fetch(`${SB_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(sub.endpoint)}`, {
+                method: 'DELETE', headers: H()
+              }).catch(() => {});
+            }
+            throw err;
+          });
         } catch { return Promise.resolve(); }
       })
     );

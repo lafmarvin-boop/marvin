@@ -596,7 +596,8 @@ async function goOnline(){
     prevQueueIds=new Set(); queueInitialized=false;
     updateStatusUI();
     startPoll();
-    if(Notification.permission==='default') Notification.requestPermission().then(()=>updatePushBanner()).catch(()=>{});
+    if(Notification.permission==='granted') _autoSubscribePush().catch(()=>{});
+    else if(Notification.permission==='default') Notification.requestPermission().then(()=>updatePushBanner()).catch(()=>{});
     if(data.assignedSession){ await refreshSessions(); openChatView(data.assignedSession); }
   }catch(e){ alert('Erreur réseau'); }
   hideLoading();
