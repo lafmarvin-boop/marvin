@@ -84,7 +84,7 @@ async function buildAgentStats(email) {
     : null;
 
   const allSessions = [
-    ...sessions.map(s => ({ pseudo: s.client_pseudo, formule: s.formule, montant: s.montant, started_at: s.started_at, rating: s.rating, rating_comment: s.rating_comment })),
+    ...sessions.filter(s => !(s.formule || '').includes('GRATUIT')).map(s => ({ pseudo: s.client_pseudo, formule: s.formule, montant: s.montant, started_at: s.started_at, rating: s.rating, rating_comment: s.rating_comment })),
     ...chatReviews
   ].sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
 
