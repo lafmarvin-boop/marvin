@@ -34,7 +34,7 @@ async function buildAgentStats(email) {
 
   const [sessions, chatSessions, profileRows] = await Promise.all([
     sbGet(`sessions?statut=in.(paid,ended)&agent_email=eq.${encodeURIComponent(email)}&select=formule,montant,client_pseudo,started_at,rating,rating_comment&order=started_at.desc&limit=500`),
-    sbGet(`chat_sessions?agent_email=eq.${encodeURIComponent(email)}&rating=not.is.null&select=session_label,pre_name,assigned_at,rating,rating_comment&order=assigned_at.desc&limit=200`),
+    sbGet(`chat_sessions?agent_email=eq.${encodeURIComponent(email)}&rating=not.is.null&stripe_payment_id=is.null&select=session_label,pre_name,assigned_at,rating,rating_comment&order=assigned_at.desc&limit=200`),
     sbGet(`agent_profiles?email=eq.${encodeURIComponent(email)}&select=*&limit=1`)
   ]);
 
