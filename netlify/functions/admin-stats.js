@@ -108,7 +108,7 @@ exports.handler = async (event) => {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows, ipLogs, agentPresenceRows] = await Promise.all([
+    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows, ipLogs, agentPresenceRows, chatRatings] = await Promise.all([
       sbGet('sessions?statut=in.(paid,ended)&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
       sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
       sbGet('group_messages?select=room_id,created_at,author&order=created_at.desc&limit=2000'),
@@ -118,7 +118,8 @@ exports.handler = async (event) => {
       sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,visited_at&order=visited_at.desc&limit=50000`),
       sbGet(`chats?created_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=created_at&order=created_at.desc&limit=10000`),
       sbGet('visits?select=ip_address,country,city,region,visited_at,visitor_id,is_new&order=visited_at.desc&limit=200'),
-      sbGet('agent_presence?select=agent_email,status,last_seen&limit=100')
+      sbGet('agent_presence?select=agent_email,status,last_seen&limit=100'),
+      sbGet('chat_sessions?rating=not.is.null&stripe_payment_id=is.null&agent_email=not.is.null&select=agent_email,pre_name,session_label,assigned_at,rating,rating_comment&order=assigned_at.desc&limit=500')
     ]);
     const presenceByEmail = {};
     agentPresenceRows.forEach(p => { if (p.agent_email) presenceByEmail[p.agent_email.toLowerCase()] = p; });
@@ -190,9 +191,19 @@ exports.handler = async (event) => {
         a.reviews.push({ stars: s.rating, comment: s.rating_comment || null, pseudo: s.client_pseudo, formule: s.formule, date: s.started_at });
       }
     });
+    // Fusionner les avis des sessions gratuites/abonnement (stockés uniquement dans chat_sessions)
+    chatRatings.forEach(cs => {
+      if (!cs.agent_email || !cs.rating) return;
+      const agentEntry = Object.values(byAgent).find(a => (a.email || '').toLowerCase() === cs.agent_email.toLowerCase());
+      if (!agentEntry) return;
+      agentEntry.ratingSum = (agentEntry.ratingSum || 0) + cs.rating;
+      agentEntry.ratingCount++;
+      agentEntry.reviews.push({ stars: cs.rating, comment: cs.rating_comment || null, pseudo: cs.pre_name, formule: cs.session_label, date: cs.assigned_at });
+    });
+
     // Calculer note moyenne et nettoyer
     Object.values(byAgent).forEach(a => {
-      a.avgRating = a.ratingCount > 0 ? Math.round((a.ratingSum / a.ratingCount) * 10) / 10 : null;
+      a.avgRating = a.ratingCount > 0 ? Math.round(((a.ratingSum || 0) / a.ratingCount) * 10) / 10 : null;
       delete a.ratingSum;
     });
 
