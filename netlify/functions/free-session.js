@@ -68,8 +68,8 @@ exports.handler = async (event) => {
         status: 'waiting',
         pre_name: name,
         session_type: 'free',
-        session_label: '10 min GRATUIT',
-        duration_sec: 600,
+        session_label: '20 min GRATUIT',
+        duration_sec: 1200,
         stripe_payment_id: null,
         visitor_ip: ip,
         loyalty_discount: 0
@@ -131,7 +131,7 @@ exports.handler = async (event) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: assignedAgent ? '🎁 Tchat gratuit assigné' : '🎁 Nouvelle conversation gratuite',
-          message: `${name} attend (offre découverte 10 min)`,
+          message: `${name} attend (offre découverte 20 min)`,
           url: '/agent-app.html',
           ...(assignedAgent ? { agentEmail: assignedAgent } : {})
         })

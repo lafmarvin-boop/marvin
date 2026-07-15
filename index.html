@@ -848,7 +848,7 @@
       <a href="#comment" class="btn-secondary">Comment ça marche ↓</a>
     </div>
     <div class="loyalty-badge" id="loyalty-hero-badge">🎁 Programme fidélité · -10% dès la 5e session sur 3 mois</div>
-    <div class="free-offer-banner" id="free-offer-banner">🎁 <strong>Première conversation offerte</strong> — 10 min gratuites, sans carte bancaire</div>
+    <div class="free-offer-banner" id="free-offer-banner">🎁 <strong>Première conversation offerte</strong> — 20 min gratuites, sans carte bancaire</div>
     <div style="margin-top:.9rem;">
       <a href="/espace.html" style="font-size:.78rem;color:var(--mid);text-decoration:none;border-bottom:1px solid var(--sand);padding-bottom:.1rem;">🔑 Déjà abonné ? Accéder à mon espace →</a>
     </div>
@@ -1711,7 +1711,7 @@
       <div class="form-group"><label>Choisissez votre formule</label>
         <select id="session-select" onchange="updatePrice()">
 
-          <option value="free" data-label="10 min GRATUIT" data-sec="600" style="display:none">🎁 Première conversation · 10 min — GRATUIT</option>
+          <option value="free" data-label="20 min GRATUIT" data-sec="1200" style="display:none">🎁 Première conversation · 20 min — GRATUIT</option>
           <option value="100" data-label="10 min" data-sec="600" selected>💬 Session individuelle · 10 min — 1,00 €</option>
           <option value="300" data-label="30 min" data-sec="1800">💬 Session individuelle · 30 min — 3,00 € ⭐</option>
           <option value="500" data-label="1 heure" data-sec="3600">💬 Session individuelle · 1 heure — 5,00 €</option>
@@ -2230,14 +2230,14 @@ function startWaitTimer(){
       reportShown=true;
       const rz=document.getElementById('report-zone');if(rz)rz.style.display='block';
     }
-    if(waitSeconds>=600){
+    if(waitSeconds>=1200){
       clearInterval(waitTimer);
       if(!reportShown) reportSlowAgent();
       const wzName=document.getElementById('user-name')?document.getElementById('user-name').value.trim():'';
       const wz=document.getElementById('waiting-zone');
       if(wz) wz.innerHTML=`
         <strong style="color:#7a6000;">⏰ Aucun écoutant disponible pour le moment</strong>
-        <p style="font-size:.8rem;color:#7a5a42;margin:.5rem 0 .9rem;line-height:1.5;">10 minutes se sont écoulées sans réponse. Laissez votre email et nous vous recontactons dès qu'un écoutant est disponible.</p>
+        <p style="font-size:.8rem;color:#7a5a42;margin:.5rem 0 .9rem;line-height:1.5;">20 minutes se sont écoulées sans réponse. Laissez votre email et nous vous recontactons dès qu'un écoutant est disponible.</p>
         <input type="email" id="recontact-email" placeholder="votre@email.com" style="width:100%;padding:.6rem .9rem;border:1.5px solid #D4B896;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.84rem;box-sizing:border-box;margin-bottom:.5rem;outline:none;" />
         <textarea id="recontact-msg" placeholder="Un message pour nous aider à vous recontacter ? (optionnel)" style="width:100%;padding:.6rem .9rem;border:1.5px solid #D4B896;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.82rem;box-sizing:border-box;margin-bottom:.7rem;resize:none;height:60px;outline:none;"></textarea>
         <button onclick="sendRecontactRequest('${wzName}')" style="background:var(--terracotta);color:white;border:none;border-radius:50px;padding:.6rem 1.3rem;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;width:100%;margin-bottom:.7rem;">📧 Me faire recontacter</button>
@@ -3520,10 +3520,10 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
 }
 async function startFreeChatSession(name){
   if(sessionTimer!==null){clearInterval(sessionTimer);sessionTimer=null;}
-  sessionEndAt=0;sessionSeconds=600;sessionDbDurationSec=600;
+  sessionEndAt=0;sessionSeconds=1200;sessionDbDurationSec=1200;
   chatExtensionPending=false;chatExtensionNewDuration=0;
   chatRenderedIds=new Set();chatRenderedContent=new Set();chatLastMsgTime=null;
-  selectedLabel='10 min GRATUIT';sessionDurationSec=600;
+  selectedLabel='20 min GRATUIT';sessionDurationSec=1200;
   const visitorId=localStorage.getItem('parlons_visitor_id')||'';
   try{
     const r=await fetch('/.netlify/functions/free-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start',name,visitorId})});

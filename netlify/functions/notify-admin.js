@@ -33,7 +33,7 @@ exports.handler = async (event) => {
 <p><strong>Date :</strong> ${new Date().toLocaleString('fr-FR')}</p>`;
   } else if (type === 'recontact') {
     subject = '📩 Demande de recontact — attente dépassée — Parlons';
-    html = `<p>Demande de recontact après 10 min d'attente sans réponse.</p>
+    html = `<p>Demande de recontact après 20 min d'attente sans réponse.</p>
 <p><strong>Prénom :</strong> ${prenom || '—'}</p>
 <p><strong>Email :</strong> ${email || '—'}</p>
 <p><strong>Message :</strong> ${message || '—'}</p>
