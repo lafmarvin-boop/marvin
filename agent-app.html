@@ -705,7 +705,7 @@ async function poll(){
     }
     const d=await res.json();
     if(d.error) return;
-    pollSince=new Date().toISOString();
+    pollSince=d.serverTime||new Date().toISOString();
     processPoll(d);
   }catch{}
 }

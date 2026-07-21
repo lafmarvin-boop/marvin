@@ -83,6 +83,7 @@ exports.handler = async (event) => {
       }).catch(() => {});
 
       const { current_session_id: currentSessionId, status: agentStatus } = presence[0];
+      const serverTime = new Date().toISOString();
       const sinceIso = since ? new Date(since).toISOString() : new Date(0).toISOString();
 
       // --- Réassignation : si un agent n'a pas envoyé de premier message dans les 2 min ---
@@ -189,7 +190,7 @@ exports.handler = async (event) => {
 
       return {
         statusCode: 200, headers: CORS,
-        body: JSON.stringify({ agentStatus, currentSessionId, currentSession, messages, sessions, waitingSessions })
+        body: JSON.stringify({ agentStatus, currentSessionId, currentSession, messages, sessions, waitingSessions, serverTime })
       };
     }
 
