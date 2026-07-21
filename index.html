@@ -261,6 +261,21 @@
     /* loyalty badge */
     .loyalty-badge{margin-top:1rem;display:inline-flex;align-items:center;gap:.5rem;background:#FFF8E1;border:1px solid #FFD700;padding:.4rem .9rem;border-radius:50px;font-size:.75rem;font-weight:500;color:#7a6000;animation:fadeUp .6s .5s ease both;}
     .free-offer-banner{display:none;margin-top:.9rem;align-items:center;gap:.6rem;background:linear-gradient(135deg,rgba(76,175,80,.12),rgba(56,142,60,.08));border:1.5px solid rgba(76,175,80,.5);padding:.55rem 1.1rem;border-radius:50px;font-size:.78rem;font-weight:500;color:#2e7d32;animation:fadeUp .6s .4s ease both;}
+    /* Hero carousel témoignages */
+    #hero-carousel{display:none;margin-bottom:1rem;background:rgba(255,255,255,.75);backdrop-filter:blur(6px);border:1px solid rgba(196,113,74,.18);border-radius:18px;padding:.85rem 2rem;position:relative;max-width:380px;animation:fadeUp .5s .1s ease both;}
+    [data-theme="dark"] #hero-carousel{background:rgba(44,31,20,.6);border-color:rgba(196,113,74,.3);}
+    #hero-carousel-quote{font-size:.82rem;color:var(--dark);line-height:1.55;font-style:italic;margin:0 0 .4rem;}
+    #hero-carousel-meta{font-size:.71rem;color:var(--mid);display:flex;align-items:center;gap:.35rem;}
+    #hero-carousel-stars{color:#f59e0b;}
+    .hc-nav{position:absolute;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.25rem;color:var(--mid);padding:.2rem .45rem;line-height:1;transition:color .15s;}
+    .hc-nav:hover{color:var(--terracotta);}
+    #hc-prev{left:.1rem;}#hc-next{right:.1rem;}
+    .hc-dots{display:flex;gap:.3rem;justify-content:center;margin-top:.55rem;}
+    .hc-dot{width:5px;height:5px;border-radius:50%;background:var(--sand);border:none;padding:0;cursor:pointer;transition:background .25s;}
+    .hc-dot.active{background:var(--terracotta);}
+    /* Bouton essai gratuit hero */
+    .btn-free-cta{display:inline-flex;align-items:center;gap:.5rem;background:linear-gradient(135deg,#2e7d32,#43a047);color:white;border:none;border-radius:50px;padding:.88rem 2rem;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 4px 18px rgba(46,125,50,.28);}
+    .btn-free-cta:hover{background:linear-gradient(135deg,#1b5e20,#2e7d32);box-shadow:0 6px 24px rgba(46,125,50,.4);transform:translateY(-1px);}
     #modal-avis{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:flex-end;justify-content:center;padding:0;}
     #modal-avis.active{display:flex;}
     .avis-sheet{background:white;border-radius:24px 24px 0 0;width:100%;max-width:540px;padding:1.6rem 1.4rem 2.2rem;position:relative;max-height:88vh;overflow:hidden;animation:slideUp .3s ease;}
@@ -694,6 +709,8 @@
       .hero-actions .btn-primary{width:100%;max-width:320px;text-align:center;}
       .hero-actions .btn-secondary{font-size:.85rem;}
       .price-badge,.loyalty-badge,.free-offer-banner{justify-content:center;text-align:center;border-radius:12px;}
+      #hero-carousel{max-width:100%;}
+      .btn-free-cta{width:100%;max-width:320px;justify-content:center;}
       .hero-right{display:none;} /* cache le mockup sur mobile */
       /* Sections */
       .section{padding:3rem 1.2rem;}
@@ -839,11 +856,22 @@
 <!-- HERO -->
 <section class="hero" id="accueil">
   <div>
+    <!-- Carousel témoignages -->
+    <div id="hero-carousel">
+      <button class="hc-nav" id="hc-prev" onclick="heroCarouselNav(-1)" aria-label="Précédent">‹</button>
+      <div>
+        <p id="hero-carousel-quote"></p>
+        <div id="hero-carousel-meta"><span id="hero-carousel-stars"></span><span id="hero-carousel-name"></span></div>
+        <div class="hc-dots" id="hc-dots"></div>
+      </div>
+      <button class="hc-nav" id="hc-next" onclick="heroCarouselNav(1)" aria-label="Suivant">›</button>
+    </div>
     <button id="hero-rating-btn" style="display:none;margin-bottom:.6rem;align-items:center;gap:.45rem;background:white;border:1px solid var(--sand);padding:.35rem .9rem;border-radius:50px;font-size:.78rem;font-weight:600;color:var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;font-family:'DM Sans',sans-serif;" onclick="openAvisModal()"><span id="hero-rating-stars" style="color:#f59e0b;letter-spacing:1px"></span><span id="hero-rating-text" style="color:var(--mid);margin-left:.2rem"></span></button>
     <div class="hero-tag" id="hero-tag"><span class="dot" id="hero-dot"></span><span id="hero-tag-text"> Des écoutants disponibles maintenant</span></div>
     <h1>Besoin de parler ?<br><em>Quelqu'un vous attend.</em></h1>
     <p>Parfois, on a juste besoin d'une oreille attentive. Discutez en direct avec quelqu'un de bienveillant, sans jugement, en toute confidentialité.</p>
     <div class="hero-actions">
+      <button class="btn-free-cta" id="hero-free-btn" onclick="openModal()" style="display:none">🎁 Essayer gratuitement · 20 min</button>
       <button class="btn-primary" onclick="openModal()">Démarrer une discussion →</button>
       <a href="#comment" class="btn-secondary">Comment ça marche ↓</a>
     </div>
@@ -1995,6 +2023,8 @@ const STRIPE_KEY='pk_live_51TZB64Cob93hyzLhnt58hZ8gwkCIsg7jD5HQM69ZtSO6ZKaCH7PRa
       if(freeOpt){freeOpt.style.display='';freeOpt.selected=true;updatePrice();}
       const banner=document.getElementById('free-offer-banner');
       if(banner)banner.style.display='inline-flex';
+      const freeBtn=document.getElementById('hero-free-btn');
+      if(freeBtn)freeBtn.style.display='inline-flex';
     }
   }catch{}
 })();
@@ -2647,6 +2677,7 @@ async function submitReview(){
         const stars2=document.getElementById('hero-rating-stars');
         const txt2=document.getElementById('hero-rating-text');
         if(btn2&&stars2&&txt2){stars2.textContent='★'.repeat(Math.round(avg));txt2.textContent=avg.toFixed(1)+' · '+rated.length+' avis';btn2.style.display='inline-flex';}
+        initHeroCarousel(rated);
       }
     }
   }).catch(()=>{});
@@ -2668,6 +2699,33 @@ function renderReviews(apiReviews){
     return `<div class="review-card"><div class="r-stars">${'★'.repeat(stars)}${'☆'.repeat(5-stars)}</div><blockquote>"${escHtml(text)}"</blockquote><div class="reviewer">${escHtml(name)} · ${date}</div></div>`;
   }).join('');
 }
+// ── HERO CAROUSEL TÉMOIGNAGES ──
+let _hcReviews=[],_hcIdx=0,_hcTimer=null;
+function initHeroCarousel(reviews){
+  const eligible=reviews.filter(r=>(r.text||r.rating_comment||'').length>15);
+  if(!eligible.length) return;
+  _hcReviews=eligible.slice(0,8);
+  const el=document.getElementById('hero-carousel');
+  if(!el) return;
+  el.style.display='block';
+  _renderHC();
+  _hcTimer=setInterval(()=>heroCarouselNav(1),5000);
+  el.addEventListener('mouseenter',()=>clearInterval(_hcTimer));
+  el.addEventListener('mouseleave',()=>{clearInterval(_hcTimer);_hcTimer=setInterval(()=>heroCarouselNav(1),5000);});
+}
+function _renderHC(){
+  const r=_hcReviews[_hcIdx];if(!r)return;
+  const text=r.text||r.rating_comment||'';
+  const name=r.name||(r.client_pseudo||'Anonyme');
+  const stars=r.stars||r.rating||0;
+  document.getElementById('hero-carousel-quote').textContent='"'+text.slice(0,130)+(text.length>130?'…':'')+'"';
+  document.getElementById('hero-carousel-name').textContent='— '+name;
+  document.getElementById('hero-carousel-stars').textContent='★'.repeat(Math.min(5,stars));
+  document.getElementById('hc-dots').innerHTML=_hcReviews.map((_,i)=>`<button class="hc-dot${i===_hcIdx?' active':''}" onclick="heroGoTo(${i})" aria-label="Avis ${i+1}"></button>`).join('');
+}
+function heroCarouselNav(dir){_hcIdx=(_hcIdx+dir+_hcReviews.length)%_hcReviews.length;_renderHC();}
+function heroGoTo(i){_hcIdx=i;_renderHC();}
+
 const AV_COLORS=['linear-gradient(135deg,#C4714A,#A8502E)','linear-gradient(135deg,#5B8DB8,#3A6A9A)','linear-gradient(135deg,#7A9A5A,#5A7A3A)','linear-gradient(135deg,#B87A5A,#8A5A3A)','linear-gradient(135deg,#8A6AB8,#6A4A9A)'];
 fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
   if(Array.isArray(data)&&data.length){
@@ -2684,6 +2742,7 @@ fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
         txt.textContent=avg.toFixed(1)+' · '+rated.length+' avis';
         btn.style.display='inline-flex';
       }
+      initHeroCarousel(rated);
     }
   } else renderReviews();
 }).catch(()=>renderReviews());
