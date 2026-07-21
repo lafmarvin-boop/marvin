@@ -281,6 +281,13 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
         <div class="chat-header-timer" id="chat-timer" style="display:none"></div>
         <button class="chat-header-end" onclick="endCurrentSession()">Terminer</button>
       </div>
+      <!-- Alerte autre session -->
+      <div id="other-session-alert" style="display:none;background:#fff3cd;border-bottom:1.5px solid #fbbf24;padding:.5rem .9rem;flex-shrink:0;align-items:center;gap:.6rem;font-size:.8rem;color:#92400e;">
+        <span style="font-size:1rem;flex-shrink:0">💬</span>
+        <span id="other-session-alert-text" style="flex:1;font-weight:500"></span>
+        <button onclick="switchToAlertSession()" style="background:#f59e0b;color:white;border:none;border-radius:50px;padding:.25rem .7rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">Voir →</button>
+        <button onclick="hideOtherSessionAlert()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#92400e;padding:0;line-height:1;flex-shrink:0;">✕</button>
+      </div>
       <div class="ext-bar" id="ext-bar">
         <div class="ext-bar-text" id="ext-bar-text">⏳ Prolongation demandée</div>
         <div class="ext-bar-btns">
@@ -758,7 +765,12 @@ function processPoll(d){
       const tmpIdx=sess.messages.findIndex(x=>x.id.startsWith('tmp')&&x.content===m.content&&x.sender_type===m.sender_type);
       if(tmpIdx!==-1) sess.messages.splice(tmpIdx,1);
       sess.messages.push(m);
-      if(s.id!==activeChatId||(document.getElementById('chat-view')&&!document.getElementById('chat-view').classList.contains('active'))) sess.unread++;
+      if(s.id!==activeChatId||(document.getElementById('chat-view')&&!document.getElementById('chat-view').classList.contains('active'))){
+          sess.unread++;
+          if(m.sender_type==='visitor'&&activeChatId&&s.id!==activeChatId&&document.getElementById('chat-view')?.classList.contains('active')){
+            showOtherSessionAlert(s.id,sess.name);
+          }
+        }
       // Start timer on first agent msg — use message timestamp (same reference as visitor side)
       if(!sess.timerStartedAt&&m.sender_type==='agent'){
         const ref=m.created_at?new Date(m.created_at).getTime():Date.now();
@@ -1153,7 +1165,7 @@ function renderStats(){
   const rating=statsData.avgRating;
   document.getElementById('st-rating').textContent=rating?rating.toFixed(1)+' / 5':'—';
   const stars=document.getElementById('st-rating-stars');
-  stars.innerHTML=rating?'★'.repeat(Math.round(rating))+'☆'.repeat(5-Math.round(rating)):'';
+  stars.innerHTML=rating?starsHtml(rating):'';
   const recEl=document.getElementById('recent-sessions');
   const recent=(statsData.sessions||[]).slice(0,15);
   recEl.innerHTML=recent.length?recent.map(s=>`
@@ -1421,6 +1433,28 @@ async function updatePushDiag(){
 
 // ── ESCAPE HTML ──
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function starsHtml(rating){const pct=Math.min(100,Math.max(0,rating/5*100)).toFixed(1)+'%';return '<span style="position:relative;display:inline-block;" aria-label="'+rating+' sur 5"><span style="color:#d1d5db">★★★★★</span><span style="position:absolute;left:0;top:0;overflow:hidden;width:'+pct+';color:#f59e0b;white-space:nowrap">★★★★★</span></span>';}
+
+// ── ALERTE AUTRE SESSION IN-CHAT ──
+let _alertSessionId=null,_alertTimer=null;
+function showOtherSessionAlert(sessionId,name){
+  _alertSessionId=sessionId;
+  clearTimeout(_alertTimer);
+  const el=document.getElementById('other-session-alert');
+  const txt=document.getElementById('other-session-alert-text');
+  if(!el||!txt) return;
+  txt.textContent=name+' a répondu dans un autre tchat';
+  el.style.display='flex';
+  _alertTimer=setTimeout(hideOtherSessionAlert,8000);
+}
+function hideOtherSessionAlert(){
+  const el=document.getElementById('other-session-alert');
+  if(el) el.style.display='none';
+  clearTimeout(_alertTimer);
+}
+function switchToAlertSession(){
+  if(_alertSessionId){ hideOtherSessionAlert(); openChatView(_alertSessionId); }
+}
 
 // ── PWA INSTALL PROMPT ──
 let deferredInstallPrompt = null;

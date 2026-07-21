@@ -2686,6 +2686,7 @@ async function submitReview(){
   document.getElementById('review-ok').style.display='block';setTimeout(()=>document.getElementById('review-ok').style.display='none',4000);
 }
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function starsHtml(rating){const pct=Math.min(100,Math.max(0,rating/5*100)).toFixed(1)+'%';return '<span style="position:relative;display:inline-block;" aria-label="'+rating+' sur 5"><span style="color:#d1d5db">★★★★★</span><span style="position:absolute;left:0;top:0;overflow:hidden;width:'+pct+';color:#f59e0b;white-space:nowrap">★★★★★</span></span>';}
 function renderReviews(apiReviews){
   const list=document.getElementById('reviews-list');
   if(!list)return;
@@ -2720,7 +2721,7 @@ function _renderHC(){
   const stars=r.stars||r.rating||0;
   document.getElementById('hero-carousel-quote').textContent='"'+text.slice(0,130)+(text.length>130?'…':'')+'"';
   document.getElementById('hero-carousel-name').textContent='— '+name;
-  document.getElementById('hero-carousel-stars').textContent='★'.repeat(Math.min(5,stars));
+  document.getElementById('hero-carousel-stars').innerHTML=starsHtml(stars);
   document.getElementById('hc-dots').innerHTML=_hcReviews.map((_,i)=>`<button class="hc-dot${i===_hcIdx?' active':''}" onclick="heroGoTo(${i})" aria-label="Avis ${i+1}"></button>`).join('');
 }
 function heroCarouselNav(dir){_hcIdx=(_hcIdx+dir+_hcReviews.length)%_hcReviews.length;_renderHC();}
@@ -2738,7 +2739,7 @@ fetch('/.netlify/functions/get-ratings').then(r=>r.json()).then(data=>{
       const stars=document.getElementById('hero-rating-stars');
       const txt=document.getElementById('hero-rating-text');
       if(btn&&stars&&txt){
-        stars.textContent='★'.repeat(Math.round(avg));
+        stars.innerHTML=starsHtml(avg);
         txt.textContent=avg.toFixed(1)+' · '+rated.length+' avis';
         btn.style.display='inline-flex';
       }
