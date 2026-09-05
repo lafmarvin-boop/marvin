@@ -88,7 +88,7 @@ exports.handler = async (event) => {
 
     // Aucun écoutant humain disponible + session payante → Max (assistant IA) prend le relais
     let aiAssigned = false;
-    if (!assignedAgent && (sessionType || 'paid') !== 'free' && process.env.ANTHROPIC_API_KEY) {
+    if (!assignedAgent && process.env.ANTHROPIC_API_KEY) {
       const now = new Date().toISOString();
       await sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
         agent_email: AI_EMAIL, status: 'active', assigned_at: now, response_deadline: null

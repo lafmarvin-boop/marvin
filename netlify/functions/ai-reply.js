@@ -91,7 +91,7 @@ exports.handler = async (event) => {
     const remainingMin = Math.max(0, Math.round(((sess.duration_sec || 1800) * 1000 - (Date.now() - startedAt.getTime())) / 60000));
     const context = [
       `Contexte de cette session : la personne s'appelle ${sess.pre_name || 'Visiteur'}${sess.pre_topic ? `, elle a indiqué comme sujet : « ${sess.pre_topic} »` : ''}.`,
-      `Formule : ${sess.session_label || 'session'}. Conversation commencée il y a ${elapsedMin} min. Temps restant approximatif : ${remainingMin} min.`,
+      `Formule : ${sess.session_label || 'session'}${(sess.session_label || '').includes('GRATUIT') ? ' (conversation offerte : aucune question de remboursement)' : ''}. Conversation commencée il y a ${elapsedMin} min. Temps restant approximatif : ${remainingMin} min.`,
       `Écoutant humain : pas encore connecté (les écoutants ont été alertés par email il y a ${elapsedMin} min).`,
       opening ? `Tu as ouvert la conversation par : « ${opening} »` : ''
     ].filter(Boolean).join('\n');
