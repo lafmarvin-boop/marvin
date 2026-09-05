@@ -23,9 +23,13 @@ exports.handler = async (event) => {
   if (!SB_URL || !SB_KEY) return { statusCode: 503, headers: CORS, body: JSON.stringify({ error: 'Service non configuré' }) };
 
   try {
-    const res = await fetch(`${SB_URL}/rest/v1/chat_sessions?agent_email=eq.${encodeURIComponent(AI_EMAIL)}&status=eq.active&select=id,assigned_at,duration_sec&limit=50`, { headers: H() });
+    const res = await fetch(`${SB_URL}/rest/v1/chat_sessions?agent_email=eq.${encodeURIComponent(AI_EMAIL)}&status=eq.active&select=id,assigned_at,duration_sec,response_deadline&limit=50`, { headers: H() });
     const rows = await res.json();
     const now = Date.now();
+    // Verrou de génération (response_deadline) oublié depuis > 2 min (fonction interrompue) → le lever
+    await Promise.all((Array.isArray(rows) ? rows : []).filter(s => s.response_deadline && new Date(s.response_deadline).getTime() < now - 120000).map(s =>
+      fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(s.id)}`, { method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ response_deadline: null }) }).catch(() => {})
+    ));
     const expired = (Array.isArray(rows) ? rows : []).filter(s => {
       const start = s.assigned_at ? new Date(s.assigned_at).getTime() : 0;
       return start && now > start + (s.duration_sec || 1800) * 1000 + GRACE_MS;

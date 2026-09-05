@@ -35,13 +35,29 @@ exports.handler = async (event) => {
 
       const sinceIso = since ? new Date(since).toISOString() : new Date(0).toISOString();
 
-      const [sessions, messages] = await Promise.all([
-        sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email,assigned_at,extension_pending,transfer_session_id,duration_sec&limit=1`),
-        sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=50`)
-      ]);
-
+      const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email,assigned_at,extension_pending,transfer_session_id,duration_sec,response_deadline&limit=1`);
       if (!sessions.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Session introuvable' }) };
       const s = sessions[0];
+
+      // Filet de sécurité Max : si le dernier message est du visiteur depuis plus de 4 s et qu'aucune
+      // réponse n'est en cours (pas de verrou), on génère la réponse ici, avant de renvoyer les messages.
+      const lockFree = !s.response_deadline || new Date(s.response_deadline).getTime() < Date.now();
+      if (s.status === 'active' && s.agent_email === AI_EMAIL && lockFree) {
+        const lastRows = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,sender_type,created_at&order=created_at.desc&limit=1`);
+        const last = lastRows[0];
+        if (last && last.sender_type === 'visitor' && Date.now() - new Date(last.created_at).getTime() > 4000) {
+          const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
+          try {
+            await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sessionId, messageId: last.id }),
+              signal: AbortSignal.timeout(8500)
+            });
+          } catch (e) { console.error('chat-poll ai fallback:', e.message); }
+        }
+      }
+
+      const messages = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=50`);
 
       let agentPseudo = null;
       if (s.agent_email === AI_EMAIL) agentPseudo = 'Max'; // l'interface ajoute « vous écoute »
@@ -92,7 +108,7 @@ exports.handler = async (event) => {
       // --- Réassignation : si un agent n'a pas envoyé de premier message dans les 2 min ---
       const nowIso = new Date().toISOString();
       const timedOut = await sbGet(
-        `chat_sessions?status=eq.active&response_deadline=lt.${encodeURIComponent(nowIso)}&select=id,agent_email&limit=10`
+        `chat_sessions?status=eq.active&response_deadline=lt.${encodeURIComponent(nowIso)}&agent_email=neq.${encodeURIComponent(AI_EMAIL)}&select=id,agent_email&limit=10`
       );
       for (const ts of timedOut) {
         // Chercher un agent disponible différent de celui qui a raté la session

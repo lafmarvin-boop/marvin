@@ -99,6 +99,25 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'superseded' }) };
     }
 
+    // Verrou anti-doublon (chat-send et chat-poll peuvent déclencher en même temps) :
+    // response_deadline est toujours null sur une session tenue par Max ; on le pose le temps de générer.
+    const lockUntil = new Date(Date.now() + 25000).toISOString();
+    const nowIso = new Date().toISOString();
+    const lockRes = await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&agent_email=eq.${encodeURIComponent(AI_EMAIL)}&or=(response_deadline.is.null,response_deadline.lt.${encodeURIComponent(nowIso)})`, {
+      method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ response_deadline: lockUntil })
+    });
+    const locked = await lockRes.json().catch(() => []);
+    if (!Array.isArray(locked) || !locked.length) {
+      console.log('ai-reply skip locked', sessionId);
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'locked' }) };
+    }
+    const unlock = () => fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&agent_email=eq.${encodeURIComponent(AI_EMAIL)}`, {
+      method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ response_deadline: null })
+    }).catch(() => {});
+    try {
+
     // Historique → format Messages API (première entrée = visiteur ; messages système ignorés)
     const firstVisitor = msgs.findIndex(m => m.sender_type === 'visitor');
     const opening = msgs.slice(0, firstVisitor).filter(m => m.sender_type === 'agent').map(m => m.content).join('\n');
@@ -148,6 +167,7 @@ exports.handler = async (event) => {
     if (!ins.ok) throw new Error(`Insertion message ${ins.status}`);
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, model: response.model, usage: response.usage }) };
+    } finally { await unlock(); }
   } catch (e) {
     console.error('ai-reply:', e.message);
     // Prévenir l'admin : une réponse de Max a échoué (clé, modèle, délai…)
