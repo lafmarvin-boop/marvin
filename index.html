@@ -1519,6 +1519,10 @@
           <div class="faq-q">Puis-je offrir une session à quelqu'un ?<span class="faq-arrow">›</span></div>
           <div class="faq-a">Pas encore directement via le site. Si vous souhaitez offrir une session, contactez-nous à contact.parlons.ecoute@gmail.com et nous trouverons une solution.</div>
         </div>
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+          <div class="faq-q">Qui est Claude ?<span class="faq-arrow">›</span></div>
+          <div class="faq-a">Claude est notre assistant d'écoute basé sur une intelligence artificielle. Il prend le relais uniquement quand aucun écoutant humain n'est en ligne, sur les sessions payantes et le pass mensuel, et vous en êtes informé(e) dès le début de la conversation. Il pratique une écoute attentive et sans jugement, mais ce n'est ni un psychologue ni un médecin : en cas de danger, il vous oriente vers les numéros d'urgence (3114, 15, 112). Dès qu'un écoutant humain se connecte, il reprend automatiquement votre conversation, avec l'historique.</div>
+        </div>
       </div>
       <div style="text-align:center;margin-top:1.2rem;">
         <button id="faq-toggle-btn" onclick="(function(){var e=document.getElementById('faq-extra'),b=document.getElementById('faq-toggle-btn');var open=e.style.display!=='none'&&e.style.display!=='';e.style.display=open?'none':'block';b.textContent=open?'Voir toutes les questions (45 de plus) ↓':'Masquer ↑';})()" style="background:none;border:1.5px solid var(--terracotta);color:var(--terracotta);padding:.65rem 1.6rem;border-radius:50px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s,color .2s;" onmouseover="this.style.background='var(--terracotta)';this.style.color='white'" onmouseout="this.style.background='none';this.style.color='var(--terracotta)'">Voir toutes les questions (45 de plus) ↓</button>
@@ -1599,7 +1603,7 @@
     <div id="step-1">
       <h3>Commencer une discussion</h3>
       <p class="modal-desc">Choisissez votre durée et connectez-vous à un écoutant disponible.</p>
-      <div class="offline-msg" id="offline-msg"><strong>😔 Écoutants indisponibles</strong>Tous nos écoutants sont occupés. Revenez bientôt ou activez l'alerte disponibilité.<br><small>Aucun paiement ne sera effectué.</small></div>
+      <div class="offline-msg" id="offline-msg"><strong>🤖 Aucun écoutant humain en ligne</strong>Claude, notre assistant d'écoute basé sur une intelligence artificielle, prend le relais immédiatement sur les sessions payantes et le pass mensuel. Si un écoutant se connecte pendant votre session, il reprend automatiquement la conversation.<br><small>La première conversation offerte nécessite un écoutant humain : vous serez placé(e) en attente. Vous pouvez aussi activer l'alerte disponibilité.</small></div>
       <div class="form-group"><label>Votre prénom (ou pseudonyme)</label><input type="text" id="user-name" placeholder="Comment vous appeler ?"/></div>
       <div class="form-group"><label>Choisissez votre formule</label>
         <select id="session-select" onchange="updatePrice()">
@@ -1863,14 +1867,14 @@ function updateAvailUI(){
     if(tagText)tagText.textContent=' Des écoutants disponibles maintenant';
     if(dot){dot.style.background='';dot.style.animation='pulse 2s infinite';dot.style.boxShadow='';}
   } else {
-    if(tag)tag.className='hero-tag offline';
-    if(tagText)tagText.textContent=' Tous nos écoutants sont occupés — Paiement suspendu';
-    if(dot){dot.style.background='#e74c3c';dot.style.animation='none';dot.style.boxShadow='none';}
+    // Aucun écoutant humain : Claude (assistant IA) prend le relais sur les sessions payantes — le paiement reste possible
+    if(tag)tag.className='hero-tag';
+    if(tagText)tagText.textContent=' Aucun écoutant humain en ligne — Claude, notre assistant IA, vous répond immédiatement';
+    if(dot){dot.style.background='#2563eb';dot.style.animation='pulse 2s infinite';dot.style.boxShadow='';}
   }
-  // Mettre à jour le modal si déjà ouvert
-  const offMsg=document.getElementById('offline-msg'),btn=document.querySelector('#step-1 .btn-primary');
+  // Mettre à jour le modal si déjà ouvert (le bouton reste actif : Claude prend le relais)
+  const offMsg=document.getElementById('offline-msg');
   if(offMsg){offMsg.style.display=isOnline?'none':'block';}
-  if(btn){btn.disabled=!isOnline;btn.style.opacity=isOnline?'1':'.4';}
   // Bouton "Demander un agent" : visible seulement quand aucun agent en ligne
   const liDemander=document.getElementById('li-demander');
   if(liDemander) liDemander.style.display=isOnline?'none':'list-item';
@@ -1980,7 +1984,6 @@ function updatePrice(){
 }
 
 function goToPayment(){
-  if(!isOnline)return;
   const name=document.getElementById('user-name').value.trim();
   if(!name){document.getElementById('user-name').focus();return;}
 
@@ -2402,8 +2405,8 @@ async function handlePayment(){
 function openModal(amount){
   if(cardElement)try{cardElement.unmount();}catch(e){}
   const offMsg=document.getElementById('offline-msg'),btn=document.querySelector('#step-1 .btn-primary');
-  if(!isOnline){offMsg.style.display='block';if(btn){btn.disabled=true;btn.style.opacity='.4';}}
-  else{offMsg.style.display='none';if(btn){btn.disabled=false;btn.style.opacity='1';}}
+  if(offMsg)offMsg.style.display=isOnline?'none':'block';
+  if(btn){btn.disabled=false;btn.style.opacity='1';}
   if(amount!==undefined){const s=document.getElementById('session-select');for(let o of s.options){if(o.value==amount){o.selected=true;break;}}updatePrice();}
   document.getElementById('step-1').style.display='block';document.getElementById('step-2').style.display='none';
   document.getElementById('payment-success').style.display='none';document.getElementById('sub-success').style.display='none';document.getElementById('payment-form').style.display='block';
@@ -2788,7 +2791,7 @@ function closeArticle(){document.getElementById('article-modal').classList.remov
     <p>Parlons intervient comme intermédiaire entre les Clients et les Écoutants (prestataires indépendants auto-entrepreneurs). Parlons agit en qualité de <strong>mandataire d'encaissement</strong> et n'est pas partie au contrat de service conclu entre le Client et l'Écoutant.</p>
 
     <h2><span class="cgv-art">Art. 2</span> Accès au service</h2>
-    <p>Aucun compte obligatoire. Un pseudonyme suffit. Le service est réservé aux personnes majeures (18 ans et plus). Quand le statut est « indisponible », le paiement est désactivé.</p>
+    <p>Aucun compte obligatoire. Un pseudonyme suffit. Le service est réservé aux personnes majeures (18 ans et plus). Quand aucun écoutant humain n'est en ligne, les sessions payantes sont prises en charge par <strong>Claude</strong>, assistant d'écoute basé sur une intelligence artificielle ; l'utilisateur en est informé au début de la conversation, et un écoutant humain reprend automatiquement la session dès qu'il se connecte. Claude n'est ni un professionnel de santé ni un substitut à un suivi médical.</p>
 
     <h2><span class="cgv-art">Art. 3</span> Tarification et paiement</h2>
     <h3>Sessions individuelles</h3>
@@ -3274,10 +3277,12 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
     document.getElementById('parlons-chat-btn').style.display='flex';
     showChatPanel(true);
     setChatState(d.agentAssigned?'active':'waiting');
-    appendChatMsg({sender_type:'system',welcome:true,content:d.agentAssigned
+    appendChatMsg({sender_type:'system',welcome:true,content:d.ai
+      ?'Aucun écoutant humain n\'est disponible : Claude, notre assistant d\'écoute (intelligence artificielle), prend le relais dès maintenant. Un écoutant reprendra automatiquement la conversation s\'il se connecte.'
+      :d.agentAssigned
       ?'Votre demande est bien enregistrée. Un écoutant vous rejoindra dans les 2 prochaines minutes — restez bien en ligne !'
       :'Votre demande est bien enregistrée. Un écoutant vous rejoindra dès que possible — restez bien en ligne !'});
-    if(d.agentAssigned) agentConnected(null,null);
+    if(d.agentAssigned) agentConnected(d.ai?'Claude · assistant IA':null,null);
     startChatPolling();
   }catch(e){console.error('startChatSession:',e);const sub=document.getElementById('pcp-subtitle');if(sub)sub.textContent='Erreur de connexion. Veuillez réessayer.';}
 }

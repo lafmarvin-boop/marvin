@@ -164,7 +164,9 @@ exports.handler = async (event) => {
 
     // Stats par agent avec notes et avis
     const byAgent = {};
+    const ai = { sessions: 0, revenue: 0 };
     sessions.forEach(s => {
+      if ((s.agent_email || '').toLowerCase() === 'claude@parlonsecoute.fr') { ai.sessions++; ai.revenue += s.montant || 0; return; }
       if (!s.agent_name) return;
       if (!byAgent[s.agent_name]) byAgent[s.agent_name] = {
         name: s.agent_name, email: s.agent_email || null,
@@ -261,6 +263,7 @@ exports.handler = async (event) => {
           recent: sessions.slice(0, 30),
           list: sessions,
           byAgent,
+          ai,
           unassigned
         },
         suggestions: suggestions.map(s => ({ id: s.id, content: s.content, created_at: s.created_at })),

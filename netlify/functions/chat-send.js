@@ -1,5 +1,6 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+const AI_EMAIL = 'claude@parlonsecoute.fr'; // Claude, assistant d'écoute IA (ai-reply.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -52,11 +53,13 @@ exports.handler = async (event) => {
     }
     // Visiteur : le sessionId (UUID) est le secret suffisant
 
-    await fetch(`${SB_URL}/rest/v1/chat_messages`, {
+    const insRes = await fetch(`${SB_URL}/rest/v1/chat_messages`, {
       method: 'POST',
-      headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
       body: JSON.stringify({ session_id: sessionId, content: content.trim(), sender_type: senderType })
     });
+    let inserted = null;
+    try { const d = await insRes.json(); inserted = Array.isArray(d) ? d[0] : d; } catch {}
 
     // Premier message agent : effacer le délai de réponse (fire-and-forget)
     if (senderType === 'agent') {
@@ -67,8 +70,18 @@ exports.handler = async (event) => {
       }).catch(() => {});
     }
 
+    // Message visiteur sur une session tenue par Claude (IA) : générer la réponse (fire-and-forget)
+    if (senderType === 'visitor' && sessions[0].agent_email === AI_EMAIL) {
+      const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
+      fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, messageId: inserted?.id || null })
+      }).catch(() => {});
+    }
+
     // Message visiteur : notifier l'agent assigné par push (fire-and-forget)
-    if (senderType === 'visitor' && sessions[0].agent_email) {
+    if (senderType === 'visitor' && sessions[0].agent_email && sessions[0].agent_email !== AI_EMAIL) {
       const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
       fetch(`${siteUrl}/.netlify/functions/push-notify`, {
         method: 'POST',

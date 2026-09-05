@@ -6,6 +6,7 @@ const ADMIN_PWD   = process.env.ADMIN_PASSWORD;
 const RESEND_KEY  = process.env.RESEND_API_KEY;
 const FROM_EMAIL  = process.env.FROM_EMAIL || 'Parlons <noreply@parlonsecoute.fr>';
 const SITE_URL    = process.env.SITE_URL || 'https://parlonsecoute.fr';
+const AI_EMAIL    = 'claude@parlonsecoute.fr'; // Claude, assistant d'écoute IA (ai-reply.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -120,6 +121,32 @@ exports.handler = async (event) => {
       // Notifier les visiteurs qui avaient demandé un écoutant (fire-and-forget)
       notifyPendingRequests().catch(() => {});
 
+      // Reprendre les sessions tenues par Claude (assistant IA) : l'humain prend le relais (jusqu'à 3)
+      const aiSessions = await sbGet(`chat_sessions?agent_email=eq.${encodeURIComponent(AI_EMAIL)}&status=eq.active&select=id,pre_name&order=assigned_at.asc&limit=3`);
+      let takenOver = 0;
+      if (aiSessions.length) {
+        const profiles = await sbGet(`agent_profiles?email=eq.${encodeURIComponent(agentEmail)}&select=pseudo,prenom&limit=1`);
+        const pseudo = profiles[0]?.pseudo || profiles[0]?.prenom || 'Un écoutant';
+        for (const s of aiSessions) {
+          // Mise à jour conditionnelle : la session doit encore être tenue par l'IA
+          const pr = await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(s.id)}&agent_email=eq.${encodeURIComponent(AI_EMAIL)}&status=eq.active`, {
+            method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+            body: JSON.stringify({ agent_email: agentEmail, assigned_at: now, response_deadline: null })
+          });
+          const patched = await pr.json().catch(() => []);
+          if (!Array.isArray(patched) || !patched.length) continue;
+          takenOver++;
+          await fetch(`${SB_URL}/rest/v1/chat_messages`, {
+            method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify({ session_id: s.id, content: `${pseudo}, écoutant humain, vient de se connecter et prend le relais de Claude. Votre conversation reste visible pour lui.`, sender_type: 'system' })
+          });
+        }
+        if (takenOver) {
+          await sbPatch(`agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}`, { current_session_id: aiSessions[0].id, status: 'busy' });
+          if (takenOver >= 3) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, token, assignedSession: aiSessions[0].id, takenOverFromAI: takenOver }) };
+        }
+      }
+
       // Vérifier si des visiteurs attendent et en assigner un
       const waiting = await sbGet(`chat_sessions?status=eq.waiting&select=id&order=created_at.asc&limit=1`);
       if (waiting.length) {
@@ -138,10 +165,10 @@ exports.handler = async (event) => {
             body: JSON.stringify({ session_id: sessionId, content: 'Un écoutant vous a rejoint.', sender_type: 'system' })
           })
         ]);
-        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, token, assignedSession: sessionId }) };
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, token, assignedSession: sessionId, takenOverFromAI: takenOver }) };
       }
 
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, token }) };
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, token, ...(takenOver ? { assignedSession: aiSessions[0].id, takenOverFromAI: takenOver } : {}) }) };
     }
 
     // ── REPRENDRE SESSION EXISTANTE (depuis autre appareil/onglet) ──

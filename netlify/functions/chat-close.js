@@ -69,7 +69,8 @@ exports.handler = async (event) => {
       if (chatSession.session_type !== 'test') {
         const profiles = await sbGet(`agent_profiles?email=eq.${encodeURIComponent(agentMail)}&select=prenom,nom&limit=1`);
         const profile = profiles[0];
-        const agentName = profile && profile.prenom ? `${profile.prenom} ${profile.nom || ''}`.trim() : agentMail.split('@')[0];
+        const agentName = agentMail === 'claude@parlonsecoute.fr' ? 'Claude (IA)'
+          : profile && profile.prenom ? `${profile.prenom} ${profile.nom || ''}`.trim() : agentMail.split('@')[0];
 
         const sessionUpdate = {
           statut: 'paid',

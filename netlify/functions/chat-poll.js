@@ -1,5 +1,6 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+const AI_EMAIL = 'claude@parlonsecoute.fr'; // Claude, assistant d'écoute IA (ai-reply.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -43,7 +44,8 @@ exports.handler = async (event) => {
       const s = sessions[0];
 
       let agentPseudo = null;
-      if (s.agent_email) {
+      if (s.agent_email === AI_EMAIL) agentPseudo = 'Claude · assistant IA';
+      else if (s.agent_email) {
         const profiles = await sbGet(`agent_profiles?email=eq.${encodeURIComponent(s.agent_email)}&select=pseudo,prenom&limit=1`);
         agentPseudo = profiles[0]?.pseudo || profiles[0]?.prenom || null;
       }
@@ -54,6 +56,7 @@ exports.handler = async (event) => {
           status: s.status,
           agentConnected: s.status === 'active' && !!s.agent_email,
           agentPseudo,
+          agentIsAI: s.agent_email === AI_EMAIL,
           assignedAt: s.assigned_at || null,
           extensionPending: s.extension_pending || null,
           transferSessionId: s.transfer_session_id || null,
@@ -161,10 +164,13 @@ exports.handler = async (event) => {
         ));
       }
 
-      // Pour chaque session active, récupérer les messages depuis sinceIso
+      // Pour chaque session active, récupérer les messages depuis sinceIso.
+      // Session attribuée depuis le dernier poll (nouvelle, transfert, relais de Claude) → tout l'historique,
+      // pour que l'écoutant voie la conversation déjà engagée.
       const sessions = await Promise.all(activeSessions.map(async (s) => {
+        const newlyAssigned = !since || (s.assigned_at && new Date(s.assigned_at) >= new Date(sinceIso));
         const msgs = await sbGet(
-          `chat_messages?session_id=eq.${encodeURIComponent(s.id)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=100`
+          `chat_messages?session_id=eq.${encodeURIComponent(s.id)}${newlyAssigned ? '' : `&created_at=gt.${encodeURIComponent(sinceIso)}`}&select=id,content,sender_type,created_at&order=created_at.asc&limit=${newlyAssigned ? 300 : 100}`
         );
         return { ...s, messages: msgs };
       }));

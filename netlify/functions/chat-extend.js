@@ -1,5 +1,6 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+const AI_EMAIL = 'claude@parlonsecoute.fr'; // Claude, assistant d'écoute IA (ai-reply.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -30,7 +31,7 @@ exports.handler = async (event) => {
 
   try {
     const sessions = await sbGet(
-      `chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email,pre_name&limit=1`
+      `chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email,pre_name,duration_sec&limit=1`
     );
     if (!sessions.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Session introuvable' }) };
     const sess = sessions[0];
@@ -42,6 +43,21 @@ exports.handler = async (event) => {
     const remaining = parseInt(remainingSec) || 0;
     const totalForNew = addSec + remaining;
     const mins = Math.floor(addSec / 60);
+
+    // Session tenue par Claude (IA) : la prolongation est acceptée immédiatement
+    if (sess.agent_email === AI_EMAIL) {
+      await Promise.all([
+        fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+          method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ duration_sec: (sess.duration_sec || 1800) + addSec, extension_pending: null })
+        }),
+        fetch(`${SB_URL}/rest/v1/chat_messages`, {
+          method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ session_id: sessionId, content: `⏱ Session prolongée de ${mins} min. Bonne continuation !`, sender_type: 'system' })
+        })
+      ]);
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, pending: false, accepted: true }) };
+    }
 
     // Tenter de stocker dans extension_pending JSONB — best-effort, ne bloque pas
     try {

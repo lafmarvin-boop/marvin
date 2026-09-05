@@ -1,5 +1,6 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+const AI_EMAIL = 'claude@parlonsecoute.fr'; // identité de Claude, l'assistant d'écoute IA (voir ai-reply.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -83,6 +84,22 @@ exports.handler = async (event) => {
       }
     }
 
+    // Aucun écoutant humain disponible + session payante → Claude (assistant IA) prend le relais
+    let aiAssigned = false;
+    if (!assignedAgent && (sessionType || 'paid') !== 'free' && process.env.ANTHROPIC_API_KEY) {
+      const now = new Date().toISOString();
+      await sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+        agent_email: AI_EMAIL, status: 'active', assigned_at: now, response_deadline: null
+      });
+      const post = (content, sender_type) => fetch(`${SB_URL}/rest/v1/chat_messages`, {
+        method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ session_id: sessionId, content, sender_type })
+      });
+      await post('Aucun écoutant n\'est disponible en ce moment. Claude, l\'assistant d\'écoute de Parlons (une intelligence artificielle), prend le relais dès maintenant. Si un écoutant humain se connecte pendant votre session, il reprendra automatiquement la conversation.', 'system');
+      await post(`Bonjour ${name}, je suis Claude, l'assistant d'écoute de Parlons. Je suis là pour vous écouter, sans jugement et en toute confidentialité. Qu'est-ce qui vous amène aujourd'hui ?`, 'agent');
+      aiAssigned = true;
+    }
+
     if (assignedAgent) {
       const now = new Date().toISOString();
       const [profiles] = await Promise.all([
@@ -101,19 +118,21 @@ exports.handler = async (event) => {
       agentPseudo = profiles[0]?.pseudo || profiles[0]?.prenom || null;
     }
 
-    // Message système initial
-    const greeting = agentPseudo
-      ? `${agentPseudo} vous a rejoint. La session peut commencer.`
-      : 'Un écoutant vous a rejoint. La session peut commencer.';
-    await fetch(`${SB_URL}/rest/v1/chat_messages`, {
-      method: 'POST',
-      headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        session_id: sessionId,
-        content: assignedAgent ? greeting : 'Votre demande est bien enregistrée. Un écoutant vous rejoindra dès que possible — restez bien en ligne !',
-        sender_type: 'system'
-      })
-    });
+    // Message système initial (le cas IA a déjà inséré les siens)
+    if (!aiAssigned) {
+      const greeting = agentPseudo
+        ? `${agentPseudo} vous a rejoint. La session peut commencer.`
+        : 'Un écoutant vous a rejoint. La session peut commencer.';
+      await fetch(`${SB_URL}/rest/v1/chat_messages`, {
+        method: 'POST',
+        headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          content: assignedAgent ? greeting : 'Votre demande est bien enregistrée. Un écoutant vous rejoindra dès que possible — restez bien en ligne !',
+          sender_type: 'system'
+        })
+      });
+    }
 
     // Push notification : à l'agent assigné, ou à tous si personne n'était disponible
     const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
@@ -121,8 +140,8 @@ exports.handler = async (event) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: assignedAgent ? '💬 Nouveau tchat assigné' : '💬 Nouveau tchat en attente',
-        message: `${name} attend votre aide`,
+        title: assignedAgent ? '💬 Nouveau tchat assigné' : aiAssigned ? '🤖 Tchat pris en charge par Claude' : '💬 Nouveau tchat en attente',
+        message: aiAssigned ? `${name} parle avec Claude — connectez-vous pour prendre le relais` : `${name} attend votre aide`,
         url: '/agent-app.html',
         ...(assignedAgent ? { agentEmail: assignedAgent } : {})
       })
@@ -130,7 +149,7 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200, headers: CORS,
-      body: JSON.stringify({ sessionId, status: assignedAgent ? 'active' : 'waiting', agentAssigned: !!assignedAgent })
+      body: JSON.stringify({ sessionId, status: (assignedAgent || aiAssigned) ? 'active' : 'waiting', agentAssigned: !!assignedAgent || aiAssigned, ai: aiAssigned })
     };
   } catch (e) {
     console.error('chat-start:', e.message);

@@ -4,6 +4,7 @@
   "private": true,
   "description": "Backend Netlify Functions pour Parlons",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
     "pdf-lib": "^1.17.1",
     "stripe": "^15.0.0",
     "web-push": "^3.6.7"
