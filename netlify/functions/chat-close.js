@@ -115,8 +115,9 @@ exports.handler = async (event) => {
         try {
           const Stripe = require('stripe');
           const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-          const intent = await stripe.paymentIntents.retrieve(pi);
-          const already = (intent.charges?.data?.[0]?.refunded) || intent.status === 'canceled';
+          const intent = await stripe.paymentIntents.retrieve(pi, { expand: ['latest_charge'] });
+          const charge = intent.latest_charge && typeof intent.latest_charge === 'object' ? intent.latest_charge : null;
+          const already = (charge && (charge.refunded || charge.amount_refunded >= charge.amount)) || intent.status === 'canceled';
           if (!already && intent.status === 'succeeded') {
             await stripe.refunds.create({ payment_intent: pi, reason: 'requested_by_customer', metadata: { motif: 'aucun_ecoutant', session_id: sessionId } });
           }
