@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{TITLE}} — Parlons</title>
+  <meta name="description" content="{{DESCRIPTION}}"/>
+  <meta name="robots" content="index, follow"/>
+  <link rel="canonical" href="https://parlonsecoute.fr/blog/{{SLUG}}.html"/>
+  <meta property="og:type" content="article"/>
+  <meta property="og:url" content="https://parlonsecoute.fr/blog/{{SLUG}}.html"/>
+  <meta property="og:title" content="{{TITLE}}"/>
+  <meta property="og:description" content="{{DESCRIPTION}}"/>
+  <meta property="og:locale" content="fr_FR"/>
+  <meta property="og:site_name" content="Parlons"/>
+  <meta property="article:published_time" content="{{DATE_ISO}}"/>
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:title" content="{{TITLE}}"/>
+  <meta name="twitter:description" content="{{DESCRIPTION}}"/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--terracotta:#C4714A;--dark:#2D1A0E;--sand:#E8DDD2;--warm:#F0E8DE;--mid:#9A8070;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:#faf8f5;color:var(--dark);}
+    a{color:var(--terracotta);text-decoration:none;}
+    a:hover{text-decoration:underline;}
+    nav{background:white;border-bottom:1px solid var(--sand);padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+    .logo{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--dark);}
+    .logo span{color:var(--terracotta);}
+    .nav-links{display:flex;gap:1.5rem;align-items:center;}
+    .nav-links a{font-size:.85rem;color:var(--mid);}
+    .btn{background:var(--terracotta);color:white!important;padding:.5rem 1.2rem;border-radius:50px;font-weight:600;font-size:.83rem;}
+    .btn:hover{text-decoration:none;opacity:.9;}
+    .hero{background:var(--dark);padding:4rem 2rem;text-align:center;}
+    .hero h1{font-family:'Playfair Display',serif;font-size:2.2rem;color:white;margin-bottom:.8rem;}
+    .hero p{color:var(--mid);font-size:.95rem;max-width:500px;margin:0 auto;}
+    .container{max-width:860px;margin:0 auto;padding:3rem 1.5rem;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.5rem;}
+    .card{background:white;border-radius:16px;overflow:hidden;border:1px solid var(--sand);transition:box-shadow .2s,transform .2s;}
+    .card:hover{box-shadow:0 8px 32px rgba(196,113,74,.12);transform:translateY(-2px);}
+    .card-img{background:var(--warm);height:160px;display:flex;align-items:center;justify-content:center;font-size:3rem;}
+    .card-body{padding:1.3rem;}
+    .card-tag{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--terracotta);margin-bottom:.5rem;}
+    .card h2{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--dark);margin-bottom:.6rem;line-height:1.4;}
+    .card p{font-size:.82rem;color:var(--mid);line-height:1.6;margin-bottom:1rem;}
+    .card-meta{font-size:.72rem;color:#C0B0A0;}
+    .article{max-width:680px;margin:0 auto;}
+    .article-header{text-align:center;padding:3rem 1.5rem 2rem;}
+    .article-header h1{font-family:'Playfair Display',serif;font-size:2rem;color:var(--dark);line-height:1.3;margin-bottom:1rem;}
+    .article-header .meta{font-size:.8rem;color:var(--mid);}
+    .article-body{padding:0 1.5rem 4rem;line-height:1.85;font-size:.95rem;color:#3D2A1E;}
+    .article-body h2{font-family:'Playfair Display',serif;font-size:1.3rem;margin:2rem 0 .8rem;color:var(--dark);}
+    .article-body p{margin-bottom:1.1rem;}
+    .article-body ul{padding-left:1.5rem;margin-bottom:1.1rem;}
+    .article-body ul li{margin-bottom:.4rem;}
+    .article-body .highlight{background:var(--warm);border-left:3px solid var(--terracotta);padding:1rem 1.2rem;border-radius:0 10px 10px 0;margin:1.5rem 0;font-style:italic;}
+    .back-btn{display:inline-flex;align-items:center;gap:.4rem;color:var(--mid);font-size:.83rem;margin-bottom:1.5rem;}
+    footer{background:var(--dark);padding:2rem;text-align:center;}
+    footer p{color:var(--mid);font-size:.78rem;}
+    footer a{color:var(--mid);}
+    .cta-box{background:var(--terracotta);border-radius:16px;padding:2rem;text-align:center;margin:3rem 0;}
+    .cta-box h3{color:white;font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:.6rem;}
+    .cta-box p{color:rgba(255,255,255,.8);font-size:.85rem;margin-bottom:1.2rem;}
+    .cta-box a{background:white;color:var(--terracotta)!important;padding:.7rem 1.8rem;border-radius:50px;font-weight:700;display:inline-block;}
+    @media(max-width:600px){.hero h1{font-size:1.6rem;}.nav-links a:not(.btn){display:none;}}
+  </style>
+  <style>
+    .urgence{background:#7a1f1f;color:#fff;font-size:.78rem;text-align:center;padding:.45rem 1rem;}
+    .urgence strong{color:#ffd6d6;}
+    .disclaimer{background:#1a1208;color:#c9b8a8;font-size:.74rem;text-align:center;padding:.5rem 1rem;line-height:1.5;}
+    .disclaimer a{color:#e8a87c;}
+    .article-body h3{font-family:"Playfair Display",serif;font-size:1.1rem;margin:1.5rem 0 .6rem;color:var(--dark);}
+    .article-body ol{padding-left:1.5rem;margin-bottom:1.1rem;}
+    .article-body ol li{margin-bottom:.4rem;}
+    .related{max-width:680px;margin:0 auto;padding:0 1.5rem 3rem;}
+    .related h2{font-family:"Playfair Display",serif;font-size:1.2rem;margin-bottom:1rem;}
+    .related a{display:block;padding:.6rem 0;border-top:1px solid var(--sand);color:var(--dark);font-size:.9rem;}
+    .related a:hover{color:var(--terracotta);text-decoration:none;}
+    .breadcrumb{max-width:680px;margin:0 auto;padding:1.2rem 1.5rem 0;font-size:.78rem;color:var(--mid);}
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": {{TITLE_JSON}},
+    "description": {{DESCRIPTION_JSON}},
+    "datePublished": "{{DATE_ISO}}",
+    "dateModified": "{{DATE_ISO}}",
+    "inLanguage": "fr-FR",
+    "mainEntityOfPage": "https://parlonsecoute.fr/blog/{{SLUG}}.html",
+    "author": {"@type": "Organization", "name": "Parlons", "url": "https://parlonsecoute.fr"},
+    "publisher": {"@type": "Organization", "name": "Parlons", "url": "https://parlonsecoute.fr"}
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://parlonsecoute.fr/"},
+      {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://parlonsecoute.fr/blog.html"},
+      {"@type": "ListItem", "position": 3, "name": {{TITLE_JSON}}, "item": "https://parlonsecoute.fr/blog/{{SLUG}}.html"}
+    ]
+  }
+  </script>
+</head>
+<body>
+<div class="urgence">🆘 <strong>En cas d'urgence :</strong> 3114 (suicide et détresse, 24h/24) · 15 (SAMU) · 112 (urgences) · 3919 (violences)</div>
+<nav>
+  <a href="/" class="logo">Par<span>lons</span></a>
+  <div class="nav-links">
+    <a href="/blog.html">Blog</a>
+    <a href="/#faq">FAQ</a>
+    <a href="/" class="btn">Parler maintenant →</a>
+  </div>
+</nav>
+
+<div class="breadcrumb"><a href="/">Accueil</a> › <a href="/blog.html">Blog</a> › {{TAG}}</div>
+<article>
+  <div class="article-header">
+    <div style="font-size:3rem;margin-bottom:.8rem">{{EMOJI}}</div>
+    <div class="card-tag">{{TAG}}</div>
+    <h1>{{TITLE}}</h1>
+    <div class="meta">Parlons · Blog bien-être · {{DATE_FR}} · {{READ_MIN}} min de lecture</div>
+  </div>
+  <div class="article container article-body">
+{{BODY}}
+    <div class="cta-box">
+      <h3>Besoin d'en parler maintenant ?</h3>
+      <p>Un écoutant bienveillant vous répond en direct, en toute confidentialité. Votre première conversation de 20 minutes est offerte, sans carte bancaire.</p>
+      <a href="/">Commencer à parler →</a>
+    </div>
+    <p style="font-size:.8rem;color:var(--mid);line-height:1.6;">Cet article est proposé à titre d'information et de soutien. Il ne remplace pas l'avis d'un professionnel de santé. Si vous êtes en danger ou en détresse aiguë, appelez le 3114 (gratuit, 24h/24) ou le 15.</p>
+  </div>
+</article>
+<div class="related">
+  <h2>À lire aussi</h2>
+{{RELATED}}
+</div>
+<footer>
+  <p>© 2026 Parlons · <a href="/">Accueil</a> · <a href="/blog.html">Blog</a> · <a href="/parlons-CGV.html">CGV</a> · <a href="/#contact">Contact</a></p>
+</footer>
+</body>
+</html>
