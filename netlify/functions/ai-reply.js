@@ -62,6 +62,19 @@ exports.handler = async (event) => {
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
   const { sessionId, messageId } = body;
+
+  // Diagnostic : vérifie l'appel API depuis Netlify (clé, modèle, délai). Aucune donnée de session.
+  if (body.ping === true && event.headers['x-parlons-diag'] === '1') {
+    const t0 = Date.now();
+    try {
+      const client = new Anthropic({ timeout: 8000, maxRetries: 0 });
+      const r = await client.messages.create({ model: MODEL, max_tokens: 20, thinking: { type: 'disabled' }, messages: [{ role: 'user', content: 'Réponds uniquement : OK' }] });
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, model: r.model, ms: Date.now() - t0, text: r.content.filter(b => b.type === 'text').map(b => b.text).join(''), stop: r.stop_reason }) };
+    } catch (e) {
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: false, model: MODEL, ms: Date.now() - t0, status: e.status || null, error: e.message }) };
+    }
+  }
+
   if (!sessionId) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'sessionId requis' }) };
 
   try {
@@ -70,15 +83,21 @@ exports.handler = async (event) => {
 
     const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=id,status,agent_email,pre_name,pre_topic,session_label,duration_sec,assigned_at&limit=1`);
     const sess = sessions[0];
-    if (!sess || sess.status !== 'active' || sess.agent_email !== AI_EMAIL)
+    if (!sess || sess.status !== 'active' || sess.agent_email !== AI_EMAIL) {
+      console.log('ai-reply skip session_not_ai', sessionId, sess?.status, sess?.agent_email);
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'session_not_ai' }) };
+    }
 
     const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=120`);
     const last = msgs[msgs.length - 1];
-    if (!last || last.sender_type !== 'visitor')
+    if (!last || last.sender_type !== 'visitor') {
+      console.log('ai-reply skip no_pending_visitor_message', sessionId, last?.sender_type);
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'no_pending_visitor_message' }) };
-    if (messageId && last.id !== messageId)
+    }
+    if (messageId && last.id !== messageId) {
+      console.log('ai-reply skip superseded', sessionId, messageId, last.id);
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'superseded' }) };
+    }
 
     // Historique → format Messages API (première entrée = visiteur ; messages système ignorés)
     const firstVisitor = msgs.findIndex(m => m.sender_type === 'visitor');
