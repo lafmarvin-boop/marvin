@@ -226,19 +226,23 @@ function compute(period, data) {
     if (active.length) add('alerte', 'PASS_ESTIME', `Encaissements Pass mensuel estimés (${passRevenueSource}) faute d'accès Stripe — à confirmer.`);
   }
   const passPool = Math.round(passRevenue * (1 - PASS_COMMISSION) * 100) / 100;
-  const eligible = Object.values(agents).filter(a => a.passSessions > 0 && a.sessions.length >= PASS_MIN_SESSIONS);
+  // Règle : le solde est partagé À PARTS ÉGALES entre tous les écoutants ayant réalisé
+  // au moins PASS_MIN_SESSIONS sessions dans le mois (tous types confondus).
+  const eligible = Object.values(agents).filter(a => a.sessions.length >= PASS_MIN_SESSIONS);
   const totalPassSessions = Object.values(agents).reduce((s, a) => s + a.passSessions, 0);
-  const eligiblePassSessions = eligible.reduce((s, a) => s + a.passSessions, 0);
-  if (eligiblePassSessions > 0) eligible.forEach(a => { a.passShare = Math.round(passPool * a.passSessions / eligiblePassSessions * 100) / 100; });
-  if (totalPassSessions > 0 && eligiblePassSessions === 0)
-    add('alerte', 'PASS_NON_REPARTI', `${totalPassSessions} session(s) Pass mensuel ce mois mais aucun écoutant n'atteint ${PASS_MIN_SESSIONS} sessions : le solde abonnements (${eur(passPool)}) n'est réparti à personne (règle contrat art. 7).`);
+  if (passPool > 0 && eligible.length) {
+    const each = Math.floor(passPool * 100 / eligible.length) / 100;
+    eligible.forEach(a => { a.passShare = each; });
+    // Les centimes restants vont au premier éligible pour que la somme tombe juste
+    const rest = Math.round((passPool - each * eligible.length) * 100) / 100;
+    if (rest > 0) eligible[0].passShare = Math.round((eligible[0].passShare + rest) * 100) / 100;
+  }
+  if (passPool > 0 && !eligible.length)
+    add('alerte', 'PASS_NON_REPARTI', `Solde abonnements de ${eur(passPool)} ce mois mais aucun écoutant n'atteint ${PASS_MIN_SESSIONS} sessions : rien n'est réparti (règle contrat art. 7).`);
   if (totalPassSessions > 0 && passRevenue === 0)
     add('alerte', 'PASS_SANS_ENCAISSEMENT', `${totalPassSessions} session(s) Pass mensuel effectuées mais aucun encaissement d'abonnement constaté sur la période.`);
-  Object.values(agents).forEach(a => {
-    if (a.passSessions > 0 && a.sessions.length < PASS_MIN_SESSIONS)
-      add('info', 'PASS_INELIGIBLE', `${a.displayName} : ${a.passSessions} session(s) Pass mensuel mais ${a.sessions.length} session(s) au total (< ${PASS_MIN_SESSIONS}) — non éligible à la quote-part.`);
-    a.total = Math.round((a.fixed + a.passShare) * 100) / 100;
-  });
+  Object.values(agents).forEach(a => { a.total = Math.round((a.fixed + a.passShare) * 100) / 100; });
+  const eligibleCount = eligible.length;
 
   // Profils
   Object.values(agents).forEach(a => {
@@ -290,6 +294,7 @@ function compute(period, data) {
     passSessions: totalPassSessions,
     clientOneTime: dbOneTimeSum,
     passRevenue, passPool, passCommission: Math.round((passRevenue - passPool) * 100) / 100, passRevenueSource,
+    passEligible: eligibleCount,
     agentFixed: agentList.reduce((s, a) => s + a.fixed, 0),
     agentPass: agentList.reduce((s, a) => s + a.passShare, 0),
     agentTotal: agentList.reduce((s, a) => s + a.total, 0)
@@ -359,15 +364,15 @@ async function buildInvoice(a, r) {
   pdf.text(40, 157, `SIRET : ${PARLONS.siret}`, { size: 8.5, color: C.mid });
   pdf.text(40, 178, `Objet : Missions d'écoute — ${period.label}`, { bold: true, size: 10 });
   const rows = a.sessions.map(s => [fmtDateFR(s.started_at), s.client_pseudo || 'Anonyme', s.formule || '—', s.cls.kind === 'pass' ? 'quote-part*' : eur(s.cls.rate)]);
-  if (a.passShare > 0) rows.push(Object.assign([`—`, `—`, `Pass mensuel — quote-part (${a.passSessions} session(s) sur ${r.totals.passSessions})`, eur(a.passShare)], { _bold: true }));
+  if (a.passShare > 0) rows.push(Object.assign([`—`, `—`, `Pass mensuel — quote-part (1/${r.totals.passEligible} du solde abonnements)`, eur(a.passShare)], { _bold: true }));
   let y = pdf.table(190, [{ label: 'Date', w: 70 }, { label: 'Pseudo client', w: 110 }, { label: 'Prestation', w: 255 }, { label: 'Honoraires', w: 80, align: 'right' }], rows.length ? rows : [['—', '—', 'Aucune session ce mois', eur(0)]]);
   y = pdf.ensure(y + 12, 120);
   pdf.line(360, y, 555, y, C.tc, 0.8);
   pdf.text(360, y + 8, 'Total HT :', { bold: true, size: 11 }); pdf.text(555, y + 8, eur(a.total), { bold: true, size: 11, align: 'right' });
   pdf.text(360, y + 24, 'TVA non applicable — art. 293 B du CGI', { italic: true, size: 8, color: C.mid });
   let yy = y + 44;
-  if (a.passSessions > 0 && a.passShare === 0) { pdf.text(40, yy, `* ${a.passSessions} session(s) Pass mensuel : non éligible à la quote-part ce mois (moins de ${PASS_MIN_SESSIONS} sessions au total).`, { size: 8, color: C.mid }); yy += 14; }
-  else if (a.passShare > 0) { pdf.text(40, yy, `* Quote-part Pass mensuel : ${eur(r.totals.passPool)} à répartir entre ${r.agents.filter(x => x.passShare > 0).length} écoutant(s) éligible(s), au prorata des sessions Pass.`, { size: 8, color: C.mid }); yy += 14; }
+  if (a.passShare > 0) { pdf.text(40, yy, `* Quote-part Pass mensuel : solde abonnements de ${eur(r.totals.passPool)} partagé à parts égales entre ${r.totals.passEligible} écoutant(s) ayant réalisé au moins ${PASS_MIN_SESSIONS} sessions ce mois.`, { size: 8, color: C.mid }); yy += 14; }
+  else if (a.passSessions > 0) { pdf.text(40, yy, `* Sessions Pass mensuel : la quote-part du solde abonnements est réservée aux écoutants ayant réalisé au moins ${PASS_MIN_SESSIONS} sessions dans le mois.`, { size: 8, color: C.mid }); yy += 14; }
   pdf.text(40, yy + 6, 'Coordonnées bancaires pour règlement :', { size: 9 });
   pdf.text(40, yy + 19, p.iban || '— IBAN non renseigné sur le profil —', { bold: true, size: 9, color: p.iban ? C.dark : C.red });
   pdf.text(40, yy + 33, 'Règlement par virement sous 10 jours ouvrés à réception (contrat de prestation, art. 7).', { size: 8.5, color: C.mid });
@@ -441,7 +446,7 @@ async function buildAdminReport(r, invoiceNums) {
     Object.assign(['Marge brute Parlons (CA encaissé moins honoraires)', eur(totals.margin)], { _bold: true })
   ];
   y = pdf.table(y, [{ label: 'Poste', w: 365 }, { label: 'Montant', w: 150, align: 'right' }], money, { size: 8.5 });
-  y += 6; y += pdf.para(40, y, `Source abonnements : ${totals.passRevenueSource}. Règle Pass mensuel (contrat art. 7) : solde après commission réparti au prorata des sessions Pass entre les écoutants ayant réalisé au moins ${PASS_MIN_SESSIONS} sessions dans le mois. Commission abonnement paramétrable (PASS_COMMISSION_PCT).`, { italic: true, size: 7.5, color: C.mid });
+  y += 6; y += pdf.para(40, y, `Source abonnements : ${totals.passRevenueSource}. Règle Pass mensuel (contrat art. 7) : solde après commission partagé à parts égales entre les ${totals.passEligible} écoutant(s) ayant réalisé au moins ${PASS_MIN_SESSIONS} sessions dans le mois. Commission abonnement paramétrable (PASS_COMMISSION_PCT).`, { italic: true, size: 7.5, color: C.mid });
 
   // 3. Contrôles
   y = pdf.ensure(y + 16, 60);
