@@ -406,6 +406,7 @@
         <button onclick="openAddAgentModal()" style="background:var(--tc);color:white;border:none;border-radius:50px;padding:.4rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Ajouter un agent</button>
         <select id="pdf-month" style="border:1.5px solid var(--sand);border-radius:8px;padding:.35rem .7rem;font-family:'DM Sans',sans-serif;font-size:.82rem;color:var(--dark);background:white;cursor:pointer;"></select>
         <button onclick="generateGlobalPDF()" style="background:var(--dark);color:white;border:none;border-radius:50px;padding:.4rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📄 Récap URSSAF</button>
+        <button id="closing-btn" onclick="runMonthlyClosing()" style="background:#2563eb;color:white;border:none;border-radius:50px;padding:.4rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;" title="Factures + relevés URSSAF des écoutants, récapitulatif et contrôles comptables, envoyés par email">📧 Clôture mensuelle</button>
       </div>
     </div>
     <div class="card" id="agent-section">
@@ -2727,6 +2728,36 @@ async function forceOffline(agentEmail) {
     if (!res.ok) { alert(data.error || 'Erreur serveur.'); return; }
     location.reload();
   } catch { alert('Erreur réseau.'); }
+}
+
+// ── CLÔTURE COMPTABLE MENSUELLE (netlify/functions/monthly-accounting.js) ──
+// Automatique le 26 de chaque mois pour le mois précédent ; ici : lancement manuel pour le mois sélectionné.
+async function runMonthlyClosing() {
+  const { month, year } = getSelectedMonth();
+  const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const monthName = new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const choice = prompt(
+    `Clôture comptable de ${monthName}.\n\n` +
+    `1 = Aperçu : documents + rapport de contrôle envoyés à l'administrateur uniquement\n` +
+    `2 = Clôture complète : chaque écoutant reçoit sa facture et son relevé URSSAF, l'administrateur reçoit tout\n\n` +
+    `Tapez 1 ou 2 :`, '1');
+  if (choice !== '1' && choice !== '2') return;
+  if (choice === '2' && !confirm(`Envoyer les documents de ${monthName} à tous les écoutants ?`)) return;
+  const btn = document.getElementById('closing-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Clôture en cours…'; }
+  try {
+    const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
+    const res = await fetch(`${API}/monthly-accounting`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminEmail: saved.email, adminPassword: saved.password, month: monthKey, mode: choice === '2' ? 'all' : 'admin' })
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'Erreur serveur.'); return; }
+    const lines = data.agents.map(a => `• ${a.name} : ${a.sessions} session(s), ${a.total.toFixed(2).replace('.', ',')} € — ${a.sent || 'non envoyé'}`);
+    alert(`${data.verdict}\n\n${lines.join('\n') || 'Aucune session ce mois.'}\n\nCA encaissé : ${data.totals.revenue.toFixed(2).replace('.', ',')} € · Honoraires : ${data.totals.agentTotal.toFixed(2).replace('.', ',')} €\n${data.anomalies.length} point(s) de contrôle — détail dans l'email reçu.${data.sendErrors.length ? '\n\n⚠️ Envois en échec : ' + data.sendErrors.join(' ; ') : ''}`);
+  } catch { alert('Erreur réseau.'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '📧 Clôture mensuelle'; } }
 }
 
 // ── AJOUTER UN AGENT ──

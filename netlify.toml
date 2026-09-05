@@ -8,6 +8,11 @@
 [functions]
   node_bundler = "esbuild"
 
+# Clôture comptable mensuelle : le 26 de chaque mois à 05:00 UTC (07:00 Paris en été, 06:00 en hiver)
+# → documents du mois précédent (factures + relevés URSSAF écoutants, récapitulatif + contrôles admin)
+[functions."monthly-accounting"]
+  schedule = "0 5 26 * *"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
