@@ -181,6 +181,7 @@ function compute(period, data) {
     const c = classify(s.formule);
     const email = agentKey(s.agent_email);
     if (s.statut === 'refunded') {
+      if (email === AI_EMAIL) { ai.refunded = (ai.refunded || 0) + 1; return; } // engagement Max : remboursement attendu, pas une anomalie
       if (email && agents[email]) agents[email].refunded.push(s);
       add('info', 'REMBOURSEE', `Session remboursée exclue des honoraires : ${fmtDateFR(s.started_at)} · ${s.client_pseudo || 'Anonyme'} · ${s.formule || '—'} (${eur(s.montant)})${email ? ' · agent ' + email : ''}`);
       return;
@@ -305,7 +306,7 @@ function compute(period, data) {
     clientOneTime: dbOneTimeSum,
     passRevenue, passPool, passCommission: Math.round((passRevenue - passPool) * 100) / 100, passRevenueSource,
     passEligible: eligibleCount,
-    aiSessions: ai.sessions, aiRevenue: Math.round(ai.revenue * 100) / 100,
+    aiSessions: ai.sessions, aiRevenue: Math.round(ai.revenue * 100) / 100, aiRefunded: ai.refunded || 0,
     agentFixed: agentList.reduce((s, a) => s + a.fixed, 0),
     agentPass: agentList.reduce((s, a) => s + a.passShare, 0),
     agentTotal: agentList.reduce((s, a) => s + a.total, 0)
@@ -452,7 +453,7 @@ async function buildAdminReport(r, invoiceNums) {
     ['Abonnements Pass mensuel encaissés', `${eur(totals.passRevenue)}${rec.available ? ` (${rec.invoicesCount} facture(s))` : ''}`],
     ['Remboursements Stripe sur la période', rec.available ? `${eur(rec.refundsSum)} (${rec.refundsCount})` : 'non vérifié'],
     ['Chiffre d\'affaires total encaissé', eur(totals.revenue)],
-    ['Sessions prises en charge par Max (IA) — sans honoraires', `${totals.aiSessions} session(s) · ${eur(totals.aiRevenue)}`],
+    ['Sessions prises en charge par Max (IA) — sans honoraires', `${totals.aiSessions} session(s) encaissée(s) · ${eur(totals.aiRevenue)} · ${totals.aiRefunded} remboursée(s) (aucun écoutant)`],
     ['Honoraires écoutants (à virer)', eur(totals.agentTotal)],
     ['Commission Parlons sur abonnements', `${eur(totals.passCommission)} (${Math.round(PASS_COMMISSION * 100)} %)`],
     Object.assign(['Marge brute Parlons (CA encaissé moins honoraires)', eur(totals.margin)], { _bold: true })

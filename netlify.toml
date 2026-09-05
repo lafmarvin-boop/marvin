@@ -8,6 +8,10 @@
 [functions]
   node_bundler = "esbuild"
 
+# Sessions tenues par Max (IA) expirées sans écoutant → fermeture + remboursement
+[functions."ai-sweep"]
+  schedule = "*/10 * * * *"
+
 # Clôture comptable mensuelle : le 26 de chaque mois à 05:00 UTC (07:00 Paris en été, 06:00 en hiver)
 # → documents du mois précédent (factures + relevés URSSAF écoutants, récapitulatif + contrôles admin)
 [functions."monthly-accounting"]

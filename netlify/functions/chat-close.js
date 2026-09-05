@@ -1,5 +1,6 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+const AI_EMAIL = 'claude@parlonsecoute.fr'; // Max, assistant d'écoute IA (ai-reply.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -69,7 +70,7 @@ exports.handler = async (event) => {
       if (chatSession.session_type !== 'test') {
         const profiles = await sbGet(`agent_profiles?email=eq.${encodeURIComponent(agentMail)}&select=prenom,nom&limit=1`);
         const profile = profiles[0];
-        const agentName = agentMail === 'claude@parlonsecoute.fr' ? 'Max (IA)'
+        const agentName = agentMail === AI_EMAIL ? 'Max (IA)'
           : profile && profile.prenom ? `${profile.prenom} ${profile.nom || ''}`.trim() : agentMail.split('@')[0];
 
         const sessionUpdate = {
@@ -106,7 +107,42 @@ exports.handler = async (event) => {
       }
     }
 
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
+    // ── Engagement Max : aucun écoutant humain n'a rejoint la session → remboursement intégral ──
+    let refunded = false;
+    if (agentMail === AI_EMAIL) {
+      const pi = chatSession.stripe_payment_id;
+      if (pi && pi.startsWith('pi_') && process.env.STRIPE_SECRET_KEY) {
+        try {
+          const Stripe = require('stripe');
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+          const intent = await stripe.paymentIntents.retrieve(pi);
+          const already = (intent.charges?.data?.[0]?.refunded) || intent.status === 'canceled';
+          if (!already && intent.status === 'succeeded') {
+            await stripe.refunds.create({ payment_intent: pi, reason: 'requested_by_customer', metadata: { motif: 'aucun_ecoutant', session_id: sessionId } });
+          }
+          refunded = true;
+          await sbPatch(`sessions?stripe_payment_id=eq.${encodeURIComponent(pi)}`, { statut: 'refunded' });
+          const amount = intent.amount_received ? (intent.amount_received / 100).toFixed(2).replace('.', ',') + ' €' : 'votre paiement';
+          await fetch(`${SB_URL}/rest/v1/chat_messages`, {
+            method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify({ session_id: sessionId, content: `Aucun écoutant n'a pu vous rejoindre pendant cette session : comme promis, ${amount} vous est remboursé intégralement. Le crédit apparaît sur votre compte sous 5 à 10 jours selon votre banque. Merci de votre confiance, et à bientôt.`, sender_type: 'system' })
+          });
+        } catch (e) {
+          console.error('chat-close refund:', e.message);
+          fetch(`${process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr'}/.netlify/functions/notify-admin`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'recontact', prenom: chatSession.pre_name, email: 'remboursement@auto', message: `ÉCHEC remboursement automatique session Max ${sessionId} (${pi}) : ${e.message} — à traiter manuellement dans Stripe.` })
+          }).catch(() => {});
+        }
+      } else if (chatSession.session_type === 'sub' || (chatSession.session_label || '').includes('Pass mensuel')) {
+        await fetch(`${SB_URL}/rest/v1/chat_messages`, {
+          method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ session_id: sessionId, content: 'Aucun écoutant n\'a pu vous rejoindre pendant cette session. Elle n\'est pas décomptée de votre pass mensuel : vous pouvez en relancer une à tout moment. Merci de votre patience.', sender_type: 'system' })
+        });
+      }
+    }
+
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, refunded }) };
   } catch (e) {
     console.error('chat-close:', e.message);
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: e.message }) };

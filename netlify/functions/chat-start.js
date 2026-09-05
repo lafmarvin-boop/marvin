@@ -1,6 +1,8 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const AI_EMAIL = 'claude@parlonsecoute.fr'; // identité de Max, l'assistant d'écoute IA (voir ai-reply.js)
+const RESEND_KEY = process.env.RESEND_API_KEY;
+const FROM_EMAIL = process.env.FROM_EMAIL || 'Parlons <noreply@parlonsecoute.fr>';
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -95,9 +97,26 @@ exports.handler = async (event) => {
         method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify({ session_id: sessionId, content, sender_type })
       });
-      await post('Aucun écoutant n\'est connecté à cet instant. Max, l\'assistant d\'écoute de Parlons (une intelligence artificielle), commence la conversation avec vous et prévient nos écoutants : l\'un d\'eux se connectera dans les 5 minutes maximum et reprendra automatiquement l\'échange, avec tout l\'historique.', 'system');
-      await post(`Bonjour ${name}, je suis Max, l'assistant d'écoute de Parlons. Je viens de prévenir nos écoutants : l'un d'eux vous rejoindra dans les 5 minutes maximum. En attendant, je suis là pour vous écouter, sans jugement et en toute confidentialité. Qu'est-ce qui vous amène aujourd'hui ?`, 'agent');
+      await post('Aucun écoutant n\'est connecté à cet instant. Max, l\'assistant d\'écoute de Parlons (une intelligence artificielle), engage la conversation avec vous et alerte par email tous nos écoutants disponibles. Dès que l\'un d\'eux se connecte, il reprend l\'échange avec tout l\'historique. Si aucun écoutant ne vous rejoint pendant la session, celle-ci vous est intégralement remboursée.', 'system');
+      await post(`Bonjour ${name}, je suis Max, l'assistant d'écoute de Parlons. Je viens d'alerter nos écoutants pour que l'un d'eux vous rejoigne, et je suis là avec vous dès maintenant, sans jugement et en toute confidentialité. Qu'est-ce qui vous donne envie de parler aujourd'hui ?`, 'agent');
       aiAssigned = true;
+
+      // Alerter par email tous les écoutants qui ont activé « Recevoir les demandes d'écoutant » (fire-and-forget)
+      if (RESEND_KEY) {
+        (async () => {
+          const agents = await sbGet('agent_profiles?notify_requests=eq.true&notify_email=not.is.null&select=notify_email,email');
+          const targets = [...new Set(agents.map(a => a.notify_email || a.email).filter(Boolean))];
+          const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
+          const html = `<p style="font-family:sans-serif">Un visiteur vient de démarrer une <strong>session payante</strong> et personne n'est connecté : Max (assistant IA) engage la conversation en attendant un écoutant.</p>
+<p style="font-family:sans-serif"><strong>Prénom :</strong> ${String(name).replace(/[<>&]/g, '')}<br><strong>Formule :</strong> ${String(sessionLabel || 'session').replace(/[<>&]/g, '')}<br><strong>Heure :</strong> ${new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}</p>
+<p><a href="${siteUrl}/agent-app.html" style="display:inline-block;background:#C4714A;color:white;text-decoration:none;padding:.65rem 1.5rem;border-radius:50px;font-weight:700">Me connecter et prendre le relais →</a></p>
+<p style="font-size:.8rem;color:#888;font-family:sans-serif">Si aucun écoutant ne rejoint la session, le visiteur est remboursé automatiquement. Vous recevez cet email car vous avez activé les demandes d'écoutant dans votre profil.</p>`;
+          await Promise.all(targets.map(to => fetch('https://api.resend.com/emails', {
+            method: 'POST', headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from: FROM_EMAIL, to, subject: `🚨 ${name} attend un écoutant — session payante en cours avec Max`, html })
+          })));
+        })().catch(e => console.error('chat-start alert email:', e.message));
+      }
     }
 
     if (assignedAgent) {
@@ -140,8 +159,8 @@ exports.handler = async (event) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: assignedAgent ? '💬 Nouveau tchat assigné' : aiAssigned ? '🚨 Visiteur payant avec Max — relais attendu sous 5 min' : '💬 Nouveau tchat en attente',
-        message: aiAssigned ? `${name} parle avec Max (IA) et attend un écoutant : connectez-vous maintenant pour prendre le relais` : `${name} attend votre aide`,
+        title: assignedAgent ? '💬 Nouveau tchat assigné' : aiAssigned ? '🚨 Visiteur payant avec Max — un écoutant est attendu' : '💬 Nouveau tchat en attente',
+        message: aiAssigned ? `${name} parle avec Max (IA) : connectez-vous pour prendre le relais (remboursé si personne ne vient)` : `${name} attend votre aide`,
         url: '/agent-app.html',
         ...(assignedAgent ? { agentEmail: assignedAgent } : {})
       })
