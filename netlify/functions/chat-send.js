@@ -1,6 +1,6 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const AI_EMAIL = 'claude@parlonsecoute.fr'; // Claude, assistant d'écoute IA (ai-reply.js)
+const AI_EMAIL = 'claude@parlonsecoute.fr'; // Max, assistant d'écoute IA (ai-reply.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ exports.handler = async (event) => {
       }).catch(() => {});
     }
 
-    // Message visiteur sur une session tenue par Claude (IA) : générer la réponse (fire-and-forget)
+    // Message visiteur sur une session tenue par Max (IA) : générer la réponse (fire-and-forget)
     if (senderType === 'visitor' && sessions[0].agent_email === AI_EMAIL) {
       const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
       fetch(`${siteUrl}/.netlify/functions/ai-reply`, {

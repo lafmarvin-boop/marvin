@@ -1,6 +1,6 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const AI_EMAIL = 'claude@parlonsecoute.fr'; // identité de Claude, l'assistant d'écoute IA (voir ai-reply.js)
+const AI_EMAIL = 'claude@parlonsecoute.fr'; // identité de Max, l'assistant d'écoute IA (voir ai-reply.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -84,7 +84,7 @@ exports.handler = async (event) => {
       }
     }
 
-    // Aucun écoutant humain disponible + session payante → Claude (assistant IA) prend le relais
+    // Aucun écoutant humain disponible + session payante → Max (assistant IA) prend le relais
     let aiAssigned = false;
     if (!assignedAgent && (sessionType || 'paid') !== 'free' && process.env.ANTHROPIC_API_KEY) {
       const now = new Date().toISOString();
@@ -95,8 +95,8 @@ exports.handler = async (event) => {
         method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify({ session_id: sessionId, content, sender_type })
       });
-      await post('Aucun écoutant n\'est disponible en ce moment. Claude, l\'assistant d\'écoute de Parlons (une intelligence artificielle), prend le relais dès maintenant. Si un écoutant humain se connecte pendant votre session, il reprendra automatiquement la conversation.', 'system');
-      await post(`Bonjour ${name}, je suis Claude, l'assistant d'écoute de Parlons. Je suis là pour vous écouter, sans jugement et en toute confidentialité. Qu'est-ce qui vous amène aujourd'hui ?`, 'agent');
+      await post('Aucun écoutant n\'est connecté à cet instant. Max, l\'assistant d\'écoute de Parlons (une intelligence artificielle), commence la conversation avec vous et prévient nos écoutants : l\'un d\'eux se connectera dans les 5 minutes maximum et reprendra automatiquement l\'échange, avec tout l\'historique.', 'system');
+      await post(`Bonjour ${name}, je suis Max, l'assistant d'écoute de Parlons. Je viens de prévenir nos écoutants : l'un d'eux vous rejoindra dans les 5 minutes maximum. En attendant, je suis là pour vous écouter, sans jugement et en toute confidentialité. Qu'est-ce qui vous amène aujourd'hui ?`, 'agent');
       aiAssigned = true;
     }
 
@@ -140,8 +140,8 @@ exports.handler = async (event) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: assignedAgent ? '💬 Nouveau tchat assigné' : aiAssigned ? '🤖 Tchat pris en charge par Claude' : '💬 Nouveau tchat en attente',
-        message: aiAssigned ? `${name} parle avec Claude — connectez-vous pour prendre le relais` : `${name} attend votre aide`,
+        title: assignedAgent ? '💬 Nouveau tchat assigné' : aiAssigned ? '🚨 Visiteur payant avec Max — relais attendu sous 5 min' : '💬 Nouveau tchat en attente',
+        message: aiAssigned ? `${name} parle avec Max (IA) et attend un écoutant : connectez-vous maintenant pour prendre le relais` : `${name} attend votre aide`,
         url: '/agent-app.html',
         ...(assignedAgent ? { agentEmail: assignedAgent } : {})
       })

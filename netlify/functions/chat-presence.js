@@ -6,7 +6,7 @@ const ADMIN_PWD   = process.env.ADMIN_PASSWORD;
 const RESEND_KEY  = process.env.RESEND_API_KEY;
 const FROM_EMAIL  = process.env.FROM_EMAIL || 'Parlons <noreply@parlonsecoute.fr>';
 const SITE_URL    = process.env.SITE_URL || 'https://parlonsecoute.fr';
-const AI_EMAIL    = 'claude@parlonsecoute.fr'; // Claude, assistant d'écoute IA (ai-reply.js)
+const AI_EMAIL    = 'claude@parlonsecoute.fr'; // Max, assistant d'écoute IA (ai-reply.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -121,7 +121,7 @@ exports.handler = async (event) => {
       // Notifier les visiteurs qui avaient demandé un écoutant (fire-and-forget)
       notifyPendingRequests().catch(() => {});
 
-      // Reprendre les sessions tenues par Claude (assistant IA) : l'humain prend le relais (jusqu'à 3)
+      // Reprendre les sessions tenues par Max (assistant IA) : l'humain prend le relais (jusqu'à 3)
       const aiSessions = await sbGet(`chat_sessions?agent_email=eq.${encodeURIComponent(AI_EMAIL)}&status=eq.active&select=id,pre_name&order=assigned_at.asc&limit=3`);
       let takenOver = 0;
       if (aiSessions.length) {
@@ -138,7 +138,7 @@ exports.handler = async (event) => {
           takenOver++;
           await fetch(`${SB_URL}/rest/v1/chat_messages`, {
             method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-            body: JSON.stringify({ session_id: s.id, content: `${pseudo}, écoutant humain, vient de se connecter et prend le relais de Claude. Votre conversation reste visible pour lui.`, sender_type: 'system' })
+            body: JSON.stringify({ session_id: s.id, content: `${pseudo}, écoutant humain, vient de se connecter et prend le relais de Max. Votre conversation reste visible pour lui.`, sender_type: 'system' })
           });
         }
         if (takenOver) {

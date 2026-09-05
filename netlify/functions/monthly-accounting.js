@@ -33,7 +33,7 @@ const RESEND_KEY  = process.env.RESEND_API_KEY;
 const FROM_EMAIL  = process.env.FROM_EMAIL || 'Parlons <noreply@parlonsecoute.fr>';
 const STRIPE_KEY  = process.env.STRIPE_SECRET_KEY;
 
-const AI_EMAIL = 'claude@parlonsecoute.fr'; // Claude, assistant d'écoute IA (ai-reply.js) — jamais rémunéré
+const AI_EMAIL = 'claude@parlonsecoute.fr'; // Max, assistant d'écoute IA (ai-reply.js) — jamais rémunéré
 
 const PARLONS = {
   name: 'PARLONS',
@@ -159,7 +159,7 @@ function compute(period, data) {
   const profileByEmail = {};
   profiles.forEach(p => { if (p.email) profileByEmail[agentKey(p.email)] = p; });
 
-  // Agents = enregistrés (mot de passe) ∪ profils ∪ ayant des sessions ∪ admin — hors Claude (IA)
+  // Agents = enregistrés (mot de passe) ∪ profils ∪ ayant des sessions ∪ admin — hors Max (IA)
   const agentEmails = new Set();
   registered.forEach(r => r.email && agentEmails.add(agentKey(r.email)));
   profiles.forEach(p => p.email && agentEmails.add(agentKey(p.email)));
@@ -187,7 +187,7 @@ function compute(period, data) {
     }
     if (c.kind === 'unknown') add('alerte', 'FORMULE_INCONNUE', `Formule non reconnue « ${s.formule || '(vide)'} » le ${fmtDateFR(s.started_at)} (${s.client_pseudo || 'Anonyme'}) : honoraires comptés à 0 €, à vérifier.`);
     if (email === AI_EMAIL) {
-      // Session prise en charge par Claude (assistant IA) : encaissée, aucun honoraire à verser
+      // Session prise en charge par Max (assistant IA) : encaissée, aucun honoraire à verser
       ai.sessions++; if (c.kind === 'fixed') ai.revenue += parseFloat(s.montant || 0);
       payable.push(s);
       return;
@@ -452,7 +452,7 @@ async function buildAdminReport(r, invoiceNums) {
     ['Abonnements Pass mensuel encaissés', `${eur(totals.passRevenue)}${rec.available ? ` (${rec.invoicesCount} facture(s))` : ''}`],
     ['Remboursements Stripe sur la période', rec.available ? `${eur(rec.refundsSum)} (${rec.refundsCount})` : 'non vérifié'],
     ['Chiffre d\'affaires total encaissé', eur(totals.revenue)],
-    ['Sessions prises en charge par Claude (IA) — sans honoraires', `${totals.aiSessions} session(s) · ${eur(totals.aiRevenue)}`],
+    ['Sessions prises en charge par Max (IA) — sans honoraires', `${totals.aiSessions} session(s) · ${eur(totals.aiRevenue)}`],
     ['Honoraires écoutants (à virer)', eur(totals.agentTotal)],
     ['Commission Parlons sur abonnements', `${eur(totals.passCommission)} (${Math.round(PASS_COMMISSION * 100)} %)`],
     Object.assign(['Marge brute Parlons (CA encaissé moins honoraires)', eur(totals.margin)], { _bold: true })

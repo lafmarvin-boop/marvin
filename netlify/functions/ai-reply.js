@@ -1,12 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Claude — assistant d'écoute IA de Parlons
+// Max — assistant d'écoute IA de Parlons
 //
-// Prend le relais sur les sessions PAYANTES quand aucun écoutant humain n'est en
-// ligne (attribution faite par chat-start.js). Déclenché par chat-send.js à
-// chaque message visiteur sur une session tenue par l'IA ; génère une réponse
-// avec l'API Claude et l'insère comme message « agent ».
+// Ouvre la conversation sur les sessions PAYANTES quand aucun écoutant humain
+// n'est en ligne (attribution faite par chat-start.js), le temps qu'un écoutant
+// prévenu se connecte. Déclenché par chat-send.js à chaque message visiteur sur
+// une session tenue par l'IA ; génère une réponse avec l'API Claude et l'insère
+// comme message « agent ».
 //
-// Transparence : Claude se présente toujours comme une intelligence artificielle
+// Transparence : Max se présente toujours comme une intelligence artificielle
 // (jamais comme un psychologue, psychiatre ou écoutant humain). Dès qu'un
 // écoutant humain se connecte, chat-presence.js réattribue la session et cette
 // fonction cesse de répondre (double vérification avant insertion).
@@ -30,7 +31,9 @@ async function sbGet(path) {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // Prompt système stable (mis en cache côté API) — le contexte variable est ajouté à part
-const SYSTEM_PROMPT = `Tu es Claude, l'assistant d'écoute de Parlons, un service français d'écoute et de soutien en ligne. Tu prends le relais uniquement quand aucun écoutant humain n'est disponible. Tu es une intelligence artificielle : tu ne le caches jamais, et tu ne te présentes jamais comme un psychologue, un psychiatre, un médecin, un thérapeute ni comme une personne humaine. Si on te demande si tu es humain ou un professionnel de santé, réponds honnêtement et simplement, puis reviens à l'écoute.
+const SYSTEM_PROMPT = `Tu es Max, l'assistant d'écoute de Parlons, un service français d'écoute et de soutien en ligne. Tu commences la conversation quand aucun écoutant humain n'est disponible : les écoutants ont été prévenus et l'un d'eux doit se connecter dans les 5 minutes maximum pour prendre le relais — en attendant, tu accueilles la personne et tu l'écoutes vraiment, ce n'est pas une salle d'attente. Tu es une intelligence artificielle : tu ne le caches jamais, et tu ne te présentes jamais comme un psychologue, un psychiatre, un médecin, un thérapeute ni comme une personne humaine. Si on te demande si tu es humain ou un professionnel de santé, réponds honnêtement et simplement, puis reviens à l'écoute.
+
+Concernant l'arrivée de l'écoutant : ne le répète pas à chaque message. Si le contexte indique que plus de 5 minutes se sont écoulées et qu'aucun écoutant n'est encore connecté, reconnais-le une fois avec honnêteté et douceur (par exemple : « aucun écoutant n'a encore pu se connecter, je reste avec vous et je continue de vous écouter »), sans promettre de nouveau délai. Si la personne demande où en est l'écoutant, réponds selon le contexte, sans inventer.
 
 Ta posture s'inspire des bonnes pratiques de l'écoute active et du soutien psychologique :
 - Tu écoutes d'abord. Tu reformules ce que la personne exprime pour montrer que tu as compris, tu accueilles et valides ses émotions sans jamais les minimiser ("ce n'est pas si grave", "il y a pire" sont interdits).
@@ -84,10 +87,14 @@ exports.handler = async (event) => {
     // Contexte variable (hors cache) : prénom, sujet, temps restant
     const firstAgentMsg = msgs.find(m => m.sender_type === 'agent');
     const startedAt = firstAgentMsg ? new Date(firstAgentMsg.created_at) : (sess.assigned_at ? new Date(sess.assigned_at) : new Date());
+    const elapsedMin = Math.max(0, Math.round((Date.now() - startedAt.getTime()) / 60000));
     const remainingMin = Math.max(0, Math.round(((sess.duration_sec || 1800) * 1000 - (Date.now() - startedAt.getTime())) / 60000));
     const context = [
       `Contexte de cette session : la personne s'appelle ${sess.pre_name || 'Visiteur'}${sess.pre_topic ? `, elle a indiqué comme sujet : « ${sess.pre_topic} »` : ''}.`,
-      `Formule : ${sess.session_label || 'session'}. Temps restant approximatif : ${remainingMin} min.`,
+      `Formule : ${sess.session_label || 'session'}. Conversation commencée il y a ${elapsedMin} min. Temps restant approximatif : ${remainingMin} min.`,
+      elapsedMin > 5
+        ? `Écoutant humain : toujours pas connecté après ${elapsedMin} min (les écoutants ont été prévenus, mais aucun n'a pu se connecter pour l'instant).`
+        : 'Écoutant humain : prévenu, attendu dans les 5 minutes maximum.',
       opening ? `Tu as ouvert la conversation par : « ${opening} »` : ''
     ].filter(Boolean).join('\n');
 

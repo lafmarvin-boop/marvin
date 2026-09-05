@@ -1,6 +1,6 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const AI_EMAIL = 'claude@parlonsecoute.fr'; // Claude, assistant d'écoute IA (ai-reply.js)
+const AI_EMAIL = 'claude@parlonsecoute.fr'; // Max, assistant d'écoute IA (ai-reply.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -44,7 +44,7 @@ exports.handler = async (event) => {
     const totalForNew = addSec + remaining;
     const mins = Math.floor(addSec / 60);
 
-    // Session tenue par Claude (IA) : la prolongation est acceptée immédiatement
+    // Session tenue par Max (IA) : la prolongation est acceptée immédiatement
     if (sess.agent_email === AI_EMAIL) {
       await Promise.all([
         fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {

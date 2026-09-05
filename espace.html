@@ -2036,7 +2036,7 @@ function generateGlobalPDF() {
 
   const byAgent = {};
   monthSessions.forEach(s => {
-    if ((s.agent_email || '').toLowerCase() === 'claude@parlonsecoute.fr') return; // Claude (IA) : pas d'honoraires
+    if ((s.agent_email || '').toLowerCase() === 'claude@parlonsecoute.fr') return; // Max (IA) : pas d'honoraires
     const name = s.agent_name || 'Non assigné';
     if (!byAgent[name]) byAgent[name] = { sessions: 0, earnings: 0, passCount: 0 };
     byAgent[name].sessions++;
