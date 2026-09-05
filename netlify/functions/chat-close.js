@@ -107,9 +107,11 @@ exports.handler = async (event) => {
       }
     }
 
-    // ── Engagement Max : aucun écoutant humain n'a rejoint la session → remboursement intégral ──
+    // ── Engagement Max : le visiteur est allé au bout de sa session (closedBy 'timer') sans qu'un écoutant
+    //    humain l'ait rejoint → remboursement intégral. Page fermée / abandon (balayage) → pas de remboursement,
+    //    comme avec un écoutant humain.
     let refunded = false;
-    if (agentMail === AI_EMAIL) {
+    if (agentMail === AI_EMAIL && closedBy === 'timer') {
       const pi = chatSession.stripe_payment_id;
       if (pi && pi.startsWith('pi_') && process.env.STRIPE_SECRET_KEY) {
         try {
@@ -126,7 +128,7 @@ exports.handler = async (event) => {
           const amount = intent.amount_received ? (intent.amount_received / 100).toFixed(2).replace('.', ',') + ' €' : 'votre paiement';
           await fetch(`${SB_URL}/rest/v1/chat_messages`, {
             method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-            body: JSON.stringify({ session_id: sessionId, content: `Aucun écoutant n'a pu vous rejoindre pendant cette session : comme promis, ${amount} vous est remboursé intégralement. Le crédit apparaît sur votre compte sous 5 à 10 jours selon votre banque. Merci de votre confiance, et à bientôt.`, sender_type: 'system' })
+            body: JSON.stringify({ session_id: sessionId, content: `Vous êtes allé(e) au bout de votre session sans qu'un écoutant ait pu vous rejoindre : comme promis, ${amount} vous est remboursé intégralement. Le crédit apparaît sur votre compte sous 5 à 10 jours selon votre banque. Merci de votre confiance, et à bientôt.`, sender_type: 'system' })
           });
         } catch (e) {
           console.error('chat-close refund:', e.message);

@@ -5,7 +5,9 @@
 // Un visiteur qui quitte l'onglet sans fermer sa session laisserait celle-ci
 // « active » indéfiniment. Quand le temps de la formule est écoulé (+ 10 min de
 // marge) et qu'aucun écoutant humain n'a pris le relais, on ferme la session via
-// chat-close, qui applique l'engagement de Max : remboursement intégral.
+// chat-close (closedBy 'sweep'). Pas de remboursement dans ce cas : le visiteur a
+// quitté la page de lui-même, comme avec un écoutant humain. Le remboursement
+// n'est déclenché que par la fin naturelle de session côté visiteur ('timer').
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SB_URL = process.env.SUPABASE_URL;

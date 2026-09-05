@@ -1521,7 +1521,7 @@
         </div>
         <div class="faq-item" onclick="this.classList.toggle('open')">
           <div class="faq-q">Qui est Max ?<span class="faq-arrow">›</span></div>
-          <div class="faq-a">Max est notre assistant d'écoute basé sur une intelligence artificielle. Quand aucun écoutant n'est connecté au moment où vous démarrez une session payante ou une session du pass mensuel, Max engage la conversation avec vous immédiatement, s'intéresse à ce qui vous amène et alerte nos écoutants par email. Dès que l'un d'eux se connecte, il reprend l'échange avec tout l'historique. Si aucun écoutant ne vous rejoint pendant la session, elle vous est intégralement remboursée, automatiquement. Vous en êtes informé(e) dès le premier message. Max pratique une écoute attentive et sans jugement, mais ce n'est ni un psychologue ni un médecin : en cas de danger, il vous oriente vers les numéros d'urgence (3114, 15, 112).</div>
+          <div class="faq-a">Max est notre assistant d'écoute basé sur une intelligence artificielle. Quand aucun écoutant n'est connecté au moment où vous démarrez une session payante ou une session du pass mensuel, Max engage la conversation avec vous immédiatement, s'intéresse à ce qui vous amène et alerte nos écoutants par email. Dès que l'un d'eux se connecte, il reprend l'échange avec tout l'historique. Si vous allez au bout de votre session sans qu'un écoutant vous ait rejoint, elle vous est intégralement remboursée, automatiquement (pas de remboursement si vous quittez la page avant la fin, comme avec un écoutant). Vous en êtes informé(e) dès le premier message. Max pratique une écoute attentive et sans jugement, mais ce n'est ni un psychologue ni un médecin : en cas de danger, il vous oriente vers les numéros d'urgence (3114, 15, 112).</div>
         </div>
       </div>
       <div style="text-align:center;margin-top:1.2rem;">
@@ -1603,7 +1603,7 @@
     <div id="step-1">
       <h3>Commencer une discussion</h3>
       <p class="modal-desc">Choisissez votre durée et connectez-vous à un écoutant disponible.</p>
-      <div class="offline-msg" id="offline-msg"><strong>🤖 Aucun écoutant connecté à cet instant</strong>Max, notre assistant d'écoute (intelligence artificielle), engage la conversation avec vous immédiatement et alerte nos écoutants par email. Dès que l'un d'eux se connecte, il reprend l'échange avec tout l'historique. <strong>Si aucun écoutant ne vous rejoint pendant la session, elle vous est intégralement remboursée.</strong><br><small>La première conversation offerte nécessite un écoutant humain : vous serez placé(e) en attente. Vous pouvez aussi activer l'alerte disponibilité.</small></div>
+      <div class="offline-msg" id="offline-msg"><strong>🤖 Aucun écoutant connecté à cet instant</strong>Max, notre assistant d'écoute (intelligence artificielle), engage la conversation avec vous immédiatement et alerte nos écoutants par email. Dès que l'un d'eux se connecte, il reprend l'échange avec tout l'historique. <strong>Si vous allez au bout de votre session sans qu'un écoutant vous ait rejoint, elle vous est intégralement remboursée.</strong><br><small>La première conversation offerte nécessite un écoutant humain : vous serez placé(e) en attente. Vous pouvez aussi activer l'alerte disponibilité.</small></div>
       <div class="form-group"><label>Votre prénom (ou pseudonyme)</label><input type="text" id="user-name" placeholder="Comment vous appeler ?"/></div>
       <div class="form-group"><label>Choisissez votre formule</label>
         <select id="session-select" onchange="updatePrice()">
@@ -1869,7 +1869,7 @@ function updateAvailUI(){
   } else {
     // Aucun écoutant humain : Max (assistant IA) prend le relais sur les sessions payantes — le paiement reste possible
     if(tag)tag.className='hero-tag';
-    if(tagText)tagText.textContent=' Max vous écoute tout de suite et alerte un écoutant — remboursé si personne ne vous rejoint';
+    if(tagText)tagText.textContent=' Max vous écoute tout de suite et alerte un écoutant — session remboursée si personne ne vous rejoint avant la fin';
     if(dot){dot.style.background='#2563eb';dot.style.animation='pulse 2s infinite';dot.style.boxShadow='';}
   }
   // Mettre à jour le modal si déjà ouvert (le bouton reste actif : Max prend le relais)
@@ -2075,7 +2075,8 @@ function endSession(){
 function _closeSessionNow(){
   const sessionIdToRate=chatSessionId;
   if(chatSessionId){
-    fetch('/.netlify/functions/chat-close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,closedBy:'visitor'})}).catch(()=>{});
+    // closedBy 'timer' : le visiteur est allé au bout de sa session (seul cas ouvrant droit au remboursement Max)
+    fetch('/.netlify/functions/chat-close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,closedBy:'timer'})}).catch(()=>{});
     sessionStorage.removeItem('parlons_chat_session_id');
     localStorage.removeItem('parlons_chat_session_id');
     chatSessionId=null;
@@ -2791,7 +2792,7 @@ function closeArticle(){document.getElementById('article-modal').classList.remov
     <p>Parlons intervient comme intermédiaire entre les Clients et les Écoutants (prestataires indépendants auto-entrepreneurs). Parlons agit en qualité de <strong>mandataire d'encaissement</strong> et n'est pas partie au contrat de service conclu entre le Client et l'Écoutant.</p>
 
     <h2><span class="cgv-art">Art. 2</span> Accès au service</h2>
-    <p>Aucun compte obligatoire. Un pseudonyme suffit. Le service est réservé aux personnes majeures (18 ans et plus). Quand aucun écoutant n'est connecté au démarrage d'une session payante, <strong>Max</strong>, assistant d'écoute basé sur une intelligence artificielle, engage la conversation et alerte les écoutants par email ; l'utilisateur en est informé au début de la conversation, et un écoutant humain reprend automatiquement la session dès qu'il se connecte, avec l'historique. <strong>Si aucun écoutant humain ne rejoint la session avant sa fin, celle-ci est intégralement remboursée</strong> (session à l'unité : remboursement automatique du paiement ; pass mensuel : la session n'est pas décomptée). Max n'est ni un professionnel de santé ni un substitut à un suivi médical.</p>
+    <p>Aucun compte obligatoire. Un pseudonyme suffit. Le service est réservé aux personnes majeures (18 ans et plus). Quand aucun écoutant n'est connecté au démarrage d'une session payante, <strong>Max</strong>, assistant d'écoute basé sur une intelligence artificielle, engage la conversation et alerte les écoutants par email ; l'utilisateur en est informé au début de la conversation, et un écoutant humain reprend automatiquement la session dès qu'il se connecte, avec l'historique. <strong>Si l'utilisateur va au terme de sa session sans qu'un écoutant humain l'ait rejointe, celle-ci est intégralement remboursée</strong> (session à l'unité : remboursement automatique du paiement ; pass mensuel : la session n'est pas décomptée). Une session interrompue par l'utilisateur avant son terme n'ouvre pas droit à remboursement, comme avec un écoutant humain. Max n'est ni un professionnel de santé ni un substitut à un suivi médical.</p>
 
     <h2><span class="cgv-art">Art. 3</span> Tarification et paiement</h2>
     <h3>Sessions individuelles</h3>
@@ -3278,7 +3279,7 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
     showChatPanel(true);
     setChatState(d.agentAssigned?'active':'waiting');
     appendChatMsg({sender_type:'system',welcome:true,content:d.ai
-      ?'Aucun écoutant n\'est connecté à cet instant : Max, notre assistant d\'écoute (intelligence artificielle), engage la conversation avec vous et alerte nos écoutants par email. Dès que l\'un d\'eux se connecte, il reprend l\'échange avec tout l\'historique. Si aucun écoutant ne vous rejoint, la session vous est intégralement remboursée.'
+      ?'Aucun écoutant n\'est connecté à cet instant : Max, notre assistant d\'écoute (intelligence artificielle), engage la conversation avec vous et alerte nos écoutants par email. Dès que l\'un d\'eux se connecte, il reprend l\'échange avec tout l\'historique. Si vous allez au bout de votre session sans qu\'un écoutant vous ait rejoint, elle vous est intégralement remboursée.'
       :d.agentAssigned
       ?'Votre demande est bien enregistrée. Un écoutant vous rejoindra dans les 2 prochaines minutes — restez bien en ligne !'
       :'Votre demande est bien enregistrée. Un écoutant vous rejoindra dès que possible — restez bien en ligne !'});
