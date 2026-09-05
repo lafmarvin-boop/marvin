@@ -3283,7 +3283,7 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
       :d.agentAssigned
       ?'Votre demande est bien enregistrée. Un écoutant vous rejoindra dans les 2 prochaines minutes — restez bien en ligne !'
       :'Votre demande est bien enregistrée. Un écoutant vous rejoindra dès que possible — restez bien en ligne !'});
-    if(d.agentAssigned) agentConnected(d.ai?'Max est à votre écoute':null,null);
+    if(d.agentAssigned) agentConnected(d.ai?'Max':null,null);
     startChatPolling();
   }catch(e){console.error('startChatSession:',e);const sub=document.getElementById('pcp-subtitle');if(sub)sub.textContent='Erreur de connexion. Veuillez réessayer.';}
 }
@@ -3310,7 +3310,7 @@ async function startFreeChatSession(name){
       :d.agentAssigned
       ?'Votre demande est bien enregistrée. Un écoutant vous rejoindra dans les 2 prochaines minutes — restez bien en ligne !'
       :'Votre demande est bien enregistrée. Un écoutant vous rejoindra dès que possible — restez bien en ligne !'});
-    if(d.agentAssigned) agentConnected(d.ai?'Max est à votre écoute':null,null);
+    if(d.agentAssigned) agentConnected(d.ai?'Max':null,null);
     startChatPolling();
     // Masquer l'offre gratuite (déjà utilisée)
     const freeOpt=document.querySelector('#session-select option[value="free"]');

@@ -70,14 +70,19 @@ exports.handler = async (event) => {
       }).catch(() => {});
     }
 
-    // Message visiteur sur une session tenue par Max (IA) : générer la réponse (fire-and-forget)
+    // Message visiteur sur une session tenue par Max (IA) : déclencher la réponse.
+    // On attend jusqu'à 1,5 s que la requête soit bien partie (sinon la fonction peut être gelée
+    // avant l'envoi), puis on abandonne l'attente : ai-reply continue de son côté.
     if (senderType === 'visitor' && sessions[0].agent_email === AI_EMAIL) {
       const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
-      fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, messageId: inserted?.id || null })
-      }).catch(() => {});
+      try {
+        await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, messageId: inserted?.id || null }),
+          signal: AbortSignal.timeout(1500)
+        });
+      } catch {}
     }
 
     // Message visiteur : notifier l'agent assigné par push (fire-and-forget)

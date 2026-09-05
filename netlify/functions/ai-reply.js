@@ -18,7 +18,10 @@ const Anthropic = require('@anthropic-ai/sdk');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const AI_EMAIL = 'claude@parlonsecoute.fr';
-const MODEL = process.env.AI_LISTENER_MODEL || 'claude-opus-5';
+// Netlify coupe les fonctions synchrones à 10 s : il faut un modèle rapide, sans réflexion étendue,
+// et des réponses courtes. Surchargeable via AI_LISTENER_MODEL.
+const MODEL = process.env.AI_LISTENER_MODEL || 'claude-sonnet-5';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type' };
 const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
@@ -63,7 +66,7 @@ exports.handler = async (event) => {
 
   try {
     // Petit délai : si le visiteur envoie plusieurs messages d'affilée, une seule réponse (au dernier)
-    await sleep(1500);
+    await sleep(600);
 
     const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=id,status,agent_email,pre_name,pre_topic,session_label,duration_sec,assigned_at&limit=1`);
     const sess = sessions[0];
@@ -96,13 +99,11 @@ exports.handler = async (event) => {
       opening ? `Tu as ouvert la conversation par : « ${opening} »` : ''
     ].filter(Boolean).join('\n');
 
-    const client = new Anthropic({ timeout: 20000, maxRetries: 1 });
-    const response = await client.beta.messages.create({
+    const client = new Anthropic({ timeout: 8000, maxRetries: 0 });
+    const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 400,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      output_config: { effort: 'low' },
+      max_tokens: 350,
+      thinking: { type: 'disabled' },
       system: [
         { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
         { type: 'text', text: context }
@@ -130,6 +131,14 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, model: response.model, usage: response.usage }) };
   } catch (e) {
     console.error('ai-reply:', e.message);
+    // Prévenir l'admin : une réponse de Max a échoué (clé, modèle, délai…)
+    if (ADMIN_EMAIL) {
+      const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
+      fetch(`${siteUrl}/.netlify/functions/notify-admin`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'recontact', prenom: 'Max (IA)', email: 'max@auto', message: `ÉCHEC réponse Max — session ${sessionId} — modèle ${MODEL} — ${e.status || ''} ${e.message}` })
+      }).catch(() => {});
+    }
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: e.message }) };
   }
 };
