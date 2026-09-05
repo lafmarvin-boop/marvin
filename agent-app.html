@@ -507,6 +507,7 @@ function showView(v){
     if(activeChatId&&appSessions.has(activeChatId)){
       document.getElementById('chat-view').classList.add('active');
       document.getElementById('nav-chat').classList.add('active');
+      appSessions.get(activeChatId).unread=0; updateNavBadge();
       renderChatMessages(activeChatId);
       return;
     }
@@ -581,17 +582,21 @@ function renderHeader(){
 // ── ONLINE / OFFLINE ──
 async function toggleOnline(){
   if(pendingOffline){
-    // Annuler le mode fin de service
+    // Annuler le mode fin de service (garde le token et les sessions en cours)
     pendingOffline=false;
-    await goOnline();
+    try{
+      await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,status:'available'})});
+    }catch{}
+    updateStatusUI();
     return;
   }
   if(appOnline){
     if(appSessions.size>0){
       // Sessions en cours : mode "fin de service" — plus de nouveaux tchats, finit les actifs
+      // 'ending' côté serveur : exclu des attributions, sessions et token conservés
       pendingOffline=true;
       try{
-        await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,status:'offline'})});
+        await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,agentToken:appToken,status:'ending'})});
       }catch{}
       updateStatusUI();
     } else {
@@ -636,6 +641,7 @@ async function goOffline(){
   appToken=null; appOnline=false;
   stopPoll();
   appSessions.clear();
+  pollSince=null; renderedIds={};
   chatTimers.forEach(id=>clearInterval(id)); chatTimers.clear();
   sessionEndTimers.forEach(id=>clearInterval(id)); sessionEndTimers.clear();
   activeChatId=null;
@@ -689,14 +695,19 @@ function updateStatusUI(){
 function startPoll(){ stopPoll(); poll(); pollTimer=setInterval(poll,3000); }
 function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 
+let _pollSeq=0;
 async function poll(){
   if(!appToken) return;
+  const seq=++_pollSeq;
   try{
     const res=await fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken,since:pollSince})});
+    // Ignorer une réponse arrivée après un passage hors ligne, ou dépassée par un poll plus récent
+    if(!appToken||seq!==_pollSeq) return;
     if(res.status===401){
       localStorage.removeItem('parlons_agent_token');
       localStorage.removeItem('parlons_agent_token_email');
       appToken=null; appOnline=false; stopPoll();
+      pollSince=null; renderedIds={};
       if(appEmail && appPassword && !_reconnecting){
         // Token invalidé → reconnexion silencieuse
         _reconnecting=true;
@@ -711,6 +722,7 @@ async function poll(){
       return;
     }
     const d=await res.json();
+    if(!appToken||seq!==_pollSeq) return;
     if(d.error) return;
     pollSince=d.serverTime||new Date().toISOString();
     processPoll(d);
@@ -888,9 +900,9 @@ async function takeSession(sessionId){
 
 // ── CHAT VIEW ──
 function openChatView(sessionId){
-  activeChatId=sessionId;
   const sess=appSessions.get(sessionId);
-  if(!sess) return;
+  if(!sess) return; // ne jamais pointer activeChatId sur une session absente (sinon fermeture auto + chat-close parasite)
+  activeChatId=sessionId;
   sess.unread=0; updateNavBadge();
   document.getElementById('chat-name').textContent=sess.name;
   document.getElementById('chat-label').textContent=sess.label||'Session en cours';
@@ -1124,10 +1136,13 @@ async function respondExt(accept){
     const data=await res.json();
     if(!data.ok){ alert(data.error||'Erreur'); return; }
     const sess=appSessions.get(sessionId);
-    if(sess){ sess.extensionPending=null; delete sess.frozenRemMs; }
+    // Accepté : on garde frozenRemMs, processPoll le consomme quand duration_sec augmente (sinon le temps gelé est perdu)
+    if(sess){ sess.extensionPending=null; if(!accept) delete sess.frozenRemMs; }
     document.getElementById('ext-bar').classList.remove('visible');
     if(!accept){
-      appSessions.delete(sessionId);
+      clearInterval(sessionEndTimers.get(sessionId)); sessionEndTimers.delete(sessionId);
+      clearInterval(chatTimers.get(sessionId)); chatTimers.delete(sessionId);
+      appSessions.delete(sessionId); delete renderedIds[sessionId];
       if(activeChatId===sessionId) closeChatView();
       renderSessions();
     }
@@ -1143,6 +1158,8 @@ async function endCurrentSession(){
   if(appToken){
     try{ await fetch(`${API}/chat-close`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,agentEmail:appEmail,agentToken:appToken,closedBy:'agent'})}); }catch{}
   }
+  clearInterval(sessionEndTimers.get(sessionId)); sessionEndTimers.delete(sessionId);
+  clearInterval(chatTimers.get(sessionId)); chatTimers.delete(sessionId);
   appSessions.delete(sessionId);
   delete renderedIds[sessionId];
   closeChatView();

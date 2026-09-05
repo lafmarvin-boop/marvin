@@ -163,6 +163,21 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, online: true, token: presence[0].session_token, currentSessionId: presence[0].current_session_id }) };
     }
 
+    // ── FIN DE SERVICE / RETOUR DISPONIBLE : vérifie le token, ne touche pas aux sessions ──
+    // 'ending'    : plus de nouvelles attributions (exclu des requêtes online/busy), sessions en cours conservées
+    // 'available' : annule la fin de service
+    if (status === 'ending' || status === 'available') {
+      if (!agentToken) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Token requis' }) };
+      const presence = await sbGet(
+        `agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}&select=session_token,current_session_id&limit=1`
+      );
+      if (!presence.length || presence[0].session_token !== agentToken)
+        return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Token invalide' }) };
+      const newStatus = status === 'ending' ? 'ending' : (presence[0].current_session_id ? 'busy' : 'online');
+      await sbPatch(`agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}`, { status: newStatus, last_seen: new Date().toISOString() });
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, status: newStatus }) };
+    }
+
     // ── PASSER HORS LIGNE : vérifie le token ──
     if (status === 'offline') {
       if (!agentToken) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Token requis' }) };
@@ -173,18 +188,20 @@ exports.handler = async (event) => {
       if (!presence.length || presence[0].session_token !== agentToken)
         return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Token invalide' }) };
 
-      // Fermer la session en cours si elle existe
-      const sid = presence[0].current_session_id;
-      if (sid) {
+      // Fermer TOUTES les sessions actives de cet agent (multi-session), pas seulement current_session_id
+      const active = await sbGet(
+        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id`
+      );
+      if (active.length) {
         const now = new Date().toISOString();
-        await Promise.all([
-          sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sid)}`, { status: 'closed', closed_at: now }),
+        await Promise.all(active.flatMap(s => [
+          sbPatch(`chat_sessions?id=eq.${encodeURIComponent(s.id)}`, { status: 'closed', closed_at: now }),
           fetch(`${SB_URL}/rest/v1/chat_messages`, {
             method: 'POST',
             headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-            body: JSON.stringify({ session_id: sid, content: "L'écoutant a mis fin à la session.", sender_type: 'system' })
+            body: JSON.stringify({ session_id: s.id, content: "L'écoutant a mis fin à la session.", sender_type: 'system' })
           })
-        ]);
+        ]));
       }
 
       await sbPatch(`agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}`, {

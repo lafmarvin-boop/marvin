@@ -761,10 +761,18 @@ function showScreen(id) {
 
 function logout() {
   if (agentPollingInterval) { clearInterval(agentPollingInterval); agentPollingInterval = null; }
+  if (typeof presRefreshInterval !== 'undefined' && presRefreshInterval) { clearInterval(presRefreshInterval); presRefreshInterval = null; }
+  if (typeof bgSyncInterval !== 'undefined' && bgSyncInterval) { clearInterval(bgSyncInterval); bgSyncInterval = null; }
+  if (typeof agentFloatTimerInterval !== 'undefined' && agentFloatTimerInterval) { clearInterval(agentFloatTimerInterval); agentFloatTimerInterval = null; }
   if (agentChatToken) {
     fetch(`${API}/chat-presence`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agentEmail: agentEmailStored, agentToken: agentChatToken, status: 'offline' }) }).catch(() => {});
     agentChatToken = null;
   }
+  // Nettoyer l'UI agent (bulle flottante, panneau, toggle) pour ne pas la retrouver sur l'écran de login
+  if (typeof updateAgentPresenceUI === 'function') { try { updateAgentPresenceUI(false); } catch {} }
+  const afp = document.getElementById('afloat-panel'); if (afp) afp.classList.remove('open');
+  const afb = document.getElementById('afloat-bubble'); if (afb) afb.style.display = 'none';
+  if (typeof agentSessions !== 'undefined' && agentSessions && typeof agentSessions.clear === 'function') agentSessions.clear();
   document.getElementById('admin-tabs').style.display = 'none';
   adminAgentDataCache = null;
   currentAdminTab = 'admin';
@@ -808,6 +816,7 @@ async function login() {
     let data = await res.json();
 
     // Si admin-stats refuse, tenter agent-stats
+    const firstErr = (!res.ok && data && data.error) ? data.error : null;
     if (!res.ok || (!data.role)) {
       res = await fetch(`${API}/agent-stats`, {
         method: 'POST',
@@ -817,7 +826,8 @@ async function login() {
       data = await res.json();
     }
 
-    if (!res.ok) throw new Error(data.error || 'Accès refusé');
+    // Un abonné avec un mauvais mot de passe doit voir l'erreur d'admin-stats, pas "Compte non trouvé" d'agent-stats
+    if (!res.ok) throw new Error((firstErr && /Compte non trouvé/.test(data.error || '')) ? firstErr : (data.error || 'Accès refusé'));
 
     if (data.role === 'admin') {
       localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
@@ -1453,6 +1463,7 @@ function downloadUrssafStatement() {
 
   const RATES = { '10 min': 0.50, '30 min': 1.50, '1 heure': 2.50 };
   function getRate(f) {
+    if ((f||'').includes('GRATUIT')) return 0;
     for (const [k, v] of Object.entries(RATES)) { if ((f||'').includes(k)) return v; }
     return 0;
   }
