@@ -4,13 +4,10 @@
   "private": true,
   "description": "Backend Netlify Functions pour Parlons",
   "dependencies": {
-    "@netlify/blobs": "^8.0.0",
-    "@supabase/supabase-js": "^2.106.1",
-    "puppeteer": "^25.1.0",
     "stripe": "^15.0.0",
     "web-push": "^3.6.7"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   }
 }

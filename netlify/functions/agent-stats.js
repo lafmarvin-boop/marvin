@@ -83,8 +83,16 @@ async function buildAgentStats(email) {
     ? Math.round((allRated.reduce((s, r) => s + r.rating, 0) / allRated.length) * 10) / 10
     : null;
 
+  // Dédup : une session sans paiement Stripe (gratuite, pass mensuel) notée existe dans `sessions` (rating null)
+  // ET dans chatReviews (note dans chat_sessions). On garde la version notée.
+  const isDupOfReview = s => !s.rating && !s.montant && chatReviews.some(r =>
+    (r.pseudo || '') === (s.client_pseudo || '') &&
+    Math.abs(new Date(r.started_at) - new Date(s.started_at)) < 5 * 60 * 1000
+  );
   const allSessions = [
-    ...sessions.filter(s => !(s.formule || '').includes('GRATUIT')).map(s => ({ pseudo: s.client_pseudo, formule: s.formule, montant: s.montant, started_at: s.started_at, rating: s.rating, rating_comment: s.rating_comment })),
+    ...sessions
+      .filter(s => !(s.formule || '').includes('GRATUIT') && !isDupOfReview(s))
+      .map(s => ({ pseudo: s.client_pseudo, formule: s.formule, montant: s.montant, started_at: s.started_at, rating: s.rating, rating_comment: s.rating_comment })),
     ...chatReviews
   ].sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
 
