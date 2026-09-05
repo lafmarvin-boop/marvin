@@ -44,7 +44,7 @@ exports.handler = async (event) => {
       const s = sessions[0];
 
       let agentPseudo = null;
-      if (s.agent_email === AI_EMAIL) agentPseudo = 'Max · assistant d\'écoute';
+      if (s.agent_email === AI_EMAIL) agentPseudo = 'Max est à votre écoute';
       else if (s.agent_email) {
         const profiles = await sbGet(`agent_profiles?email=eq.${encodeURIComponent(s.agent_email)}&select=pseudo,prenom&limit=1`);
         agentPseudo = profiles[0]?.pseudo || profiles[0]?.prenom || null;
