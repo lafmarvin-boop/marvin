@@ -71,11 +71,7 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS loyalty_discount SMALLINT DEF
 
 ## 🗑️ Supprimé
 
-- **Chat de groupe** (sept. 2026) : page `groupe.html`, fonctions `netlify/functions/group-*.js`, tables `group_access` / `group_messages` retirées du code, des documents juridiques, du service worker et du sitemap. Les tables existent peut-être encore côté Supabase ; pour les supprimer, exécuter manuellement dans Supabase → SQL Editor :
-
-```sql
-DROP TABLE IF EXISTS group_messages, group_access;
-```
+- **Chat de groupe** (sept. 2026) : page `groupe.html`, fonctions `netlify/functions/group-*.js`, tables `group_access` / `group_messages` retirées du code, des documents juridiques (HTML + PDF régénérés), du service worker et du sitemap. Tables supprimées côté Supabase (fait manuellement).
 
 ---
 
