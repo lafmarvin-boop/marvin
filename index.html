@@ -3428,6 +3428,8 @@ async function sendChatMessage(){
   ta.value='';ta.style.height='auto';
   try{
     await fetch('/.netlify/functions/chat-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,content,senderType:'visitor'})});
+    // Après un envoi, rafraîchir chaque seconde pendant 10 s pour afficher la réponse sans attendre le cycle de 2,5 s
+    for(let i=1;i<=10;i++) setTimeout(()=>{ if(chatSessionId) pollChat(); }, i*1000);
   }catch(e){if(ta)ta.value=content;}
 }
 function openAgentRequestForm(){

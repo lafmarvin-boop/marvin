@@ -154,6 +154,13 @@ exports.handler = async (event) => {
       text = 'Je suis là et je vous écoute. Prenez le temps qu\'il vous faut : qu\'est-ce qui pèse le plus en ce moment ?';
     text = text.replace(/\n{3,}/g, '\n\n').slice(0, 1500);
 
+    // Rythme humain : la réponse apparaît entre 5 et ~6,5 s après le message du visiteur
+    // (+ jusqu'à 1 s d'affichage côté visiteur), jamais avant — quel que soit le temps de génération.
+    const msgTime = new Date(last.created_at).getTime();
+    const target = msgTime + 5000 + Math.floor(Math.random() * 1500);
+    const wait = target - Date.now();
+    if (wait > 0) await sleep(Math.min(wait, 6500));
+
     // Un écoutant humain a peut-être pris le relais pendant la génération
     const check = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email&limit=1`);
     if (!check[0] || check[0].status !== 'active' || check[0].agent_email !== AI_EMAIL)
