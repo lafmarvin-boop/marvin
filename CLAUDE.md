@@ -6,7 +6,7 @@ Projet : service d'écoute anonyme en ligne (Netlify + Supabase + Stripe + Resen
 
 ## ✅ Ce qui est fait
 
-- `index.html` : paiement unique (Stripe), abonnement mensuel, groupe, notation, suggestions, fidélité Option A (localStorage), responsive mobile
+- `index.html` : paiement unique (Stripe), abonnement mensuel, notation, suggestions, fidélité Option A (localStorage), responsive mobile
 - `espace.html` : login unifié admin/abonné, dashboard admin (stats, tableau agents, suggestions, abonnés, sessions récentes), dashboard abonné (démarrer session, changer mdp, résilier), responsive mobile
 - `netlify/functions/` : create-payment-intent, create-subscription, stripe-webhook, cancel-subscription, change-password, subscriber-session, submit-suggestion, admin-stats
 - Documents juridiques : contrat prestation v2.5, protocole agents v2.0, charte écoutant v1.0, CGV v2.0, registre RGPD v2.8
@@ -68,6 +68,14 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS loyalty_discount SMALLINT DEF
 ## 🚧 En attente
 
 1. **Fidélité Option B (futur)** — tracking par email (cross-device). Mis en attente.
+
+## 🗑️ Supprimé
+
+- **Chat de groupe** (sept. 2026) : page `groupe.html`, fonctions `netlify/functions/group-*.js`, tables `group_access` / `group_messages` retirées du code, des documents juridiques, du service worker et du sitemap. Les tables existent peut-être encore côté Supabase ; pour les supprimer, exécuter manuellement dans Supabase → SQL Editor :
+
+```sql
+DROP TABLE IF EXISTS group_messages, group_access;
+```
 
 ---
 

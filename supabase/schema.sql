@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS sessions (
   id               UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
   client_pseudo    TEXT        NOT NULL,
-  formule          TEXT        NOT NULL,  -- '10min', '30min', '1h', 'sub', 'group'
+  formule          TEXT        NOT NULL,  -- '10min', '30min', '1h', 'sub'
   montant          DECIMAL(6,2),
   stripe_payment_id TEXT       UNIQUE,
   statut           TEXT        DEFAULT 'pending',  -- pending, paid, active, ended, failed, refunded
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
   status              TEXT        DEFAULT 'waiting',  -- waiting, active, ended, closed
   pre_name            TEXT,
   pre_topic           TEXT,
-  session_type        TEXT        DEFAULT 'paid',  -- paid, sub, group
+  session_type        TEXT        DEFAULT 'paid',  -- paid, sub
   session_label       TEXT,
   duration_sec        INTEGER     DEFAULT 1800,
   stripe_payment_id   TEXT,
@@ -187,38 +187,6 @@ CREATE TABLE IF NOT EXISTS agent_requests (
 ALTER TABLE agent_requests ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN CREATE POLICY "no_public_read" ON agent_requests FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Chat de groupe — accès membres
-CREATE TABLE IF NOT EXISTS group_access (
-  id                 UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
-  room_id            TEXT        NOT NULL,
-  pseudo             TEXT        NOT NULL,
-  is_agent           BOOLEAN     DEFAULT FALSE,
-  free_until         TIMESTAMPTZ,
-  paid_until         TIMESTAMPTZ,
-  payment_intent_id  TEXT,
-  created_at         TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(room_id, pseudo)
-);
-CREATE INDEX IF NOT EXISTS idx_group_access_room ON group_access (room_id);
-ALTER TABLE group_access ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN CREATE POLICY "no_public_read" ON group_access FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
--- Chat de groupe — messages
-CREATE TABLE IF NOT EXISTS group_messages (
-  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
-  room_id     TEXT        NOT NULL,
-  author      TEXT        NOT NULL,
-  content     TEXT        NOT NULL,
-  is_private  BOOLEAN     DEFAULT FALSE,
-  recipient   TEXT,
-  is_question BOOLEAN     DEFAULT FALSE,
-  is_agent    BOOLEAN     DEFAULT FALSE,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_group_messages_room ON group_messages (room_id, created_at);
-ALTER TABLE group_messages ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN CREATE POLICY "no_public_read" ON group_messages FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
 -- Suggestions utilisateurs
 CREATE TABLE IF NOT EXISTS suggestions (
   id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -286,9 +254,6 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS rating_comment TEXT;
 
 -- Programme fidélité (fenêtre glissante 3 mois)
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS loyalty_discount SMALLINT DEFAULT 0;
-
--- Colonne group_access (traçabilité paiement groupe)
-ALTER TABLE group_access ADD COLUMN IF NOT EXISTS payment_intent_id TEXT;
 
 -- Colonnes agent_profiles (adresse complète)
 ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS code_postal TEXT;
