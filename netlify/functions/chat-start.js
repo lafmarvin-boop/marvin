@@ -101,20 +101,24 @@ exports.handler = async (event) => {
       await post(`Bonjour ${name}, je suis Max, l'assistant d'écoute de Parlons. Je viens d'alerter nos écoutants pour que l'un d'eux vous rejoigne, et je suis là avec vous dès maintenant, sans jugement et en toute confidentialité. Qu'est-ce qui vous donne envie de parler aujourd'hui ?`, 'agent');
       aiAssigned = true;
 
-      // Alerter par email tous les écoutants qui ont activé « Recevoir les demandes d'écoutant » (fire-and-forget)
+      // Alerter par email l'administrateur + les écoutants qui ont activé « Recevoir les demandes d'écoutant ».
+      // Envoi attendu (4 s max) : un envoi « sans attendre » peut être gelé par Netlify avant de partir.
       if (RESEND_KEY) {
-        (async () => {
-          const agents = await sbGet('agent_profiles?notify_requests=eq.true&notify_email=not.is.null&select=notify_email,email');
-          const targets = [...new Set(agents.map(a => a.notify_email || a.email).filter(Boolean))];
+        await (async () => {
+          const agents = await sbGet('agent_profiles?notify_requests=eq.true&select=notify_email,email');
+          const targets = [...new Set([process.env.ADMIN_EMAIL, ...agents.map(a => a.notify_email || a.email)].filter(Boolean).map(e => e.toLowerCase()))];
           const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
           const html = `<p style="font-family:sans-serif">Un visiteur vient de démarrer une <strong>session payante</strong> et personne n'est connecté : Max (assistant IA) engage la conversation en attendant un écoutant.</p>
 <p style="font-family:sans-serif"><strong>Prénom :</strong> ${String(name).replace(/[<>&]/g, '')}<br><strong>Formule :</strong> ${String(sessionLabel || 'session').replace(/[<>&]/g, '')}<br><strong>Heure :</strong> ${new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}</p>
 <p><a href="${siteUrl}/agent-app.html" style="display:inline-block;background:#C4714A;color:white;text-decoration:none;padding:.65rem 1.5rem;border-radius:50px;font-weight:700">Me connecter et prendre le relais →</a></p>
 <p style="font-size:.8rem;color:#888;font-family:sans-serif">Si le visiteur va au bout de sa session sans écoutant, il est remboursé automatiquement. Vous recevez cet email car vous avez activé les demandes d'écoutant dans votre profil.</p>`;
-          await Promise.all(targets.map(to => fetch('https://api.resend.com/emails', {
+          const results = await Promise.allSettled(targets.map(to => fetch('https://api.resend.com/emails', {
             method: 'POST', headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ from: FROM_EMAIL, to, subject: `🚨 ${name} attend un écoutant — session payante en cours avec Max`, html })
-          })));
+            body: JSON.stringify({ from: FROM_EMAIL, to, subject: `🚨 ${name} attend un écoutant — session payante en cours avec Max`, html }),
+            signal: AbortSignal.timeout(4000)
+          }).then(async r => { if (!r.ok) throw new Error(`${to}: Resend ${r.status} ${(await r.text()).slice(0, 120)}`); })));
+          results.filter(r => r.status === 'rejected').forEach(r => console.error('chat-start alert email:', r.reason?.message || r.reason));
+          console.log(`chat-start: alerte Max envoyée à ${targets.length} destinataire(s)`);
         })().catch(e => console.error('chat-start alert email:', e.message));
       }
     }
