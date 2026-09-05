@@ -108,11 +108,9 @@ exports.handler = async (event) => {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    const [sessions, subscribers, groupMsgs, groupAccess, suggestions, siteStatsRows, visitsRows, chatsRows, ipLogs, agentPresenceRows, chatRatings] = await Promise.all([
+    const [sessions, subscribers, suggestions, siteStatsRows, visitsRows, chatsRows, ipLogs, agentPresenceRows, chatRatings] = await Promise.all([
       sbGet('sessions?statut=in.(paid,ended)&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
       sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
-      sbGet('group_messages?select=room_id,created_at,author&order=created_at.desc&limit=2000'),
-      sbGet('group_access?select=room_id,pseudo,free_until,paid_until,is_agent&order=created_at.desc&limit=300'),
       sbGet('suggestions?select=*&order=created_at.desc&limit=100'),
       sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors,total_chats'),
       sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,visited_at&order=visited_at.desc&limit=50000`),
@@ -132,7 +130,6 @@ exports.handler = async (event) => {
     const dow = now.getDay();
     const startOfWeek = new Date(startOfDay);
     startOfWeek.setDate(startOfDay.getDate() - (dow === 0 ? 6 : dow - 1));
-    const today = now.toISOString().split('T')[0];
 
     function periodVisits(rows, from) {
       const f = rows.filter(v => new Date(v.visited_at) >= from);
@@ -164,12 +161,6 @@ exports.handler = async (event) => {
     });
 
     const activeSubs = subscribers.filter(s => s.status === 'active' && (!s.expires_at || new Date(s.expires_at) > now));
-    const todayMsgs = groupMsgs.filter(m => m.created_at && m.created_at.startsWith(today));
-    const byRoom = {};
-    groupMsgs.forEach(m => { if (m.room_id) byRoom[m.room_id] = (byRoom[m.room_id] || 0) + 1; });
-    const activeGroupUsers = groupAccess.filter(a =>
-      (a.paid_until && new Date(a.paid_until) > now) || (a.free_until && new Date(a.free_until) > now)
-    );
 
     // Stats par agent avec notes et avis
     const byAgent = {};
@@ -277,12 +268,6 @@ exports.handler = async (event) => {
           total: subscribers.length,
           active: activeSubs.length,
           list: subscribers
-        },
-        group: {
-          totalMessages: groupMsgs.length,
-          todayMessages: todayMsgs.length,
-          byRoom,
-          activeUsers: activeGroupUsers.length
         },
         traffic,
         ipLogs: ipLogs.filter(v => v.ip_address).map(v => ({

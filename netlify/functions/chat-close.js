@@ -88,7 +88,7 @@ exports.handler = async (event) => {
             body: JSON.stringify(sessionUpdate)
           });
         } else {
-          // Abonnement / groupe : insérer une nouvelle ligne (pas de paiement Stripe individuel)
+          // Abonnement : insérer une nouvelle ligne (pas de paiement Stripe individuel)
           await fetch(`${SB_URL}/rest/v1/sessions`, {
             method: 'POST',
             headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },

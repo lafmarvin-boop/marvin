@@ -1,7 +1,7 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const BASE_AMOUNTS  = { '100': 100, '300': 300, '500': 500 };
-const FIXED_AMOUNTS = { 'sub': 1500, 'group': 150 };
+const FIXED_AMOUNTS = { 'sub': 1500 };
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

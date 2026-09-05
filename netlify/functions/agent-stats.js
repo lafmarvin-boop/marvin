@@ -98,7 +98,6 @@ async function buildAgentStats(email) {
 
   return {
     role: 'agent',
-    needs_password_setup: false,
     profile,
     periods,
     byPlan,
@@ -139,21 +138,6 @@ exports.handler = async (event) => {
       body: JSON.stringify({ email, pseudo, nom, prenom, adresse, code_postal, ville, siret, iban, notify_email: notify_email || null, notify_requests: !!notify_requests, updated_at: new Date().toISOString() })
     });
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
-  }
-
-  // ── Définir le mot de passe (première connexion) ──
-  if (action === 'set_password') {
-    if (!password || password.length < 8)
-      return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Mot de passe trop court (8 caractères min.)' }) };
-    const salt = crypto.randomBytes(32).toString('hex');
-    const hash = hashPassword(password, salt);
-    await fetch(`${SB_URL}/rest/v1/agent_passwords`, {
-      method: 'POST',
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify({ email, password_hash: hash, password_salt: salt })
-    });
-    const stats = await buildAgentStats(email);
-    return { statusCode: 200, headers: CORS, body: JSON.stringify(stats) };
   }
 
   // ── Connexion ──
