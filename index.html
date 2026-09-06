@@ -2269,10 +2269,6 @@ function setRating(n){ratingVal=n;document.querySelectorAll('#rating-stars span'
 async function submitRating(){
   if(!ratingVal){alert('Veuillez donner une note.');return;}
   const comment=document.getElementById('rating-comment').value.trim();
-  // Sauvegarde locale
-  const ratings=JSON.parse(localStorage.getItem('parlons_ratings')||'[]');
-  ratings.unshift({session:selectedLabel,stars:ratingVal,comment,date:new Date().toLocaleDateString('fr-FR')});
-  localStorage.setItem('parlons_ratings',JSON.stringify(ratings));
   // Envoi au backend
   const paymentId=sessionStorage.getItem('parlons_payment_id');
   try {
@@ -2538,9 +2534,6 @@ updateLoyaltyBadge();
 function submitNotify(){
   const email=document.getElementById('notify-email').value.trim();
   if(!email||!email.includes('@')){alert('Veuillez entrer une adresse email valide.');return;}
-  const notifs=JSON.parse(localStorage.getItem('parlons_notifs')||'[]');
-  notifs.push({email,date:new Date().toLocaleDateString('fr-FR')});
-  localStorage.setItem('parlons_notifs',JSON.stringify(notifs));
   notifyAdmin({ type: 'notify', email });
   document.getElementById('notify-email').value='';
   document.getElementById('notify-success').textContent='✅ Parfait ! Vous serez notifié(e) dès qu\'un écoutant est disponible.';
@@ -2610,9 +2603,6 @@ function submitAgentForm(){
   if(!checkCharter||!checkCharter.checked){alert('⚠️ Vous devez accepter la Charte de l\'Écoutant pour candidater.');return;}
   if(!checkCgv||!checkCgv.checked){alert('⚠️ Vous devez avoir pris connaissance des CGV pour candidater.');return;}
   if(!checkAge||!checkAge.checked){alert('⚠️ Vous devez certifier être majeur(e) et ne pas être en situation de vulnérabilité psychologique grave.');return;}
-  const apps=JSON.parse(localStorage.getItem('parlons_agents')||'[]');
-  apps.push({name,pseudo,email,dispo:document.getElementById('ag-dispo').value,why,exp:document.getElementById('ag-exp').value,charterAccepted:true,cgvAccepted:true,date:new Date().toLocaleDateString('fr-FR')});
-  localStorage.setItem('parlons_agents',JSON.stringify(apps));
   notifyAdmin({ type: 'candidature', name, pseudo, email, dispo: document.getElementById('ag-dispo').value, why, exp: document.getElementById('ag-exp').value });
   document.getElementById('ag-ok').style.display='block';
   document.getElementById('ag-name').value='';
