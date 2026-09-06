@@ -205,6 +205,28 @@ exports.handler = async (event) => {
     const lockUntil = new Date(Date.now() + 25000).toISOString();
     const nowIso = new Date().toISOString();
     let unlock = async () => {};
+    if (assisting) {
+      // Trois déclencheurs peuvent appeler en même temps (sondage visiteur, sondage écoutant,
+      // balayage) : sans verrou, chacun génère et insère sa réponse — le visiteur verrait Max
+      // se répéter. `assist_lock` est propre à l'assistance : contrairement à response_deadline,
+      // il ne pilote aucune réassignation. Si la colonne n'existe pas encore en base, on
+      // poursuit sans verrou plutôt que de refuser d'assister.
+      const lockRes = await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&or=(assist_lock.is.null,assist_lock.lt.${encodeURIComponent(nowIso)})`, {
+        method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+        body: JSON.stringify({ assist_lock: lockUntil })
+      });
+      if (lockRes.ok) {
+        const locked = await lockRes.json().catch(() => []);
+        if (!Array.isArray(locked) || !locked.length) {
+          trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: 'assist_locked' }); // TEMPORAIRE
+          return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_locked' }) };
+        }
+        unlock = () => fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+          method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ assist_lock: null })
+        }).catch(() => {});
+      }
+    }
     if (holdsSession) {
       const lockRes = await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&agent_email=eq.${encodeURIComponent(AI_EMAIL)}&or=(response_deadline.is.null,response_deadline.lt.${encodeURIComponent(nowIso)})`, {
         method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
