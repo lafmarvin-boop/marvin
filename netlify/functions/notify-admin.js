@@ -24,29 +24,33 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, sent: false }) };
   }
 
+  // Neutralise les caractères HTML des champs saisis par le visiteur avant de les mettre
+  // dans l'email admin (même mécanisme que chat-start.js / free-session.js).
+  const esc = (v) => (v == null ? '' : String(v).replace(/[<>&]/g, ''));
+
   let subject, html;
 
   if (type === 'notify') {
     subject = '📩 Nouvelle alerte disponibilité — Parlons';
     html = `<p>Un visiteur souhaite être prévenu quand un écoutant est disponible.</p>
-<p><strong>Email :</strong> ${email || '—'}</p>
+<p><strong>Email :</strong> ${esc(email) || '—'}</p>
 <p><strong>Date :</strong> ${new Date().toLocaleString('fr-FR')}</p>`;
   } else if (type === 'recontact') {
     subject = '📩 Demande de recontact — attente dépassée — Parlons';
     html = `<p>Demande de recontact après 20 min d'attente sans réponse.</p>
-<p><strong>Prénom :</strong> ${prenom || '—'}</p>
-<p><strong>Email :</strong> ${email || '—'}</p>
-<p><strong>Message :</strong> ${message || '—'}</p>
+<p><strong>Prénom :</strong> ${esc(prenom) || '—'}</p>
+<p><strong>Email :</strong> ${esc(email) || '—'}</p>
+<p><strong>Message :</strong> ${esc(message) || '—'}</p>
 <p><strong>Date :</strong> ${new Date().toLocaleString('fr-FR')}</p>`;
   } else if (type === 'candidature') {
     subject = '🎙️ Nouvelle candidature écoutant — Parlons';
     html = `<p>Nouvelle candidature écoutant reçue.</p>
-<p><strong>Nom :</strong> ${name || '—'}</p>
-<p><strong>Pseudo :</strong> ${pseudo || '—'}</p>
-<p><strong>Email :</strong> ${email || '—'}</p>
-<p><strong>Disponibilités :</strong> ${dispo || '—'}</p>
-<p><strong>Motivation :</strong> ${why || '—'}</p>
-<p><strong>Expérience :</strong> ${exp || '—'}</p>
+<p><strong>Nom :</strong> ${esc(name) || '—'}</p>
+<p><strong>Pseudo :</strong> ${esc(pseudo) || '—'}</p>
+<p><strong>Email :</strong> ${esc(email) || '—'}</p>
+<p><strong>Disponibilités :</strong> ${esc(dispo) || '—'}</p>
+<p><strong>Motivation :</strong> ${esc(why) || '—'}</p>
+<p><strong>Expérience :</strong> ${esc(exp) || '—'}</p>
 <p><strong>Date :</strong> ${new Date().toLocaleString('fr-FR')}</p>`;
   } else {
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'type inconnu' }) };
