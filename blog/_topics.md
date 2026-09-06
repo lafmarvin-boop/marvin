@@ -9,3 +9,4 @@ Sujets déjà couverts dans blog.html (articles intégrés) :
 - Relations : Traverser une rupture : les étapes du deuil amoureux
 
 Articles statiques publiés (blog/<slug>.html) :
+- 2026-09-06 · Deuil : Deuil d'un proche : comment traverser cette épreuve sans s'isoler → /blog/deuil-dun-proche-traverser-sans-sisoler.html · mots-clés : deuil, perte d'un proche, surmonter un deuil, phases du deuil, parler de son deuil, deuil et solitude
