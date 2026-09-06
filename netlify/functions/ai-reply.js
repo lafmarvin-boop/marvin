@@ -80,6 +80,32 @@ exports.handler = async (event) => {
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
   const { sessionId, messageId } = body;
 
+  // Diagnostic d'assistance : pourquoi Max n'intervient-il pas ? Renvoie l'état de décision des
+  // sessions actives tenues par un écoutant. Métadonnées seulement, aucun contenu de message.
+  if (body.diag === 'assist' && event.headers['x-parlons-diag'] === '1') {
+    const rows = await sbGet(`chat_sessions?status=eq.active&agent_email=not.is.null&select=id,agent_email,status,assigned_at&order=assigned_at.desc&limit=5`);
+    const out = [];
+    for (const r of rows) {
+      const m = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(r.id)}&select=sender_type,created_at&order=created_at.desc&limit=10`);
+      const last = m[0];
+      const humanHeld = r.agent_email !== AI_EMAIL;
+      const waitingMs = last && last.sender_type === 'visitor' ? Date.now() - new Date(last.created_at).getTime() : 0;
+      const humanSpoke = m.some(x => x.sender_type === 'agent');
+      const anyAssist = m.some(x => x.sender_type === 'assistant');
+      const idle = Date.now() - new Date(r.assigned_at || Date.now()).getTime();
+      out.push({
+        session: r.id.slice(0, 8), agent: humanHeld ? 'humain' : 'Max', status: r.status,
+        dernierType: last?.sender_type || null,
+        attenteSec: Math.round(waitingMs / 1000), depuisAttributionSec: Math.round(idle / 1000),
+        ecoutantAParle: humanSpoke, maxDejaIntervenu: anyAssist,
+        seuilSec: Math.round(ASSIST_DELAY_MS / 1000),
+        declencheraitAssistance: humanHeld && (waitingMs > ASSIST_DELAY_MS || (!humanSpoke && !anyAssist && idle > ASSIST_DELAY_MS)),
+        types: m.map(x => x.sender_type).reverse().join(',')
+      });
+    }
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, maintenant: new Date().toISOString(), sessions: out }, null, 1) };
+  }
+
   // Diagnostic : vérifie l'appel API depuis Netlify (clé, modèle, délai). Aucune donnée de session.
   if (body.ping === true && event.headers['x-parlons-diag'] === '1') {
     const t0 = Date.now();
