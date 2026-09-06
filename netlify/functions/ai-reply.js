@@ -303,9 +303,12 @@ exports.handler = async (event) => {
       // Pas d'annonce système : elle laisserait entendre que l'écoutant s'est absenté et casserait
       // le fil. La transparence est portée par la bulle elle-même, signée « Max · assistant »
       // au-dessus de chaque message (index.html) et « Max a répondu pour vous » côté écoutant.
-      const insA = await post(text, 'assistant');
-      trace('ai-reply-insertion', { s: String(sessionId).slice(0, 8), ok: insA.ok, http: insA.status }); // TEMPORAIRE
-      if (!insA.ok) throw new Error(`Insertion message ${insA.status}`);
+      let insA = await post(text, 'assistant');
+      if (!insA.ok) {
+        // TEMPORAIRE : le détail PostgREST nomme la contrainte qui refuse la valeur
+        trace('ai-reply-insertion', { s: String(sessionId).slice(0, 8), http: insA.status, detail: (await insA.text()).slice(0, 400) });
+        throw new Error(`Insertion message ${insA.status}`);
+      }
     } else {
       const ins = await post(text, 'agent');
       if (!ins.ok) throw new Error(`Insertion message ${ins.status}`);
