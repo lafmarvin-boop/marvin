@@ -22,6 +22,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const { AI_EMAIL, ASSIST_DELAY_MS } = require('./_assist');
+const { trace } = require('./_trace'); // TEMPORAIRE (voir _trace.js)
 // Netlify coupe les fonctions synchrones à 10 s : il faut un modèle rapide, sans réflexion étendue,
 // et des réponses courtes. Surchargeable via AI_LISTENER_MODEL.
 const MODEL = process.env.AI_LISTENER_MODEL || 'claude-sonnet-5';
@@ -112,6 +113,12 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, maintenant: new Date().toISOString(), sessions: out }, null, 1) };
   }
 
+  // TEMPORAIRE : relecture du traçage de l'assistance (voir _trace.js)
+  if (body.diag === 'trace' && event.headers['x-parlons-diag'] === '1') {
+    const rows = await sbGet(`suggestions?payment_id=eq.TRACE&select=content,created_at&order=created_at.desc&limit=${Math.min(parseInt(body.limit || '25', 10), 60)}`);
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, n: rows.length, traces: rows.map(r => r.content) }, null, 1) };
+  }
+
   // Diagnostic : vérifie l'appel API depuis Netlify (clé, modèle, délai). Aucune donnée de session.
   if (body.ping === true && event.headers['x-parlons-diag'] === '1') {
     const t0 = Date.now();
@@ -143,6 +150,7 @@ exports.handler = async (event) => {
     const sess = sessions[0];
     // Deux modes : Max tient la session (aucun écoutant connecté), ou Max assiste un écoutant
     // humain qui n'a pas répondu depuis ASSIST_DELAY_MS (il garde la session, Max comble le silence).
+    if (body.assist === true) trace('ai-reply-recu', { s: String(sessionId).slice(0, 8), statut: sess?.status || null, agent: sess ? (sess.agent_email === AI_EMAIL ? 'Max' : 'humain') : null }); // TEMPORAIRE
     const holdsSession = sess && sess.agent_email === AI_EMAIL;
     const assisting = sess && !holdsSession && !!sess.agent_email && (body.assist === true || dry);
     if (!sess || (sess.status !== 'active' && !dry) || (!holdsSession && !assisting)) {
@@ -165,18 +173,18 @@ exports.handler = async (event) => {
         : (!humanReplied && sess.assigned_at ? new Date(sess.assigned_at).getTime() : 0); // tchat jamais ouvert
       if (!waitingSince || Date.now() - waitingSince < ASSIST_DELAY_MS) {
         console.log('ai-reply assist trop tôt', sessionId, waitingSince ? Date.now() - waitingSince : 'aucune attente');
-        if (!dry) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_too_early' }) };
+        if (!dry) { trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: 'assist_too_early' }); return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_too_early' }) }; }
         steps.push('garde:assist_too_early');
       }
       console.log('ai-reply assist déclenché', sessionId, 'attente', Math.round((Date.now() - waitingSince) / 1000), 's');
       // Ne pas enchaîner deux interventions coup sur coup (plusieurs sondages simultanés)
       const lastAssist = [...msgs].reverse().find(m => m.sender_type === 'assistant');
       if (lastAssist && Date.now() - new Date(lastAssist.created_at).getTime() < 20000) {
-        if (!dry) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_recent' }) };
+        if (!dry) { trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: 'assist_recent' }); return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_recent' }) }; }
         steps.push('garde:assist_recent');
       }
       if (lastAssist && (!last || last.sender_type !== 'visitor')) {
-        if (!dry) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_nothing_pending' }) };
+        if (!dry) { trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: 'assist_nothing_pending' }); return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_nothing_pending' }) }; }
         steps.push('garde:assist_nothing_pending');
       }
     } else {
@@ -296,6 +304,7 @@ exports.handler = async (event) => {
       // le fil. La transparence est portée par la bulle elle-même, signée « Max · assistant »
       // au-dessus de chaque message (index.html) et « Max a répondu pour vous » côté écoutant.
       const insA = await post(text, 'assistant');
+      trace('ai-reply-insertion', { s: String(sessionId).slice(0, 8), ok: insA.ok, http: insA.status }); // TEMPORAIRE
       if (!insA.ok) throw new Error(`Insertion message ${insA.status}`);
     } else {
       const ins = await post(text, 'agent');
@@ -306,6 +315,7 @@ exports.handler = async (event) => {
     } finally { await unlock(); }
   } catch (e) {
     console.error('ai-reply:', e.message);
+    if (body.assist === true) trace('ai-reply-erreur', { s: String(sessionId).slice(0, 8), msg: String(e.message).slice(0, 200) }); // TEMPORAIRE
     // Prévenir l'admin : une réponse de Max a échoué (clé, modèle, délai…)
     if (ADMIN_EMAIL) {
       const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';

@@ -2,6 +2,7 @@ const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 // Max, assistant d'écoute IA (ai-reply.js) et règle d'assistance partagée (_assist.js)
 const { AI_EMAIL, maxShouldAssist } = require('./_assist');
+const { trace } = require('./_trace'); // TEMPORAIRE (voir _trace.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -72,6 +73,7 @@ exports.handler = async (event) => {
           assist = true;
         }
         if (trigger) {
+          if (assist) trace('sondage-visiteur', { s: String(sessionId).slice(0, 8), dernier: last?.sender_type || null }); // TEMPORAIRE
           const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
           try {
             await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
@@ -242,6 +244,7 @@ exports.handler = async (event) => {
             const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sess.id)}&select=id,sender_type,created_at&order=created_at.desc&limit=12`);
             if (!maxShouldAssist(msgs, sess.assigned_at)) return;
             const last = msgs.find(m => m.sender_type !== 'system');
+            trace('sondage-ecoutant', { s: sess.id.slice(0, 8), dernier: last?.sender_type || null }); // TEMPORAIRE
             try {
               await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
