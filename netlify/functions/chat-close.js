@@ -37,7 +37,7 @@ exports.handler = async (event) => {
   if (!sessionId) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'sessionId requis' }) };
 
   try {
-    const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=agent_email,status,stripe_payment_id,session_type,session_label,pre_name,assigned_at&limit=1`);
+    const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=agent_email,status,stripe_payment_id,session_type,session_label,pre_name,assigned_at,visitor_id,duration_sec&limit=1`);
     if (!sessions.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Session introuvable' }) };
     if (sessions[0].status === 'closed') return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
 
@@ -47,6 +47,14 @@ exports.handler = async (event) => {
       const presence = await sbGet(`agent_presence?agent_email=eq.${encodeURIComponent(agentEmail)}&select=session_token&limit=1`);
       if (!presence.length || presence[0].session_token !== agentToken)
         return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Token invalide' }) };
+    } else if (closedBy !== 'sweep') {
+      // Fermeture par le visiteur : le sessionId seul ne prouve rien (il peut fuiter par un lien,
+      // un historique ou un log). On exige aussi le visitor_id, qui n'est jamais renvoyé par l'API
+      // et qui reste dans le navigateur du visiteur. Sans cela, un tiers pourrait fermer la session
+      // d'autrui et, sur une session tenue par Max, déclencher un remboursement Stripe.
+      const claimed = String(body.visitorId || '');
+      if (!claimed || !sessions[0].visitor_id || claimed !== sessions[0].visitor_id)
+        return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non autorisé' }) };
     }
 
     const now = new Date().toISOString();
@@ -111,7 +119,13 @@ exports.handler = async (event) => {
     //    humain l'ait rejoint → remboursement intégral. Page fermée / abandon (balayage) → pas de remboursement,
     //    comme avec un écoutant humain.
     let refunded = false;
-    if (agentMail === AI_EMAIL && closedBy === 'timer') {
+    // Deuxième garde, indépendante de l'authentification : le remboursement n'est dû que si la
+    // session est arrivée à son terme. Sans cela, un visiteur légitime pourrait payer puis appeler
+    // immédiatement la fermeture pour être remboursé tout en ayant parlé avec Max.
+    const startedAt = chatSession.assigned_at ? new Date(chatSession.assigned_at).getTime() : 0;
+    const sessionOver = startedAt > 0 &&
+      Date.now() >= startedAt + (chatSession.duration_sec || 1800) * 1000 - 60000;
+    if (agentMail === AI_EMAIL && closedBy === 'timer' && sessionOver) {
       const pi = chatSession.stripe_payment_id;
       if (pi && pi.startsWith('pi_') && process.env.STRIPE_SECRET_KEY) {
         try {

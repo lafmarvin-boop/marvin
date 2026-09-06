@@ -1,5 +1,7 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
+const { durationForAmount } = require('./_plans.js');
+
 const BASE_AMOUNTS  = { '100': 100, '300': 300, '500': 500 };
 const FIXED_AMOUNTS = { 'sub': 1500 };
 
@@ -45,7 +47,8 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { montant, formule, pseudo, duree, email, visitorId } = JSON.parse(event.body || '{}');
+    // `duree` n'est volontairement pas lu depuis le client : la durée est dérivée du montant (_plans.js)
+    const { montant, formule, pseudo, email, visitorId } = JSON.parse(event.body || '{}');
 
     let amountCents;
     let effectiveDiscount = 0;
@@ -66,7 +69,7 @@ exports.handler = async (event) => {
       currency: 'eur',
       automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
       description: `Parlons - ${formule} - ${pseudo}`,
-      metadata: { formule, pseudo, duree: String(duree || 1800), plateforme: 'parlons', discount: String(effectiveDiscount), ...(visitorId ? { visitor_id: visitorId } : {}), ...(email ? { email } : {}) },
+      metadata: { formule, pseudo, duree: String(durationForAmount(montant)), plateforme: 'parlons', discount: String(effectiveDiscount), ...(visitorId ? { visitor_id: visitorId } : {}), ...(email ? { email } : {}) },
     });
 
     // Enregistrement optionnel dans Supabase

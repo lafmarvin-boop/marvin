@@ -2076,7 +2076,7 @@ function _closeSessionNow(){
   const sessionIdToRate=chatSessionId;
   if(chatSessionId){
     // closedBy 'timer' : le visiteur est allé au bout de sa session (seul cas ouvrant droit au remboursement Max)
-    fetch('/.netlify/functions/chat-close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,closedBy:'timer'})}).catch(()=>{});
+    fetch('/.netlify/functions/chat-close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,closedBy:'timer',visitorId:localStorage.getItem('parlons_visitor_id')||''})}).catch(()=>{});
     sessionStorage.removeItem('parlons_chat_session_id');
     localStorage.removeItem('parlons_chat_session_id');
     chatSessionId=null;

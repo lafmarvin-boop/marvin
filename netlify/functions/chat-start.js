@@ -1,3 +1,5 @@
+const { durationForLabel } = require('./_plans.js');
+
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const AI_EMAIL = 'claude@parlonsecoute.fr'; // identité de Max, l'assistant d'écoute IA (voir ai-reply.js)
@@ -44,7 +46,8 @@ exports.handler = async (event) => {
 
   if (!SB_URL || !SB_KEY) return { statusCode: 503, headers: CORS, body: JSON.stringify({ error: 'Service non configuré' }) };
 
-  const { visitorId, name, sessionType, sessionLabel, durationSec, paymentId, loyaltyDiscount } = body;
+  // durationSec n'est plus lu depuis le client : la durée vient de _plans.js via le libellé
+  const { visitorId, name, sessionType, sessionLabel, paymentId, loyaltyDiscount } = body;
   if (!visitorId || !name)
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Données manquantes' }) };
 
@@ -60,7 +63,8 @@ exports.handler = async (event) => {
       pre_name: name,
       session_type: sessionType || 'paid',
       session_label: sessionLabel || '',
-      duration_sec: parseInt(durationSec) || 1800,
+      // Durée dérivée de la formule côté serveur : un client ne peut pas payer 1 € et demander 1 h
+      duration_sec: durationForLabel(sessionLabel, sessionType === 'free' ? 1200 : 1800),
       stripe_payment_id: paymentId || null,
       visitor_ip: visitorIp,
       loyalty_discount: parseInt(loyaltyDiscount) || 0
