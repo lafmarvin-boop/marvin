@@ -6,9 +6,10 @@
 //      la lui attribuent). Ses messages sont de type « agent ».
 //   2. Max ASSISTE un écoutant humain : la session reste attribuée à l'écoutant, mais si
 //      celui-ci n'a pas répondu depuis ASSIST_DELAY_MS (30 s par défaut) — tchat jamais ouvert,
-//      ou réponse tardive pendant qu'il gère un autre visiteur — Max comble le silence. Ses
-//      messages sont alors de type « assistant » et une ligne système annonce son intervention,
-//      pour que le visiteur ne croie jamais parler à l'écoutant humain.
+//      ou réponse tardive pendant qu'il gère un autre visiteur — Max comble le silence en
+//      poursuivant le fil naturellement. Ses messages sont de type « assistant » : la bulle est
+//      signée « Max · assistant » côté visiteur, donc personne ne croit parler à l'écoutant, et
+//      aucune ligne système n'annonce l'intervention (elle laisserait croire à une absence).
 //
 // Transparence : Max se présente toujours comme une intelligence artificielle
 // (jamais comme un psychologue, psychiatre ou écoutant humain). Dès qu'un
@@ -189,7 +190,7 @@ exports.handler = async (event) => {
       `Contexte de cette session : la personne s'appelle ${sess.pre_name || 'Visiteur'}${sess.pre_topic ? `, elle a indiqué comme sujet : « ${sess.pre_topic} »` : ''}.`,
       `Formule : ${sess.session_label || 'session'}${(sess.session_label || '').includes('GRATUIT') ? ' (conversation offerte : aucune question de remboursement)' : ''}. Conversation commencée il y a ${elapsedMin} min. Temps restant approximatif : ${remainingMin} min.`,
       assisting
-        ? `Écoutant humain : ${agentName} est en ligne et suit cette conversation, mais n'a pas répondu depuis plus de ${Math.round(ASSIST_DELAY_MS / 1000)} secondes (il gère peut-être un autre visiteur). Tu interviens pour que la personne ne reste pas sans réponse ; ${agentName} reprendra la main dès qu'il le pourra. Ne dis pas que tu remplaces l'écoutant, ne commente pas son absence, ne t'excuses pas pour lui : accueille simplement la personne et écoute-la. Si elle demande où est l'écoutant, dis simplement qu'il est occupé un instant et qu'il revient.`
+        ? `Écoutant humain : ${agentName} est en ligne et suit cette conversation, mais n'a pas répondu depuis plus de ${Math.round(ASSIST_DELAY_MS / 1000)} secondes (il gère peut-être un autre visiteur). Tu prends la suite de la conversation de façon totalement naturelle et fluide, comme si le fil se poursuivait : tu réponds à ce que la personne vient de dire, en tenant compte de tout ce qui a déjà été échangé, y compris les messages de ${agentName}. Tu ne signales pas ton arrivée, tu ne te présentes pas, tu ne dis pas que tu remplaces quelqu'un, tu ne commentes pas l'absence de l'écoutant et tu ne t'excuses pas pour lui : la personne voit déjà que c'est toi qui écris. ${agentName} reprendra la main dès qu'il le pourra, sans que cela ait besoin d'être annoncé. Si la personne demande où est l'écoutant, dis simplement qu'il est occupé un instant et qu'il revient, puis reviens à elle.`
         : `Écoutant humain : pas encore connecté (les écoutants ont été alertés par email il y a ${elapsedMin} min).`,
       opening ? `Tu as ouvert la conversation par : « ${opening} »` : ''
     ].filter(Boolean).join('\n');
@@ -234,14 +235,9 @@ exports.handler = async (event) => {
       if (fresh[0] && fresh[0].sender_type === 'agent')
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'agent_answered' }) };
 
-      // Annonce système au début de chaque épisode d'assistance : le visiteur doit savoir
-      // qui lui parle. Un épisode se termine dès que l'écoutant humain reprend la parole.
-      const lastAssistIdx = msgs.map(m => m.sender_type).lastIndexOf('assistant');
-      const lastAgentIdx = msgs.map(m => m.sender_type).lastIndexOf('agent');
-      const newEpisode = lastAssistIdx < 0 || lastAgentIdx > lastAssistIdx;
-      if (newEpisode) {
-        await post(`${agentName} est occupé un instant. Max, l'assistant automatisé de Parlons, prend le relais en attendant qu'il revienne.`, 'system');
-      }
+      // Pas d'annonce système : elle laisserait entendre que l'écoutant s'est absenté et casserait
+      // le fil. La transparence est portée par la bulle elle-même, signée « Max · assistant »
+      // au-dessus de chaque message (index.html) et « Max a répondu pour vous » côté écoutant.
       const insA = await post(text, 'assistant');
       if (!insA.ok) throw new Error(`Insertion message ${insA.status}`);
     } else {

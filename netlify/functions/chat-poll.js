@@ -96,8 +96,7 @@ exports.handler = async (event) => {
       // qu'il tienne la session (messages « agent ») ou qu'il assiste un écoutant (« assistant »).
       let messagesOut = messages;
       const fromMax = m => m.sender_type === 'assistant'
-        || (s.agent_email === AI_EMAIL && m.sender_type === 'agent')
-        || (m.sender_type === 'system' && /Max, l'assistant automatisé/.test(m.content || ''));
+        || (s.agent_email === AI_EMAIL && m.sender_type === 'agent');
       if (messages.some(fromMax)) {
         const recent = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,content,sender_type,created_at&order=created_at.desc&limit=6`);
         const vIdx = recent.findIndex(m => m.sender_type === 'visitor');
