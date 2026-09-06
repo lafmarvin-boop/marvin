@@ -592,4 +592,7 @@ exports.handler = async (event) => {
 };
 
 // Exporté pour les tests locaux
+// Exporté pour les tests locaux et pour accounting-run.js (bouton admin : les fonctions
+// planifiées Netlify refusent les appels HTTP externes avec un 403, d'où une fonction séparée).
+exports.runClosing = runClosing;
 exports._internal = { resolvePeriod, compute, buildInvoice, buildUrssaf, buildAdminReport, classify };

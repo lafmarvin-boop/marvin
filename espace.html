@@ -2754,7 +2754,7 @@ async function runMonthlyClosing() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Clôture en cours…'; }
   try {
     const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
-    const res = await fetch(`${API}/monthly-accounting`, {
+    const res = await fetch(`${API}/accounting-run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ adminEmail: saved.email, adminPassword: saved.password, month: monthKey, mode: choice === '2' ? 'all' : 'admin' })
