@@ -592,6 +592,7 @@
 <script>
 const API = '/.netlify/functions';
 let subEmailStored = '';
+let subPasswordStored = '';
 let agentData = {};
 let agentEmailStored = '';
 function togglePwd(id){const el=document.getElementById(id);el.type=el.type==='password'?'text':'password';}
@@ -749,6 +750,7 @@ function logout() {
   localStorage.removeItem('parlons_espace_session');
   showScreen('login');
   subEmailStored = '';
+  subPasswordStored = '';
 }
 
 // Auto-login from saved 24h session
@@ -817,6 +819,7 @@ async function login() {
     } else if (data.role === 'subscriber') {
       localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
       subEmailStored = email;
+      subPasswordStored = password;
       renderSubDash(email, data.expires_at, data.active, data.pseudo, data.cancel_at_period_end, data.needs_password_setup, data.sessions);
       showScreen('sub-dash');
     } else if (data.role === 'agent') {
@@ -956,7 +959,7 @@ async function startSubSession() {
     const res = await fetch(`${API}/subscriber-session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: subEmailStored, pseudo })
+      body: JSON.stringify({ email: subEmailStored, pseudo, password: subPasswordStored })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
@@ -976,7 +979,7 @@ async function cancelSubscription() {
   try {
     const res = await fetch(`${API}/cancel-subscription`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: subEmailStored })
+      body: JSON.stringify({ email: subEmailStored, password: subPasswordStored })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
@@ -1189,7 +1192,7 @@ function renderDashboard(d) {
   // Subscribers table
   document.getElementById('sub-tbody').innerHTML = (subscribers.list || []).map(s => {
     const ok = s.status === 'active' && (!s.expires_at || new Date(s.expires_at) > new Date());
-    return `<tr><td style="font-size:.8rem">${s.email || '—'}</td><td><span class="badge ${ok ? 'ok' : 'ko'}">${ok ? 'Actif' : 'Expiré'}</span></td><td style="font-size:.78rem;color:var(--mid)">${fmtDate(s.expires_at)}</td></tr>`;
+    return `<tr><td style="font-size:.8rem">${escHtml(s.email || '—')}</td><td><span class="badge ${ok ? 'ok' : 'ko'}">${ok ? 'Actif' : 'Expiré'}</span></td><td style="font-size:.78rem;color:var(--mid)">${fmtDate(s.expires_at)}</td></tr>`;
   }).join('') || '<tr><td colspan="3" style="color:var(--light);text-align:center;padding:1.2rem">Aucun abonné</td></tr>';
 
   // Agent stats — rendu délégué à rebuildAgentSectionByMonth()
@@ -1206,7 +1209,7 @@ function renderDashboard(d) {
 
   // Recent sessions
   document.getElementById('sessions-tbody').innerHTML = (sessions.recent || []).map(s =>
-    `<tr><td style="font-size:.8rem;font-weight:500">${s.client_pseudo || '—'}</td><td style="font-size:.78rem">${s.formule || '—'}</td><td style="font-size:.8rem;font-weight:700;color:var(--tc)">${fmt(s.montant)}</td><td style="font-size:.75rem;color:var(--mid)">${fmtDate(s.started_at)}</td></tr>`
+    `<tr><td style="font-size:.8rem;font-weight:500">${escHtml(s.client_pseudo || '—')}</td><td style="font-size:.78rem">${escHtml(s.formule || '—')}</td><td style="font-size:.8rem;font-weight:700;color:var(--tc)">${fmt(s.montant)}</td><td style="font-size:.75rem;color:var(--mid)">${fmtDate(s.started_at)}</td></tr>`
   ).join('') || '<tr><td colspan="4" style="color:var(--light);text-align:center;padding:1.2rem">Aucune session</td></tr>';
 }
 
@@ -2536,9 +2539,12 @@ async function toggleTransferMenu() {
       menu.innerHTML = '<div class="afloat-transfer-empty">Aucun agent disponible</div>';
       return;
     }
-    menu.innerHTML = data.agents.map(a =>
-      `<div class="afloat-transfer-item" onclick="doTransfer('${agentActiveTabId}','${a.email.replace(/'/g,"\\'")}')">↗ ${a.name}</div>`
-    ).join('');
+    menu.innerHTML = data.agents.map(a => {
+      // Échappement JS (guillemets/antislash) PUIS HTML (attribut) : l'ordre inverse laisserait
+      // un &#39; se redécoder en ' avant l'exécution du onclick et sortir de la chaîne JS.
+      const jsSafeEmail = escHtml(String(a.email).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+      return `<div class="afloat-transfer-item" onclick="doTransfer('${agentActiveTabId}','${jsSafeEmail}')">↗ ${escHtml(a.name)}</div>`;
+    }).join('');
   } catch(e) {
     menu.innerHTML = '<div class="afloat-transfer-empty">Erreur de chargement</div>';
   }
