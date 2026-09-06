@@ -10,3 +10,4 @@ Sujets déjà couverts dans blog.html (articles intégrés) :
 
 Articles statiques publiés (blog/<slug>.html) :
 - 2026-09-06 · Deuil : Deuil d'un proche : comment traverser cette épreuve sans s'isoler → /blog/deuil-dun-proche-traverser-sans-sisoler.html · mots-clés : deuil, perte d'un proche, surmonter un deuil, phases du deuil, parler de son deuil, deuil et solitude
+- 2026-09-06 · Sommeil : Ruminations la nuit : comment calmer les pensées en boucle → /blog/ruminations-nuit-pensees-en-boucle.html · mots-clés : ruminations nocturnes, pensées qui tournent en boucle, anxiété le soir, insomnie liée au stress, calmer son esprit avant de dormir, parler de ses angoisses
