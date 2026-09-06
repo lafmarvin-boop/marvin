@@ -121,6 +121,16 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 .msg.assistant .bubble{background:#eef2fb;color:var(--dark);border:1px solid #c3cfe8;border-bottom-right-radius:4px;}
 .msg.assistant .bubble::before{content:'Max a répondu pour vous';display:block;font-size:.62rem;font-weight:700;color:#5a72a8;margin-bottom:.15rem;}
 .msg.system .bubble{background:#f0e8e0;color:var(--mid);font-size:.78rem;text-align:center;border-radius:50px;padding:.3rem .9rem;}
+/* Accusés sous les messages de l'écoutant : ✓ envoyé, ✓✓ reçu, ✓✓ bleu lu */
+.msg-tick{font-size:.62rem;letter-spacing:-.08em;color:var(--light);margin-left:.25rem;}
+.msg-tick.lu{color:#2f80d0;}
+/* « … le visiteur écrit » */
+.chat-typing{align-self:flex-start;background:#f0ece8;border-radius:14px;border-bottom-left-radius:4px;padding:.55rem .75rem;display:none;gap:.22rem;align-items:center;margin:.1rem 0;}
+.chat-typing.on{display:flex;}
+.chat-typing span{width:6px;height:6px;border-radius:50%;background:#b3a396;animation:agBlink 1.3s infinite;}
+.chat-typing span:nth-child(2){animation-delay:.18s;}
+.chat-typing span:nth-child(3){animation-delay:.36s;}
+@keyframes agBlink{0%,60%,100%{opacity:.28;transform:translateY(0);}30%{opacity:1;transform:translateY(-2px);}}
 .msg-time{font-size:.62rem;color:var(--light);}
 .msg.agent .msg-time{text-align:right;}
 .chat-input-row{background:var(--white);border-top:1px solid var(--sand);padding:.6rem .7rem;padding-bottom:max(.6rem,env(safe-area-inset-bottom));display:flex;align-items:flex-end;gap:.5rem;flex-shrink:0;}
@@ -762,6 +772,11 @@ function processPoll(d){
       if(!activeChatId) setTimeout(()=>openChatView(s.id), 50);
     }
     const sess=appSessions.get(s.id);
+    // Accusés portant sur les messages de l'écoutant, et « le visiteur écrit »
+    sess.deliveredAt=s.deliveredAt||null;
+    sess.readAt=s.readAt||null;
+    sess.otherTyping=!!s.otherTyping;
+    if(s.id===activeChatId) setAgentTyping(sess.otherTyping);
     if(s.duration_sec&&s.duration_sec>sess.durationSec){
       const added=s.duration_sec-sess.durationSec;
       sess.durationSec=s.duration_sec;
@@ -782,6 +797,7 @@ function processPoll(d){
       const tmpIdx=sess.messages.findIndex(x=>x.id.startsWith('tmp')&&x.content===m.content&&x.sender_type===m.sender_type);
       if(tmpIdx!==-1) sess.messages.splice(tmpIdx,1);
       sess.messages.push(m);
+      if(s.id===activeChatId&&m.sender_type==='visitor') agentMarkSeen();
       if(s.id!==activeChatId||(document.getElementById('chat-view')&&!document.getElementById('chat-view').classList.contains('active'))){
           sess.unread++;
           if(m.sender_type==='visitor'&&activeChatId&&s.id!==activeChatId&&document.getElementById('chat-view')?.classList.contains('active')){
@@ -917,6 +933,7 @@ function openChatView(sessionId){
   renderChatMessages(sessionId);
   startChatTimer(sessionId);
   renderExtBar(sessionId);
+  agentMarkSeen();
 }
 
 function closeChatView(){
@@ -934,11 +951,22 @@ function renderChatMessages(sessionId){
   const sess=appSessions.get(sessionId); if(!sess) return;
   const el=document.getElementById('chat-msgs');
   const wasAtBottom=el.scrollHeight-el.scrollTop-el.clientHeight<80;
+  const recu=sess.deliveredAt?new Date(sess.deliveredAt).getTime():0;
+  const lu=sess.readAt?new Date(sess.readAt).getTime():0;
   el.innerHTML=sess.messages.map(m=>{
     const type=m.sender_type==='agent'?'agent':m.sender_type==='assistant'?'assistant':m.sender_type==='system'?'system':'visitor';
     const time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
-    return `<div class="msg ${type}"><div class="bubble">${esc(m.content)}</div>${type!=='system'?`<div class="msg-time">${time}</div>`:''}</div>`;
-  }).join('');
+    // Seuls les messages envoyés par l'écoutant portent un accusé (un message non encore
+    // enregistré n'a pas d'horodatage : il reste à « envoyé »)
+    let tick='';
+    if(type==='agent'){
+      const t=m.created_at?new Date(m.created_at).getTime():Infinity;
+      if(lu>=t) tick=`<span class="msg-tick lu" title="Lu">✓✓</span>`;
+      else if(recu>=t) tick=`<span class="msg-tick" title="Reçu">✓✓</span>`;
+      else tick=`<span class="msg-tick" title="Envoyé">✓</span>`;
+    }
+    return `<div class="msg ${type}"><div class="bubble">${esc(m.content)}</div>${type!=='system'?`<div class="msg-time">${time}${tick}</div>`:''}</div>`;
+  }).join('')+'<div class="chat-typing'+(sess.otherTyping?' on':'')+'" id="chat-typing"><span></span><span></span><span></span></div>';
   if(wasAtBottom||el.scrollHeight===el.clientHeight) el.scrollTop=el.scrollHeight;
   renderExtBar(sessionId);
 }
@@ -1076,8 +1104,31 @@ function autoResize(ta){ ta.style.height='auto'; ta.style.height=Math.min(ta.scr
 
 // ── SHORTCUTS ──
 let _scMatches=[];
+// Signale que l'écoutant écrit / que la conversation est sous ses yeux.
+// Limité à un envoi toutes les 3 s : le serveur éteint l'indicateur seul après 8 s.
+let agentTypingSentAt=0;
+function signalChat(payload){
+  if(!activeChatId||!appToken) return;
+  fetch(`${API}/chat-signal`,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({sessionId:activeChatId,role:'agent',agentEmail:appEmail,agentToken:appToken},payload))}).catch(()=>{});
+}
+// « Lu » : la conversation est ouverte et l'application est au premier plan.
+function agentMarkSeen(){
+  if(activeChatId&&document.visibilityState==='visible'&&document.getElementById('chat-view')?.classList.contains('active'))
+    signalChat({seen:true});
+}
+function setAgentTyping(on){
+  const el=document.getElementById('chat-typing'); if(!el) return;
+  const zone=document.getElementById('chat-msgs');
+  const wasOn=el.classList.contains('on');
+  el.classList.toggle('on',!!on);
+  if(on&&!wasOn&&zone) zone.scrollTop=zone.scrollHeight;
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')agentMarkSeen();});
+
 function chatTaInput(ta){
   autoResize(ta);
+  if(Date.now()-agentTypingSentAt>=3000){ agentTypingSentAt=Date.now(); signalChat({typing:true}); }
   const popup=document.getElementById('shortcuts-popup');
   if(!popup) return;
   const val=ta.value;

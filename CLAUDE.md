@@ -79,6 +79,20 @@ COMMIT;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS assist_lock TIMESTAMPTZ;
 ```
 
+### ⚠️ À exécuter pour les accusés de réception et l'indicateur « en train d'écrire »
+
+Six horodatages par session, trois par interlocuteur. Aucun état n'est stocké par message :
+les coches se déduisent en comparant l'heure du message à ces repères.
+
+```sql
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS visitor_fetched_at TIMESTAMPTZ;
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS agent_fetched_at   TIMESTAMPTZ;
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS visitor_seen_at    TIMESTAMPTZ;
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS agent_seen_at      TIMESTAMPTZ;
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS visitor_typing_at  TIMESTAMPTZ;
+ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS agent_typing_at    TIMESTAMPTZ;
+```
+
 ---
 
 ## ✅ Fonctionnalités complètes
@@ -97,6 +111,30 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS assist_lock TIMESTAMPTZ;
 
 - **Article SEO hebdomadaire** (Routine Claude, mardi 6h Paris) : choisit une requête réelle non couverte (voir `blog/_topics.md`), rédige un article de 900-1 300 mots et le publie via `node tools/new-article.mjs article.json` → page statique `blog/<slug>.html` (template `blog/_template.html`, JSON-LD Article, canonical, OG), carte en tête de `blog.html`, URL dans `sitemap.xml`, ligne dans `blog/_topics.md` ; commit `blog:` + push + notification.
 - **Plan Google Ads mensuel** (Routine Claude, le 1er à 8h Paris) : rédige `marketing/google-ads/AAAA-MM.md` (conformité, structure de campagne, mots-clés, annonces responsives avec longueurs vérifiées, négatifs, budget, suivi des conversions d'après `index.html`, plan du mois) et envoie un résumé par notification. Ne modifie pas le site.
+
+## ✓✓ Accusés de réception et indicateur de saisie
+
+Style SMS / WhatsApp, dans les deux sens (`index.html` visiteur, `agent-app.html` écoutant) :
+
+| Signe | Signification | Posé par |
+|---|---|---|
+| ✓ | envoyé (enregistré en base) | le message existe |
+| ✓✓ | reçu par l'autre | `chat-poll` en livrant les messages (`*_fetched_at`) |
+| ✓✓ bleu | lu | `chat-signal` quand la conversation est ouverte **et** l'onglet au premier plan (`*_seen_at`) |
+
+**Aucun état par message** : six horodatages sur `chat_sessions` suffisent, on compare l'heure du
+message aux repères. Écriture seulement quand quelque chose arrive, pas à chaque sondage.
+
+**« … en train d'écrire »** : `netlify/functions/chat-signal.js`, appelé dès la première frappe
+(limité à un envoi toutes les 3 s) — le sondage seul serait trop lent, l'indicateur arriverait après
+le message. Il s'éteint tout seul après 8 s sans nouvelle frappe : aucun signal d'arrêt à envoyer,
+rien ne peut rester bloqué. La lecture se fait dans la réponse de `chat-poll`, sans requête en plus.
+Côté écoutant, `chat-signal` vérifie le jeton **et** que la session lui est attribuée : sans ce
+contrôle, n'importe qui pourrait faire croire au visiteur qu'on lui répond.
+
+**Max** affiche aussi « … » pendant qu'il rédige (`ai-reply.js`), y compris pendant que `chat-poll`
+retient volontairement sa réponse le temps « de lire et d'écrire » — c'est bien le moment où il écrit.
+Répondre vaut lecture : il pose `agent_seen_at` avant d'insérer.
 
 ## 🔐 Authentification par jetons signés
 

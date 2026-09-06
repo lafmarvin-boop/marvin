@@ -292,6 +292,13 @@ exports.handler = async (event) => {
     ].filter(Boolean).join('\n');
 
     mark('avant_modele');
+    // Max « écrit » : l'indicateur « … » s'affiche côté visiteur pendant la génération,
+    // au même titre que pour un écoutant humain.
+    if (!dry) fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+      method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      // « reçu » aussi : sur une session tenue par Max, aucun écoutant ne sonde pour le poser
+      body: JSON.stringify({ agent_typing_at: new Date().toISOString(), agent_fetched_at: new Date().toISOString() })
+    }).catch(() => {});
     const client = new Anthropic({ timeout: 8000, maxRetries: 0 });
     const response = await client.messages.create({
       model: MODEL,
@@ -326,6 +333,12 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'handed_over' }) };
     if (holdsSession && check[0].agent_email !== AI_EMAIL)
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'handed_over' }) };
+
+    // Répondre vaut lecture : le message du visiteur a bien été lu de ce côté.
+    fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+      method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ agent_seen_at: new Date().toISOString() })
+    }).catch(() => {});
 
     const post = (content, sender_type) => fetch(`${SB_URL}/rest/v1/chat_messages`, {
       method: 'POST',

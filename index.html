@@ -528,6 +528,18 @@
     /* Messages de Max quand il assiste un écoutant : reconnaissables, jamais confondus avec l'écoutant */
     .pcp-msg.assistant{align-self:flex-start;background:#eef2fb;color:var(--dark);border-bottom-left-radius:3px;border-left:3px solid #7c93c9;}
     .pcp-msg.assistant::after{content:'Max';display:block;font-size:.6rem;font-weight:700;color:#5a72a8;letter-spacing:.03em;margin-top:.25rem;}
+    /* Accusés de réception, sous les messages du visiteur : ✓ envoyé, ✓✓ reçu, ✓✓ bleu lu */
+    .pcp-msg.visitor{position:relative;}
+    .pcp-tick{display:block;text-align:right;font-size:.62rem;line-height:1;margin-top:.22rem;color:rgba(255,255,255,.62);letter-spacing:-.08em;}
+    .pcp-tick.lu{color:#7fd4ff;}
+    /* « … en train d'écrire » : trois points animés, à la place d'une bulle de l'autre */
+    .pcp-typing{align-self:flex-start;background:#f0ece8;border-radius:14px;border-bottom-left-radius:3px;padding:.55rem .75rem;display:none;gap:.22rem;align-items:center;}
+    .pcp-typing.on{display:flex;}
+    .pcp-typing span{width:6px;height:6px;border-radius:50%;background:#b3a396;animation:pcpBlink 1.3s infinite;}
+    .pcp-typing span:nth-child(2){animation-delay:.18s;}
+    .pcp-typing span:nth-child(3){animation-delay:.36s;}
+    @keyframes pcpBlink{0%,60%,100%{opacity:.28;transform:translateY(0);}30%{opacity:1;transform:translateY(-2px);}}
+    [data-theme="dark"] .pcp-typing{background:#2a2622;}
     .pcp-msg.system{align-self:center;background:#f5f0ea;color:#7a6050;font-size:.7rem;border-radius:8px;text-align:center;padding:.28rem .65rem;max-width:92%;}
     .pcp-msg.system.welcome{background:#fee2e2;color:#991b1b;font-weight:600;border:1px solid #fca5a5;}
     .pcp-msg.system.farewell{background:#ede9fe;color:#5b21b6;font-weight:600;border:1px solid #c4b5fd;text-align:center;}
@@ -3157,7 +3169,7 @@ document.fonts && document.fonts.ready.then(stackBanners);
       <button class="pcp-close" onclick="toggleChatPanel()" aria-label="Fermer">✕</button>
     </div>
   </div>
-  <div class="pcp-msgs" id="pcp-msgs"></div>
+  <div class="pcp-msgs" id="pcp-msgs"><div class="pcp-typing" id="pcp-typing"><span></span><span></span><span></span></div></div>
   <div class="pcp-waiting" id="pcp-waiting" style="display:none">
     <div class="pcp-spinner"></div>
     <p class="pcp-waiting-lbl">En attente d'un écoutant…</p>
@@ -3175,7 +3187,7 @@ document.fonts && document.fonts.ready.then(stackBanners);
   <div class="pcp-input" id="pcp-input" style="display:none">
     <textarea class="pcp-input-ta" id="pcp-input-msg" placeholder="Votre message…" rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage();}"
-      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,90)+'px'"></textarea>
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,90)+'px';chatOnTyping();"></textarea>
     <button class="pcp-send-btn" onclick="sendChatMessage()" aria-label="Envoyer">➤</button>
   </div>
   <div id="pcp-rating">
@@ -3211,13 +3223,13 @@ let chatExtensionPending=false,chatExtensionNewDuration=0;
 function toggleChatPanel(){
   chatPanelOpen=!chatPanelOpen;
   const p=document.getElementById('parlons-chat-panel');
-  if(chatPanelOpen){p.classList.add('pcp-open');chatUnreadCount=0;updateChatBadge();setTimeout(()=>{const m=document.getElementById('pcp-msgs');if(m)m.scrollTop=m.scrollHeight;},50);}
+  if(chatPanelOpen){p.classList.add('pcp-open');chatUnreadCount=0;updateChatBadge();chatMarkSeen();setTimeout(()=>{const m=document.getElementById('pcp-msgs');if(m)m.scrollTop=m.scrollHeight;},50);}
   else{p.classList.remove('pcp-open');}
 }
 function showChatPanel(open){
   chatPanelOpen=open;
   const p=document.getElementById('parlons-chat-panel');
-  if(open)p.classList.add('pcp-open');else p.classList.remove('pcp-open');
+  if(open){p.classList.add('pcp-open');chatMarkSeen();}else p.classList.remove('pcp-open');
 }
 function updateChatBadge(){
   const b=document.getElementById('chat-unread-badge');
@@ -3246,7 +3258,14 @@ function appendChatMsg(msg){
   const div=document.createElement('div');
   div.className='pcp-msg '+msg.sender_type+(msg.welcome?' welcome':'')+(msg.farewell?' farewell':'');
   div.textContent=msg.content;
-  area.appendChild(div);
+  if(msg.sender_type==='visitor'&&msg.created_at){
+    div.dataset.t=msg.created_at;
+    const tick=document.createElement('span');tick.className='pcp-tick';tick.textContent='✓';
+    div.appendChild(tick);
+  }
+  // La bulle « … » reste toujours le dernier élément de la liste
+  const typing=document.getElementById('pcp-typing');
+  if(typing&&typing.parentNode===area)area.insertBefore(div,typing);else area.appendChild(div);
   area.scrollTop=area.scrollHeight;
   if(msg.created_at)chatLastMsgTime=msg.created_at;
   if(!chatPanelOpen&&(msg.sender_type==='agent'||msg.sender_type==='assistant')){chatUnreadCount++;updateChatBadge();}
@@ -3341,6 +3360,44 @@ function startChatPolling(){
   if(chatPollingInterval)clearInterval(chatPollingInterval);
   chatPollingInterval=setInterval(pollChat,2500);
 }
+// Accusés de réception : ✓ envoyé, ✓✓ reçu, ✓✓ bleu lu. Les repères sont des horodatages
+// de session (jusqu'où l'autre a reçu / lu), pas un état par message : rien à stocker par ligne.
+function updateChatReceipts(deliveredAt,readAt){
+  const recu=deliveredAt?new Date(deliveredAt).getTime():0;
+  const lu=readAt?new Date(readAt).getTime():0;
+  document.querySelectorAll('#pcp-msgs .pcp-msg.visitor[data-t]').forEach(el=>{
+    const t=new Date(el.dataset.t).getTime();
+    const tick=el.querySelector('.pcp-tick');if(!tick)return;
+    if(lu>=t){tick.textContent='✓✓';tick.className='pcp-tick lu';tick.title='Lu';}
+    else if(recu>=t){tick.textContent='✓✓';tick.className='pcp-tick';tick.title='Reçu';}
+    else{tick.textContent='✓';tick.className='pcp-tick';tick.title='Envoyé';}
+  });
+}
+function setChatTyping(on){
+  const el=document.getElementById('pcp-typing');if(!el)return;
+  const area=document.getElementById('pcp-msgs');
+  const wasOn=el.classList.contains('on');
+  el.classList.toggle('on',!!on);
+  if(on&&!wasOn&&area)area.scrollTop=area.scrollHeight;
+}
+// Signale au serveur que le visiteur écrit / que la conversation est sous ses yeux.
+// Limité à un envoi toutes les 3 s : le serveur éteint l'indicateur seul après 8 s.
+let chatTypingSentAt=0;
+function signalChat(payload){
+  if(!chatSessionId)return;
+  fetch('/.netlify/functions/chat-signal',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({sessionId:chatSessionId,role:'visitor'},payload))}).catch(()=>{});
+}
+function chatOnTyping(){
+  if(Date.now()-chatTypingSentAt<3000)return;
+  chatTypingSentAt=Date.now();
+  signalChat({typing:true});
+}
+// « Lu » : la conversation est ouverte et l'onglet est au premier plan.
+function chatMarkSeen(){
+  if(chatPanelOpen&&document.visibilityState==='visible')signalChat({seen:true});
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')chatMarkSeen();});
 async function pollChat(){
   if(!chatSessionId)return;
   try{
@@ -3348,6 +3405,9 @@ async function pollChat(){
     const r=await fetch('/.netlify/functions/chat-poll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'visitor',sessionId:chatSessionId,since})});
     const d=await r.json();
     if(d.messages)d.messages.forEach(m=>appendChatMsg(m));
+    updateChatReceipts(d.deliveredAt,d.readAt);
+    setChatTyping(d.otherTyping&&d.status==='active');
+    if(d.messages&&d.messages.length)chatMarkSeen();
     if(d.status==='active'&&chatState==='waiting'&&d.agentConnected){if(d.durationSec&&!sessionDbDurationSec)sessionDbDurationSec=d.durationSec;setChatState('active');agentConnected(d.agentPseudo||null,d.assignedAt||null);}
     // Gestion prolongation en attente
     if(chatExtensionPending){

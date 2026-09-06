@@ -2,6 +2,11 @@ const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 // Max, assistant d'écoute IA (ai-reply.js) et règle d'assistance partagée (_assist.js)
 const { AI_EMAIL, maxShouldAssist } = require('./_assist');
+
+// « … en train d'écrire » : l'indicateur s'éteint seul si la dernière frappe date
+// de plus de 8 s. Aucun signal d'arrêt n'est nécessaire — rien ne peut rester bloqué.
+const TYPING_TTL_MS = 8000;
+const isTyping = ts => !!ts && Date.now() - new Date(ts).getTime() < TYPING_TTL_MS;
 const { trace } = require('./_trace'); // TEMPORAIRE (voir _trace.js)
 
 const CORS = {
@@ -48,7 +53,7 @@ exports.handler = async (event) => {
 
       const sinceIso = since ? new Date(since).toISOString() : new Date(0).toISOString();
 
-      const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email,assigned_at,extension_pending,transfer_session_id,duration_sec,response_deadline&limit=1`);
+      const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email,assigned_at,extension_pending,transfer_session_id,duration_sec,response_deadline,agent_fetched_at,agent_seen_at,agent_typing_at,visitor_fetched_at&limit=1`);
       if (!sessions.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Session introuvable' }) };
       const s = sessions[0];
 
@@ -91,7 +96,7 @@ exports.handler = async (event) => {
       const messages = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=50`);
 
       // Retenir la réponse de Max tant que le délai « le temps de lire et d'écrire » n'est pas écoulé.
-      let messagesOut = messages;
+      let messagesOut = messages, retenu = false;
       // Uniquement quand Max tient la session : en assistance, le visiteur a déjà attendu
       // ASSIST_DELAY_MS, inutile d'ajouter le délai « le temps d'écrire ».
       const fromMax = m => s.agent_email === AI_EMAIL
@@ -104,9 +109,18 @@ exports.handler = async (event) => {
           const due = new Date(visitorMsg.created_at).getTime() + maxReplyDelayMs(visitorMsg);
           if (Date.now() < due) {
             const hide = new Set(recent.slice(0, vIdx).filter(fromMax).map(m => m.id));
-            if (hide.size) messagesOut = messages.filter(m => !hide.has(m.id));
+            if (hide.size) { messagesOut = messages.filter(m => !hide.has(m.id)); retenu = true; }
           }
         }
+      }
+
+      // « Reçu » : le visiteur vient de recevoir ces messages. On n'écrit que si
+      // quelque chose est réellement arrivé — inutile d'une écriture par sondage.
+      if (messages.length || !s.visitor_fetched_at) {
+        fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+          method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ visitor_fetched_at: new Date().toISOString() })
+        }).catch(() => {});
       }
 
       let agentPseudo = null;
@@ -127,6 +141,11 @@ exports.handler = async (event) => {
           extensionPending: s.extension_pending || null,
           transferSessionId: s.transfer_session_id || null,
           durationSec: s.duration_sec || null,
+          // Accusés portant sur les messages du visiteur : jusqu'où l'autre a reçu, jusqu'où il a lu
+          deliveredAt: s.agent_fetched_at || null,
+          readAt: s.agent_seen_at || null,
+          // Réponse de Max déjà écrite mais volontairement retenue : c'est bien « en train d'écrire »
+          otherTyping: isTyping(s.agent_typing_at) || retenu,
           messages: messagesOut
         })
       };
@@ -215,7 +234,7 @@ exports.handler = async (event) => {
 
       // Toutes les sessions actives de cet agent
       const activeSessions = await sbGet(
-        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip,loyalty_discount,response_deadline&order=assigned_at.asc&limit=3`
+        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip,loyalty_discount,response_deadline,visitor_fetched_at,visitor_seen_at,visitor_typing_at,agent_fetched_at&order=assigned_at.asc&limit=3`
       );
 
       // L'agent poll = il voit ses sessions : lever response_deadline si encore actif
@@ -264,7 +283,20 @@ exports.handler = async (event) => {
         const msgs = await sbGet(
           `chat_messages?session_id=eq.${encodeURIComponent(s.id)}${newlyAssigned ? '' : `&created_at=gt.${encodeURIComponent(sinceIso)}`}&select=id,content,sender_type,created_at&order=created_at.asc&limit=${newlyAssigned ? 300 : 100}`
         );
-        return { ...s, messages: msgs };
+        // « Reçu » côté écoutant : son application vient de recevoir ces messages.
+        if (msgs.length || !s.agent_fetched_at) {
+          fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(s.id)}`, {
+            method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify({ agent_fetched_at: new Date().toISOString() })
+          }).catch(() => {});
+        }
+        return {
+          ...s, messages: msgs,
+          // Accusés portant sur les messages de l'écoutant
+          deliveredAt: s.visitor_fetched_at || null,
+          readAt: s.visitor_seen_at || null,
+          otherTyping: isTyping(s.visitor_typing_at)
+        };
       }));
 
       // Compat: session courante + messages (basé sur current_session_id)
