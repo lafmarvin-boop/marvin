@@ -131,7 +131,9 @@ exports.handler = async (event) => {
     const out = await res.json().catch(() => null);
     if (res.ok && Array.isArray(out) && out[0]?.id)
       await fetch(`${SB_URL}/rest/v1/chat_messages?id=eq.${encodeURIComponent(out[0].id)}`, { method: 'DELETE', headers: { ...H(), Prefer: 'return=minimal' } }).catch(() => {});
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ assistantAutorise: res.ok, http: res.status, detail: res.ok ? null : out }, null, 1) };
+    // La colonne de verrou existe-t-elle ? (PostgREST renvoie 400 si elle manque)
+    const lockRes = await fetch(`${SB_URL}/rest/v1/chat_sessions?select=assist_lock&limit=1`, { headers: H() });
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ assistantAutorise: res.ok, http: res.status, detail: res.ok ? null : out, verrouAssistLock: lockRes.ok }, null, 1) };
   }
 
   // Diagnostic : vérifie l'appel API depuis Netlify (clé, modèle, délai). Aucune donnée de session.

@@ -69,7 +69,7 @@ exports.handler = async (event) => {
 
     // TEMPORAIRE : trace chaque passage dès qu'il y a une session à examiner, sinon une fois par
     // heure — de quoi vérifier que la planification s'exécute vraiment, sans remplir la table.
-    if (sessions.length || new Date().getUTCMinutes() % 5 === 0) trace('sweep', { n: sessions.length, decisions });
+    if (sessions.length || new Date().getUTCMinutes() === 0) trace('sweep', { n: sessions.length, decisions });
 
     if (declenchees) console.log(`assist-sweep : ${declenchees}/${sessions.length} session(s) assistée(s)`);
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, sessions: sessions.length, declenchees, decisions }) };
