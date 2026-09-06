@@ -1,4 +1,14 @@
 /admin    /parlons-livre-recettes.html    200
 /rgpd     /parlons-registre-RGPD.html    200
 /cgv      /parlons-CGV.html              200
+
+# Fichiers internes jamais destinés au public (dev, schéma DB, transcripts) : bloqués même si présents dans le dossier publié.
+/raw/*                 /404.html   404!
+/tools/*               /404.html   404!
+/supabase/*            /404.html   404!
+/CLAUDE.md             /404.html   404!
+/package.json          /404.html   404!
+/package-lock.json     /404.html   404!
+/netlify.toml          /404.html   404!
+
 /*        /404.html                      404
