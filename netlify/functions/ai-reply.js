@@ -264,7 +264,7 @@ exports.handler = async (event) => {
     if (dry) return { statusCode: 200, headers: CORS, body: JSON.stringify({
       dry: true, session: sessionId.slice(0, 8), statut: sess.status, assisting, holdsSession,
       dernierType: last?.sender_type || null, nbMessages: msgs.length,
-      longueurReponse: text.length, apercu: text.slice(0, 120), modele: response.model,
+      longueurReponse: text.length, modele: response.model, // pas d'extrait : contenu de conversation
       etapes: steps.join(' ')
     }, null, 1) };
 
