@@ -83,7 +83,7 @@ exports.handler = async (event) => {
   // Diagnostic d'assistance : pourquoi Max n'intervient-il pas ? Renvoie l'état de décision des
   // sessions actives tenues par un écoutant. Métadonnées seulement, aucun contenu de message.
   if (body.diag === 'assist' && event.headers['x-parlons-diag'] === '1') {
-    const rows = await sbGet(`chat_sessions?status=eq.active&agent_email=not.is.null&select=id,agent_email,status,assigned_at&order=assigned_at.desc&limit=5`);
+    const rows = await sbGet(`chat_sessions?agent_email=not.is.null&select=id,agent_email,status,assigned_at&order=assigned_at.desc&limit=6`);
     const out = [];
     for (const r of rows) {
       const m = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(r.id)}&select=sender_type,created_at&order=created_at.desc&limit=10`);
