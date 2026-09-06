@@ -21,13 +21,11 @@ const Anthropic = require('@anthropic-ai/sdk');
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const AI_EMAIL = 'claude@parlonsecoute.fr';
+const { AI_EMAIL, ASSIST_DELAY_MS } = require('./_assist');
 // Netlify coupe les fonctions synchrones à 10 s : il faut un modèle rapide, sans réflexion étendue,
 // et des réponses courtes. Surchargeable via AI_LISTENER_MODEL.
 const MODEL = process.env.AI_LISTENER_MODEL || 'claude-sonnet-5';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-// Silence toléré avant que Max n'assiste un écoutant humain (tchat non ouvert ou réponse tardive)
-const ASSIST_DELAY_MS = parseInt(process.env.ASSIST_DELAY_MS || '30000', 10);
 
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type' };
 const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
@@ -78,7 +76,15 @@ exports.handler = async (event) => {
 
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
-  const { sessionId, messageId } = body;
+  let { sessionId } = body;
+  const { messageId } = body;
+  // Répétition « à blanc » du chemin d'assistance : exécute exactement le même code (garde-fous,
+  // appel au modèle, chronométrage) mais n'insère aucun message. Sert à diagnostiquer sans session
+  // réelle en cours. Protégé par l'en-tête de diagnostic.
+  const dry = body.dryRun === true && event.headers['x-parlons-diag'] === '1';
+  const steps = [];
+  const t0 = Date.now();
+  const mark = (name) => steps.push(`${name}:${Date.now() - t0}`);
 
   // Diagnostic d'assistance : pourquoi Max n'intervient-il pas ? Renvoie l'état de décision des
   // sessions actives tenues par un écoutant. Métadonnées seulement, aucun contenu de message.
@@ -118,24 +124,35 @@ exports.handler = async (event) => {
     }
   }
 
+  if (dry && !sessionId) {
+    // Dernière session tenue par un écoutant humain, quel que soit son état
+    const cand = await sbGet(`chat_sessions?agent_email=not.is.null&agent_email=neq.${encodeURIComponent(AI_EMAIL)}&select=id&order=assigned_at.desc&limit=1`);
+    if (!cand.length) return { statusCode: 200, headers: CORS, body: JSON.stringify({ dry: true, error: 'aucune session tenue par un écoutant' }) };
+    sessionId = cand[0].id;
+  }
   if (!sessionId) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'sessionId requis' }) };
 
   try {
-    // Petit délai : si le visiteur envoie plusieurs messages d'affilée, une seule réponse (au dernier)
-    await sleep(600);
+    // Petit délai : si le visiteur envoie plusieurs messages d'affilée, une seule réponse (au dernier).
+    // Inutile en assistance : le visiteur attend déjà depuis 30 s et chaque seconde compte
+    // (Netlify coupe la fonction à 10 s).
+    if (!body.assist) await sleep(600);
+    mark('debut');
 
     const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=id,status,agent_email,pre_name,pre_topic,session_label,duration_sec,assigned_at&limit=1`);
     const sess = sessions[0];
     // Deux modes : Max tient la session (aucun écoutant connecté), ou Max assiste un écoutant
     // humain qui n'a pas répondu depuis ASSIST_DELAY_MS (il garde la session, Max comble le silence).
     const holdsSession = sess && sess.agent_email === AI_EMAIL;
-    const assisting = sess && !holdsSession && !!sess.agent_email && body.assist === true;
-    if (!sess || sess.status !== 'active' || (!holdsSession && !assisting)) {
+    const assisting = sess && !holdsSession && !!sess.agent_email && (body.assist === true || dry);
+    if (!sess || (sess.status !== 'active' && !dry) || (!holdsSession && !assisting)) {
       console.log('ai-reply skip session_not_ai', sessionId, sess?.status, sess?.agent_email);
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'session_not_ai' }) };
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'session_not_ai', dry, statut: sess?.status || null }) };
     }
+    mark('session');
 
     const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=120`);
+    mark('messages');
     // Dernier message porteur de parole : les messages système (« l'utilisateur a quitté la page »,
     // prolongation, reprise…) s'intercalent et masqueraient le fait que le visiteur attend.
     const last = [...msgs].reverse().find(m => m.sender_type !== 'system');
@@ -148,16 +165,19 @@ exports.handler = async (event) => {
         : (!humanReplied && sess.assigned_at ? new Date(sess.assigned_at).getTime() : 0); // tchat jamais ouvert
       if (!waitingSince || Date.now() - waitingSince < ASSIST_DELAY_MS) {
         console.log('ai-reply assist trop tôt', sessionId, waitingSince ? Date.now() - waitingSince : 'aucune attente');
-        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_too_early' }) };
+        if (!dry) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_too_early' }) };
+        steps.push('garde:assist_too_early');
       }
       console.log('ai-reply assist déclenché', sessionId, 'attente', Math.round((Date.now() - waitingSince) / 1000), 's');
       // Ne pas enchaîner deux interventions coup sur coup (plusieurs sondages simultanés)
       const lastAssist = [...msgs].reverse().find(m => m.sender_type === 'assistant');
       if (lastAssist && Date.now() - new Date(lastAssist.created_at).getTime() < 20000) {
-        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_recent' }) };
+        if (!dry) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_recent' }) };
+        steps.push('garde:assist_recent');
       }
       if (lastAssist && (!last || last.sender_type !== 'visitor')) {
-        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_nothing_pending' }) };
+        if (!dry) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_nothing_pending' }) };
+        steps.push('garde:assist_nothing_pending');
       }
     } else {
       if (!last || last.sender_type !== 'visitor') {
@@ -204,12 +224,10 @@ exports.handler = async (event) => {
     // En assistance, le visiteur peut n'avoir encore rien écrit : l'API exige un premier tour utilisateur
     if (!messages.length) messages.push({ role: 'user', content: '(le visiteur vient d\'arriver et n\'a pas encore écrit)' });
 
-    // Nom de l'écoutant assisté (pour le contexte et l'annonce système)
-    let agentName = 'L\'écoutant';
-    if (assisting) {
-      const prof = await sbGet(`agent_profiles?email=eq.${encodeURIComponent(sess.agent_email)}&select=pseudo,prenom&limit=1`);
-      agentName = prof[0]?.pseudo || prof[0]?.prenom || 'L\'écoutant';
-    }
+    // Nom de l'écoutant assisté : purement contextuel — Max a pour consigne de ne jamais le citer.
+    // On ne fait pas d'aller-retour Supabase supplémentaire pour lui : en assistance, la fonction
+    // dispose de moins de 10 s au total et chaque requête compte.
+    const agentName = 'L\'écoutant';
 
     // Contexte variable (hors cache) : prénom, sujet, temps restant
     const firstAgentMsg = msgs.find(m => m.sender_type === 'agent');
@@ -225,6 +243,7 @@ exports.handler = async (event) => {
       opening ? `Tu as ouvert la conversation par : « ${opening} »` : ''
     ].filter(Boolean).join('\n');
 
+    mark('avant_modele');
     const client = new Anthropic({ timeout: 8000, maxRetries: 0 });
     const response = await client.messages.create({
       model: MODEL,
@@ -241,6 +260,13 @@ exports.handler = async (event) => {
     if (response.stop_reason === 'refusal' || !text)
       text = 'Je suis là et je vous écoute. Prenez le temps qu\'il vous faut : qu\'est-ce qui pèse le plus en ce moment ?';
     text = text.replace(/\n{3,}/g, '\n\n').slice(0, 1500);
+    mark('modele');
+    if (dry) return { statusCode: 200, headers: CORS, body: JSON.stringify({
+      dry: true, session: sessionId.slice(0, 8), statut: sess.status, assisting, holdsSession,
+      dernierType: last?.sender_type || null, nbMessages: msgs.length,
+      longueurReponse: text.length, apercu: text.slice(0, 120), modele: response.model,
+      etapes: steps.join(' ')
+    }, null, 1) };
 
     // Pas d'attente ici : le rythme de réponse (5-7 s pour un message court, 10-15 s pour un
     // message long) est appliqué à l'affichage par chat-poll.js — une fonction Netlify est coupée

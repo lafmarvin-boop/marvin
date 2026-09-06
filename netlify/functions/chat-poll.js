@@ -1,8 +1,7 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const AI_EMAIL = 'claude@parlonsecoute.fr'; // Max, assistant d'écoute IA (ai-reply.js)
-// Silence toléré avant que Max n'assiste un écoutant humain (voir ai-reply.js)
-const ASSIST_DELAY_MS = parseInt(process.env.ASSIST_DELAY_MS || '30000', 10);
+// Max, assistant d'écoute IA (ai-reply.js) et règle d'assistance partagée (_assist.js)
+const { AI_EMAIL, maxShouldAssist } = require('./_assist');
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -69,15 +68,7 @@ exports.handler = async (event) => {
         if (!humanHeld) {
           trigger = !!last && last.sender_type === 'visitor' && waitingMs > 1500;
         } else {
-          const humanSpoke = lastRows.some(m => m.sender_type === 'agent');
-          const idle = Date.now() - new Date(s.assigned_at || Date.now()).getTime();
-          // Max vient-il déjà d'intervenir ? Évite d'appeler ai-reply à chaque sondage pour rien.
-          const recentAssist = lastRows.some(m => m.sender_type === 'assistant'
-            && Date.now() - new Date(m.created_at).getTime() < 20000);
-          // Visiteur sans réponse depuis 30 s, ou tchat attribué depuis 30 s sans un mot de l'écoutant
-          trigger = !recentAssist && (
-                    (last && last.sender_type === 'visitor' && waitingMs > ASSIST_DELAY_MS)
-                 || (!humanSpoke && !lastRows.some(m => m.sender_type === 'assistant') && idle > ASSIST_DELAY_MS));
+          trigger = maxShouldAssist(lastRows, s.assigned_at);
           assist = true;
         }
         if (trigger) {
@@ -244,26 +235,13 @@ exports.handler = async (event) => {
       // Une seule requête pour toutes ses sessions, le sondage étant fréquent.
       if (activeSessions.length) {
         try {
-          const ids = activeSessions.map(s => s.id).join(',');
-          const recent = await sbGet(`chat_messages?session_id=in.(${ids})&select=id,session_id,sender_type,created_at&order=created_at.desc&limit=60`);
-          const bySession = {};
-          recent.forEach(m => { (bySession[m.session_id] = bySession[m.session_id] || []).push(m); });
           const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
           await Promise.all(activeSessions.map(async (sess) => {
-            const msgs = bySession[sess.id] || [];
-            // Dernier message porteur de parole : les messages système ne disent pas qui attend
+            // Une requête par session : un « in.(…) » commun, borné en nombre de lignes, peut
+            // n'en couvrir qu'une seule si l'une d'elles est bavarde.
+            const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sess.id)}&select=id,sender_type,created_at&order=created_at.desc&limit=12`);
+            if (!maxShouldAssist(msgs, sess.assigned_at)) return;
             const last = msgs.find(m => m.sender_type !== 'system');
-            const humanSpoke = msgs.some(m => m.sender_type === 'agent');
-            const anyAssist = msgs.some(m => m.sender_type === 'assistant');
-            const recentAssist = msgs.some(m => m.sender_type === 'assistant'
-              && Date.now() - new Date(m.created_at).getTime() < 20000);
-            const waitingMs = last && last.sender_type === 'visitor'
-              ? Date.now() - new Date(last.created_at).getTime() : 0;
-            const idle = Date.now() - new Date(sess.assigned_at || Date.now()).getTime();
-            const trigger = !recentAssist && (
-                 (waitingMs > ASSIST_DELAY_MS)
-              || (!humanSpoke && !anyAssist && idle > ASSIST_DELAY_MS));
-            if (!trigger) return;
             try {
               await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
