@@ -237,6 +237,44 @@ exports.handler = async (event) => {
         ));
       }
 
+      // ── Assistance de Max, déclenchée depuis le sondage de l'ÉCOUTANT ──
+      // Le sondage du visiteur ne suffit pas : sur mobile, sa page passe en arrière-plan dès qu'il
+      // change d'application et le navigateur y suspend les minuteurs. L'application de l'écoutant,
+      // elle, tourne au premier plan — et c'est précisément lui qui tarde à répondre.
+      // Une seule requête pour toutes ses sessions, le sondage étant fréquent.
+      if (activeSessions.length) {
+        try {
+          const ids = activeSessions.map(s => s.id).join(',');
+          const recent = await sbGet(`chat_messages?session_id=in.(${ids})&select=id,session_id,sender_type,created_at&order=created_at.desc&limit=60`);
+          const bySession = {};
+          recent.forEach(m => { (bySession[m.session_id] = bySession[m.session_id] || []).push(m); });
+          const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
+          await Promise.all(activeSessions.map(async (sess) => {
+            const msgs = bySession[sess.id] || [];
+            // Dernier message porteur de parole : les messages système ne disent pas qui attend
+            const last = msgs.find(m => m.sender_type !== 'system');
+            const humanSpoke = msgs.some(m => m.sender_type === 'agent');
+            const anyAssist = msgs.some(m => m.sender_type === 'assistant');
+            const recentAssist = msgs.some(m => m.sender_type === 'assistant'
+              && Date.now() - new Date(m.created_at).getTime() < 20000);
+            const waitingMs = last && last.sender_type === 'visitor'
+              ? Date.now() - new Date(last.created_at).getTime() : 0;
+            const idle = Date.now() - new Date(sess.assigned_at || Date.now()).getTime();
+            const trigger = !recentAssist && (
+                 (waitingMs > ASSIST_DELAY_MS)
+              || (!humanSpoke && !anyAssist && idle > ASSIST_DELAY_MS));
+            if (!trigger) return;
+            try {
+              await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId: sess.id, messageId: last && last.sender_type === 'visitor' ? last.id : null, assist: true }),
+                signal: AbortSignal.timeout(2500)
+              });
+            } catch { /* ai-reply poursuit de son côté */ }
+          }));
+        } catch (e) { console.error('chat-poll assist (agent):', e.message); }
+      }
+
       // Pour chaque session active, récupérer les messages depuis sinceIso.
       // Session attribuée depuis le dernier poll (nouvelle, transfert, relais de Max) → tout l'historique,
       // pour que l'écoutant voie la conversation déjà engagée.
