@@ -36,7 +36,7 @@ exports.handler = async (event) => {
   try {
     // Sessions actives tenues par un écoutant humain
     const sessions = await sbGet(
-      `chat_sessions?status=eq.active&agent_email=not.is.null&agent_email=neq.${encodeURIComponent(AI_EMAIL)}&select=id,assigned_at&order=assigned_at.desc&limit=20`
+      `chat_sessions?status=eq.active&agent_email=not.is.null&agent_email=neq.${encodeURIComponent(AI_EMAIL)}&select=id,assigned_at&order=assigned_at.desc&limit=200`
     );
 
     const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
@@ -59,8 +59,10 @@ exports.handler = async (event) => {
             messageId: last && last.sender_type === 'visitor' ? last.id : null,
             assist: true
           }),
-          signal: AbortSignal.timeout(9000)
-        }).then(r => r.text()).then(t => t.slice(0, 200));
+          // 3 s : le temps que la requête parte. ai-reply poursuit de son côté — inutile de
+          // l'attendre, et avec beaucoup de sessions en parallèle l'attente coûterait cher.
+          signal: AbortSignal.timeout(3000)
+        }).then(() => 'appelé');
       } catch (e) { reponse = `échec appel: ${e.message}`; }
       decisions[decisions.length - 1].aiReply = reponse;
     }));

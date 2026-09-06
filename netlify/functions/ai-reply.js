@@ -119,6 +119,21 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, n: rows.length, traces: rows.map(r => r.content) }, null, 1) };
   }
 
+  // TEMPORAIRE : la contrainte accepte-t-elle « assistant » ? Insertion d'essai dans une session
+  // déjà close (personne ne la consulte), immédiatement supprimée.
+  if (body.diag === 'contrainte' && event.headers['x-parlons-diag'] === '1') {
+    const closed = await sbGet(`chat_sessions?status=eq.closed&select=id&order=assigned_at.desc&limit=1`);
+    if (!closed.length) return { statusCode: 200, headers: CORS, body: JSON.stringify({ error: 'aucune session close' }) };
+    const res = await fetch(`${SB_URL}/rest/v1/chat_messages`, {
+      method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ session_id: closed[0].id, content: '(essai technique)', sender_type: 'assistant' })
+    });
+    const out = await res.json().catch(() => null);
+    if (res.ok && Array.isArray(out) && out[0]?.id)
+      await fetch(`${SB_URL}/rest/v1/chat_messages?id=eq.${encodeURIComponent(out[0].id)}`, { method: 'DELETE', headers: { ...H(), Prefer: 'return=minimal' } }).catch(() => {});
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ assistantAutorise: res.ok, http: res.status, detail: res.ok ? null : out }, null, 1) };
+  }
+
   // Diagnostic : vérifie l'appel API depuis Netlify (clé, modèle, délai). Aucune donnée de session.
   if (body.ping === true && event.headers['x-parlons-diag'] === '1') {
     const t0 = Date.now();
