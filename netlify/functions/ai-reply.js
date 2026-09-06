@@ -1,11 +1,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Max — assistant d'écoute IA de Parlons
 //
-// Ouvre la conversation sur les sessions PAYANTES quand aucun écoutant humain
-// n'est en ligne (attribution faite par chat-start.js), le temps qu'un écoutant
-// prévenu se connecte. Déclenché par chat-send.js à chaque message visiteur sur
-// une session tenue par l'IA ; génère une réponse avec l'API Claude et l'insère
-// comme message « agent ».
+// Deux rôles :
+//   1. Max TIENT la session quand aucun écoutant n'est connecté (chat-start / free-session
+//      la lui attribuent). Ses messages sont de type « agent ».
+//   2. Max ASSISTE un écoutant humain : la session reste attribuée à l'écoutant, mais si
+//      celui-ci n'a pas répondu depuis ASSIST_DELAY_MS (30 s par défaut) — tchat jamais ouvert,
+//      ou réponse tardive pendant qu'il gère un autre visiteur — Max comble le silence. Ses
+//      messages sont alors de type « assistant » et une ligne système annonce son intervention,
+//      pour que le visiteur ne croie jamais parler à l'écoutant humain.
 //
 // Transparence : Max se présente toujours comme une intelligence artificielle
 // (jamais comme un psychologue, psychiatre ou écoutant humain). Dès qu'un
@@ -22,6 +25,8 @@ const AI_EMAIL = 'claude@parlonsecoute.fr';
 // et des réponses courtes. Surchargeable via AI_LISTENER_MODEL.
 const MODEL = process.env.AI_LISTENER_MODEL || 'claude-sonnet-5';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+// Silence toléré avant que Max n'assiste un écoutant humain (tchat non ouvert ou réponse tardive)
+const ASSIST_DELAY_MS = parseInt(process.env.ASSIST_DELAY_MS || '30000', 10);
 
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type' };
 const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
@@ -34,7 +39,7 @@ async function sbGet(path) {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // Prompt système stable (mis en cache côté API) — le contexte variable est ajouté à part
-const SYSTEM_PROMPT = `Tu es Max, l'assistant d'écoute de Parlons, un service français d'écoute et de soutien en ligne. Tu engages la conversation quand aucun écoutant humain n'est connecté : les écoutants ont été alertés par email et l'un d'eux prendra le relais dès qu'il se connecte. En attendant, tu n'es pas une salle d'attente : tu es là pour la personne, entièrement, et cette conversation compte.
+const SYSTEM_PROMPT = `Tu es Max, l'assistant d'écoute de Parlons, un service français d'écoute et de soutien en ligne. Tu interviens dans deux situations, précisées dans le contexte de la session : soit aucun écoutant humain n'est connecté et tu engages la conversation en attendant qu'un écoutant alerté se connecte, soit un écoutant est en ligne mais tarde à répondre et tu combles ce silence le temps qu'il revienne. Dans les deux cas tu n'es pas une salle d'attente : tu es là pour la personne, entièrement, et cette conversation compte.
 
 QUI TU ES POUR LA PERSONNE
 Tu écoutes comme le ferait un professionnel de l'écoute très expérimenté, formé à la psychologie et profondément humain : présent, chaleureux, calme, curieux de l'autre, jamais pressé. Tu parles comme une personne, pas comme un service : phrases naturelles, longueur variée, parfois une réaction courte (« Ah. », « C'est lourd, ça. »), parfois deux ou trois phrases plus posées. Tu tutoies si la personne te tutoie, tu vouvoies sinon. Tu es un programme (une intelligence artificielle) et la personne en a été informée au début : tu n'as pas à le rappeler et tu ne le mentionnes jamais de toi-même, mais tu ne le nies jamais et tu ne te présentes jamais comme psychologue, psychiatre, médecin, thérapeute ou humain. Si on te le demande directement, réponds honnêtement en une phrase, puis reviens à la personne.
@@ -94,47 +99,86 @@ exports.handler = async (event) => {
 
     const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=id,status,agent_email,pre_name,pre_topic,session_label,duration_sec,assigned_at&limit=1`);
     const sess = sessions[0];
-    if (!sess || sess.status !== 'active' || sess.agent_email !== AI_EMAIL) {
+    // Deux modes : Max tient la session (aucun écoutant connecté), ou Max assiste un écoutant
+    // humain qui n'a pas répondu depuis ASSIST_DELAY_MS (il garde la session, Max comble le silence).
+    const holdsSession = sess && sess.agent_email === AI_EMAIL;
+    const assisting = sess && !holdsSession && !!sess.agent_email && body.assist === true;
+    if (!sess || sess.status !== 'active' || (!holdsSession && !assisting)) {
       console.log('ai-reply skip session_not_ai', sessionId, sess?.status, sess?.agent_email);
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'session_not_ai' }) };
     }
 
     const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=120`);
     const last = msgs[msgs.length - 1];
-    if (!last || last.sender_type !== 'visitor') {
-      console.log('ai-reply skip no_pending_visitor_message', sessionId, last?.sender_type);
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'no_pending_visitor_message' }) };
-    }
-    if (messageId && last.id !== messageId) {
-      console.log('ai-reply skip superseded', sessionId, messageId, last.id);
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'superseded' }) };
+    const humanReplied = msgs.some(m => m.sender_type === 'agent');
+
+    if (assisting) {
+      // Revérification côté serveur des conditions d'assistance (le client ne décide pas seul)
+      const waitingSince = last && last.sender_type === 'visitor'
+        ? new Date(last.created_at).getTime()                       // le visiteur attend une réponse
+        : (!humanReplied && sess.assigned_at ? new Date(sess.assigned_at).getTime() : 0); // tchat jamais ouvert
+      if (!waitingSince || Date.now() - waitingSince < ASSIST_DELAY_MS) {
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_too_early' }) };
+      }
+      // Ne pas enchaîner deux interventions coup sur coup (plusieurs sondages simultanés)
+      const lastAssist = [...msgs].reverse().find(m => m.sender_type === 'assistant');
+      if (lastAssist && Date.now() - new Date(lastAssist.created_at).getTime() < 20000) {
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_recent' }) };
+      }
+      if (lastAssist && (!last || last.sender_type !== 'visitor')) {
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_nothing_pending' }) };
+      }
+    } else {
+      if (!last || last.sender_type !== 'visitor') {
+        console.log('ai-reply skip no_pending_visitor_message', sessionId, last?.sender_type);
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'no_pending_visitor_message' }) };
+      }
+      if (messageId && last.id !== messageId) {
+        console.log('ai-reply skip superseded', sessionId, messageId, last.id);
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'superseded' }) };
+      }
     }
 
     // Verrou anti-doublon (chat-send et chat-poll peuvent déclencher en même temps) :
     // response_deadline est toujours null sur une session tenue par Max ; on le pose le temps de générer.
+    // En assistance, pas de verrou response_deadline : sur une session tenue par un humain, ce champ
+    // sert à la réassignation automatique (chat-poll) et la session serait retirée à l'écoutant.
     const lockUntil = new Date(Date.now() + 25000).toISOString();
     const nowIso = new Date().toISOString();
-    const lockRes = await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&agent_email=eq.${encodeURIComponent(AI_EMAIL)}&or=(response_deadline.is.null,response_deadline.lt.${encodeURIComponent(nowIso)})`, {
-      method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify({ response_deadline: lockUntil })
-    });
-    const locked = await lockRes.json().catch(() => []);
-    if (!Array.isArray(locked) || !locked.length) {
-      console.log('ai-reply skip locked', sessionId);
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'locked' }) };
+    let unlock = async () => {};
+    if (holdsSession) {
+      const lockRes = await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&agent_email=eq.${encodeURIComponent(AI_EMAIL)}&or=(response_deadline.is.null,response_deadline.lt.${encodeURIComponent(nowIso)})`, {
+        method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+        body: JSON.stringify({ response_deadline: lockUntil })
+      });
+      const locked = await lockRes.json().catch(() => []);
+      if (!Array.isArray(locked) || !locked.length) {
+        console.log('ai-reply skip locked', sessionId);
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'locked' }) };
+      }
+      unlock = () => fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&agent_email=eq.${encodeURIComponent(AI_EMAIL)}`, {
+        method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ response_deadline: null })
+      }).catch(() => {});
     }
-    const unlock = () => fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&agent_email=eq.${encodeURIComponent(AI_EMAIL)}`, {
-      method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ response_deadline: null })
-    }).catch(() => {});
     try {
 
     // Historique → format Messages API (première entrée = visiteur ; messages système ignorés)
     const firstVisitor = msgs.findIndex(m => m.sender_type === 'visitor');
-    const opening = msgs.slice(0, firstVisitor).filter(m => m.sender_type === 'agent').map(m => m.content).join('\n');
-    const messages = msgs.slice(firstVisitor)
-      .filter(m => m.sender_type === 'visitor' || m.sender_type === 'agent')
+    const isReply = m => m.sender_type === 'agent' || m.sender_type === 'assistant';
+    const opening = msgs.slice(0, firstVisitor < 0 ? msgs.length : firstVisitor).filter(isReply).map(m => m.content).join('\n');
+    const messages = (firstVisitor < 0 ? [] : msgs.slice(firstVisitor))
+      .filter(m => m.sender_type === 'visitor' || isReply(m))
       .map(m => ({ role: m.sender_type === 'visitor' ? 'user' : 'assistant', content: m.content }));
+    // En assistance, le visiteur peut n'avoir encore rien écrit : l'API exige un premier tour utilisateur
+    if (!messages.length) messages.push({ role: 'user', content: '(le visiteur vient d\'arriver et n\'a pas encore écrit)' });
+
+    // Nom de l'écoutant assisté (pour le contexte et l'annonce système)
+    let agentName = 'L\'écoutant';
+    if (assisting) {
+      const prof = await sbGet(`agent_profiles?email=eq.${encodeURIComponent(sess.agent_email)}&select=pseudo,prenom&limit=1`);
+      agentName = prof[0]?.pseudo || prof[0]?.prenom || 'L\'écoutant';
+    }
 
     // Contexte variable (hors cache) : prénom, sujet, temps restant
     const firstAgentMsg = msgs.find(m => m.sender_type === 'agent');
@@ -144,7 +188,9 @@ exports.handler = async (event) => {
     const context = [
       `Contexte de cette session : la personne s'appelle ${sess.pre_name || 'Visiteur'}${sess.pre_topic ? `, elle a indiqué comme sujet : « ${sess.pre_topic} »` : ''}.`,
       `Formule : ${sess.session_label || 'session'}${(sess.session_label || '').includes('GRATUIT') ? ' (conversation offerte : aucune question de remboursement)' : ''}. Conversation commencée il y a ${elapsedMin} min. Temps restant approximatif : ${remainingMin} min.`,
-      `Écoutant humain : pas encore connecté (les écoutants ont été alertés par email il y a ${elapsedMin} min).`,
+      assisting
+        ? `Écoutant humain : ${agentName} est en ligne et suit cette conversation, mais n'a pas répondu depuis plus de ${Math.round(ASSIST_DELAY_MS / 1000)} secondes (il gère peut-être un autre visiteur). Tu interviens pour que la personne ne reste pas sans réponse ; ${agentName} reprendra la main dès qu'il le pourra. Ne dis pas que tu remplaces l'écoutant, ne commente pas son absence, ne t'excuses pas pour lui : accueille simplement la personne et écoute-la. Si elle demande où est l'écoutant, dis simplement qu'il est occupé un instant et qu'il revient.`
+        : `Écoutant humain : pas encore connecté (les écoutants ont été alertés par email il y a ${elapsedMin} min).`,
       opening ? `Tu as ouvert la conversation par : « ${opening} »` : ''
     ].filter(Boolean).join('\n');
 
@@ -169,17 +215,39 @@ exports.handler = async (event) => {
     // message long) est appliqué à l'affichage par chat-poll.js — une fonction Netlify est coupée
     // à 10 s, elle ne peut pas temporiser jusqu'à 15 s.
 
-    // Un écoutant humain a peut-être pris le relais pendant la génération
+    // La situation a pu changer pendant la génération
     const check = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email&limit=1`);
-    if (!check[0] || check[0].status !== 'active' || check[0].agent_email !== AI_EMAIL)
+    if (!check[0] || check[0].status !== 'active')
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'handed_over' }) };
+    if (holdsSession && check[0].agent_email !== AI_EMAIL)
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'handed_over' }) };
 
-    const ins = await fetch(`${SB_URL}/rest/v1/chat_messages`, {
+    const post = (content, sender_type) => fetch(`${SB_URL}/rest/v1/chat_messages`, {
       method: 'POST',
       headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ session_id: sessionId, content: text, sender_type: 'agent' })
+      body: JSON.stringify({ session_id: sessionId, content, sender_type })
     });
-    if (!ins.ok) throw new Error(`Insertion message ${ins.status}`);
+
+    if (assisting) {
+      // L'écoutant a-t-il répondu entre-temps ? Si oui, Max se tait.
+      const fresh = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=sender_type,created_at&order=created_at.desc&limit=1`);
+      if (fresh[0] && fresh[0].sender_type === 'agent')
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'agent_answered' }) };
+
+      // Annonce système au début de chaque épisode d'assistance : le visiteur doit savoir
+      // qui lui parle. Un épisode se termine dès que l'écoutant humain reprend la parole.
+      const lastAssistIdx = msgs.map(m => m.sender_type).lastIndexOf('assistant');
+      const lastAgentIdx = msgs.map(m => m.sender_type).lastIndexOf('agent');
+      const newEpisode = lastAssistIdx < 0 || lastAgentIdx > lastAssistIdx;
+      if (newEpisode) {
+        await post(`${agentName} est occupé un instant. Max, l'assistant automatisé de Parlons, prend le relais en attendant qu'il revienne.`, 'system');
+      }
+      const insA = await post(text, 'assistant');
+      if (!insA.ok) throw new Error(`Insertion message ${insA.status}`);
+    } else {
+      const ins = await post(text, 'agent');
+      if (!ins.ok) throw new Error(`Insertion message ${ins.status}`);
+    }
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, model: response.model, usage: response.usage }) };
     } finally { await unlock(); }

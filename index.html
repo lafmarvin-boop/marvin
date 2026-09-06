@@ -525,6 +525,9 @@
     .pcp-msg{max-width:82%;padding:.5rem .75rem;border-radius:14px;font-size:.81rem;line-height:1.5;word-break:break-word;}
     .pcp-msg.visitor{align-self:flex-end;background:var(--terracotta);color:white;border-bottom-right-radius:3px;}
     .pcp-msg.agent{align-self:flex-start;background:#f0ece8;color:var(--dark);border-bottom-left-radius:3px;}
+    /* Messages de Max quand il assiste un écoutant : reconnaissables, jamais confondus avec l'écoutant */
+    .pcp-msg.assistant{align-self:flex-start;background:#eef2fb;color:var(--dark);border-bottom-left-radius:3px;border-left:3px solid #7c93c9;}
+    .pcp-msg.assistant::before{content:'Max · assistant';display:block;font-size:.62rem;font-weight:700;color:#5a72a8;letter-spacing:.03em;margin-bottom:.2rem;}
     .pcp-msg.system{align-self:center;background:#f5f0ea;color:#7a6050;font-size:.7rem;border-radius:8px;text-align:center;padding:.28rem .65rem;max-width:92%;}
     .pcp-msg.system.welcome{background:#fee2e2;color:#991b1b;font-weight:600;border:1px solid #fca5a5;}
     .pcp-msg.system.farewell{background:#ede9fe;color:#5b21b6;font-weight:600;border:1px solid #c4b5fd;text-align:center;}
@@ -593,6 +596,8 @@
     [data-theme="dark"] #parlons-chat-panel{background:#1A1208;border-color:#3D2A1A;}
     [data-theme="dark"] .pcp-msgs{background:#1A1208;}
     [data-theme="dark"] .pcp-msg.agent{background:#2C1F14;color:#F0E8D8;}
+    [data-theme="dark"] .pcp-msg.assistant{background:#1e2537;color:#dbe4f7;border-left-color:#5a72a8;}
+    [data-theme="dark"] .pcp-msg.assistant::before{color:#9db0dd;}
     [data-theme="dark"] .pcp-msg.system{background:#3D2A1A;color:#C4A882;}
     [data-theme="dark"] .pcp-msg.system.welcome{background:#7f1d1d;color:#fca5a5;border-color:#991b1b;}
     [data-theme="dark"] .pcp-msg.system.farewell{background:#2e1065;color:#c4b5fd;border-color:#5b21b6;}
@@ -3244,8 +3249,8 @@ function appendChatMsg(msg){
   area.appendChild(div);
   area.scrollTop=area.scrollHeight;
   if(msg.created_at)chatLastMsgTime=msg.created_at;
-  if(!chatPanelOpen&&msg.sender_type==='agent'){chatUnreadCount++;updateChatBadge();}
-  if(msg.sender_type==='agent'&&sessionTimer===null&&chatState==='active')startSessionCountdown(msg.created_at||null);
+  if(!chatPanelOpen&&(msg.sender_type==='agent'||msg.sender_type==='assistant')){chatUnreadCount++;updateChatBadge();}
+  if((msg.sender_type==='agent'||msg.sender_type==='assistant')&&sessionTimer===null&&chatState==='active')startSessionCountdown(msg.created_at||null);
 }
 async function startChatSession(name,sessionType,sessionLabel,durationSec,paymentId){
   // Réinitialiser l'état du chrono pour que startSessionCountdown puisse démarrer

@@ -117,6 +117,9 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 .bubble{padding:.6rem .85rem;border-radius:16px;font-size:.88rem;line-height:1.45;}
 .msg.visitor .bubble{background:var(--white);border:1px solid var(--sand);border-bottom-left-radius:4px;color:var(--dark);}
 .msg.agent .bubble{background:var(--tc);color:var(--white);border-bottom-right-radius:4px;}
+.msg.assistant{align-self:flex-end;}
+.msg.assistant .bubble{background:#eef2fb;color:var(--dark);border:1px solid #c3cfe8;border-bottom-right-radius:4px;}
+.msg.assistant .bubble::before{content:'Max a répondu pour vous';display:block;font-size:.62rem;font-weight:700;color:#5a72a8;margin-bottom:.15rem;}
 .msg.system .bubble{background:#f0e8e0;color:var(--mid);font-size:.78rem;text-align:center;border-radius:50px;padding:.3rem .9rem;}
 .msg-time{font-size:.62rem;color:var(--light);}
 .msg.agent .msg-time{text-align:right;}
@@ -786,7 +789,7 @@ function processPoll(d){
           }
         }
       // Start timer on first agent msg — use message timestamp (same reference as visitor side)
-      if(!sess.timerStartedAt&&m.sender_type==='agent'){
+      if(!sess.timerStartedAt&&(m.sender_type==='agent'||m.sender_type==='assistant')){
         const ref=m.created_at?new Date(m.created_at).getTime():Date.now();
         sess.timerStartedAt=ref;
         sess.sessionEndAt=ref+sess.durationSec*1000;
@@ -932,7 +935,7 @@ function renderChatMessages(sessionId){
   const el=document.getElementById('chat-msgs');
   const wasAtBottom=el.scrollHeight-el.scrollTop-el.clientHeight<80;
   el.innerHTML=sess.messages.map(m=>{
-    const type=m.sender_type==='agent'?'agent':m.sender_type==='system'?'system':'visitor';
+    const type=m.sender_type==='agent'?'agent':m.sender_type==='assistant'?'assistant':m.sender_type==='system'?'system':'visitor';
     const time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
     return `<div class="msg ${type}"><div class="bubble">${esc(m.content)}</div>${type!=='system'?`<div class="msg-time">${time}</div>`:''}</div>`;
   }).join('');
