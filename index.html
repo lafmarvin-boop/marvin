@@ -527,7 +527,7 @@
     .pcp-msg.agent{align-self:flex-start;background:#f0ece8;color:var(--dark);border-bottom-left-radius:3px;}
     /* Messages de Max quand il assiste un écoutant : reconnaissables, jamais confondus avec l'écoutant */
     .pcp-msg.assistant{align-self:flex-start;background:#eef2fb;color:var(--dark);border-bottom-left-radius:3px;border-left:3px solid #7c93c9;}
-    .pcp-msg.assistant::before{content:'Max · assistant';display:block;font-size:.62rem;font-weight:700;color:#5a72a8;letter-spacing:.03em;margin-bottom:.2rem;}
+    .pcp-msg.assistant::after{content:'Max';display:block;font-size:.6rem;font-weight:700;color:#5a72a8;letter-spacing:.03em;margin-top:.25rem;}
     .pcp-msg.system{align-self:center;background:#f5f0ea;color:#7a6050;font-size:.7rem;border-radius:8px;text-align:center;padding:.28rem .65rem;max-width:92%;}
     .pcp-msg.system.welcome{background:#fee2e2;color:#991b1b;font-weight:600;border:1px solid #fca5a5;}
     .pcp-msg.system.farewell{background:#ede9fe;color:#5b21b6;font-weight:600;border:1px solid #c4b5fd;text-align:center;}
@@ -597,7 +597,7 @@
     [data-theme="dark"] .pcp-msgs{background:#1A1208;}
     [data-theme="dark"] .pcp-msg.agent{background:#2C1F14;color:#F0E8D8;}
     [data-theme="dark"] .pcp-msg.assistant{background:#1e2537;color:#dbe4f7;border-left-color:#5a72a8;}
-    [data-theme="dark"] .pcp-msg.assistant::before{color:#9db0dd;}
+    [data-theme="dark"] .pcp-msg.assistant::after{color:#9db0dd;}
     [data-theme="dark"] .pcp-msg.system{background:#3D2A1A;color:#C4A882;}
     [data-theme="dark"] .pcp-msg.system.welcome{background:#7f1d1d;color:#fca5a5;border-color:#991b1b;}
     [data-theme="dark"] .pcp-msg.system.farewell{background:#2e1065;color:#c4b5fd;border-color:#5b21b6;}
