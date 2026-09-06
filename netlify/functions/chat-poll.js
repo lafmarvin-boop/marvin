@@ -60,8 +60,10 @@ exports.handler = async (event) => {
       const lockFree = !s.response_deadline || new Date(s.response_deadline).getTime() < Date.now();
       const humanHeld = !!s.agent_email && s.agent_email !== AI_EMAIL;
       if (s.status === 'active' && (s.agent_email === AI_EMAIL ? lockFree : humanHeld)) {
-        const lastRows = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,sender_type,created_at&order=created_at.desc&limit=8`);
-        const last = lastRows[0];
+        const lastRows = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,sender_type,created_at&order=created_at.desc&limit=12`);
+        // Les messages système (« l'utilisateur a quitté la page », prolongation…) s'intercalent
+        // entre le visiteur et la réponse attendue : ils ne doivent pas masquer qui attend.
+        const last = lastRows.find(m => m.sender_type !== 'system');
         const waitingMs = last && last.sender_type === 'visitor' ? Date.now() - new Date(last.created_at).getTime() : 0;
         let trigger = false, assist = false;
         if (!humanHeld) {

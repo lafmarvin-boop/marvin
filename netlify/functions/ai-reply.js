@@ -87,7 +87,7 @@ exports.handler = async (event) => {
     const out = [];
     for (const r of rows) {
       const m = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(r.id)}&select=sender_type,created_at&order=created_at.desc&limit=10`);
-      const last = m[0];
+      const last = m.find(x => x.sender_type !== 'system');
       const humanHeld = r.agent_email !== AI_EMAIL;
       const waitingMs = last && last.sender_type === 'visitor' ? Date.now() - new Date(last.created_at).getTime() : 0;
       const humanSpoke = m.some(x => x.sender_type === 'agent');
@@ -136,7 +136,9 @@ exports.handler = async (event) => {
     }
 
     const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=120`);
-    const last = msgs[msgs.length - 1];
+    // Dernier message porteur de parole : les messages système (« l'utilisateur a quitté la page »,
+    // prolongation, reprise…) s'intercalent et masqueraient le fait que le visiteur attend.
+    const last = [...msgs].reverse().find(m => m.sender_type !== 'system');
     const humanReplied = msgs.some(m => m.sender_type === 'agent');
 
     if (assisting) {
@@ -259,8 +261,9 @@ exports.handler = async (event) => {
 
     if (assisting) {
       // L'écoutant a-t-il répondu entre-temps ? Si oui, Max se tait.
-      const fresh = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=sender_type,created_at&order=created_at.desc&limit=1`);
-      if (fresh[0] && fresh[0].sender_type === 'agent')
+      const fresh = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=sender_type,created_at&order=created_at.desc&limit=5`);
+      const freshLast = fresh.find(m => m.sender_type !== 'system');
+      if (freshLast && freshLast.sender_type === 'agent')
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'agent_answered' }) };
 
       // Pas d'annonce système : elle laisserait entendre que l'écoutant s'est absenté et casserait
