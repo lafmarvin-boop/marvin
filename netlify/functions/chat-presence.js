@@ -141,7 +141,7 @@ exports.handler = async (event) => {
           takenOver++;
           await fetch(`${SB_URL}/rest/v1/chat_messages`, {
             method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-            body: JSON.stringify({ session_id: s.id, content: `${pseudo}, écoutant humain, vient de se connecter et prend le relais de Max. Votre conversation reste visible pour lui.`, sender_type: 'system' })
+            body: JSON.stringify({ session_id: s.id, content: `${pseudo}, votre écoutant, vient de se connecter et prend le relais. Votre conversation reste visible pour lui.`, sender_type: 'system' })
           });
         }
         if (takenOver) {
