@@ -110,7 +110,9 @@ exports.handler = async (event) => {
 
     const [sessions, subscribers, suggestions, siteStatsRows, visitsRows, chatsRows, ipLogs, agentPresenceRows, chatRatings] = await Promise.all([
       sbGet('sessions?statut=in.(paid,ended)&select=formule,montant,client_pseudo,started_at,stripe_payment_id,agent_name,agent_email,resolved_at,rating,rating_comment&order=started_at.desc&limit=500'),
-      sbGet('subscribers?select=*&order=created_at.desc&limit=200'),
+      // select réduit aux colonnes réellement utilisées côté admin (liste + comptage actifs) :
+      // évite de renvoyer password_hash/password_salt au navigateur admin.
+      sbGet('subscribers?select=email,status,expires_at&order=created_at.desc&limit=200'),
       sbGet('suggestions?select=*&order=created_at.desc&limit=100'),
       sbGet('site_stats?id=eq.1&select=total_visits,unique_visitors,total_chats'),
       sbGet(`visits?visited_at=gte.${encodeURIComponent(startOfYear.toISOString())}&select=visitor_id,visited_at&order=visited_at.desc&limit=50000`),
