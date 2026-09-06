@@ -165,12 +165,9 @@ exports.handler = async (event) => {
       text = 'Je suis là et je vous écoute. Prenez le temps qu\'il vous faut : qu\'est-ce qui pèse le plus en ce moment ?';
     text = text.replace(/\n{3,}/g, '\n\n').slice(0, 1500);
 
-    // Rythme humain : la réponse apparaît entre 5 et ~6,5 s après le message du visiteur
-    // (+ jusqu'à 1 s d'affichage côté visiteur), jamais avant — quel que soit le temps de génération.
-    const msgTime = new Date(last.created_at).getTime();
-    const target = msgTime + 5000 + Math.floor(Math.random() * 1500);
-    const wait = target - Date.now();
-    if (wait > 0) await sleep(Math.min(wait, 6500));
+    // Pas d'attente ici : le rythme de réponse (5-7 s pour un message court, 10-15 s pour un
+    // message long) est appliqué à l'affichage par chat-poll.js — une fonction Netlify est coupée
+    // à 10 s, elle ne peut pas temporiser jusqu'à 15 s.
 
     // Un écoutant humain a peut-être pris le relais pendant la génération
     const check = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email&limit=1`);

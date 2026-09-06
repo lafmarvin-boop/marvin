@@ -97,8 +97,7 @@ exports.handler = async (event) => {
         method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify({ session_id: sessionId, content, sender_type })
       });
-      await post('Aucun écoutant n\'est connecté à cet instant. Max, votre assistant automatisé, vous écoute dès maintenant et alerte nos écoutants par email. Dès que l\'un d\'eux se connecte, il reprend l\'échange avec tout l\'historique. Si vous allez au bout de votre session sans qu\'un écoutant vous ait rejoint, elle vous est intégralement remboursée.', 'system');
-      await post(`Bonjour ${name}, je suis Max, l'assistant d'écoute de Parlons. Je viens d'alerter nos écoutants pour que l'un d'eux vous rejoigne, et je suis là avec vous dès maintenant, sans jugement et en toute confidentialité. Qu'est-ce qui vous donne envie de parler aujourd'hui ?`, 'agent');
+      await post(`Bonjour ${name}, je suis Max, l'assistant d'écoute automatisé de Parlons. Aucun écoutant n'est connecté à cet instant : je viens de les alerter pour que l'un d'eux vous rejoigne et reprenne notre échange. En attendant, je suis là avec vous, sans jugement et en toute confidentialité. Qu'est-ce qui vous donne envie de parler aujourd'hui ?`, 'agent');
       aiAssigned = true;
 
       // Alerter par email l'administrateur + les écoutants qui ont activé « Recevoir les demandes d'écoutant ».

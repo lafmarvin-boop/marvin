@@ -10,6 +10,17 @@ const CORS = {
 
 const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
 
+// Rythme de réponse de Max : une réponse instantanée trahit la machine et met le visiteur
+// en position de « chat bot ». On retient donc l'affichage de sa réponse le temps qu'un humain
+// aurait mis à lire et écrire : 5-7 s pour un message court (< 6 mots), 10-15 s au-delà.
+// Le délai est dérivé de l'identifiant du message visiteur pour rester stable d'un poll à l'autre.
+function maxReplyDelayMs(visitorMsg) {
+  const words = String(visitorMsg.content || '').trim().split(/\s+/).filter(Boolean).length;
+  let seed = 0;
+  for (const ch of String(visitorMsg.id || '')) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  return words < 6 ? 5000 + (seed % 2001) : 10000 + (seed % 5001);
+}
+
 async function sbGet(path) {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: H() });
   const d = await res.json();
@@ -39,13 +50,14 @@ exports.handler = async (event) => {
       if (!sessions.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Session introuvable' }) };
       const s = sessions[0];
 
-      // Filet de sécurité Max : si le dernier message est du visiteur depuis plus de 4 s et qu'aucune
-      // réponse n'est en cours (pas de verrou), on génère la réponse ici, avant de renvoyer les messages.
+      // Filet de sécurité Max : si le dernier message est du visiteur depuis plus de 1,5 s et qu'aucune
+      // réponse n'est en cours (pas de verrou), on lance la génération ici — elle doit être prête
+      // avant la fin du délai d'affichage calculé par maxReplyDelayMs().
       const lockFree = !s.response_deadline || new Date(s.response_deadline).getTime() < Date.now();
       if (s.status === 'active' && s.agent_email === AI_EMAIL && lockFree) {
         const lastRows = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,sender_type,created_at&order=created_at.desc&limit=1`);
         const last = lastRows[0];
-        if (last && last.sender_type === 'visitor' && Date.now() - new Date(last.created_at).getTime() > 4000) {
+        if (last && last.sender_type === 'visitor' && Date.now() - new Date(last.created_at).getTime() > 1500) {
           const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
           try {
             await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
@@ -58,6 +70,16 @@ exports.handler = async (event) => {
       }
 
       const messages = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=50`);
+
+      // Retenir la réponse de Max tant que le délai de lecture/écriture n'est pas écoulé
+      let messagesOut = messages;
+      if (s.agent_email === AI_EMAIL && messages.some(m => m.sender_type === 'agent')) {
+        const lastTwo = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,content,sender_type,created_at&order=created_at.desc&limit=2`);
+        if (lastTwo.length === 2 && lastTwo[0].sender_type === 'agent' && lastTwo[1].sender_type === 'visitor') {
+          const due = new Date(lastTwo[1].created_at).getTime() + maxReplyDelayMs(lastTwo[1]);
+          if (Date.now() < due) messagesOut = messages.filter(m => m.id !== lastTwo[0].id);
+        }
+      }
 
       let agentPseudo = null;
       if (s.agent_email === AI_EMAIL) agentPseudo = 'Max'; // l'interface ajoute « vous écoute »
@@ -77,7 +99,7 @@ exports.handler = async (event) => {
           extensionPending: s.extension_pending || null,
           transferSessionId: s.transfer_session_id || null,
           durationSec: s.duration_sec || null,
-          messages
+          messages: messagesOut
         })
       };
     }

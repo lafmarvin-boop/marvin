@@ -3268,9 +3268,8 @@ async function startChatSession(name,sessionType,sessionLabel,durationSec,paymen
     document.getElementById('parlons-chat-btn').style.display='flex';
     showChatPanel(true);
     setChatState(d.agentAssigned?'active':'waiting');
-    appendChatMsg({sender_type:'system',welcome:true,content:d.ai
-      ?'Aucun écoutant n\'est connecté à cet instant. Max, votre assistant automatisé, vous écoute dès maintenant et alerte nos écoutants par email. Dès que l\'un d\'eux se connecte, il reprend l\'échange avec tout l\'historique. Si vous allez au bout de votre session sans qu\'un écoutant vous ait rejoint, elle vous est intégralement remboursée.'
-      :d.agentAssigned
+    // Max se présente lui-même dans son message d'accueil : pas d'encadré système en plus
+    if(!d.ai) appendChatMsg({sender_type:'system',welcome:true,content:d.agentAssigned
       ?'Votre demande est bien enregistrée. Un écoutant vous rejoindra dans les 2 prochaines minutes — restez bien en ligne !'
       :'Votre demande est bien enregistrée. Un écoutant vous rejoindra dès que possible — restez bien en ligne !'});
     if(d.agentAssigned) agentConnected(d.ai?'Max':null,null);
@@ -3295,9 +3294,8 @@ async function startFreeChatSession(name){
     document.getElementById('parlons-chat-btn').style.display='flex';
     showChatPanel(true);
     setChatState(d.agentAssigned?'active':'waiting');
-    appendChatMsg({sender_type:'system',welcome:true,content:d.ai
-      ?'Aucun écoutant n\'est connecté à cet instant. Max, votre assistant automatisé, vous écoute dès maintenant et alerte nos écoutants par email. Dès que l\'un d\'eux se connecte, il reprend l\'échange avec tout l\'historique.'
-      :d.agentAssigned
+    // Max se présente lui-même dans son message d'accueil : pas d'encadré système en plus
+    if(!d.ai) appendChatMsg({sender_type:'system',welcome:true,content:d.agentAssigned
       ?'Votre demande est bien enregistrée. Un écoutant vous rejoindra dans les 2 prochaines minutes — restez bien en ligne !'
       :'Votre demande est bien enregistrée. Un écoutant vous rejoindra dès que possible — restez bien en ligne !'});
     if(d.agentAssigned) agentConnected(d.ai?'Max':null,null);
