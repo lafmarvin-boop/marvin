@@ -21,7 +21,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const { AI_EMAIL, ASSIST_DELAY_MS } = require('./_assist');
+const { AI_EMAIL, ASSIST_DELAY_MS, assistDelayMs, maxCarriesThread } = require('./_assist');
 const { trace } = require('./_trace'); // TEMPORAIRE (voir _trace.js)
 // Netlify coupe les fonctions synchrones à 10 s : il faut un modèle rapide, sans réflexion étendue,
 // et des réponses courtes. Surchargeable via AI_LISTENER_MODEL.
@@ -184,22 +184,23 @@ exports.handler = async (event) => {
     const humanReplied = msgs.some(m => m.sender_type === 'agent');
 
     if (assisting) {
-      // Revérification côté serveur des conditions d'assistance (le client ne décide pas seul)
+      // Revérification côté serveur des conditions d'assistance (le client ne décide pas seul).
+      // Le délai dépend de qui porte le fil : 30 s pour le premier relais, rythme normal tant
+      // que Max mène la conversation et que l'écoutant n'a pas repris la main (_assist.js).
+      const desc = [...msgs].reverse();
+      const delai = assistDelayMs(desc);
       const waitingSince = last && last.sender_type === 'visitor'
         ? new Date(last.created_at).getTime()                       // le visiteur attend une réponse
         : (!humanReplied && sess.assigned_at ? new Date(sess.assigned_at).getTime() : 0); // tchat jamais ouvert
-      if (!waitingSince || Date.now() - waitingSince < ASSIST_DELAY_MS) {
+      if (!waitingSince || Date.now() - waitingSince < delai) {
         console.log('ai-reply assist trop tôt', sessionId, waitingSince ? Date.now() - waitingSince : 'aucune attente');
-        if (!dry) { trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: 'assist_too_early' }); return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_too_early' }) }; }
+        if (!dry) { trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: 'assist_too_early', delai }); return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_too_early' }) }; }
         steps.push('garde:assist_too_early');
       }
-      console.log('ai-reply assist déclenché', sessionId, 'attente', Math.round((Date.now() - waitingSince) / 1000), 's');
-      // Ne pas enchaîner deux interventions coup sur coup (plusieurs sondages simultanés)
-      const lastAssist = [...msgs].reverse().find(m => m.sender_type === 'assistant');
-      if (lastAssist && Date.now() - new Date(lastAssist.created_at).getTime() < 20000) {
-        if (!dry) { trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: 'assist_recent' }); return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_recent' }) }; }
-        steps.push('garde:assist_recent');
-      }
+      console.log('ai-reply assist déclenché', sessionId, 'attente', Math.round((Date.now() - waitingSince) / 1000), 's', 'seuil', delai);
+      // Max ne relance jamais quelqu'un qui n'a pas écrit : s'il a déjà parlé et que le dernier
+      // mot n'est pas celui du visiteur, il n'y a rien à répondre.
+      const lastAssist = desc.find(m => m.sender_type === 'assistant');
       if (lastAssist && (!last || last.sender_type !== 'visitor')) {
         if (!dry) { trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: 'assist_nothing_pending' }); return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_nothing_pending' }) }; }
         steps.push('garde:assist_nothing_pending');
@@ -285,7 +286,7 @@ exports.handler = async (event) => {
       `Contexte de cette session : la personne s'appelle ${sess.pre_name || 'Visiteur'}${sess.pre_topic ? `, elle a indiqué comme sujet : « ${sess.pre_topic} »` : ''}.`,
       `Formule : ${sess.session_label || 'session'}${(sess.session_label || '').includes('GRATUIT') ? ' (conversation offerte : aucune question de remboursement)' : ''}. Conversation commencée il y a ${elapsedMin} min. Temps restant approximatif : ${remainingMin} min.`,
       assisting
-        ? `Écoutant humain : ${agentName} est en ligne et suit cette conversation, mais n'a pas répondu depuis plus de ${Math.round(ASSIST_DELAY_MS / 1000)} secondes (il gère peut-être un autre visiteur). Tu prends la suite de la conversation de façon totalement naturelle et fluide, comme si le fil se poursuivait : tu réponds à ce que la personne vient de dire, en tenant compte de tout ce qui a déjà été échangé, y compris les messages de ${agentName}. Tu ne signales pas ton arrivée, tu ne te présentes pas, tu ne dis pas que tu remplaces quelqu'un, tu ne commentes pas l'absence de l'écoutant et tu ne t'excuses pas pour lui : la personne voit déjà que c'est toi qui écris. ${agentName} reprendra la main dès qu'il le pourra, sans que cela ait besoin d'être annoncé. Si la personne demande où est l'écoutant, dis simplement qu'il est occupé un instant et qu'il revient, puis reviens à elle.`
+        ? `Écoutant humain : ${agentName} est en ligne et suit cette conversation, mais ${maxCarriesThread([...msgs].reverse()) ? 'n\'est pas revenu depuis : c\'est toi qui mènes l\'échange depuis plusieurs messages, poursuis-le simplement, sans rien changer à ton ton ni signaler quoi que ce soit' : 'n\'a pas répondu depuis plus de ' + Math.round(ASSIST_DELAY_MS / 1000) + ' secondes (il gère peut-être un autre visiteur)'}. Tu prends la suite de la conversation de façon totalement naturelle et fluide, comme si le fil se poursuivait : tu réponds à ce que la personne vient de dire, en tenant compte de tout ce qui a déjà été échangé, y compris les messages de ${agentName}. Tu ne signales pas ton arrivée, tu ne te présentes pas, tu ne dis pas que tu remplaces quelqu'un, tu ne commentes pas l'absence de l'écoutant et tu ne t'excuses pas pour lui : la personne voit déjà que c'est toi qui écris. ${agentName} reprendra la main dès qu'il le pourra, sans que cela ait besoin d'être annoncé. Si la personne demande où est l'écoutant, dis simplement qu'il est occupé un instant et qu'il revient, puis reviens à elle.`
         : `Écoutant humain : pas encore connecté (les écoutants ont été alertés par email il y a ${elapsedMin} min).`,
       opening ? `Tu as ouvert la conversation par : « ${opening} »` : ''
     ].filter(Boolean).join('\n');
@@ -336,8 +337,12 @@ exports.handler = async (event) => {
       // L'écoutant a-t-il répondu entre-temps ? Si oui, Max se tait.
       const fresh = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=sender_type,created_at&order=created_at.desc&limit=5`);
       const freshLast = fresh.find(m => m.sender_type !== 'system');
-      if (freshLast && freshLast.sender_type === 'agent')
-        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'agent_answered' }) };
+      // L'écoutant a répondu entre-temps, ou un autre déclencheur a devancé celui-ci :
+      // dans les deux cas le visiteur a déjà sa réponse.
+      if (freshLast && (freshLast.sender_type === 'agent' || freshLast.sender_type === 'assistant')) {
+        trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: `devance_par_${freshLast.sender_type}` }); // TEMPORAIRE
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'already_answered' }) };
+      }
 
       // Pas d'annonce système : elle laisserait entendre que l'écoutant s'est absenté et casserait
       // le fil. La transparence est portée par la bulle elle-même, signée « Max · assistant »

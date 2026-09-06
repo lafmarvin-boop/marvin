@@ -1,6 +1,7 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const AI_EMAIL = 'claude@parlonsecoute.fr'; // Max, assistant d'écoute IA (ai-reply.js)
+const { maxCarriesThread } = require('./_assist');
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -73,13 +74,22 @@ exports.handler = async (event) => {
     // Message visiteur sur une session tenue par Max (IA) : déclencher la réponse.
     // On attend jusqu'à 1,5 s que la requête soit bien partie (sinon la fonction peut être gelée
     // avant l'envoi), puis on abandonne l'attente : ai-reply continue de son côté.
-    if (senderType === 'visitor' && sessions[0].agent_email === AI_EMAIL) {
+    // Même déclenchement immédiat quand Max porte déjà le fil d'une session tenue par un écoutant
+    // qui n'est pas revenu : tant qu'il mène l'échange, il répond au rythme d'une conversation
+    // qu'il mènerait seul, sans réimposer le délai de premier relais. Dès que l'écoutant reprend
+    // la main, maxCarriesThread() redevient faux et ce raccourci s'éteint de lui-même.
+    let assistNow = false;
+    if (senderType === 'visitor' && sessions[0].agent_email && sessions[0].agent_email !== AI_EMAIL) {
+      const recents = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=sender_type,created_at&order=created_at.desc&limit=12`);
+      assistNow = maxCarriesThread(recents);
+    }
+    if (senderType === 'visitor' && (sessions[0].agent_email === AI_EMAIL || assistNow)) {
       const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
       try {
         await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, messageId: inserted?.id || null }),
+          body: JSON.stringify({ sessionId, messageId: inserted?.id || null, assist: assistNow || undefined }),
           signal: AbortSignal.timeout(1500)
         });
       } catch {}
