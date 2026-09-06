@@ -119,8 +119,10 @@ exports.handler = async (event) => {
         ? new Date(last.created_at).getTime()                       // le visiteur attend une réponse
         : (!humanReplied && sess.assigned_at ? new Date(sess.assigned_at).getTime() : 0); // tchat jamais ouvert
       if (!waitingSince || Date.now() - waitingSince < ASSIST_DELAY_MS) {
+        console.log('ai-reply assist trop tôt', sessionId, waitingSince ? Date.now() - waitingSince : 'aucune attente');
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_too_early' }) };
       }
+      console.log('ai-reply assist déclenché', sessionId, 'attente', Math.round((Date.now() - waitingSince) / 1000), 's');
       // Ne pas enchaîner deux interventions coup sur coup (plusieurs sondages simultanés)
       const lastAssist = [...msgs].reverse().find(m => m.sender_type === 'assistant');
       if (lastAssist && Date.now() - new Date(lastAssist.created_at).getTime() < 20000) {

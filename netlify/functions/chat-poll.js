@@ -84,7 +84,10 @@ exports.handler = async (event) => {
             await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ sessionId, messageId: last && last.sender_type === 'visitor' ? last.id : null, assist }),
-              signal: AbortSignal.timeout(8500)
+              // 3 s : le temps que la requête parte. Au-delà, ai-reply poursuit de son côté et
+              // le message apparaîtra au sondage suivant — attendre plus ferait dépasser
+              // chat-poll, que Netlify coupe à 10 s.
+              signal: AbortSignal.timeout(3000)
             });
           } catch (e) { console.error('chat-poll ai fallback:', e.message); }
         }
@@ -92,11 +95,12 @@ exports.handler = async (event) => {
 
       const messages = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=50`);
 
-      // Retenir la réponse de Max tant que le délai de lecture/écriture n'est pas écoulé,
-      // qu'il tienne la session (messages « agent ») ou qu'il assiste un écoutant (« assistant »).
+      // Retenir la réponse de Max tant que le délai « le temps de lire et d'écrire » n'est pas écoulé.
       let messagesOut = messages;
-      const fromMax = m => m.sender_type === 'assistant'
-        || (s.agent_email === AI_EMAIL && m.sender_type === 'agent');
+      // Uniquement quand Max tient la session : en assistance, le visiteur a déjà attendu
+      // ASSIST_DELAY_MS, inutile d'ajouter le délai « le temps d'écrire ».
+      const fromMax = m => s.agent_email === AI_EMAIL
+        && (m.sender_type === 'agent' || m.sender_type === 'assistant');
       if (messages.some(fromMax)) {
         const recent = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,content,sender_type,created_at&order=created_at.desc&limit=6`);
         const vIdx = recent.findIndex(m => m.sender_type === 'visitor');
