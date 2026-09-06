@@ -565,8 +565,14 @@ exports.handler = async (event) => {
   let body = {};
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
 
-  // Invocation planifiée par Netlify (le 26 de chaque mois) → mois précédent, envoi à tous
-  const scheduled = typeof body.next_run === 'string';
+  // Invocation planifiée par Netlify (le 26 de chaque mois, cf. schedule dans netlify.toml)
+  // → mois précédent, envoi à tous, sans identifiants admin. `next_run` seul n'est PAS un secret
+  // (n'importe qui peut l'envoyer) : on exige en plus qu'on soit bien le jour programmé (UTC),
+  // pour réduire la fenêtre d'un contournement à ~24h/mois au lieu d'un accès permanent.
+  // L'invocation manuelle (bouton admin) n'est pas concernée : elle passe toujours par le
+  // contrôle adminEmail/adminPassword ci-dessous, quel que soit le jour.
+  const isScheduleDay = new Date().getUTCDate() === 26;
+  const scheduled = typeof body.next_run === 'string' && isScheduleDay;
   if (!scheduled) {
     // Invocation manuelle : identifiants administrateur obligatoires
     const email = (body.adminEmail || '').toLowerCase().trim();
