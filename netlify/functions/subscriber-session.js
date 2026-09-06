@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { verifyToken } = require('./_auth.js');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -38,7 +39,9 @@ exports.handler = async (event) => {
   const sub = subs[0];
 
   // Vérifier le mot de passe si un hash est défini pour ce compte (comme admin-stats.js)
-  if (sub.password_hash && sub.password_salt) {
+  // Jeton signé accepté à la place du mot de passe (reconnexion automatique de l'espace abonné)
+  const byToken = !!verifyToken(body.token, { role: 'subscriber', sub: email });
+  if (!byToken && sub.password_hash && sub.password_salt) {
     if (!password)
       return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
     if (hashPassword(password, sub.password_salt) !== sub.password_hash)

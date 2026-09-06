@@ -1,3 +1,5 @@
+const { issueToken, verifyToken } = require('./_auth.js');
+
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_PWD = process.env.ADMIN_PASSWORD;
@@ -20,10 +22,11 @@ exports.handler = async (event) => {
 
   const { adminEmail, adminPassword, agentEmail } = body;
 
-  if (!adminEmail || !adminPassword || !agentEmail)
+  if (!adminEmail || (!adminPassword && !body.adminToken) || !agentEmail)
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Paramètres manquants' }) };
 
-  if (adminEmail.toLowerCase() !== ADMIN_EMAIL || adminPassword !== ADMIN_PWD)
+  if (adminEmail.toLowerCase() !== ADMIN_EMAIL ||
+      (adminPassword !== ADMIN_PWD && !verifyToken(body.adminToken, { role: 'admin', sub: adminEmail })))
     return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non autorisé' }) };
 
   if (!SB_URL || !SB_KEY)

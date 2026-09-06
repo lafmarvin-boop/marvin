@@ -1,3 +1,4 @@
+const { issueToken, verifyToken } = require('./_auth.js');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_PWD = process.env.ADMIN_PASSWORD;
@@ -36,7 +37,10 @@ exports.handler = async (event) => {
 
   // ── Admin check ──
   if (ADMIN_EMAIL && email === ADMIN_EMAIL) {
-    if (!ADMIN_PWD || password !== ADMIN_PWD)
+    // Mot de passe (formulaire de connexion) ou jeton signé (reconnexion automatique)
+    const byPassword = ADMIN_PWD && password === ADMIN_PWD;
+    const byToken = !!verifyToken(body.token, { role: 'admin', sub: email });
+    if (!byPassword && !byToken)
       return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Identifiants incorrects' }) };
 
     // ── Action : ajouter un agent ──
@@ -254,6 +258,7 @@ exports.handler = async (event) => {
       headers: CORS,
       body: JSON.stringify({
         role: 'admin',
+        token: issueToken(email, 'admin'),
         sessions: {
           total: sessions.length,
           monthCount: monthSessions.length,
@@ -299,7 +304,9 @@ exports.handler = async (event) => {
   const sub = subs[0];
 
   // Vérifier le mot de passe si un hash est défini
-  if (sub.password_hash && sub.password_salt) {
+  // Jeton signé accepté à la place du mot de passe (reconnexion automatique de l'espace abonné)
+  const subByToken = !!verifyToken(body.token, { role: 'subscriber', sub: email });
+  if (!subByToken && sub.password_hash && sub.password_salt) {
     if (!password)
       return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
     const hash = hashPassword(password, sub.password_salt);
@@ -321,6 +328,7 @@ exports.handler = async (event) => {
     headers: CORS,
     body: JSON.stringify({
       role: 'subscriber',
+      token: issueToken(email, 'subscriber'),
       active,
       expires_at: sub.expires_at,
       pseudo: sub.pseudo,

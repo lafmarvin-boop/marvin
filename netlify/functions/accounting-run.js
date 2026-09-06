@@ -8,6 +8,7 @@
 // réutilise exactement la même logique (runClosing).
 // ─────────────────────────────────────────────────────────────────────────────
 
+const { verifyToken } = require('./_auth.js');
 const { runClosing } = require('./monthly-accounting.js');
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
@@ -23,7 +24,9 @@ exports.handler = async (event) => {
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
 
   const email = (body.adminEmail || '').toLowerCase().trim();
-  if (!ADMIN_EMAIL || !ADMIN_PWD || email !== ADMIN_EMAIL || body.adminPassword !== ADMIN_PWD)
+  const byPassword = ADMIN_PWD && body.adminPassword === ADMIN_PWD;
+  const byToken = !!verifyToken(body.adminToken, { role: 'admin', sub: email });
+  if (!ADMIN_EMAIL || email !== ADMIN_EMAIL || (!byPassword && !byToken))
     return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non autorisé' }) };
 
   try {

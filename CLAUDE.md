@@ -75,6 +75,25 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS loyalty_discount SMALLINT DEF
 - **Article SEO hebdomadaire** (Routine Claude, mardi 6h Paris) : choisit une requête réelle non couverte (voir `blog/_topics.md`), rédige un article de 900-1 300 mots et le publie via `node tools/new-article.mjs article.json` → page statique `blog/<slug>.html` (template `blog/_template.html`, JSON-LD Article, canonical, OG), carte en tête de `blog.html`, URL dans `sitemap.xml`, ligne dans `blog/_topics.md` ; commit `blog:` + push + notification.
 - **Plan Google Ads mensuel** (Routine Claude, le 1er à 8h Paris) : rédige `marketing/google-ads/AAAA-MM.md` (conformité, structure de campagne, mots-clés, annonces responsives avec longueurs vérifiées, négatifs, budget, suivi des conversions d'après `index.html`, plan du mois) et envoie un résumé par notification. Ne modifie pas le site.
 
+## 🔐 Authentification par jetons signés
+
+Depuis sept. 2026, **aucun mot de passe n'est conservé dans le navigateur**. Au login, le serveur
+émet un jeton signé HMAC-SHA256 (`netlify/functions/_auth.js`, secret `AUTH_SECRET` sinon
+`SUPABASE_SERVICE_KEY`) que le navigateur stocke à la place :
+
+| Interface | Stockage | Champ envoyé | Durée |
+|---|---|---|---|
+| `espace.html` admin / abonné | `parlons_espace_session.token` | `token`, `adminToken` | 24 h |
+| `espace.html` / `agent-app.html` écoutant | `parlons_agent_authtoken` | `token`, `authToken` | 30 j |
+
+Le compte administrateur reçoit un jeton de rôle `admin`, accepté aussi par les fonctions écoutant
+(`role: ['agent','admin']`). Les fonctions acceptent **le mot de passe ou le jeton** : le formulaire de
+connexion continue d'envoyer le mot de passe, la reconnexion automatique le jeton. **Le changement de
+mot de passe exige toujours le mot de passe actuel**, jamais un jeton.
+
+Durées de session : `netlify/functions/_plans.js` est la seule source de vérité (dérivée du montant ou
+du libellé), jamais la valeur envoyée par le navigateur.
+
 ## 🚧 En attente
 
 1. **Fidélité Option B (futur)** — tracking par email (cross-device). Mis en attente.

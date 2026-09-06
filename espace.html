@@ -640,7 +640,7 @@ async function switchTab(tab) {
       try {
         const res = await fetch(`${API}/agent-stats`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache })
+          body: JSON.stringify({ email: agentEmailStored, token: agentPasswordCache })
         });
         adminAgentDataCache = await res.json();
       } catch {
@@ -669,12 +669,12 @@ async function initAgentPresence() {
     }
   }
   // Reprendre session active depuis un autre appareil (ex : PWA mobile)
-  const _pwd = agentPasswordCache || (localStorage.getItem('parlons_espace_session') ? (JSON.parse(localStorage.getItem('parlons_espace_session')).password || '') : '');
+  const _pwd = agentPasswordCache || (localStorage.getItem('parlons_espace_session') ? (JSON.parse(localStorage.getItem('parlons_espace_session')).token || '') : '');
   if (!agentChatToken && _pwd) {
     try {
       const rr = await fetch(`${API}/chat-presence`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentEmail: agentEmailStored, password: _pwd, status: 'resume' })
+        body: JSON.stringify({ agentEmail: agentEmailStored, authToken: _pwd, status: 'resume' })
       });
       const rd = await rr.json();
       if (rd.ok && rd.online && rd.token) {
@@ -759,14 +759,16 @@ function logout() {
     const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || 'null');
     if (!saved || Date.now() > saved.expires) return;
     document.getElementById('login-email').value = saved.email;
-    document.getElementById('login-pwd').value = saved.password || '';
+    // Pas de mot de passe conservé : la reconnexion se fait avec le jeton signé
     if (saved.role === 'agent') agentEmailStored = saved.email;
-    await login();
+    await login(saved.token);
   } catch {}
 })();
 
 // ── LOGIN ──
-async function login() {
+// savedToken : jeton signé d'une session précédente (reconnexion automatique).
+// Il remplace le mot de passe, qui n'est plus conservé dans le navigateur.
+async function login(savedToken) {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-pwd').value;
   const btn = document.getElementById('login-btn');
@@ -783,7 +785,7 @@ async function login() {
     let res = await fetch(`${API}/admin-stats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, token: savedToken || '' })
     });
     let data = await res.json();
 
@@ -793,7 +795,7 @@ async function login() {
       res = await fetch(`${API}/agent-stats`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, token: savedToken || '' })
       });
       data = await res.json();
     }
@@ -802,9 +804,10 @@ async function login() {
     if (!res.ok) throw new Error((firstErr && /Compte non trouvé/.test(data.error || '')) ? firstErr : (data.error || 'Accès refusé'));
 
     if (data.role === 'admin') {
-      localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
+      // Jeton signé émis par le serveur : le mot de passe ne reste jamais dans le navigateur
+      localStorage.setItem('parlons_espace_session', JSON.stringify({ email, token: data.token || '', expires: Date.now() + 86400000 }));
       agentEmailStored = email;
-      agentPasswordCache = password;
+      agentPasswordCache = data.token || '';
       currentAdminTab = 'admin';
       adminAgentDataCache = null;
       const archTab = document.getElementById('tab-archives');
@@ -817,15 +820,16 @@ async function login() {
       if (presRefreshInterval) clearInterval(presRefreshInterval);
       presRefreshInterval = setInterval(refreshAgentPresence, 20000);
     } else if (data.role === 'subscriber') {
-      localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, expires: Date.now() + 86400000 }));
+      // Jeton signé émis par le serveur : le mot de passe ne reste jamais dans le navigateur
+      localStorage.setItem('parlons_espace_session', JSON.stringify({ email, token: data.token || '', expires: Date.now() + 86400000 }));
       subEmailStored = email;
-      subPasswordStored = password;
+      subPasswordStored = data.token || '';
       renderSubDash(email, data.expires_at, data.active, data.pseudo, data.cancel_at_period_end, data.needs_password_setup, data.sessions);
       showScreen('sub-dash');
     } else if (data.role === 'agent') {
       agentEmailStored = email;
-      agentPasswordCache = password;
-      localStorage.setItem('parlons_espace_session', JSON.stringify({ email, password, role: 'agent', expires: Date.now() + 86400000 }));
+      agentPasswordCache = data.token || '';
+      localStorage.setItem('parlons_espace_session', JSON.stringify({ email, token: data.token || '', role: 'agent', expires: Date.now() + 86400000 }));
       await initAgentPresence();
       renderAgentDash(email, data);
       showScreen('agent-dash');
@@ -959,7 +963,7 @@ async function startSubSession() {
     const res = await fetch(`${API}/subscriber-session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: subEmailStored, pseudo, password: subPasswordStored })
+      body: JSON.stringify({ email: subEmailStored, pseudo, token: subPasswordStored })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
@@ -979,7 +983,7 @@ async function cancelSubscription() {
   try {
     const res = await fetch(`${API}/cancel-subscription`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: subEmailStored, password: subPasswordStored })
+      body: JSON.stringify({ email: subEmailStored, token: subPasswordStored })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
@@ -1085,11 +1089,11 @@ let bgSyncInterval = null;
 async function _bgSyncPresence() {
   if (agentChatToken) return; // déjà en ligne, rien à faire
   const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
-  if (!saved.email || !saved.password) return;
+  if (!saved.email || !saved.token) return;
   try {
     const r = await fetch(`${API}/chat-presence`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agentEmail: saved.email, password: saved.password, status: 'resume' })
+      body: JSON.stringify({ agentEmail: saved.email, authToken: saved.token, status: 'resume' })
     });
     const d = await r.json();
     if (d.ok && d.online && d.token) {
@@ -1112,12 +1116,12 @@ function stopBgSync() {
 }
 async function refreshAgentPresence() {
   const saved = JSON.parse(localStorage.getItem('parlons_espace_session') || '{}');
-  if (!saved.email || !saved.password) return;
+  if (!saved.email || !saved.token) return;
   try {
     const res = await fetch(`${API}/admin-stats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'presence' })
+      body: JSON.stringify({ email: saved.email, token: saved.token, action: 'presence' })
     });
     const data = await res.json();
     if (!data.ok || !data.presence) return;
@@ -1224,7 +1228,7 @@ async function renderArchives() {
   try {
     const res = await fetch(`${API}/admin-chat-archive`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache, action: 'list' })
+      body: JSON.stringify({ email: agentEmailStored, token: agentPasswordCache, action: 'list' })
     });
     const data = await res.json();
     const sessions = data.sessions || [];
@@ -1258,7 +1262,7 @@ async function renderArchives() {
             try {
               const mr = await fetch(`${API}/admin-chat-archive`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache, action: 'messages', sessionId: s.id })
+                body: JSON.stringify({ email: agentEmailStored, token: agentPasswordCache, action: 'messages', sessionId: s.id })
               });
               const md = await mr.json();
               msgsEl.innerHTML = '';
@@ -1284,7 +1288,7 @@ async function renderArchives() {
 function renderAgentDash(email, d) {
   agentSessionsCache = d.sessions || [];
   agentPasswordCache = localStorage.getItem('parlons_espace_session')
-    ? (JSON.parse(localStorage.getItem('parlons_espace_session')).password || '') : '';
+    ? (JSON.parse(localStorage.getItem('parlons_espace_session')).token || '') : '';
 
   const profile = d.profile || {};
   const profileComplete = profile.nom && profile.prenom && profile.siret && profile.iban && profile.adresse;
@@ -1578,7 +1582,7 @@ async function saveAgentProfile() {
     const res = await fetch(`${API}/agent-stats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: agentEmailStored, password: agentPasswordCache, action: 'save_profile', profile })
+      body: JSON.stringify({ email: agentEmailStored, token: agentPasswordCache, action: 'save_profile', profile })
     });
     if (!res.ok) throw new Error('Erreur serveur');
     ok.style.display = 'block';
@@ -2149,7 +2153,7 @@ async function agentGoOnline() {
   try {
     const res = await fetch(`${API}/chat-presence`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agentEmail: agentEmailStored, password: agentPasswordCache, status: 'online' })
+      body: JSON.stringify({ agentEmail: agentEmailStored, authToken: agentPasswordCache, status: 'online' })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Erreur');
@@ -2713,7 +2717,7 @@ async function confirmRemoveAgent() {
     const res = await fetch(`${API}/admin-stats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'remove_agent', agentEmail: _removeAgentEmail })
+      body: JSON.stringify({ email: saved.email, token: saved.token, action: 'remove_agent', agentEmail: _removeAgentEmail })
     });
     const data = await res.json();
     if (!res.ok) { err.textContent = data.error || 'Erreur serveur.'; btn.disabled = false; btn.textContent = 'Retirer'; return; }
@@ -2729,7 +2733,7 @@ async function forceOffline(agentEmail) {
     const res = await fetch(`${API}/admin-force-offline`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ adminEmail: saved.email, adminPassword: saved.password, agentEmail })
+      body: JSON.stringify({ adminEmail: saved.email, adminToken: saved.token, agentEmail })
     });
     const data = await res.json();
     if (!res.ok) { alert(data.error || 'Erreur serveur.'); return; }
@@ -2757,7 +2761,7 @@ async function runMonthlyClosing() {
     const res = await fetch(`${API}/accounting-run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ adminEmail: saved.email, adminPassword: saved.password, month: monthKey, mode: choice === '2' ? 'all' : 'admin' })
+      body: JSON.stringify({ adminEmail: saved.email, adminToken: saved.token, month: monthKey, mode: choice === '2' ? 'all' : 'admin' })
     });
     const data = await res.json();
     if (!res.ok) { alert(data.error || 'Erreur serveur.'); return; }
@@ -2798,7 +2802,7 @@ async function submitAddAgent() {
     const res = await fetch(`${API}/admin-stats`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: saved.email, password: saved.password, action: 'add_agent', agentEmail, agentPassword, agentPrenom, agentNom })
+      body: JSON.stringify({ email: saved.email, token: saved.token, action: 'add_agent', agentEmail, agentPassword, agentPrenom, agentNom })
     });
     const data = await res.json();
     if (!res.ok) { err.textContent = data.error || 'Erreur serveur.'; return; }

@@ -1,3 +1,4 @@
+const { issueToken, verifyToken } = require('./_auth.js');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
@@ -25,6 +26,9 @@ async function sbGet(path) {
 }
 
 async function buildAgentStats(email) {
+  // L'administrateur utilise aussi l'application écoutant : son jeton porte le rôle admin,
+  // accepté à la fois par les fonctions agent et par les fonctions d'administration.
+  const tokenRole = (ADMIN_EMAIL && email === ADMIN_EMAIL) ? 'admin' : 'agent';
   const now = new Date();
   const startOfDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dow = now.getDay();
@@ -98,6 +102,7 @@ async function buildAgentStats(email) {
 
   return {
     role: 'agent',
+    token: issueToken(email, tokenRole),
     profile,
     periods,
     byPlan,
@@ -123,8 +128,9 @@ exports.handler = async (event) => {
 
   // ── Sauvegarder le profil ──
   if (action === 'save_profile') {
-    const isAdminSave = ADMIN_EMAIL && email === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD;
-    if (!isAdminSave) {
+    const isAdminSave = (ADMIN_EMAIL && email === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD)
+      || !!verifyToken(body.token, { role: 'admin' });
+    if (!isAdminSave && !verifyToken(body.token, { role: ['agent', 'admin'], sub: email })) {
       const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
       if (!pwdRows.length) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
       const hash = hashPassword(password, pwdRows[0].password_salt);
@@ -143,8 +149,10 @@ exports.handler = async (event) => {
   // ── Connexion ──
   // Bypass admin : accepte directement les identifiants admin
   const isAdmin = ADMIN_EMAIL && email === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD;
+  // Jeton signé : reconnexion automatique sans conserver le mot de passe dans le navigateur
+  const byToken = !!verifyToken(body.token, { role: ['agent', 'admin'], sub: email });
 
-  if (!isAdmin) {
+  if (!isAdmin && !byToken) {
     const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
 
     if (!pwdRows.length)

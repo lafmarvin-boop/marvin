@@ -465,7 +465,9 @@ const API = '/.netlify/functions';
 function togglePwd(id){const el=document.getElementById(id);el.type=el.type==='password'?'text':'password';}
 
 // ── STATE ──
-let appEmail = '', appPassword = '', appToken = null, appOnline = false;
+// appAuthToken : jeton signé émis au login (agent-stats). Remplace le mot de passe,
+// qui n'est plus conservé dans le navigateur (une XSS ne peut plus le voler).
+let appEmail = '', appAuthToken = '', appToken = null, appOnline = false;
 let appSessions = new Map();   // sessionId → session state
 let appStats = null;
 let activeChatId = null;       // session currently open in chat view
@@ -546,10 +548,10 @@ async function doLogin(){
     const res=await fetch(`${API}/agent-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pwd})});
     const data=await res.json();
     if(!res.ok||data.error){ err.textContent=data.error||'Erreur de connexion'; btn.disabled=false; btn.textContent='Se connecter'; return; }
-    appEmail=email; appPassword=pwd;
+    appEmail=email; appAuthToken=data.token || '';
     statsData=data;
     localStorage.setItem('parlons_agent_email',email);
-    localStorage.setItem('parlons_agent_pwd',pwd);
+    localStorage.setItem('parlons_agent_authtoken', appAuthToken);
     renderHeader();
     showApp();
     showView('home');
@@ -563,9 +565,9 @@ async function doLogin(){
 
 async function doLogout(){
   if(appToken) await goOffline();
-  appEmail=''; appPassword=''; appToken=null;
+  appEmail=''; appAuthToken=''; appToken=null;
   localStorage.removeItem('parlons_agent_email');
-  localStorage.removeItem('parlons_agent_pwd');
+  localStorage.removeItem('parlons_agent_authtoken');
   appSessions.clear();
   chatTimers.forEach(id=>clearInterval(id)); chatTimers.clear();
   sessionEndTimers.forEach(id=>clearInterval(id)); sessionEndTimers.clear();
@@ -610,7 +612,7 @@ async function toggleOnline(){
 async function goOnline(){
   showLoading('Mise en ligne…');
   try{
-    const res=await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,password:appPassword,status:'online'})});
+    const res=await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,authToken:appAuthToken,status:'online'})});
     const data=await res.json();
     if(!data.ok){ alert(data.error||'Erreur'); hideLoading(); return; }
     appToken=data.token;
@@ -708,7 +710,7 @@ async function poll(){
       localStorage.removeItem('parlons_agent_token_email');
       appToken=null; appOnline=false; stopPoll();
       pollSince=null; renderedIds={};
-      if(appEmail && appPassword && !_reconnecting){
+      if(appEmail && appAuthToken && !_reconnecting){
         // Token invalidé → reconnexion silencieuse
         _reconnecting=true;
         await goOnline();
@@ -1231,7 +1233,7 @@ async function renderProfilView(){
     const r = await fetch(`${API}/agent-profile`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({action:'get', email:appEmail, password:appPassword})
+      body: JSON.stringify({action:'get', email:appEmail, token:appAuthToken})
     });
     const d = await r.json();
     if(d.profile){
@@ -1255,7 +1257,7 @@ async function saveProfilSettings(){
     const r = await fetch(`${API}/agent-profile`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'save', email:appEmail, password:appPassword, notify_email:notifyEmail, notify_requests:profilNotifyOn})
+      body:JSON.stringify({action:'save', email:appEmail, token:appAuthToken, notify_email:notifyEmail, notify_requests:profilNotifyOn})
     });
     const d = await r.json();
     if(d.ok){ msgEl.textContent='Enregistré ✓'; msgEl.style.display='block'; setTimeout(()=>{ msgEl.style.display='none'; },3000); }
@@ -1272,9 +1274,9 @@ async function renderAdminView(){
 
   try{
     const [presRes, pollRes, statsRes] = await Promise.all([
-      fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,password:appPassword,action:'presence'})}),
+      fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,token:appAuthToken,action:'presence'})}),
       fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken||'',since:new Date(0).toISOString()})}),
-      fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,password:appPassword})})
+      fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,token:appAuthToken})})
     ]);
     const pres=await presRes.json();
     const poll=await pollRes.json().catch(()=>({}));
@@ -1557,7 +1559,7 @@ function playBeep(){
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden) return;
   if(appOnline && appToken){ poll(); return; }
-  if(localStorage.getItem('parlons_agent_online')==='1' && appEmail && appPassword && !appOnline) goOnline();
+  if(localStorage.getItem('parlons_agent_online')==='1' && appEmail && appAuthToken && !appOnline) goOnline();
 });
 
 // ── SERVICE WORKER ──
@@ -1568,14 +1570,13 @@ if('serviceWorker' in navigator){
 // ── AUTO-RECONNECT ──
 (function init(){
   const savedEmail=localStorage.getItem('parlons_agent_email');
-  const savedPwd=localStorage.getItem('parlons_agent_pwd');
-  if(savedEmail&&savedPwd){
+  const savedToken=localStorage.getItem('parlons_agent_authtoken');
+  if(savedEmail&&savedToken){
     document.getElementById('login-email').value=savedEmail;
-    document.getElementById('login-password').value=savedPwd;
-    // Auto-login silently
-    appEmail=savedEmail; appPassword=savedPwd;
+    // Le jeton n'est jamais affiché dans le champ mot de passe
+    appEmail=savedEmail; appAuthToken=savedToken;
     showLoading('Reconnexion…');
-    fetch(`${API}/agent-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:savedEmail,password:savedPwd})})
+    fetch(`${API}/agent-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:savedEmail,token:savedToken})})
       .then(r=>r.json())
       .then(data=>{
         if(data.error){ hideLoading(); return; }
