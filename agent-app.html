@@ -711,11 +711,17 @@ function startPoll(){ stopPoll(); poll(); pollTimer=setInterval(poll,3000); }
 function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 
 let _pollSeq=0;
+// Conversation réellement sous les yeux de l'écoutant : celle qui est ouverte, application au
+// premier plan. C'est ce qui vaut « lu » — pas le simple fait d'avoir reçu le message.
+function agentViewingSessionId(){
+  if(!activeChatId||document.visibilityState!=='visible')return null;
+  return document.getElementById('chat-view')?.classList.contains('active')?activeChatId:null;
+}
 async function poll(){
   if(!appToken) return;
   const seq=++_pollSeq;
   try{
-    const res=await fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken,since:pollSince})});
+    const res=await fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken,since:pollSince,viewingSessionId:agentViewingSessionId()})});
     // Ignorer une réponse arrivée après un passage hors ligne, ou dépassée par un poll plus récent
     if(!appToken||seq!==_pollSeq) return;
     if(res.status===401){

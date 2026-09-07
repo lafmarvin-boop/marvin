@@ -62,6 +62,20 @@ exports.handler = async (event) => {
     let inserted = null;
     try { const d = await insRes.json(); inserted = Array.isArray(d) ? d[0] : d; } catch {}
 
+    // Répondre vaut lecture : celui qui écrit a forcément lu ce qui précède. Sans cette règle,
+    // le « lu » dépendrait du seul signal du navigateur, qui peut manquer (onglet rechargé,
+    // application relancée) alors que la réponse, elle, prouve la lecture.
+    if (senderType === 'visitor' || senderType === 'agent') {
+      const now = new Date().toISOString();
+      const champ = senderType === 'visitor'
+        ? { visitor_seen_at: now, visitor_fetched_at: now }
+        : { agent_seen_at: now, agent_fetched_at: now };
+      fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+        method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify(champ)
+      }).catch(() => {});
+    }
+
     // Premier message agent : effacer le délai de réponse (fire-and-forget)
     if (senderType === 'agent') {
       fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&response_deadline=not.is.null`, {

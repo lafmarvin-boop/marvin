@@ -50,6 +50,9 @@ exports.handler = async (event) => {
     if (role === 'visitor') {
       const { sessionId, since } = body;
       if (!sessionId) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'sessionId requis' }) };
+      // « Lu » porté par le sondage : il passe déjà toutes les 2,5 s, inutile d'une requête à part,
+      // et l'état se rétablit tout seul au sondage suivant si un signal s'est perdu.
+      const vuVisiteur = body.seen === true;
 
       const sinceIso = since ? new Date(since).toISOString() : new Date(0).toISOString();
 
@@ -116,10 +119,13 @@ exports.handler = async (event) => {
 
       // « Reçu » : le visiteur vient de recevoir ces messages. On n'écrit que si
       // quelque chose est réellement arrivé — inutile d'une écriture par sondage.
-      if (messages.length || !s.visitor_fetched_at) {
+      if (messages.length || vuVisiteur || !s.visitor_fetched_at) {
+        const now = new Date().toISOString();
+        const maj = { visitor_fetched_at: now };
+        if (vuVisiteur) maj.visitor_seen_at = now;   // conversation ouverte et onglet au premier plan
         fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
           method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({ visitor_fetched_at: new Date().toISOString() })
+          body: JSON.stringify(maj)
         }).catch(() => {});
       }
 
@@ -284,10 +290,15 @@ exports.handler = async (event) => {
           `chat_messages?session_id=eq.${encodeURIComponent(s.id)}${newlyAssigned ? '' : `&created_at=gt.${encodeURIComponent(sinceIso)}`}&select=id,content,sender_type,created_at&order=created_at.asc&limit=${newlyAssigned ? 300 : 100}`
         );
         // « Reçu » côté écoutant : son application vient de recevoir ces messages.
-        if (msgs.length || !s.agent_fetched_at) {
+        // La conversation que l'écoutant a réellement sous les yeux passe aussi en « lu »
+        const vuEcoutant = body.viewingSessionId === s.id;
+        if (msgs.length || vuEcoutant || !s.agent_fetched_at) {
+          const now = new Date().toISOString();
+          const maj = { agent_fetched_at: now };
+          if (vuEcoutant) maj.agent_seen_at = now;
           fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(s.id)}`, {
             method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-            body: JSON.stringify({ agent_fetched_at: new Date().toISOString() })
+            body: JSON.stringify(maj)
           }).catch(() => {});
         }
         return {

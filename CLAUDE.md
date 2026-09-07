@@ -120,10 +120,15 @@ Style SMS / WhatsApp, dans les deux sens (`index.html` visiteur, `agent-app.html
 |---|---|---|
 | ✓ | envoyé (enregistré en base) | le message existe |
 | ✓✓ | reçu par l'autre | `chat-poll` en livrant les messages (`*_fetched_at`) |
-| ✓✓ bleu | lu | `chat-signal` quand la conversation est ouverte **et** l'onglet au premier plan (`*_seen_at`) |
+| ✓✓ bleu | lu | `chat-poll` (`seen` / `viewingSessionId`) quand la conversation est ouverte **et** l'écran au premier plan, et `chat-send` — répondre vaut lecture (`*_seen_at`) |
 
 **Aucun état par message** : six horodatages sur `chat_sessions` suffisent, on compare l'heure du
 message aux repères. Écriture seulement quand quelque chose arrive, pas à chaque sondage.
+
+Le « lu » voyage dans le **sondage** (qui passe déjà toutes les 2,5-3 s) plutôt que dans une requête
+séparée : si un signal se perd — onglet rechargé, application relancée —, l'état se rétablit au
+sondage suivant. Et `chat-send` le pose côté serveur à chaque envoi, car répondre prouve la lecture
+sans dépendre d'aucun signal du navigateur.
 
 **« … en train d'écrire »** : `netlify/functions/chat-signal.js`, appelé dès la première frappe
 (limité à un envoi toutes les 3 s) — le sondage seul serait trop lent, l'indicateur arriverait après
