@@ -102,6 +102,7 @@
             body: JSON.stringify({
                 model: CLAUDE_MODEL,
                 max_tokens: 1024,
+                thinking: { type: 'disabled' },
                 system: systemPrompt,
                 messages: [{ role: 'user', content: messageClient }],
             }),
