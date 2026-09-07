@@ -2,8 +2,10 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const { durationForAmount } = require('./_plans.js');
 
-const BASE_AMOUNTS  = { '100': 100, '300': 300, '500': 500 };
-const FIXED_AMOUNTS = { 'sub': 1500 };
+// Object.create(null) : évite qu'un montant "__proto__" ou "constructor" renvoie une propriété
+// héritée du prototype (Object.prototype) au lieu de undefined.
+const BASE_AMOUNTS  = Object.assign(Object.create(null), { '100': 100, '300': 300, '500': 500 });
+const FIXED_AMOUNTS = Object.assign(Object.create(null), { 'sub': 1500 });
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
