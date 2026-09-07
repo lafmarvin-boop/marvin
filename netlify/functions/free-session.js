@@ -170,6 +170,7 @@ exports.handler = async (event) => {
           title: assignedAgent ? '🎁 Tchat gratuit assigné' : aiAssigned ? '🎁 Conversation offerte avec Max — un écoutant est attendu' : '🎁 Nouvelle conversation gratuite',
           message: aiAssigned ? `${name} parle avec Max : connectez-vous pour prendre le relais` : `${name} attend (offre découverte 20 min)`,
           url: '/agent-app.html',
+          internalSecret: process.env.INTERNAL_FN_SECRET || process.env.SUPABASE_SERVICE_KEY,
           ...(assignedAgent ? { agentEmail: assignedAgent } : {})
         })
       }).catch(() => {});

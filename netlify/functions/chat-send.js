@@ -119,7 +119,8 @@ exports.handler = async (event) => {
           title: '💬 Nouveau message',
           message: content.trim().slice(0, 80),
           url: '/agent-app.html',
-          agentEmail: sessions[0].agent_email
+          agentEmail: sessions[0].agent_email,
+          internalSecret: process.env.INTERNAL_FN_SECRET || process.env.SUPABASE_SERVICE_KEY
         })
       }).catch(() => {});
     }

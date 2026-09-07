@@ -169,6 +169,7 @@ exports.handler = async (event) => {
         title: assignedAgent ? '💬 Nouveau tchat assigné' : aiAssigned ? '🚨 Visiteur payant avec Max — un écoutant est attendu' : '💬 Nouveau tchat en attente',
         message: aiAssigned ? `${name} parle avec Max (IA) : connectez-vous pour prendre le relais (remboursé si personne ne vient)` : `${name} attend votre aide`,
         url: '/agent-app.html',
+        internalSecret: process.env.INTERNAL_FN_SECRET || process.env.SUPABASE_SERVICE_KEY,
         ...(assignedAgent ? { agentEmail: assignedAgent } : {})
       })
     }).catch(() => {});

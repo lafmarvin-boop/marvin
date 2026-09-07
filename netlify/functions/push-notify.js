@@ -1,7 +1,23 @@
 const webpush = require('web-push');
+const crypto = require('crypto');
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+// Secret partagé entre fonctions internes (chat-send.js, free-session.js, chat-start.js) : sans
+// lui, n'importe qui pouvait POSTer ici un titre/message/URL arbitraires vers les écoutants
+// (phishing, harcèlement par notification). Ce n'est pas une authentification utilisateur — juste
+// une preuve que l'appel vient bien du serveur lui-même. INTERNAL_FN_SECRET si défini, sinon la
+// clé de service Supabase (déjà présente côté serveur, jamais exposée au navigateur), comme _auth.js.
+const INTERNAL_SECRET = process.env.INTERNAL_FN_SECRET || SB_KEY || '';
+
+function validInternalCaller(provided) {
+  if (!INTERNAL_SECRET || typeof provided !== 'string' || !provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(INTERNAL_SECRET);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -24,6 +40,9 @@ exports.handler = async (event) => {
 
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
+
+  if (!validInternalCaller(body.internalSecret))
+    return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non autorisé' }) };
 
   const { title = 'Nouveau tchat', message = 'Un visiteur attend votre aide', url = '/agent-app.html', agentEmail } = body;
 
