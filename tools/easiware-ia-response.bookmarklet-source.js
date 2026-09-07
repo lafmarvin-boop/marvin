@@ -123,7 +123,7 @@
 
     // ==================== PANNEAU FLOTTANT ====================
     const panneau = document.createElement('div');
-    panneau.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:2147483647;background:#1a1a1a;color:#fff;padding:12px;border-radius:10px;font:13px/1.4 sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.4);width:320px;';
+    panneau.style.cssText = 'position:fixed;bottom:12px;left:12px;z-index:2147483647;background:#1a1a1a;color:#fff;padding:12px;border-radius:10px;font:13px/1.4 sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.4);width:320px;';
     panneau.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
             <strong>Marvin IA</strong>
