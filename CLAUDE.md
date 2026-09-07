@@ -112,6 +112,26 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS agent_typing_at    TIMESTAMPT
 - **Article SEO hebdomadaire** (Routine Claude, mardi 6h Paris) : choisit une requête réelle non couverte (voir `blog/_topics.md`), rédige un article de 900-1 300 mots et le publie via `node tools/new-article.mjs article.json` → page statique `blog/<slug>.html` (template `blog/_template.html`, JSON-LD Article, canonical, OG), carte en tête de `blog.html`, URL dans `sitemap.xml`, ligne dans `blog/_topics.md` ; commit `blog:` + push + notification.
 - **Plan Google Ads mensuel** (Routine Claude, le 1er à 8h Paris) : rédige `marketing/google-ads/AAAA-MM.md` (conformité, structure de campagne, mots-clés, annonces responsives avec longueurs vérifiées, négatifs, budget, suivi des conversions d'après `index.html`, plan du mois) et envoie un résumé par notification. Ne modifie pas le site.
 
+## 💡 Co-pilote de l'écoutant
+
+`netlify/functions/ai-suggest.js` + bouton 💡 dans la barre de saisie d'`agent-app.html`. À la
+demande, propose **trois** façons de poursuivre (un reflet / validation, une question ouverte, une
+reformulation ou un résumé), dans le tutoiement ou le vouvoiement déjà employé. Mêmes interdits que
+Max : aucun diagnostic, aucun nom de trouble, aucun médicament, jamais de titre de professionnel de
+santé ; en situation de crise, les trois propositions servent uniquement la mise en sécurité et les
+numéros (3114 / 15 / 112 / 3919 / 119).
+
+**La proposition retenue est insérée dans la zone de saisie, jamais envoyée.** Ce n'est pas un détail
+d'ergonomie : le message part au nom de l'écoutant, il faut donc qu'un humain l'ait relu, adapté et
+envoyé — comme une suggestion de réponse d'une messagerie. Un envoi en un geste ferait passer un
+texte automatique pour une parole humaine, alors que Max, lui, assume la sienne par sa bulle signée.
+Ne pas transformer ce bouton en envoi direct.
+
+Déclenché **à la demande** et non à chaque message : coût maîtrisé, et l'écoutant garde la main.
+Contrôle d'accès : jeton valide **et** session attribuée à cet écoutant (sinon il lirait le fil d'un
+collègue). La fonction ne fait que lire, elle n'écrit rien en base. Modèle surchargeable via
+`AI_SUGGEST_MODEL`. Sans `ANTHROPIC_API_KEY`, le bouton signale simplement l'indisponibilité.
+
 ## ✓✓ Accusés de réception et indicateur de saisie
 
 Style SMS / WhatsApp, dans les deux sens (`index.html` visiteur, `agent-app.html` écoutant) :
