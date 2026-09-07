@@ -137,11 +137,19 @@ exports.handler = async (event) => {
       if (hash !== pwdRows[0].password_hash) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
     }
 
+    // Longueur max : aucune limite avant sur ces champs saisis librement (profil écoutant).
+    const cap = (v, n) => typeof v === 'string' ? v.slice(0, n) : v;
     const { pseudo, nom, prenom, adresse, code_postal, ville, siret, iban, notify_email, notify_requests } = body.profile || {};
     await fetch(`${SB_URL}/rest/v1/agent_profiles`, {
       method: 'POST',
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify({ email, pseudo, nom, prenom, adresse, code_postal, ville, siret, iban, notify_email: notify_email || null, notify_requests: !!notify_requests, updated_at: new Date().toISOString() })
+      body: JSON.stringify({
+        email,
+        pseudo: cap(pseudo, 100), nom: cap(nom, 100), prenom: cap(prenom, 100),
+        adresse: cap(adresse, 200), code_postal: cap(code_postal, 10), ville: cap(ville, 100),
+        siret: cap(siret, 20), iban: cap(iban, 34), notify_email: cap(notify_email, 200) || null,
+        notify_requests: !!notify_requests, updated_at: new Date().toISOString()
+      })
     });
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
   }

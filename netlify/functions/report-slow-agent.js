@@ -17,7 +17,11 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { client, session, paymentId } = JSON.parse(event.body || '{}');
+    const body = JSON.parse(event.body || '{}');
+    const paymentId = body.paymentId;
+    // Longueur max : ces valeurs ne servent qu'à l'affichage admin et aux métadonnées Stripe.
+    const client = typeof body.client === 'string' ? body.client.slice(0, 100) : body.client;
+    const session = typeof body.session === 'string' ? body.session.slice(0, 100) : body.session;
 
     if (!paymentId || !process.env.STRIPE_SECRET_KEY) {
       return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Paramètres manquants' }) };

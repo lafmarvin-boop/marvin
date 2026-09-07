@@ -22,6 +22,7 @@ exports.handler = async (event) => {
   const { email, currentPassword, newPassword } = body;
   if (!email || !newPassword) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Données manquantes' }) };
   if (newPassword.length < 8) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Le mot de passe doit faire au moins 8 caractères' }) };
+  if (newPassword.length > 200) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Mot de passe trop long' }) };
 
   const normalEmail = email.toLowerCase().trim();
 

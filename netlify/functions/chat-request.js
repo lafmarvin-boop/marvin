@@ -15,7 +15,9 @@ exports.handler = async (event) => {
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
 
-  const { name, message } = body;
+  // Longueur max : évite un payload disproportionné dans l'email admin (aucune limite avant).
+  const name = typeof body.name === 'string' ? body.name.slice(0, 100) : '';
+  const message = typeof body.message === 'string' ? body.message.slice(0, 2000) : '';
 
   // Email de notification si Resend configuré
   if (RESEND_API_KEY) {
