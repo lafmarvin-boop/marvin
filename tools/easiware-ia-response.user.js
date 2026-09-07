@@ -40,8 +40,9 @@
     ].join('\n');
 
     const DELAI_ANNULATION_MS = 5000;
-    // Raccourci sélection manuelle (mode normal) : Ctrl+Shift+A (Cmd+Shift+A sur Mac)
-    const RACCOURCI = { key: 'a', shift: true, ctrlOrCmd: true };
+    // Raccourci sélection manuelle (mode normal) : Alt+Maj+R
+    // (Ctrl+Maj+A est réservé par Firefox — gestionnaire de modules — donc évité ici)
+    const RACCOURCI = { key: 'r', shift: true, alt: true };
     // ==================================================
 
     let banniere = null;
@@ -218,9 +219,9 @@
     }
 
     document.addEventListener('keydown', function (e) {
-        const ctrlOk = RACCOURCI.ctrlOrCmd ? (e.ctrlKey || e.metaKey) : true;
+        const altOk = RACCOURCI.alt ? e.altKey : true;
         const shiftOk = RACCOURCI.shift ? e.shiftKey : true;
-        if (ctrlOk && shiftOk && e.key.toLowerCase() === RACCOURCI.key) {
+        if (altOk && shiftOk && e.key.toLowerCase() === RACCOURCI.key) {
             e.preventDefault();
             repondreAuMessage(undefined, false);
         }
@@ -230,7 +231,11 @@
     document.addEventListener('click', function (e) {
         if (!e.altKey) return;
         const texte = trouverBulleMessage(e.target);
-        if (!texte) return;
+        if (!texte) {
+            creerBanniere('Aucun texte trouvé ici — clique directement sur les mots du message');
+            setTimeout(retirerBanniere, 3000);
+            return;
+        }
         e.preventDefault();
         e.stopPropagation();
         repondreAuMessage(texte, e.shiftKey);

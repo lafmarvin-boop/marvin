@@ -204,7 +204,7 @@
     }
 
     document.addEventListener('keydown', function (e) {
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'a') {
+        if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'r') {
             e.preventDefault();
             repondreAuMessage(undefined, false);
         }
@@ -212,8 +212,13 @@
 
     document.addEventListener('click', function (e) {
         if (!e.altKey) return;
+        creerBanniere('Alt+Clic détecté sur : ' + e.target.tagName);
         const texte = trouverBulleMessage(e.target);
-        if (!texte) return;
+        if (!texte) {
+            creerBanniere('Aucun texte trouvé ici — clique directement sur les mots du message');
+            setTimeout(retirerBanniere, 3000);
+            return;
+        }
         e.preventDefault();
         e.stopPropagation();
         repondreAuMessage(texte, e.shiftKey);
