@@ -56,6 +56,20 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS response_deadline TIMESTAMPTZ
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS rating_comment TEXT;
 
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS loyalty_discount SMALLINT DEFAULT 0;
+
+-- Abonnements push des écoutants. Cette table figurait dans supabase/schema.sql mais **pas**
+-- dans ce mémo, alors que c'est ce bloc-ci qui est réellement exécuté : sans elle, aucune
+-- notification push ne peut fonctionner. Sans risque si elle existe déjà.
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id           UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  agent_email  TEXT        NOT NULL,
+  endpoint     TEXT        NOT NULL UNIQUE,
+  subscription JSONB       NOT NULL,
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_push_subs_email ON push_subscriptions (agent_email);
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN CREATE POLICY "no_public_read" ON push_subscriptions FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 ```
 
 ### ✅ Exécuté — pour que Max puisse assister les écoutants
