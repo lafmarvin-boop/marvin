@@ -1524,7 +1524,7 @@ async function diagPush(){
   const el = document.getElementById('push-diag-status');
   if(el) el.textContent = '⏳ Envoi en cours…';
   try{
-    const res = await fetch(`${API}/push-notify`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title:'🔔 Test Parlons', message:'Les notifications fonctionnent correctement !', url:'/agent-app.html', agentEmail:appEmail})});
+    const res = await fetch(`${API}/push-notify`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({agentEmail:appEmail, agentToken:appToken})});
     const d = await res.json();
     if(el){
       if(d.skipped) el.textContent = '⚠️ VAPID non configuré — variables d\'environnement manquantes sur Netlify';

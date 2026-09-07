@@ -41,10 +41,28 @@ exports.handler = async (event) => {
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
 
-  if (!validInternalCaller(body.internalSecret))
-    return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non autorisé' }) };
+  let { title = 'Nouveau tchat', message = 'Un visiteur attend votre aide', url = '/agent-app.html', agentEmail } = body;
 
-  const { title = 'Nouveau tchat', message = 'Un visiteur attend votre aide', url = '/agent-app.html', agentEmail } = body;
+  // Deux appelants légitimes :
+  //   — les fonctions internes, qui prouvent leur origine par le secret partagé ;
+  //   — un écoutant connecté qui teste ses notifications depuis son application (bouton « 🔔 Test »).
+  //     Le navigateur ne peut pas connaître le secret : on l'authentifie par son jeton de présence,
+  //     et l'envoi est alors **verrouillé sur lui-même**, avec un contenu fixe. Il ne peut donc ni
+  //     notifier un collègue, ni choisir le texte ou le lien — ce que le secret partagé empêche.
+  if (!validInternalCaller(body.internalSecret)) {
+    const email = (body.agentEmail || '').toLowerCase().trim();
+    const jeton = body.agentToken;
+    if (!email || !jeton)
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non autorisé' }) };
+    const pres = await fetch(`${SB_URL}/rest/v1/agent_presence?agent_email=eq.${encodeURIComponent(email)}&select=session_token&limit=1`, { headers: H() });
+    const rows = await pres.json().catch(() => []);
+    if (!Array.isArray(rows) || !rows.length || rows[0].session_token !== jeton)
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non autorisé' }) };
+    agentEmail = email;
+    title = '🔔 Test Parlons';
+    message = 'Les notifications fonctionnent correctement !';
+    url = '/agent-app.html';
+  }
 
   webpush.setVapidDetails(vapidEmail, vapidPublic, vapidPrivate);
 

@@ -138,6 +138,12 @@ collègue). La fonction ne fait que lire, elle n'écrit rien en base. Modèle su
 le service worker `sw.js` affiche. L'app écoutant a un bouton de test et un bouton de renouvellement
 d'abonnement dans ses réglages.
 
+`push-notify.js` n'accepte que deux appelants : les **fonctions internes**, qui prouvent leur origine
+par `internalSecret` (`INTERNAL_FN_SECRET`, sinon `SUPABASE_SERVICE_KEY`), et un **écoutant connecté**
+qui teste ses propres notifications depuis l'app — le navigateur ne peut pas détenir le secret, il
+s'authentifie donc par son jeton de présence, et l'envoi est alors verrouillé sur lui-même avec un
+titre, un message et un lien fixes. Il ne peut ni notifier un collègue, ni choisir le texte ou l'URL.
+
 **Tous les envois sont `await`és, avec un plafond de 2,5 s** (`chat-send`, `chat-start`,
 `free-session`, `chat-presence`). C'est la même leçon que pour les emails : une fonction Netlify peut
 être gelée dès qu'elle a répondu, et une requête lancée sans être attendue n'a alors jamais le temps
