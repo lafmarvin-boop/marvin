@@ -203,7 +203,7 @@
         }, 1000);
     }
 
-    document.addEventListener('keydown', function (e) {
+    window.addEventListener('keydown', function (e) {
         const altOk = e.altKey || e.getModifierState('AltGraph');
         if (altOk && e.shiftKey && e.key.toLowerCase() === 'r') {
             e.preventDefault();
@@ -211,7 +211,7 @@
         }
     }, true);
 
-    document.addEventListener('click', function (e) {
+    window.addEventListener('click', function (e) {
         if (!e.altKey && !e.getModifierState('AltGraph')) return;
         creerBanniere('Alt+Clic détecté sur : ' + e.target.tagName);
         const texte = trouverBulleMessage(e.target);
@@ -223,6 +223,19 @@
         e.preventDefault();
         e.stopPropagation();
         repondreAuMessage(texte, e.shiftKey);
+    }, true);
+
+    // Debug temporaire, visible à l'écran (pas besoin d'ouvrir les outils développeur) :
+    // confirme que les clics/touches atteignent bien le script, même sans Alt.
+    const debugDiv = document.createElement('div');
+    debugDiv.style.cssText = 'position:fixed;bottom:12px;left:12px;z-index:2147483647;background:#1a1a1a;color:#0f0;padding:8px 12px;border-radius:8px;font:12px/1.4 monospace;max-width:80vw;';
+    debugDiv.textContent = 'Debug Marvin : en attente d\'un clic ou d\'une touche...';
+    document.body.appendChild(debugDiv);
+    window.addEventListener('click', function (e) {
+        debugDiv.textContent = 'Clic sur <' + e.target.tagName + '> alt=' + e.altKey + ' altGr=' + e.getModifierState('AltGraph') + ' shift=' + e.shiftKey;
+    }, true);
+    window.addEventListener('keydown', function (e) {
+        debugDiv.textContent = 'Touche "' + e.key + '" alt=' + e.altKey + ' altGr=' + e.getModifierState('AltGraph') + ' shift=' + e.shiftKey;
     }, true);
 
     creerBanniere('Marvin IA actif — Alt+Clic (normal), Alt+Maj+Clic (signalement)');
