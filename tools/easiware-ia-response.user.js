@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Marvin — Réponse IA Easiware
 // @namespace    https://github.com/lafmarvin-boop/marvin
-// @version      1.0
-// @description  Sélectionne le message client, appuie sur le raccourci, l'IA répond et envoie (avec délai d'annulation)
+// @version      2.0
+// @description  Alt+Clic sur le message client (ou sélection + raccourci) : l'IA répond et envoie (avec délai d'annulation)
 // @match        *://*.easiware.fr/*
 // @grant        GM_xmlhttpRequest
 // @connect      api.anthropic.com
@@ -39,6 +39,21 @@
 
     function retirerBanniere() {
         if (banniere) { banniere.remove(); banniere = null; }
+    }
+
+    function trouverBulleMessage(cible) {
+        // Remonte depuis l'élément cliqué pour capturer tout le message (pas juste un mot ou un span),
+        // sans dépasser vers un conteneur qui contiendrait plusieurs messages.
+        let el = cible;
+        let precedent = cible;
+        for (let i = 0; i < 6 && el.parentElement; i++) {
+            const parent = el.parentElement;
+            const enfantsAvecTexte = [...parent.children].filter(c => c.textContent.trim().length > 15);
+            if (enfantsAvecTexte.length > 1) break; // le parent contient plusieurs messages, on s'arrête là
+            precedent = parent;
+            el = parent;
+        }
+        return precedent.textContent.trim();
     }
 
     function trouverChampSaisie() {
@@ -110,8 +125,8 @@
         });
     }
 
-    async function repondreAuMessageSelectionne() {
-        const messageClient = window.getSelection().toString().trim();
+    async function repondreAuMessageSelectionne(messageDirect) {
+        const messageClient = messageDirect || window.getSelection().toString().trim();
         if (!messageClient) {
             creerBanniere('⚠️ Sélectionne d\'abord le message du client');
             setTimeout(retirerBanniere, 2500);
@@ -179,6 +194,16 @@
             e.preventDefault();
             repondreAuMessageSelectionne();
         }
+    }, true);
+
+    // Alt+Clic directement sur un message client : plus besoin de sélectionner à la souris
+    document.addEventListener('click', function (e) {
+        if (!e.altKey) return;
+        const texte = trouverBulleMessage(e.target);
+        if (!texte) return;
+        e.preventDefault();
+        e.stopPropagation();
+        repondreAuMessageSelectionne(texte);
     }, true);
 
 })();
