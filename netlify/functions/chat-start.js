@@ -114,7 +114,7 @@ exports.handler = async (event) => {
           const html = `<p style="font-family:sans-serif">Un visiteur vient de démarrer une <strong>session payante</strong> et personne n'est connecté : Max (assistant IA) engage la conversation en attendant un écoutant.</p>
 <p style="font-family:sans-serif"><strong>Prénom :</strong> ${String(name).replace(/[<>&]/g, '')}<br><strong>Formule :</strong> ${String(sessionLabel || 'session').replace(/[<>&]/g, '')}<br><strong>Heure :</strong> ${new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}</p>
 <p><a href="${siteUrl}/agent-app.html" style="display:inline-block;background:#C4714A;color:white;text-decoration:none;padding:.65rem 1.5rem;border-radius:50px;font-weight:700">Me connecter et prendre le relais →</a></p>
-<p style="font-size:.8rem;color:#888;font-family:sans-serif">Si le visiteur va au bout de sa session sans écoutant, il est remboursé automatiquement. Vous recevez cet email car vous avez activé les demandes d'écoutant dans votre profil.</p>`;
+<p style="font-size:.8rem;color:#888;font-family:sans-serif">Si le visiteur va au bout de sa session sans écoutant, il peut demander le remboursement en un clic. Vous recevez cet email car vous avez activé les demandes d'écoutant dans votre profil.</p>`;
           const results = await Promise.allSettled(targets.map(to => fetch('https://api.resend.com/emails', {
             method: 'POST', headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ from: FROM_EMAIL, to, subject: `🚨 ${name} attend un écoutant — session payante en cours avec Max`, html }),
@@ -167,7 +167,7 @@ exports.handler = async (event) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: assignedAgent ? '💬 Nouveau tchat assigné' : aiAssigned ? '🚨 Visiteur payant avec Max — un écoutant est attendu' : '💬 Nouveau tchat en attente',
-        message: aiAssigned ? `${name} parle avec Max (IA) : connectez-vous pour prendre le relais (remboursé si personne ne vient)` : `${name} attend votre aide`,
+        message: aiAssigned ? `${name} parle avec Max (IA) : connectez-vous pour prendre le relais (remboursable si personne ne vient)` : `${name} attend votre aide`,
         url: '/agent-app.html',
         internalSecret: process.env.INTERNAL_FN_SECRET || process.env.SUPABASE_SERVICE_KEY,
         ...(assignedAgent ? { agentEmail: assignedAgent } : {})
