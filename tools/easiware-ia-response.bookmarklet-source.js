@@ -204,14 +204,15 @@
     }
 
     document.addEventListener('keydown', function (e) {
-        if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'r') {
+        const altOk = e.altKey || e.getModifierState('AltGraph');
+        if (altOk && e.shiftKey && e.key.toLowerCase() === 'r') {
             e.preventDefault();
             repondreAuMessage(undefined, false);
         }
     }, true);
 
     document.addEventListener('click', function (e) {
-        if (!e.altKey) return;
+        if (!e.altKey && !e.getModifierState('AltGraph')) return;
         creerBanniere('Alt+Clic détecté sur : ' + e.target.tagName);
         const texte = trouverBulleMessage(e.target);
         if (!texte) {

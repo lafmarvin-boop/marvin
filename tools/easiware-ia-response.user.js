@@ -219,7 +219,7 @@
     }
 
     document.addEventListener('keydown', function (e) {
-        const altOk = RACCOURCI.alt ? e.altKey : true;
+        const altOk = RACCOURCI.alt ? (e.altKey || e.getModifierState('AltGraph')) : true;
         const shiftOk = RACCOURCI.shift ? e.shiftKey : true;
         if (altOk && shiftOk && e.key.toLowerCase() === RACCOURCI.key) {
             e.preventDefault();
@@ -229,7 +229,7 @@
 
     // Alt+Clic (normal, envoi auto) ou Alt+Maj+Clic (signalement, envoi manuel) directement sur un message
     document.addEventListener('click', function (e) {
-        if (!e.altKey) return;
+        if (!e.altKey && !e.getModifierState('AltGraph')) return;
         const texte = trouverBulleMessage(e.target);
         if (!texte) {
             creerBanniere('Aucun texte trouvé ici — clique directement sur les mots du message');
