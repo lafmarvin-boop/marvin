@@ -136,6 +136,16 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ assistantAutorise: res.ok, http: res.status, detail: res.ok ? null : out, verrouAssistLock: lockRes.ok }, null, 1) };
   }
 
+  // TEMPORAIRE : purge des lignes de traçage avant retrait complet du dispositif
+  if (body.diag === 'purge-trace' && event.headers['x-parlons-diag'] === '1') {
+    const res = await fetch(`${SB_URL}/rest/v1/suggestions?payment_id=eq.TRACE`, {
+      method: 'DELETE', headers: { ...H(), Prefer: 'return=representation' }
+    });
+    const out = await res.json().catch(() => []);
+    const reste = await sbGet(`suggestions?payment_id=eq.TRACE&select=id&limit=1`);
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ supprimees: Array.isArray(out) ? out.length : null, reste: reste.length }, null, 1) };
+  }
+
   // Diagnostic : vérifie l'appel API depuis Netlify (clé, modèle, délai). Aucune donnée de session.
   if (body.ping === true && event.headers['x-parlons-diag'] === '1') {
     const t0 = Date.now();
