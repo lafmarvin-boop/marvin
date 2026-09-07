@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Marvin — Réponse IA Easiware
 // @namespace    https://github.com/lafmarvin-boop/marvin
-// @version      2.0
-// @description  Alt+Clic sur le message client (ou sélection + raccourci) : l'IA répond et envoie (avec délai d'annulation)
+// @version      3.0
+// @description  Alt+Clic (normal, envoi auto) ou Alt+Maj+Clic (signalement, envoi manuel) sur le message du client
 // @match        *://*.easiware.fr/*
 // @grant        GM_xmlhttpRequest
 // @connect      api.anthropic.com
@@ -15,9 +15,32 @@
     // Colle ta clé API Anthropic ici (garde-la secrète, ne partage jamais ce fichier rempli).
     const CLAUDE_API_KEY = 'COLLE_TA_CLE_API_ICI';
     const CLAUDE_MODEL = 'claude-sonnet-5';
-    const SYSTEM_PROMPT = "Tu es un agent du service client. Réponds au message du client en français, de façon polie, claire et concise. Ne mets pas de formule d'introduction du type « Bonjour, » si ce n'est pas nécessaire, réponds directement.";
+
+    const SYSTEM_PROMPT_CLIENT = [
+        "Tu es un policier qui répond aux messages des citoyens via un chat.",
+        "Fais preuve d'empathie et d'écoute, comme un vrai policier bienveillant sur le terrain — jamais froid ni robotique.",
+        "Réponds en français, de façon polie, claire et concise.",
+        "Ne mets pas de formule d'introduction du type Bonjour si ce n'est pas nécessaire, réponds directement.",
+    ].join(' ');
+
+    const SYSTEM_PROMPT_SIGNALEMENT = [
+        "Tu es un policier qui recueille, via un chat, le signalement d'une personne (trafic de stupéfiants ou tout autre fait sensible).",
+        "Fais preuve d'empathie et de bienveillance, comme un vrai policier à l'écoute — jamais froid ni robotique, remercie la personne d'avoir signalé les faits.",
+        "",
+        "Ton objectif : recueillir, une question courte à la fois, adaptée à ce que la personne vient de dire, les informations suivantes (dans cet ordre de priorité, sans jamais insister si la personne ne sait pas ou ne veut pas répondre) :",
+        "1. L'adresse complète du lieu concerné (rue, ville, code postal)",
+        "2. La nature exacte des faits (ex : type de produit s'il s'agit de stupéfiants)",
+        "3. Si elle sait où c'est caché",
+        "4. L'identité des personnes impliquées si elle les connaît : nom, numéro de téléphone, pseudo ou compte sur les réseaux sociaux",
+        "5. Si des véhicules sont utilisés : marque, couleur, plaque d'immatriculation",
+        "6. Si elle accepte de communiquer ses propres coordonnées pour être recontactée par les enquêteurs (demande-le explicitement, une seule fois, sans insister en cas de refus)",
+        "",
+        "Ne pose qu'une seule question à la fois. Ne donne aucun conseil juridique, ne promets aucune action précise.",
+        "Dès que tu as recueilli le maximum d'informations possible, ou que la personne indique ne plus rien avoir à ajouter, remercie-la chaleureusement pour son signalement et dis-lui au revoir clairement pour clore l'échange.",
+    ].join('\n');
+
     const DELAI_ANNULATION_MS = 5000;
-    // Raccourci : Ctrl+Shift+A (Cmd+Shift+A sur Mac)
+    // Raccourci sélection manuelle (mode normal) : Ctrl+Shift+A (Cmd+Shift+A sur Mac)
     const RACCOURCI = { key: 'a', shift: true, ctrlOrCmd: true };
     // ==================================================
 
@@ -90,7 +113,7 @@
         }
     }
 
-    function appellerClaude(messageClient) {
+    function appellerClaude(messageClient, systemPrompt) {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method: 'POST',
@@ -104,7 +127,7 @@
                 data: JSON.stringify({
                     model: CLAUDE_MODEL,
                     max_tokens: 500,
-                    system: SYSTEM_PROMPT,
+                    system: systemPrompt,
                     messages: [{ role: 'user', content: messageClient }],
                 }),
                 onload: function (res) {
@@ -125,42 +148,49 @@
         });
     }
 
-    async function repondreAuMessageSelectionne(messageDirect) {
+    async function repondreAuMessage(messageDirect, modeSignalement) {
         const messageClient = messageDirect || window.getSelection().toString().trim();
         if (!messageClient) {
-            creerBanniere('⚠️ Sélectionne d\'abord le message du client');
+            creerBanniere('Sélectionne d\'abord le message du client');
             setTimeout(retirerBanniere, 2500);
             return;
         }
         if (CLAUDE_API_KEY === 'COLLE_TA_CLE_API_ICI') {
-            creerBanniere('⚠️ Clé API Claude non configurée dans le script');
+            creerBanniere('Clé API Claude non configurée dans le script');
             setTimeout(retirerBanniere, 3000);
             return;
         }
 
-        creerBanniere('⏳ L\'IA rédige la réponse...');
+        creerBanniere('L\'IA rédige la réponse...');
 
         let reponse;
         try {
-            reponse = await appellerClaude(messageClient);
+            reponse = await appellerClaude(messageClient, modeSignalement ? SYSTEM_PROMPT_SIGNALEMENT : SYSTEM_PROMPT_CLIENT);
         } catch (err) {
-            creerBanniere('❌ Erreur : ' + err);
+            creerBanniere('Erreur : ' + err);
             setTimeout(retirerBanniere, 4000);
             return;
         }
 
         const champ = trouverChampSaisie();
         if (!champ) {
-            creerBanniere('❌ Champ de réponse introuvable');
+            creerBanniere('Champ de réponse introuvable');
             setTimeout(retirerBanniere, 3000);
             return;
         }
         ecrireDansChamp(champ, reponse);
 
+        if (modeSignalement) {
+            // Jamais d'envoi automatique sur ce mode : relecture et envoi manuels obligatoires.
+            creerBanniere('Réponse écrite — relis puis envoie toi-même (Entrée)');
+            setTimeout(retirerBanniere, 4000);
+            return;
+        }
+
         // Compte à rebours annulable avant envoi automatique
         let annule = false;
         let secondesRestantes = Math.ceil(DELAI_ANNULATION_MS / 1000);
-        const b = creerBanniere(`Envoi dans ${secondesRestantes}s… (Échap pour annuler)`);
+        const b = creerBanniere(`Envoi dans ${secondesRestantes}s (Échap pour annuler)`);
         const btnAnnuler = document.createElement('button');
         btnAnnuler.textContent = 'Annuler';
         btnAnnuler.style.cssText = 'background:#e63946;color:#fff;border:0;border-radius:5px;padding:4px 8px;cursor:pointer;';
@@ -183,7 +213,7 @@
                 }
                 return;
             }
-            if (banniere) banniere.firstChild.textContent = `Envoi dans ${secondesRestantes}s… (Échap pour annuler)`;
+            if (banniere) banniere.firstChild.textContent = `Envoi dans ${secondesRestantes}s (Échap pour annuler)`;
         }, 1000);
     }
 
@@ -192,18 +222,18 @@
         const shiftOk = RACCOURCI.shift ? e.shiftKey : true;
         if (ctrlOk && shiftOk && e.key.toLowerCase() === RACCOURCI.key) {
             e.preventDefault();
-            repondreAuMessageSelectionne();
+            repondreAuMessage(undefined, false);
         }
     }, true);
 
-    // Alt+Clic directement sur un message client : plus besoin de sélectionner à la souris
+    // Alt+Clic (normal, envoi auto) ou Alt+Maj+Clic (signalement, envoi manuel) directement sur un message
     document.addEventListener('click', function (e) {
         if (!e.altKey) return;
         const texte = trouverBulleMessage(e.target);
         if (!texte) return;
         e.preventDefault();
         e.stopPropagation();
-        repondreAuMessageSelectionne(texte);
+        repondreAuMessage(texte, e.shiftKey);
     }, true);
 
 })();
