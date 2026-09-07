@@ -58,8 +58,10 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS rating_comment TEXT;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS loyalty_discount SMALLINT DEFAULT 0;
 
 -- Abonnements push des écoutants. Cette table figurait dans supabase/schema.sql mais **pas**
--- dans ce mémo, alors que c'est ce bloc-ci qui est réellement exécuté : sans elle, aucune
--- notification push ne peut fonctionner. Sans risque si elle existe déjà.
+-- dans ce mémo, alors que c'est ce bloc-ci qui est réellement exécuté.
+-- ⚠️ Une version aux colonnes différentes existait en base : `CREATE TABLE IF NOT EXISTS` ne
+-- corrigeait rien et l'enregistrement échouait sur PGRST204 (« colonne subscription introuvable »).
+-- Voir plus bas le bloc de reconstruction si l'erreur réapparaît.
 CREATE TABLE IF NOT EXISTS push_subscriptions (
   id           UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
   agent_email  TEXT        NOT NULL,
@@ -70,6 +72,31 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 CREATE INDEX IF NOT EXISTS idx_push_subs_email ON push_subscriptions (agent_email);
 ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN CREATE POLICY "no_public_read" ON push_subscriptions FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+```
+
+### ✅ Exécuté — reconstruction de `push_subscriptions`
+
+La table existait avec d'autres colonnes : `push-subscribe` échouait sur `PGRST204` (colonne
+`subscription` introuvable), et comme la fonction ne regardait pas la réponse de Supabase, elle
+répondait « succès ». Aucune notification push n'a donc jamais pu fonctionner. L'ancienne table est
+**renommée** et non supprimée : rien n'est perdu, et les écoutants dont l'abonnement disparaît sont
+réinscrits automatiquement sous 30 min (voir « Auto-réparation de l'abonnement »).
+
+```sql
+ALTER TABLE IF EXISTS push_subscriptions RENAME TO push_subscriptions_ancienne;
+
+CREATE TABLE push_subscriptions (
+  id           UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  agent_email  TEXT        NOT NULL,
+  endpoint     TEXT        NOT NULL UNIQUE,
+  subscription JSONB       NOT NULL,
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_push_subs_email ON push_subscriptions (agent_email);
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN CREATE POLICY "no_public_read" ON push_subscriptions FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Une fois les notifications vérifiées : DROP TABLE push_subscriptions_ancienne;
 ```
 
 ### ✅ Exécuté — pour que Max puisse assister les écoutants
