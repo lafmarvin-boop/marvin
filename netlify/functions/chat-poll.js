@@ -7,7 +7,6 @@ const { AI_EMAIL, maxShouldAssist } = require('./_assist');
 // de plus de 8 s. Aucun signal d'arrêt n'est nécessaire — rien ne peut rester bloqué.
 const TYPING_TTL_MS = 8000;
 const isTyping = ts => !!ts && Date.now() - new Date(ts).getTime() < TYPING_TTL_MS;
-const { trace } = require('./_trace'); // TEMPORAIRE (voir _trace.js)
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -81,7 +80,6 @@ exports.handler = async (event) => {
           assist = true;
         }
         if (trigger) {
-          if (assist) trace('sondage-visiteur', { s: String(sessionId).slice(0, 8), dernier: last?.sender_type || null }); // TEMPORAIRE
           const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
           try {
             await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
@@ -269,7 +267,6 @@ exports.handler = async (event) => {
             const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sess.id)}&select=id,sender_type,created_at&order=created_at.desc&limit=12`);
             if (!maxShouldAssist(msgs, sess.assigned_at)) return;
             const last = msgs.find(m => m.sender_type !== 'system');
-            trace('sondage-ecoutant', { s: sess.id.slice(0, 8), dernier: last?.sender_type || null }); // TEMPORAIRE
             try {
               await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },

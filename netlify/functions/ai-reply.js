@@ -22,7 +22,6 @@ const Anthropic = require('@anthropic-ai/sdk');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const { AI_EMAIL, ASSIST_DELAY_MS, assistDelayMs, maxCarriesThread } = require('./_assist');
-const { trace } = require('./_trace'); // TEMPORAIRE (voir _trace.js)
 // Netlify coupe les fonctions synchrones à 10 s : il faut un modèle rapide, sans réflexion étendue,
 // et des réponses courtes. Surchargeable via AI_LISTENER_MODEL.
 const MODEL = process.env.AI_LISTENER_MODEL || 'claude-sonnet-5';
@@ -77,93 +76,8 @@ exports.handler = async (event) => {
 
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
-  let { sessionId } = body;
-  const { messageId } = body;
-  // Répétition « à blanc » du chemin d'assistance : exécute exactement le même code (garde-fous,
-  // appel au modèle, chronométrage) mais n'insère aucun message. Sert à diagnostiquer sans session
-  // réelle en cours. Protégé par l'en-tête de diagnostic.
-  const dry = body.dryRun === true && event.headers['x-parlons-diag'] === '1';
-  const steps = [];
-  const t0 = Date.now();
-  const mark = (name) => steps.push(`${name}:${Date.now() - t0}`);
+  const { sessionId, messageId } = body;
 
-  // Diagnostic d'assistance : pourquoi Max n'intervient-il pas ? Renvoie l'état de décision des
-  // sessions actives tenues par un écoutant. Métadonnées seulement, aucun contenu de message.
-  if (body.diag === 'assist' && event.headers['x-parlons-diag'] === '1') {
-    const rows = await sbGet(`chat_sessions?agent_email=not.is.null&select=id,agent_email,status,assigned_at&order=assigned_at.desc&limit=6`);
-    const out = [];
-    for (const r of rows) {
-      const m = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(r.id)}&select=sender_type,created_at&order=created_at.desc&limit=10`);
-      const last = m.find(x => x.sender_type !== 'system');
-      const humanHeld = r.agent_email !== AI_EMAIL;
-      const waitingMs = last && last.sender_type === 'visitor' ? Date.now() - new Date(last.created_at).getTime() : 0;
-      const humanSpoke = m.some(x => x.sender_type === 'agent');
-      const anyAssist = m.some(x => x.sender_type === 'assistant');
-      const idle = Date.now() - new Date(r.assigned_at || Date.now()).getTime();
-      out.push({
-        session: r.id.slice(0, 8), agent: humanHeld ? 'humain' : 'Max', status: r.status,
-        dernierType: last?.sender_type || null,
-        attenteSec: Math.round(waitingMs / 1000), depuisAttributionSec: Math.round(idle / 1000),
-        ecoutantAParle: humanSpoke, maxDejaIntervenu: anyAssist,
-        seuilSec: Math.round(ASSIST_DELAY_MS / 1000),
-        declencheraitAssistance: humanHeld && (waitingMs > ASSIST_DELAY_MS || (!humanSpoke && !anyAssist && idle > ASSIST_DELAY_MS)),
-        types: m.map(x => x.sender_type).reverse().join(',')
-      });
-    }
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, maintenant: new Date().toISOString(), sessions: out }, null, 1) };
-  }
-
-  // TEMPORAIRE : relecture du traçage de l'assistance (voir _trace.js)
-  if (body.diag === 'trace' && event.headers['x-parlons-diag'] === '1') {
-    const rows = await sbGet(`suggestions?payment_id=eq.TRACE&select=content,created_at&order=created_at.desc&limit=${Math.min(parseInt(body.limit || '25', 10), 60)}`);
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, n: rows.length, traces: rows.map(r => r.content) }, null, 1) };
-  }
-
-  // TEMPORAIRE : la contrainte accepte-t-elle « assistant » ? Insertion d'essai dans une session
-  // déjà close (personne ne la consulte), immédiatement supprimée.
-  if (body.diag === 'contrainte' && event.headers['x-parlons-diag'] === '1') {
-    const closed = await sbGet(`chat_sessions?status=eq.closed&select=id&order=assigned_at.desc&limit=1`);
-    if (!closed.length) return { statusCode: 200, headers: CORS, body: JSON.stringify({ error: 'aucune session close' }) };
-    const res = await fetch(`${SB_URL}/rest/v1/chat_messages`, {
-      method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify({ session_id: closed[0].id, content: '(essai technique)', sender_type: 'assistant' })
-    });
-    const out = await res.json().catch(() => null);
-    if (res.ok && Array.isArray(out) && out[0]?.id)
-      await fetch(`${SB_URL}/rest/v1/chat_messages?id=eq.${encodeURIComponent(out[0].id)}`, { method: 'DELETE', headers: { ...H(), Prefer: 'return=minimal' } }).catch(() => {});
-    // La colonne de verrou existe-t-elle ? (PostgREST renvoie 400 si elle manque)
-    const lockRes = await fetch(`${SB_URL}/rest/v1/chat_sessions?select=assist_lock&limit=1`, { headers: H() });
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ assistantAutorise: res.ok, http: res.status, detail: res.ok ? null : out, verrouAssistLock: lockRes.ok }, null, 1) };
-  }
-
-  // TEMPORAIRE : purge des lignes de traçage avant retrait complet du dispositif
-  if (body.diag === 'purge-trace' && event.headers['x-parlons-diag'] === '1') {
-    const res = await fetch(`${SB_URL}/rest/v1/suggestions?payment_id=eq.TRACE`, {
-      method: 'DELETE', headers: { ...H(), Prefer: 'return=representation' }
-    });
-    const out = await res.json().catch(() => []);
-    const reste = await sbGet(`suggestions?payment_id=eq.TRACE&select=id&limit=1`);
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ supprimees: Array.isArray(out) ? out.length : null, reste: reste.length }, null, 1) };
-  }
-
-  // Diagnostic : vérifie l'appel API depuis Netlify (clé, modèle, délai). Aucune donnée de session.
-  if (body.ping === true && event.headers['x-parlons-diag'] === '1') {
-    const t0 = Date.now();
-    try {
-      const client = new Anthropic({ timeout: 8000, maxRetries: 0 });
-      const r = await client.messages.create({ model: MODEL, max_tokens: 20, thinking: { type: 'disabled' }, messages: [{ role: 'user', content: 'Réponds uniquement : OK' }] });
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, model: r.model, ms: Date.now() - t0, text: r.content.filter(b => b.type === 'text').map(b => b.text).join(''), stop: r.stop_reason }) };
-    } catch (e) {
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: false, model: MODEL, ms: Date.now() - t0, status: e.status || null, error: e.message }) };
-    }
-  }
-
-  if (dry && !sessionId) {
-    // Dernière session tenue par un écoutant humain, quel que soit son état
-    const cand = await sbGet(`chat_sessions?agent_email=not.is.null&agent_email=neq.${encodeURIComponent(AI_EMAIL)}&select=id&order=assigned_at.desc&limit=1`);
-    if (!cand.length) return { statusCode: 200, headers: CORS, body: JSON.stringify({ dry: true, error: 'aucune session tenue par un écoutant' }) };
-    sessionId = cand[0].id;
-  }
   if (!sessionId) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'sessionId requis' }) };
 
   try {
@@ -171,23 +85,19 @@ exports.handler = async (event) => {
     // Inutile en assistance : le visiteur attend déjà depuis 30 s et chaque seconde compte
     // (Netlify coupe la fonction à 10 s).
     if (!body.assist) await sleep(600);
-    mark('debut');
 
     const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=id,status,agent_email,pre_name,pre_topic,session_label,duration_sec,assigned_at&limit=1`);
     const sess = sessions[0];
     // Deux modes : Max tient la session (aucun écoutant connecté), ou Max assiste un écoutant
     // humain qui n'a pas répondu depuis ASSIST_DELAY_MS (il garde la session, Max comble le silence).
-    if (body.assist === true) trace('ai-reply-recu', { s: String(sessionId).slice(0, 8), statut: sess?.status || null, agent: sess ? (sess.agent_email === AI_EMAIL ? 'Max' : 'humain') : null }); // TEMPORAIRE
     const holdsSession = sess && sess.agent_email === AI_EMAIL;
-    const assisting = sess && !holdsSession && !!sess.agent_email && (body.assist === true || dry);
-    if (!sess || (sess.status !== 'active' && !dry) || (!holdsSession && !assisting)) {
+    const assisting = sess && !holdsSession && !!sess.agent_email && body.assist === true;
+    if (!sess || sess.status !== 'active' || (!holdsSession && !assisting)) {
       console.log('ai-reply skip session_not_ai', sessionId, sess?.status, sess?.agent_email);
-      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'session_not_ai', dry, statut: sess?.status || null }) };
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'session_not_ai' }) };
     }
-    mark('session');
 
     const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=120`);
-    mark('messages');
     // Dernier message porteur de parole : les messages système (« l'utilisateur a quitté la page »,
     // prolongation, reprise…) s'intercalent et masqueraient le fait que le visiteur attend.
     const last = [...msgs].reverse().find(m => m.sender_type !== 'system');
@@ -204,16 +114,14 @@ exports.handler = async (event) => {
         : (!humanReplied && sess.assigned_at ? new Date(sess.assigned_at).getTime() : 0); // tchat jamais ouvert
       if (!waitingSince || Date.now() - waitingSince < delai) {
         console.log('ai-reply assist trop tôt', sessionId, waitingSince ? Date.now() - waitingSince : 'aucune attente');
-        if (!dry) { trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: 'assist_too_early', delai }); return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_too_early' }) }; }
-        steps.push('garde:assist_too_early');
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_too_early' }) };
       }
       console.log('ai-reply assist déclenché', sessionId, 'attente', Math.round((Date.now() - waitingSince) / 1000), 's', 'seuil', delai);
       // Max ne relance jamais quelqu'un qui n'a pas écrit : s'il a déjà parlé et que le dernier
       // mot n'est pas celui du visiteur, il n'y a rien à répondre.
       const lastAssist = desc.find(m => m.sender_type === 'assistant');
       if (lastAssist && (!last || last.sender_type !== 'visitor')) {
-        if (!dry) { trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: 'assist_nothing_pending' }); return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_nothing_pending' }) }; }
-        steps.push('garde:assist_nothing_pending');
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_nothing_pending' }) };
       }
     } else {
       if (!last || last.sender_type !== 'visitor') {
@@ -246,7 +154,6 @@ exports.handler = async (event) => {
       if (lockRes.ok) {
         const locked = await lockRes.json().catch(() => []);
         if (!Array.isArray(locked) || !locked.length) {
-          trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: 'assist_locked' }); // TEMPORAIRE
           return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_locked' }) };
         }
         unlock = () => fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
@@ -301,10 +208,9 @@ exports.handler = async (event) => {
       opening ? `Tu as ouvert la conversation par : « ${opening} »` : ''
     ].filter(Boolean).join('\n');
 
-    mark('avant_modele');
     // Max « écrit » : l'indicateur « … » s'affiche côté visiteur pendant la génération,
     // au même titre que pour un écoutant humain.
-    if (!dry) fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+    fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
       method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       // « reçu » aussi : sur une session tenue par Max, aucun écoutant ne sonde pour le poser
       body: JSON.stringify({ agent_typing_at: new Date().toISOString(), agent_fetched_at: new Date().toISOString() })
@@ -325,13 +231,6 @@ exports.handler = async (event) => {
     if (response.stop_reason === 'refusal' || !text)
       text = 'Je suis là et je vous écoute. Prenez le temps qu\'il vous faut : qu\'est-ce qui pèse le plus en ce moment ?';
     text = text.replace(/\n{3,}/g, '\n\n').slice(0, 1500);
-    mark('modele');
-    if (dry) return { statusCode: 200, headers: CORS, body: JSON.stringify({
-      dry: true, session: sessionId.slice(0, 8), statut: sess.status, assisting, holdsSession,
-      dernierType: last?.sender_type || null, nbMessages: msgs.length,
-      longueurReponse: text.length, modele: response.model, // pas d'extrait : contenu de conversation
-      etapes: steps.join(' ')
-    }, null, 1) };
 
     // Pas d'attente ici : le rythme de réponse (5-7 s pour un message court, 10-15 s pour un
     // message long) est appliqué à l'affichage par chat-poll.js — une fonction Netlify est coupée
@@ -363,19 +262,14 @@ exports.handler = async (event) => {
       // L'écoutant a répondu entre-temps, ou un autre déclencheur a devancé celui-ci :
       // dans les deux cas le visiteur a déjà sa réponse.
       if (freshLast && (freshLast.sender_type === 'agent' || freshLast.sender_type === 'assistant')) {
-        trace('ai-reply-abandon', { s: String(sessionId).slice(0, 8), raison: `devance_par_${freshLast.sender_type}` }); // TEMPORAIRE
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'already_answered' }) };
       }
 
       // Pas d'annonce système : elle laisserait entendre que l'écoutant s'est absenté et casserait
       // le fil. La transparence est portée par la bulle elle-même, signée « Max · assistant »
       // au-dessus de chaque message (index.html) et « Max a répondu pour vous » côté écoutant.
-      let insA = await post(text, 'assistant');
-      if (!insA.ok) {
-        // TEMPORAIRE : le détail PostgREST nomme la contrainte qui refuse la valeur
-        trace('ai-reply-insertion', { s: String(sessionId).slice(0, 8), http: insA.status, detail: (await insA.text()).slice(0, 400) });
-        throw new Error(`Insertion message ${insA.status}`);
-      }
+      const insA = await post(text, 'assistant');
+      if (!insA.ok) throw new Error(`Insertion message ${insA.status}`);
     } else {
       const ins = await post(text, 'agent');
       if (!ins.ok) throw new Error(`Insertion message ${ins.status}`);
@@ -385,7 +279,6 @@ exports.handler = async (event) => {
     } finally { await unlock(); }
   } catch (e) {
     console.error('ai-reply:', e.message);
-    if (body.assist === true) trace('ai-reply-erreur', { s: String(sessionId).slice(0, 8), msg: String(e.message).slice(0, 200) }); // TEMPORAIRE
     // Prévenir l'admin : une réponse de Max a échoué (clé, modèle, délai…)
     if (ADMIN_EMAIL) {
       const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';

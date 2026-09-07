@@ -14,7 +14,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { AI_EMAIL, maxShouldAssist } = require('./_assist');
-const { trace } = require('./_trace'); // TEMPORAIRE (voir _trace.js)
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -42,17 +41,13 @@ exports.handler = async (event) => {
     const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
     let declenchees = 0;
 
-    const decisions = [];
     await Promise.all(sessions.map(async (s) => {
       const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(s.id)}&select=id,sender_type,created_at&order=created_at.desc&limit=12`);
+      if (!maxShouldAssist(msgs, s.assigned_at)) return;
       const last = msgs.find(m => m.sender_type !== 'system');
-      const go = maxShouldAssist(msgs, s.assigned_at);
-      decisions.push({ s: s.id.slice(0, 8), n: msgs.length, dernier: last?.sender_type || null, go });
-      if (!go) return;
       declenchees++;
-      let reponse = null;
       try {
-        reponse = await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
+        await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             sessionId: s.id,
@@ -62,17 +57,12 @@ exports.handler = async (event) => {
           // 3 s : le temps que la requête parte. ai-reply poursuit de son côté — inutile de
           // l'attendre, et avec beaucoup de sessions en parallèle l'attente coûterait cher.
           signal: AbortSignal.timeout(3000)
-        }).then(() => 'appelé');
-      } catch (e) { reponse = `échec appel: ${e.message}`; }
-      decisions[decisions.length - 1].aiReply = reponse;
+        });
+      } catch { /* ai-reply poursuit de son côté */ }
     }));
 
-    // TEMPORAIRE : trace chaque passage dès qu'il y a une session à examiner, sinon une fois par
-    // heure — de quoi vérifier que la planification s'exécute vraiment, sans remplir la table.
-    if (sessions.length || new Date().getUTCMinutes() === 0) trace('sweep', { n: sessions.length, decisions });
-
     if (declenchees) console.log(`assist-sweep : ${declenchees}/${sessions.length} session(s) assistée(s)`);
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, sessions: sessions.length, declenchees, decisions }) };
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, sessions: sessions.length, declenchees }) };
   } catch (e) {
     console.error('assist-sweep:', e.message);
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: e.message }) };

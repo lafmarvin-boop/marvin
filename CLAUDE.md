@@ -58,7 +58,7 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS rating_comment TEXT;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS loyalty_discount SMALLINT DEFAULT 0;
 ```
 
-### ⚠️ À exécuter pour que Max puisse assister les écoutants
+### ✅ Exécuté — pour que Max puisse assister les écoutants
 
 `chat_messages.sender_type` est contraint par `chat_messages_sender_type_check` : il refusait la
 valeur `assistant`, donc **toutes** les réponses d'assistance de Max étaient rejetées (erreur 23514)
@@ -79,7 +79,7 @@ COMMIT;
 ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS assist_lock TIMESTAMPTZ;
 ```
 
-### ⚠️ À exécuter pour les accusés de réception et l'indicateur « en train d'écrire »
+### ✅ Exécuté — accusés de réception et indicateur « en train d'écrire »
 
 Six horodatages par session, trois par interlocuteur. Aucun état n'est stocké par message :
 les coches se déduisent en comparant l'heure du message à ces repères.
