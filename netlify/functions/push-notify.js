@@ -69,6 +69,11 @@ exports.handler = async (event) => {
   try {
     const filter = agentEmail ? `agent_email=eq.${encodeURIComponent(agentEmail)}&` : '';
     const res = await fetch(`${SB_URL}/rest/v1/push_subscriptions?${filter}select=subscription`, { headers: H() });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      console.error('push-notify : lecture des abonnements refusée', res.status, detail);
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: false, error: `Lecture des abonnements refusée (HTTP ${res.status})`, detail: detail.slice(0, 300) }) };
+    }
     const rows = await res.json();
     if (!Array.isArray(rows) || !rows.length) return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, sent: 0 }) };
 

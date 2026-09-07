@@ -51,10 +51,13 @@ exports.handler = async (event) => {
 
     if (!subscription?.endpoint) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Subscription manquante' }) };
 
-    // Upsert par endpoint (un appareil = une souscription)
-    await fetch(`${SB_URL}/rest/v1/push_subscriptions`, {
+    // Upsert par endpoint (un appareil = une souscription). `on_conflict=endpoint` est
+    // indispensable : sans lui, PostgREST résout les doublons sur la clé primaire — qui a une
+    // valeur par défaut, donc ne rentre jamais en conflit — et un second enregistrement du même
+    // appareil échouait sur la contrainte d'unicité d'`endpoint`.
+    const res = await fetch(`${SB_URL}/rest/v1/push_subscriptions?on_conflict=endpoint`, {
       method: 'POST',
-      headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+      headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify({
         agent_email: agentEmail,
         endpoint: subscription.endpoint,
@@ -62,6 +65,15 @@ exports.handler = async (event) => {
         updated_at: new Date().toISOString()
       })
     });
+
+    // Sans ce contrôle, la fonction répondait « succès » même quand Supabase refusait
+    // l'enregistrement : l'écoutant voyait « souscription renouvelée », la base restait vide,
+    // et plus rien n'indiquait où était le problème.
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      console.error('push-subscribe : Supabase a refusé', res.status, detail);
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: false, error: `Enregistrement refusé (HTTP ${res.status})`, detail: detail.slice(0, 300) }) };
+    }
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
   } catch (e) {

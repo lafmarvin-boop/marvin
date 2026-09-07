@@ -1549,7 +1549,7 @@ async function resubscribePush(){
     const res = await fetch(`${API}/push-subscribe`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({agentEmail:appEmail, agentToken:appToken, subscription:sub.toJSON()})});
     const d = await res.json();
     if(d.ok) alert('✅ Souscription push renouvelée avec succès');
-    else alert('Erreur : ' + (d.error||'inconnue'));
+    else alert('Erreur : ' + (d.error||'inconnue') + (d.detail ? '\n\n' + d.detail : ''));
     updatePushDiag();
   }catch(e){ alert('Erreur : ' + e.message); }
 }
@@ -1563,6 +1563,7 @@ async function diagPush(){
     const d = await res.json();
     if(el){
       if(d.skipped) el.textContent = '⚠️ VAPID non configuré — variables d\'environnement manquantes sur Netlify';
+      else if(d.error) el.textContent = '❌ ' + d.error + (d.detail ? ' — ' + d.detail : '');
       else if(d.sent > 0) el.textContent = '✅ Notification envoyée (' + d.sent + ') — vérifiez votre téléphone';
       else if(d.sent === 0) el.textContent = '❌ Aucune souscription en base — cliquez "Réactiver"';
       else el.textContent = JSON.stringify(d);
