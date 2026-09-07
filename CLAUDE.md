@@ -96,8 +96,12 @@ CREATE INDEX IF NOT EXISTS idx_push_subs_email ON push_subscriptions (agent_emai
 ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN CREATE POLICY "no_public_read" ON push_subscriptions FOR ALL TO anon USING (false); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Une fois les notifications vérifiées : DROP TABLE push_subscriptions_ancienne;
+DROP TABLE push_subscriptions_ancienne;   -- fait, après vérification
 ```
+
+✅ **Notifications push confirmées en fonctionnement** (sept. 2026) — pour la première fois : la
+table n'avait jamais eu la bonne structure, et `push-subscribe` répondait « succès » sans regarder
+la réponse de Supabase, ce qui masquait l'erreur depuis l'origine.
 
 ### ✅ Exécuté — pour que Max puisse assister les écoutants
 
