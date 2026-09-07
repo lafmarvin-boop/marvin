@@ -101,7 +101,7 @@
             },
             body: JSON.stringify({
                 model: CLAUDE_MODEL,
-                max_tokens: 500,
+                max_tokens: 1024,
                 system: systemPrompt,
                 messages: [{ role: 'user', content: messageClient }],
             }),
@@ -113,8 +113,9 @@
         } catch {
             throw new Error('HTTP ' + res.status + ' — réponse non-JSON : ' + texteBrut.slice(0, 200));
         }
-        if (json.content && json.content[0] && json.content[0].text) {
-            return json.content[0].text.trim();
+        const blocTexte = json.content && json.content.find(b => b.type === 'text');
+        if (blocTexte && blocTexte.text) {
+            return blocTexte.text.trim();
         }
         throw new Error('HTTP ' + res.status + ' — ' + (json.error ? json.error.message : JSON.stringify(json).slice(0, 200)));
     }
