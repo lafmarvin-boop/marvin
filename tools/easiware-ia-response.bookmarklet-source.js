@@ -106,11 +106,17 @@
                 messages: [{ role: 'user', content: messageClient }],
             }),
         });
-        const json = await res.json();
+        const texteBrut = await res.text();
+        let json;
+        try {
+            json = JSON.parse(texteBrut);
+        } catch {
+            throw new Error('HTTP ' + res.status + ' — réponse non-JSON : ' + texteBrut.slice(0, 200));
+        }
         if (json.content && json.content[0] && json.content[0].text) {
             return json.content[0].text.trim();
         }
-        throw new Error(json.error ? json.error.message : 'Réponse API inattendue');
+        throw new Error('HTTP ' + res.status + ' — ' + (json.error ? json.error.message : JSON.stringify(json).slice(0, 200)));
     }
 
     // ==================== PANNEAU FLOTTANT ====================
