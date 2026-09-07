@@ -85,6 +85,13 @@ exports.handler = async (event) => {
       }).catch(() => {});
     }
 
+    // Les appels sortants sont attendus, mais **ensemble** : une fonction Netlify peut être gelée
+    // dès qu'elle a répondu, et une requête lancée sans être attendue n'a alors jamais le temps de
+    // partir. C'est la leçon déjà tirée pour l'envoi des emails ; elle vaut autant pour les
+    // notifications push, qui manquaient précisément quand l'application était en arrière-plan.
+    // Les attendre en parallèle évite d'additionner les délais sur l'envoi d'un message.
+    const envois = [];
+
     // Message visiteur sur une session tenue par Max (IA) : déclencher la réponse.
     // On attend jusqu'à 1,5 s que la requête soit bien partie (sinon la fonction peut être gelée
     // avant l'envoi), puis on abandonne l'attente : ai-reply continue de son côté.
@@ -99,20 +106,19 @@ exports.handler = async (event) => {
     }
     if (senderType === 'visitor' && (sessions[0].agent_email === AI_EMAIL || assistNow)) {
       const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
-      try {
-        await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, messageId: inserted?.id || null, assist: assistNow || undefined }),
-          signal: AbortSignal.timeout(1500)
-        });
-      } catch {}
+      envois.push(fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, messageId: inserted?.id || null, assist: assistNow || undefined }),
+        signal: AbortSignal.timeout(1500)
+      }).catch(() => {}));
     }
 
-    // Message visiteur : notifier l'agent assigné par push (fire-and-forget)
+    // Message visiteur : notifier l'écoutant assigné par push. C'est la seule façon de l'atteindre
+    // quand son application est en arrière-plan — le sondage, lui, est suspendu par le navigateur.
     if (senderType === 'visitor' && sessions[0].agent_email && sessions[0].agent_email !== AI_EMAIL) {
       const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
-      fetch(`${siteUrl}/.netlify/functions/push-notify`, {
+      envois.push(fetch(`${siteUrl}/.netlify/functions/push-notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -121,9 +127,12 @@ exports.handler = async (event) => {
           url: '/agent-app.html',
           agentEmail: sessions[0].agent_email,
           internalSecret: process.env.INTERNAL_FN_SECRET || process.env.SUPABASE_SERVICE_KEY
-        })
-      }).catch(() => {});
+        }),
+        signal: AbortSignal.timeout(2500)
+      }).catch(() => {}));
     }
+
+    if (envois.length) await Promise.allSettled(envois);
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
   } catch (e) {

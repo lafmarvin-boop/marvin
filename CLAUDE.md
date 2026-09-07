@@ -132,6 +132,24 @@ Contrôle d'accès : jeton valide **et** session attribuée à cet écoutant (si
 collègue). La fonction ne fait que lire, elle n'écrit rien en base. Modèle surchargeable via
 `AI_SUGGEST_MODEL`. Sans `ANTHROPIC_API_KEY`, le bouton signale simplement l'indisponibilité.
 
+## 🔔 Notifications push
+
+`push-subscribe.js` enregistre l'abonnement (`push_subscriptions`), `push-notify.js` envoie (VAPID),
+le service worker `sw.js` affiche. L'app écoutant a un bouton de test et un bouton de renouvellement
+d'abonnement dans ses réglages.
+
+**Tous les envois sont `await`és, avec un plafond de 2,5 s** (`chat-send`, `chat-start`,
+`free-session`, `chat-presence`). C'est la même leçon que pour les emails : une fonction Netlify peut
+être gelée dès qu'elle a répondu, et une requête lancée sans être attendue n'a alors jamais le temps
+de partir. Le symptôme était exactement celui-là — pas de notification quand l'application est en
+arrière-plan, de façon intermittente. **Ne pas repasser ces appels en « sans attendre ».**
+
+Dans `chat-send`, les envois sortants sont regroupés dans `envois[]` puis attendus **ensemble**
+(`Promise.allSettled`) : les attendre l'un après l'autre ajouterait leurs délais à chaque message.
+
+Le push est le **seul** moyen d'atteindre l'écoutant quand son application est en arrière-plan : le
+navigateur y suspend les minuteurs, donc le sondage ne tourne plus.
+
 ## ✓✓ Accusés de réception et indicateur de saisie
 
 Style SMS / WhatsApp, dans les deux sens (`index.html` visiteur, `agent-app.html` écoutant) :

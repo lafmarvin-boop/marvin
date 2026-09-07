@@ -162,7 +162,7 @@ exports.handler = async (event) => {
 
     // Push notification : à l'agent assigné, ou à tous si personne n'était disponible
     const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
-    fetch(`${siteUrl}/.netlify/functions/push-notify`, {
+    await fetch(`${siteUrl}/.netlify/functions/push-notify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -171,7 +171,8 @@ exports.handler = async (event) => {
         url: '/agent-app.html',
         internalSecret: process.env.INTERNAL_FN_SECRET || process.env.SUPABASE_SERVICE_KEY,
         ...(assignedAgent ? { agentEmail: assignedAgent } : {})
-      })
+      }),
+      signal: AbortSignal.timeout(2500)
     }).catch(() => {});
 
     return {

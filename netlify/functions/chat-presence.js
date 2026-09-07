@@ -49,10 +49,11 @@ async function notifyPendingRequests() {
     body: JSON.stringify({ notified_at: notifiedAt })
   }).catch(() => {});
   // Envoyer les push notifications visiteurs (fire-and-forget)
-  fetch(`${SITE_URL}/.netlify/functions/visitor-push-notify`, {
+  await fetch(`${SITE_URL}/.netlify/functions/visitor-push-notify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ requestIds: pending.map(r => r.id) })
+    body: JSON.stringify({ requestIds: pending.map(r => r.id) }),
+    signal: AbortSignal.timeout(2500)
   }).catch(() => {});
 
   // Envoyer les emails
