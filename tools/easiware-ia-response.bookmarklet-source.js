@@ -2,14 +2,15 @@
 // Pas d'extension : ce code tourne uniquement pendant que la page reste ouverte.
 // Il faut re-cliquer le favori après chaque rechargement de la page easiware.
 //
-// Deux modes :
-//   - Alt+Clic               : cas normal. Réponse écrite puis envoyée automatiquement
-//                               après un délai annulable.
-//   - Alt+Shift+Clic          : cas sensible (signalement). Réponse orientée recueil
-//                               d'informations, écrite dans le champ mais JAMAIS envoyée
-//                               automatiquement — relecture et envoi manuels obligatoires.
-//     L'IA gère elle-même la fin de l'échange : une fois les infos utiles recueillies
-//     (ou si la personne n'a plus rien à ajouter), elle remercie et dit au revoir.
+// La zone de conversation d'easiware bloque les clics/scripts injectés (testé : ni Alt+Clic
+// ni les raccourcis clavier n'atteignent le texte des messages). On passe donc par un panneau
+// flottant, créé par ce script lui-même (donc toujours cliquable) :
+//   1. Sélectionne le message du client, Ctrl+C
+//   2. Colle-le (Ctrl+V) dans le panneau
+//   3. Clique « Réponse normale » (écrit + envoie automatiquement, délai annulable)
+//      ou « Réponse signalement » (écrit seulement, jamais envoyé automatiquement)
+//   4. Si l'écriture automatique dans le champ échoue, un bouton « Copier » permet
+//      de coller la réponse à la main
 //
 // Pour régénérer le favori après une modification de ce fichier :
 //   npx terser tools/easiware-ia-response.bookmarklet-source.js -c -m | \
@@ -55,38 +56,10 @@
     const DELAI_ANNULATION_MS = 5000;
     // ==================================================
 
-    let banniere = null;
-
-    function creerBanniere(texte) {
-        if (banniere) banniere.remove();
-        banniere = document.createElement('div');
-        banniere.style.cssText = 'position:fixed;top:12px;right:12px;z-index:2147483647;background:#1a1a1a;color:#fff;padding:10px 14px;border-radius:8px;font:13px/1.4 sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px;';
-        banniere.textContent = texte;
-        document.body.appendChild(banniere);
-        return banniere;
-    }
-
-    function retirerBanniere() {
-        if (banniere) { banniere.remove(); banniere = null; }
-    }
-
-    function trouverBulleMessage(cible) {
-        let el = cible;
-        let precedent = cible;
-        for (let i = 0; i < 6 && el.parentElement; i++) {
-            const parent = el.parentElement;
-            const enfantsAvecTexte = [...parent.children].filter(c => c.textContent.trim().length > 15);
-            if (enfantsAvecTexte.length > 1) break;
-            precedent = parent;
-            el = parent;
-        }
-        return precedent.textContent.trim();
-    }
-
     function trouverChampSaisie() {
         const candidats = [
             ...document.querySelectorAll('div[contenteditable="true"]'),
-            ...document.querySelectorAll('textarea'),
+            ...document.querySelectorAll('textarea:not(#marvin-input):not(#marvin-output)'),
         ].filter(el => el.offsetParent !== null);
         return candidats.length ? candidats[candidats.length - 1] : null;
     }
@@ -140,105 +113,104 @@
         throw new Error(json.error ? json.error.message : 'Réponse API inattendue');
     }
 
-    async function repondreAuMessage(messageDirect, modeSignalement) {
-        const messageClient = messageDirect || window.getSelection().toString().trim();
+    // ==================== PANNEAU FLOTTANT ====================
+    const panneau = document.createElement('div');
+    panneau.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:2147483647;background:#1a1a1a;color:#fff;padding:12px;border-radius:10px;font:13px/1.4 sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.4);width:320px;';
+    panneau.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <strong>Marvin IA</strong>
+            <button id="marvin-fermer" style="background:none;border:0;color:#fff;font-size:16px;cursor:pointer;">✕</button>
+        </div>
+        <textarea id="marvin-input" placeholder="Colle ici le message du client (Ctrl+V)" style="width:100%;height:70px;box-sizing:border-box;margin-bottom:6px;border-radius:6px;border:1px solid #555;background:#222;color:#fff;padding:6px;font:12px/1.3 sans-serif;"></textarea>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+            <button id="marvin-normal" style="flex:1;background:#2a7de1;color:#fff;border:0;border-radius:6px;padding:6px;cursor:pointer;">Réponse normale</button>
+            <button id="marvin-signal" style="flex:1;background:#c77d1a;color:#fff;border:0;border-radius:6px;padding:6px;cursor:pointer;">Signalement</button>
+        </div>
+        <div id="marvin-status" style="min-height:16px;margin-bottom:6px;color:#ccc;"></div>
+        <textarea id="marvin-output" readonly placeholder="La réponse générée s'affiche ici" style="width:100%;height:90px;box-sizing:border-box;margin-bottom:6px;border-radius:6px;border:1px solid #555;background:#222;color:#fff;padding:6px;font:12px/1.3 sans-serif;"></textarea>
+        <button id="marvin-copier" style="width:100%;background:#3a3a3a;color:#fff;border:0;border-radius:6px;padding:6px;cursor:pointer;">Copier la réponse</button>
+    `;
+    document.body.appendChild(panneau);
+
+    const elInput = panneau.querySelector('#marvin-input');
+    const elOutput = panneau.querySelector('#marvin-output');
+    const elStatus = panneau.querySelector('#marvin-status');
+
+    panneau.querySelector('#marvin-fermer').addEventListener('click', () => {
+        panneau.remove();
+        window.__marvinIA = false;
+    });
+
+    panneau.querySelector('#marvin-copier').addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(elOutput.value);
+            elStatus.textContent = 'Copié !';
+        } catch {
+            elOutput.select();
+            document.execCommand('copy');
+            elStatus.textContent = 'Copié !';
+        }
+    });
+
+    async function traiter(modeSignalement) {
+        const messageClient = elInput.value.trim();
         if (!messageClient) {
-            creerBanniere("Sélectionne d'abord le message du client");
-            setTimeout(retirerBanniere, 2500);
+            elStatus.textContent = "Colle d'abord le message du client";
             return;
         }
 
-        creerBanniere("L'IA rédige la réponse...");
+        elStatus.textContent = "L'IA rédige la réponse...";
+        elOutput.value = '';
 
         let reponse;
         try {
             reponse = await appellerClaude(messageClient, modeSignalement ? SYSTEM_PROMPT_SIGNALEMENT : SYSTEM_PROMPT_CLIENT);
         } catch (err) {
-            creerBanniere('Erreur : ' + err.message);
-            setTimeout(retirerBanniere, 4000);
+            elStatus.textContent = 'Erreur : ' + err.message;
             return;
         }
 
+        elOutput.value = reponse;
+
         const champ = trouverChampSaisie();
         if (!champ) {
-            creerBanniere('Champ de réponse introuvable');
-            setTimeout(retirerBanniere, 3000);
+            elStatus.textContent = 'Champ de réponse introuvable — copie la réponse toi-même';
             return;
         }
         ecrireDansChamp(champ, reponse);
 
         if (modeSignalement) {
-            // Jamais d'envoi automatique sur ce mode : relecture et envoi manuels obligatoires.
-            creerBanniere('Réponse écrite — relis puis envoie toi-même (Entrée)');
-            setTimeout(retirerBanniere, 4000);
+            elStatus.textContent = 'Écrit dans le champ — relis puis envoie toi-même (Entrée)';
             return;
         }
 
         let annule = false;
         let secondesRestantes = Math.ceil(DELAI_ANNULATION_MS / 1000);
-        const b = creerBanniere(`Envoi dans ${secondesRestantes}s (Échap pour annuler)`);
+        elStatus.innerHTML = '';
+        const spanCompte = document.createElement('span');
+        spanCompte.textContent = `Envoi dans ${secondesRestantes}s `;
         const btnAnnuler = document.createElement('button');
         btnAnnuler.textContent = 'Annuler';
-        btnAnnuler.style.cssText = 'background:#e63946;color:#fff;border:0;border-radius:5px;padding:4px 8px;cursor:pointer;';
-        btnAnnuler.onclick = () => { annule = true; retirerBanniere(); };
-        b.appendChild(btnAnnuler);
-
-        function surEchap(e) {
-            if (e.key === 'Escape') { annule = true; retirerBanniere(); }
-        }
-        document.addEventListener('keydown', surEchap, true);
+        btnAnnuler.style.cssText = 'background:#e63946;color:#fff;border:0;border-radius:5px;padding:2px 8px;cursor:pointer;';
+        btnAnnuler.onclick = () => { annule = true; elStatus.textContent = 'Annulé'; };
+        elStatus.appendChild(spanCompte);
+        elStatus.appendChild(btnAnnuler);
 
         const intervalle = setInterval(() => {
             secondesRestantes--;
             if (annule || secondesRestantes <= 0) {
                 clearInterval(intervalle);
-                document.removeEventListener('keydown', surEchap, true);
                 if (!annule) {
                     simulerEntree(champ);
-                    retirerBanniere();
+                    elStatus.textContent = 'Envoyé';
                 }
                 return;
             }
-            if (banniere) banniere.firstChild.textContent = `Envoi dans ${secondesRestantes}s (Échap pour annuler)`;
+            spanCompte.textContent = `Envoi dans ${secondesRestantes}s `;
         }, 1000);
     }
 
-    window.addEventListener('keydown', function (e) {
-        const altOk = e.altKey || e.getModifierState('AltGraph');
-        if (altOk && e.shiftKey && e.key.toLowerCase() === 'r') {
-            e.preventDefault();
-            repondreAuMessage(undefined, false);
-        }
-    }, true);
-
-    window.addEventListener('click', function (e) {
-        if (!e.altKey && !e.getModifierState('AltGraph')) return;
-        creerBanniere('Alt+Clic détecté sur : ' + e.target.tagName);
-        const texte = trouverBulleMessage(e.target);
-        if (!texte) {
-            creerBanniere('Aucun texte trouvé ici — clique directement sur les mots du message');
-            setTimeout(retirerBanniere, 3000);
-            return;
-        }
-        e.preventDefault();
-        e.stopPropagation();
-        repondreAuMessage(texte, e.shiftKey);
-    }, true);
-
-    // Debug temporaire, visible à l'écran (pas besoin d'ouvrir les outils développeur) :
-    // confirme que les clics/touches atteignent bien le script, même sans Alt.
-    const debugDiv = document.createElement('div');
-    debugDiv.style.cssText = 'position:fixed;bottom:12px;left:12px;z-index:2147483647;background:#1a1a1a;color:#0f0;padding:8px 12px;border-radius:8px;font:12px/1.4 monospace;max-width:80vw;';
-    debugDiv.textContent = 'Debug Marvin : en attente d\'un clic ou d\'une touche...';
-    document.body.appendChild(debugDiv);
-    window.addEventListener('click', function (e) {
-        debugDiv.textContent = 'Clic sur <' + e.target.tagName + '> alt=' + e.altKey + ' altGr=' + e.getModifierState('AltGraph') + ' shift=' + e.shiftKey;
-    }, true);
-    window.addEventListener('keydown', function (e) {
-        debugDiv.textContent = 'Touche "' + e.key + '" alt=' + e.altKey + ' altGr=' + e.getModifierState('AltGraph') + ' shift=' + e.shiftKey;
-    }, true);
-
-    creerBanniere('Marvin IA actif — Alt+Clic (normal), Alt+Maj+Clic (signalement)');
-    setTimeout(retirerBanniere, 3500);
+    panneau.querySelector('#marvin-normal').addEventListener('click', () => traiter(false));
+    panneau.querySelector('#marvin-signal').addEventListener('click', () => traiter(true));
 
 })();
