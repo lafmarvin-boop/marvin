@@ -650,6 +650,7 @@ async function goOnline(){
     if(Notification.permission==='granted') _autoSubscribePush().catch(()=>{});
     else if(Notification.permission==='default') Notification.requestPermission().then(()=>updatePushBanner()).catch(()=>{});
     updatePushDiag();
+    _ensurePushRegistered(true).catch(()=>{});
     if(data.assignedSession){ await refreshSessions(); openChatView(data.assignedSession); }
   }catch(e){ alert('Erreur réseau'); }
   hideLoading();
@@ -1468,6 +1469,40 @@ function updatePushBanner(){
   banner.style.display='flex';
 }
 
+// Vérifie que l'abonnement existe **côté serveur**, et le recrée sinon.
+// Le navigateur peut détenir un abonnement alors que la ligne en base a disparu : push-notify
+// la supprime dès qu'un envoi échoue (endpoint expiré). L'écoutant se croit alors joignable et
+// ne reçoit plus rien, sans le moindre signe — c'est exactement ce qui s'est produit.
+// On refait un abonnement complet (désinscription puis réinscription) plutôt que de renvoyer
+// l'ancien : s'il avait été supprimé parce que l'endpoint était mort, le réenvoyer ne servirait
+// à rien. Silencieux : aucune alerte, l'écoutant n'a rien à faire.
+let _dernierControlePush = 0;
+async function _ensurePushRegistered(force){
+  if(!appToken || Notification.permission !== 'granted') return;
+  if(!force && Date.now() - _dernierControlePush < 1800000) return;  // au plus toutes les 30 min
+  _dernierControlePush = Date.now();
+  try{
+    const r = await fetch(`${API}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({agentEmail:appEmail, agentToken:appToken, action:'status'})});
+    const d = await r.json();
+    if(d.ok && d.present) return;
+    console.warn('push : aucun abonnement en base, réinscription automatique');
+    const sw = await navigator.serviceWorker.ready;
+    const existant = await sw.pushManager.getSubscription();
+    if(existant) await existant.unsubscribe();
+    const keyRes = await fetch(`${API}/push-vapid-key`);
+    const {key} = await keyRes.json();
+    if(!key) return;
+    const sub = await sw.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(key)});
+    await fetch(`${API}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({agentEmail:appEmail, agentToken:appToken, subscription:sub.toJSON()})});
+    updatePushDiag();
+  }catch(e){ console.error('contrôle abonnement push :', e); }
+}
+// Au retour au premier plan, et toutes les 30 min tant que l'écoutant est en ligne
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') _ensurePushRegistered(); });
+setInterval(()=>{ _ensurePushRegistered().catch(()=>{}); }, 1800000);
+
 async function _autoSubscribePush(){
   try{
     const sw=await navigator.serviceWorker.ready;
@@ -1712,6 +1747,7 @@ if('serviceWorker' in navigator){
           updateStatusUI(); startPoll();
           if(Notification.permission==='granted') _autoSubscribePush().catch(()=>{});
           updatePushDiag();
+          _ensurePushRegistered(true).catch(()=>{});
         } else if(localStorage.getItem('parlons_agent_online')==='1'){
           goOnline();
         }

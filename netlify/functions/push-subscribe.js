@@ -33,6 +33,14 @@ exports.handler = async (event) => {
     return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Token invalide' }) };
 
   try {
+    // L'application vérifie périodiquement sa présence en base : le navigateur peut très bien
+    // détenir un abonnement alors que la ligne serveur a disparu (un envoi en échec la supprime).
+    // Sans ce contrôle, l'écoutant se croit joignable et ne reçoit plus rien, en silence.
+    if (action === 'status') {
+      const rows = await sbGet(`push_subscriptions?agent_email=eq.${encodeURIComponent(agentEmail)}&select=endpoint&limit=1`);
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, present: rows.length > 0 }) };
+    }
+
     if (action === 'unsubscribe') {
       await fetch(`${SB_URL}/rest/v1/push_subscriptions?agent_email=eq.${encodeURIComponent(agentEmail)}`, {
         method: 'DELETE',

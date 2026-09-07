@@ -156,6 +156,18 @@ Dans `chat-send`, les envois sortants sont regroupés dans `envois[]` puis atten
 Le push est le **seul** moyen d'atteindre l'écoutant quand son application est en arrière-plan : le
 navigateur y suspend les minuteurs, donc le sondage ne tourne plus.
 
+**Auto-réparation de l'abonnement.** `push-notify` supprime une ligne dès qu'un envoi est rejeté par
+le service de push, et l'application ne la recréait qu'à de rares moments : un seul échec suffisait à
+couper les notifications définitivement et en silence — l'écoutant se croyait joignable, le
+navigateur détenant toujours son abonnement local. L'app appelle donc `push-subscribe`
+(`action: 'status'`) à la mise en ligne, au retour au premier plan et toutes les 30 min ; si la ligne
+manque, elle refait un abonnement **complet** (désinscription puis réinscription — renvoyer l'ancien
+ne servirait à rien s'il a été supprimé pour endpoint mort). Silencieux, rien à faire côté écoutant.
+
+Suppression sur **404 / 410 uniquement** : un 403 signale le plus souvent des clés VAPID qui ne
+correspondent pas — une erreur de configuration, pas un appareil disparu. Supprimer sur 403
+effacerait d'un coup les abonnements de toute l'équipe.
+
 ## ✓✓ Accusés de réception et indicateur de saisie
 
 Style SMS / WhatsApp, dans les deux sens (`index.html` visiteur, `agent-app.html` écoutant) :

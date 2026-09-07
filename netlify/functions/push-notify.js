@@ -80,7 +80,12 @@ exports.handler = async (event) => {
           sub = typeof row.subscription === 'string' ? JSON.parse(row.subscription) : row.subscription;
         } catch { return Promise.reject(new Error('invalid_json')); }
         return webpush.sendNotification(sub, payload).catch(async err => {
-          if ([404, 410, 403].includes(err.statusCode)) {
+          // 404 / 410 : l'endpoint n'existe plus, la ligne n'a plus d'objet. En revanche 403
+          // signale le plus souvent des clés VAPID qui ne correspondent pas — une erreur de
+          // configuration, pas un appareil disparu : supprimer effacerait tous les abonnements
+          // d'un coup et couperait les notifications de toute l'équipe.
+          if (err.statusCode === 403) console.error('push-notify : 403 (VAPID ?) — abonnement conservé');
+          if ([404, 410].includes(err.statusCode)) {
             await fetch(`${SB_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(sub.endpoint)}`, {
               method: 'DELETE', headers: H()
             }).catch(() => {});
