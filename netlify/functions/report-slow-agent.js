@@ -57,11 +57,13 @@ exports.handler = async (event) => {
       }
 
       if (delaiOk) {
+        // Clé d'idempotence : deux appels concurrents pour le même paiement (double clic, requête
+        // rejouée) créeraient sinon deux remboursements avant que le premier ne soit visible.
         const refund = await stripe.refunds.create({
           charge: pi.latest_charge,
           reason: 'requested_by_customer',
           metadata: { motif: 'agent_lent', client, session, elapsed_sec: String(elapsedSec) },
-        });
+        }, { idempotencyKey: `slow_${paymentId}` });
         rembourse = refund.status === 'succeeded' || refund.status === 'pending';
         refundId = refund.id;
       }

@@ -76,11 +76,15 @@ exports.handler = async (event) => {
     const deja = (charge && (charge.refunded || charge.amount_refunded >= charge.amount)) || intent.status === 'canceled';
 
     if (!deja && intent.status === 'succeeded') {
+      // Clé d'idempotence : deux appels concurrents (double clic, requête rejouée) avant que
+      // Stripe ne reflète le premier remboursement passeraient tous les deux le contrôle `deja`
+      // ci-dessus. La clé, fixe pour une même session, fait que Stripe renvoie le remboursement
+      // déjà créé au lieu d'en créer un second.
       await stripe.refunds.create({
         payment_intent: pi,
         reason: 'requested_by_customer',
         metadata: { motif: 'aucun_ecoutant_demande_visiteur', session_id: sessionId }
-      });
+      }, { idempotencyKey: `refund_${sessionId}` });
     }
 
     await fetch(`${SB_URL}/rest/v1/sessions?stripe_payment_id=eq.${encodeURIComponent(pi)}`, {
