@@ -35,7 +35,7 @@ exports.handler = async (event) => {
   try {
     // Sessions actives tenues par un écoutant humain
     const sessions = await sbGet(
-      `chat_sessions?status=eq.active&agent_email=not.is.null&agent_email=neq.${encodeURIComponent(AI_EMAIL)}&select=id,assigned_at&order=assigned_at.desc&limit=200`
+      `chat_sessions?status=eq.active&agent_email=not.is.null&agent_email=neq.${encodeURIComponent(AI_EMAIL)}&select=id,assigned_at,agent_typing_at&order=assigned_at.desc&limit=200`
     );
 
     const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
@@ -43,7 +43,7 @@ exports.handler = async (event) => {
 
     await Promise.all(sessions.map(async (s) => {
       const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(s.id)}&select=id,sender_type,created_at&order=created_at.desc&limit=12`);
-      if (!maxShouldAssist(msgs, s.assigned_at)) return;
+      if (!maxShouldAssist(msgs, s.assigned_at, { agentTypingAt: s.agent_typing_at })) return;
       const last = msgs.find(m => m.sender_type !== 'system');
       declenchees++;
       try {

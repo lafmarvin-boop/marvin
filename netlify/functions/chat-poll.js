@@ -76,7 +76,7 @@ exports.handler = async (event) => {
         if (!humanHeld) {
           trigger = !!last && last.sender_type === 'visitor' && waitingMs > 1500;
         } else {
-          trigger = maxShouldAssist(lastRows, s.assigned_at);
+          trigger = maxShouldAssist(lastRows, s.assigned_at, { agentTypingAt: s.agent_typing_at });
           assist = true;
         }
         if (trigger) {
@@ -238,7 +238,7 @@ exports.handler = async (event) => {
 
       // Toutes les sessions actives de cet agent
       const activeSessions = await sbGet(
-        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip,loyalty_discount,response_deadline,visitor_fetched_at,visitor_seen_at,visitor_typing_at,agent_fetched_at&order=assigned_at.asc&limit=3`
+        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip,loyalty_discount,response_deadline,visitor_fetched_at,visitor_seen_at,visitor_typing_at,agent_fetched_at,agent_typing_at&order=assigned_at.asc&limit=3`
       );
 
       // L'agent poll = il voit ses sessions : lever response_deadline si encore actif
@@ -265,7 +265,7 @@ exports.handler = async (event) => {
             // Une requête par session : un « in.(…) » commun, borné en nombre de lignes, peut
             // n'en couvrir qu'une seule si l'une d'elles est bavarde.
             const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sess.id)}&select=id,sender_type,created_at&order=created_at.desc&limit=12`);
-            if (!maxShouldAssist(msgs, sess.assigned_at)) return;
+            if (!maxShouldAssist(msgs, sess.assigned_at, { agentTypingAt: sess.agent_typing_at })) return;
             const last = msgs.find(m => m.sender_type !== 'system');
             try {
               await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {

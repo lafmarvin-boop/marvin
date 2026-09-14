@@ -28,7 +28,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const { AI_EMAIL, ASSIST_DELAY_MS, assistDelayMs, maxCarriesThread } = require('./_assist');
+const { AI_EMAIL, assistDecision, maxCarriesThread } = require('./_assist');
 // Réflexion étendue : minimum 1024 jetons côté API, et max_tokens doit rester supérieur au budget.
 const REFLEXION = Math.max(1024, parseInt(process.env.AI_THINKING_TOKENS || '1500', 10));
 // Profil soigné : pas de limite à 10 s dans une fonction background, on privilégie la qualité.
@@ -105,7 +105,7 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     // (Netlify coupe la fonction à 10 s).
     if (!body.assist) await sleep(600);
 
-    const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=id,status,agent_email,pre_name,pre_topic,session_label,duration_sec,assigned_at&limit=1`);
+    const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=id,status,agent_email,pre_name,pre_topic,session_label,duration_sec,assigned_at,agent_typing_at&limit=1`);
     const sess = sessions[0];
     // Deux modes : Max tient la session (aucun écoutant connecté), ou Max assiste un écoutant
     // humain qui n'a pas répondu depuis ASSIST_DELAY_MS (il garde la session, Max comble le silence).
@@ -126,22 +126,16 @@ exports.repondre = async (body, { rapide = false } = {}) => {
       // Revérification côté serveur des conditions d'assistance (le client ne décide pas seul).
       // Le délai dépend de qui porte le fil : 30 s pour le premier relais, rythme normal tant
       // que Max mène la conversation et que l'écoutant n'a pas repris la main (_assist.js).
+      // Exactement la même règle que les déclencheurs (_assist.js) : premier contact 10 s,
+      // silence en cours d'échange 30 s, 1,5 s quand Max mène déjà l'échange — et jamais
+      // pendant que l'écoutant est en train d'écrire.
       const desc = [...msgs].reverse();
-      const delai = assistDelayMs(desc);
-      const waitingSince = last && last.sender_type === 'visitor'
-        ? new Date(last.created_at).getTime()                       // le visiteur attend une réponse
-        : (!humanReplied && sess.assigned_at ? new Date(sess.assigned_at).getTime() : 0); // tchat jamais ouvert
-      if (!waitingSince || Date.now() - waitingSince < delai) {
-        console.log('ai-reply assist trop tôt', sessionId, waitingSince ? Date.now() - waitingSince : 'aucune attente');
-        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_too_early' }) };
+      const d = assistDecision(desc, sess.assigned_at, { agentTypingAt: sess.agent_typing_at });
+      if (!d.go) {
+        console.log('ai-reply assist non retenu', sessionId, d.raison, 'seuil', d.seuil);
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: `assist_${d.raison}` }) };
       }
-      console.log('ai-reply assist déclenché', sessionId, 'attente', Math.round((Date.now() - waitingSince) / 1000), 's', 'seuil', delai);
-      // Max ne relance jamais quelqu'un qui n'a pas écrit : s'il a déjà parlé et que le dernier
-      // mot n'est pas celui du visiteur, il n'y a rien à répondre.
-      const lastAssist = desc.find(m => m.sender_type === 'assistant');
-      if (lastAssist && (!last || last.sender_type !== 'visitor')) {
-        return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'assist_nothing_pending' }) };
-      }
+      console.log('ai-reply assist déclenché', sessionId, 'attente', Math.round(d.attente / 1000), 's', 'seuil', d.seuil);
     } else {
       if (!last || last.sender_type !== 'visitor') {
         console.log('ai-reply skip no_pending_visitor_message', sessionId, last?.sender_type);
@@ -222,7 +216,11 @@ exports.repondre = async (body, { rapide = false } = {}) => {
       `Contexte de cette session : la personne s'appelle ${sess.pre_name || 'Visiteur'}${sess.pre_topic ? `, elle a indiqué comme sujet : « ${sess.pre_topic} »` : ''}.`,
       `Formule : ${sess.session_label || 'session'}${(sess.session_label || '').includes('GRATUIT') ? ' (conversation offerte : aucune question de remboursement)' : ''}. Conversation commencée il y a ${elapsedMin} min. Temps restant approximatif : ${remainingMin} min.`,
       assisting
-        ? `Écoutant humain : ${agentName} est en ligne et suit cette conversation, mais ${maxCarriesThread([...msgs].reverse()) ? 'n\'est pas revenu depuis : c\'est toi qui mènes l\'échange depuis plusieurs messages, poursuis-le simplement, sans rien changer à ton ton ni signaler quoi que ce soit' : 'n\'a pas répondu depuis plus de ' + Math.round(ASSIST_DELAY_MS / 1000) + ' secondes (il gère peut-être un autre visiteur)'}. Tu prends la suite de la conversation de façon totalement naturelle et fluide, comme si le fil se poursuivait : tu réponds à ce que la personne vient de dire, en tenant compte de tout ce qui a déjà été échangé, y compris les messages de ${agentName}. Tu ne signales pas ton arrivée, tu ne te présentes pas, tu ne dis pas que tu remplaces quelqu'un, tu ne commentes pas l'absence de l'écoutant et tu ne t'excuses pas pour lui : la personne voit déjà que c'est toi qui écris. ${agentName} reprendra la main dès qu'il le pourra, sans que cela ait besoin d'être annoncé. Si la personne demande où est l'écoutant, dis simplement qu'il est occupé un instant et qu'il revient, puis reviens à elle.`
+        ? `Écoutant humain : ${agentName} est en ligne et suit cette conversation, mais ${maxCarriesThread([...msgs].reverse())
+            ? 'n\'est pas revenu depuis : c\'est toi qui mènes l\'échange depuis plusieurs messages, poursuis-le simplement, sans rien changer à ton ton ni signaler quoi que ce soit'
+            : (humanReplied
+              ? 'n\'a pas répondu depuis un moment (il gère peut-être un autre visiteur)'
+              : 'vient tout juste de recevoir cette conversation et n\'a pas encore eu le temps de l\'ouvrir : tu accueilles la personne à sa place, chaleureusement, et il prendra la suite dès qu\'il la verra')}. Tu prends la suite de la conversation de façon totalement naturelle et fluide, comme si le fil se poursuivait : tu réponds à ce que la personne vient de dire, en tenant compte de tout ce qui a déjà été échangé, y compris les messages de ${agentName}. Tu ne signales pas ton arrivée, tu ne te présentes pas, tu ne dis pas que tu remplaces quelqu'un, tu ne commentes pas l'absence de l'écoutant et tu ne t'excuses pas pour lui : la personne voit déjà que c'est toi qui écris. ${agentName} reprendra la main dès qu'il le pourra, sans que cela ait besoin d'être annoncé. Si la personne demande où est l'écoutant, dis simplement qu'il est occupé un instant et qu'il revient, puis reviens à elle.`
         : `Écoutant humain : pas encore connecté (les écoutants ont été alertés par email il y a ${elapsedMin} min).`,
       opening ? `Tu as ouvert la conversation par : « ${opening} »` : ''
     ].filter(Boolean).join('\n');
