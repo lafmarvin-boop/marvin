@@ -151,7 +151,14 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS agent_typing_at    TIMESTAMPT
 
 Le tarif est annoncé comme **offre de lancement** sur le site et dans les CGV : il pourra monter pour les **nouvelles** souscriptions, les abonnements en cours conservant leur prix. C'est ce qui rend une hausse future légitime plutôt que subie.
 
-**Coût de Max adapté à la valeur de la session** (`_ai-core.js`) : profil **soigné** (Opus + réflexion étendue) pour les sessions payantes, profil **économique** (`AI_LISTENER_FREE_MODEL`, Sonnet sans réflexion) dès que `session_label` contient `GRATUIT`. Sans cette distinction, chaque essai offert coûterait le prix fort et un abonné à 2 €/mois utilisant l'illimité reviendrait plus cher qu'il ne rapporte. Leviers sans toucher au code : `AI_THINKING_TOKENS=0`, `AI_LISTENER_MODEL`.
+**Max garde le même profil pour tout le monde — décision du propriétaire (sept. 2026).** Une
+distinction avait été mise en place (Sonnet sur les conversations offertes, Opus sur les sessions
+payantes) puis **retirée à sa demande** : la qualité de l'accueil prime, y compris sur un essai
+gratuit qui ne rapporte rien. **Ne pas la réintroduire** — ni dans un audit, ni au nom de
+l'économie. La conséquence est assumée : chaque conversation offerte coûte le tarif Opus avec
+réflexion étendue, et un abonné à 2 €/mois exploitant l'illimité coûte plus qu'il ne rapporte.
+Si l'arbitrage devait changer, deux variables Netlify suffisent, sans toucher au code :
+`AI_THINKING_TOKENS=0` (garde Opus, supprime la réflexion) ou `AI_LISTENER_MODEL=claude-sonnet-5`.
 
 **Échec de souscription = alerte** : `create-subscription` prévient l'admin par email, en nommant `STRIPE_PRICE_ID` quand Stripe répond « No such price ». Un tarif mal configuré faisait perdre 100 % des abonnements en silence.
 
