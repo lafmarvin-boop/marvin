@@ -1,7 +1,7 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 // Max, assistant d'écoute IA (ai-reply.js) et règle d'assistance partagée (_assist.js)
-const { AI_EMAIL, maxShouldAssist } = require('./_assist');
+const { AI_EMAIL, maxShouldAssist, maxCarriesThread } = require('./_assist');
 
 // « … en train d'écrire » : l'indicateur s'éteint seul si la dernière frappe date
 // de plus de 8 s. Aucun signal d'arrêt n'est nécessaire — rien ne peut rester bloqué.
@@ -18,13 +18,16 @@ const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
 
 // Rythme de réponse de Max : une réponse instantanée trahit la machine et met le visiteur
 // en position de « chat bot ». On retient donc l'affichage de sa réponse le temps qu'un humain
-// aurait mis à lire et écrire : 5-7 s pour un message court (< 6 mots), 10-15 s au-delà.
-// Le délai est dérivé de l'identifiant du message visiteur pour rester stable d'un poll à l'autre.
+// aurait mis à lire et écrire — **5 à 10 s**, un peu plus près de 10 s sur un message long.
+// Le délai est dérivé de l'identifiant du message visiteur pour rester stable d'un poll à l'autre :
+// deux sondages successifs doivent calculer la même échéance, sinon la réponse réapparaîtrait
+// et disparaîtrait. C'est un **minimum** d'affichage, pas un maximum : si Max met plus longtemps
+// à rédiger, sa réponse arrive quand elle est prête.
 function maxReplyDelayMs(visitorMsg) {
   const words = String(visitorMsg.content || '').trim().split(/\s+/).filter(Boolean).length;
   let seed = 0;
   for (const ch of String(visitorMsg.id || '')) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
-  return words < 6 ? 5000 + (seed % 2001) : 10000 + (seed % 5001);
+  return words < 6 ? 5000 + (seed % 3001) : 7000 + (seed % 3001);
 }
 
 async function sbGet(path) {
@@ -98,13 +101,28 @@ exports.handler = async (event) => {
 
       // Retenir la réponse de Max tant que le délai « le temps de lire et d'écrire » n'est pas écoulé.
       let messagesOut = messages, retenu = false;
-      // Uniquement quand Max tient la session : en assistance, le visiteur a déjà attendu
-      // ASSIST_DELAY_MS, inutile d'ajouter le délai « le temps d'écrire ».
-      const fromMax = m => s.agent_email === AI_EMAIL
-        && (m.sender_type === 'agent' || m.sender_type === 'assistant');
-      if (messages.some(fromMax)) {
-        const recent = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,content,sender_type,created_at&order=created_at.desc&limit=6`);
+      // Deux cas où Max écrit : il TIENT la session (ses messages sont de type `agent`), ou il
+      // ASSISTE un écoutant humain (type `assistant`).
+      //
+      // L'assistance était exclue de ce rythme, au motif que le visiteur avait déjà patienté
+      // ASSIST_DELAY_MS. C'est vrai du **premier** relais seulement : ensuite, tant que Max porte
+      // le fil, il répond au bout d'ASSIST_RESUME_MS (1,5 s) et la réponse tombait instantanément
+      // — exactement ce qui trahit la machine. On applique donc le délai quand Max portait déjà le
+      // fil **au moment où le visiteur a écrit**, et pas sur sa première prise de parole, qui
+      // ferait alors 15-20 s d'attente cumulée.
+      //
+      // Garde préalable sans requête : la lecture du fil n'a lieu que si ce sondage rapporte
+      // effectivement une réponse susceptible de venir de Max. Sans elle, on ajouterait une
+      // requête Supabase à *chaque* sondage — toutes les 2,5 s et pour chaque visiteur.
+      const peutVenirDeMax = messages.some(m =>
+        (s.agent_email === AI_EMAIL && m.sender_type === 'agent') || m.sender_type === 'assistant');
+      if (peutVenirDeMax) {
+        const recent = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,content,sender_type,created_at&order=created_at.desc&limit=8`);
         const vIdx = recent.findIndex(m => m.sender_type === 'visitor');
+        // État du fil juste avant ce message du visiteur (recent va du plus récent au plus ancien)
+        const portaitDeja = vIdx >= 0 && maxCarriesThread(recent.slice(vIdx + 1));
+        const fromMax = m => (s.agent_email === AI_EMAIL && m.sender_type === 'agent')
+          || (m.sender_type === 'assistant' && portaitDeja);
         if (vIdx > 0) {
           const visitorMsg = recent[vIdx];
           const due = new Date(visitorMsg.created_at).getTime() + maxReplyDelayMs(visitorMsg);

@@ -212,6 +212,25 @@ téléphone** : quelqu'un qui ne peut pas parler à voix haute n'est pas quelqu'
 
 **⚠️ Forme de la réflexion étendue (sept. 2026 — cause d'un silence total de Max).** `claude-opus-5` **refuse** `thinking: { type: 'enabled', budget_tokens }` : l'API répond 400 « use thinking.type.adaptive and output_config ». La profondeur se règle par `output_config.effort`, plus par un budget de jetons. L'erreur était invisible : elle survenait dans `ai-reply-background`, qui avait **déjà répondu 202**, si bien qu'`ai-reply` croyait l'appel réussi et ne repliait jamais sur le profil rapide. Max s'est tu sur **tous** ses appels, assistance comprise, alors que la règle `_assist.js` se déclenchait correctement (`go: true` dans les traces) — chercher le défaut du côté des délais aurait été sans fin. Deux garde-fous désormais : le champ `thinking` n'est **envoyé que si la réflexion est demandée** (son absence est acceptée par tous les modèles, sa forme non), et `_ai-core.js` **rejoue lui-même en profil rapide** si le profil soigné échoue — un modèle muet vaut moins qu'un modèle plus simple qui parle. Ne pas remettre ce repli à la charge d'`ai-reply` : il ne peut pas voir l'échec d'une fonction background.
 
+**Rythme de réponse de Max — 5 à 10 s (sept. 2026).** Une réponse instantanée trahit la machine et
+met le visiteur en position de « chat bot ». `chat-poll.js` retient donc l'affichage de la réponse le
+temps qu'un humain aurait mis à lire et écrire : **5-8 s** pour un message court (< 6 mots), **7-10 s**
+au-delà. Le délai est dérivé de l'identifiant du message visiteur, et non tiré au sort à chaque appel :
+deux sondages successifs doivent calculer la **même** échéance, sinon la réponse apparaîtrait puis
+disparaîtrait. C'est un **minimum** d'affichage, pas un maximum — si Max met plus longtemps à rédiger,
+sa réponse arrive quand elle est prête. Pendant la retenue, l'indicateur « … » reste allumé
+(`otherTyping: … || retenu`) : c'est bien le moment où il écrit.
+
+**Le rythme s'applique aussi en assistance, mais pas au premier relais.** Il en était exclu au motif
+que le visiteur avait déjà patienté `ASSIST_DELAY_MS` — vrai de la *première* intervention seulement.
+Ensuite, tant que Max porte le fil, il répond au bout d'`ASSIST_RESUME_MS` (1,5 s) et la réponse
+tombait **instantanément**. La condition est donc : Max portait-il déjà le fil **au moment où le
+visiteur a écrit** (`maxCarriesThread` sur les messages antérieurs à celui-ci) ? Si oui, délai ; si
+non — première prise de parole, ou premier relais après une réponse humaine —, affichage immédiat,
+sans quoi l'attente cumulée atteindrait 15 à 30 s. ⚠️ La lecture du fil est précédée d'une garde
+**sans requête** (`peutVenirDeMax`) : sans elle, on ajouterait une requête Supabase à *chaque*
+sondage, toutes les 2,5 s et pour chaque visiteur.
+
 **Ouverture d'une session récupérée en file d'attente.** Quand `assist-sweep` attribue à Max une session que personne n'a prise, le visiteur n'a souvent **rien écrit**. Le mode « Max tient la session » exigeait un message visiteur en attente et s'arrêtait net : la session restait muette. Max ouvre donc la conversation lui-même quand le fil ne contient aucun message (hors système), comme le font déjà `chat-start` / `free-session`.
 
 - **Article SEO hebdomadaire** (Routine Claude, mardi 6h Paris) : choisit une requête réelle non couverte (voir `blog/_topics.md`), rédige un article de 900-1 300 mots et le publie via `node tools/new-article.mjs article.json` → page statique `blog/<slug>.html` (template `blog/_template.html`, JSON-LD Article, canonical, OG), carte en tête de `blog.html`, URL dans `sitemap.xml`, ligne dans `blog/_topics.md` ; commit `blog:` + push + notification.
