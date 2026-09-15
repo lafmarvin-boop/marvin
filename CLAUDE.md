@@ -147,7 +147,13 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS agent_typing_at    TIMESTAMPT
 | | |
 |---|---|
 | Première conversation | **20 min offertes**, sans carte bancaire, une fois par personne |
-| Pass mensuel illimité | **2 €/mois**, sessions illimitées de 30 min max, 24 h/24, résiliable à tout moment |
+| Pass mensuel illimité | **2 €/mois — tarif de lancement**, sessions illimitées de 30 min max, 24 h/24, résiliable à tout moment |
+
+Le tarif est annoncé comme **offre de lancement** sur le site et dans les CGV : il pourra monter pour les **nouvelles** souscriptions, les abonnements en cours conservant leur prix. C'est ce qui rend une hausse future légitime plutôt que subie.
+
+**Coût de Max adapté à la valeur de la session** (`_ai-core.js`) : profil **soigné** (Opus + réflexion étendue) pour les sessions payantes, profil **économique** (`AI_LISTENER_FREE_MODEL`, Sonnet sans réflexion) dès que `session_label` contient `GRATUIT`. Sans cette distinction, chaque essai offert coûterait le prix fort et un abonné à 2 €/mois utilisant l'illimité reviendrait plus cher qu'il ne rapporte. Leviers sans toucher au code : `AI_THINKING_TOKENS=0`, `AI_LISTENER_MODEL`.
+
+**Échec de souscription = alerte** : `create-subscription` prévient l'admin par email, en nommant `STRIPE_PRICE_ID` quand Stripe répond « No such price ». Un tarif mal configuré faisait perdre 100 % des abonnements en silence.
 
 **Sessions à l'unité (1 € / 3 € / 5 €) désactivées.** Le verrou est **côté serveur**
 (`create-payment-intent.js`, `FORFAITS_UNITAIRES`) : masquer les boutons ne suffirait pas, un appel

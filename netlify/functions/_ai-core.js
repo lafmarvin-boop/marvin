@@ -39,6 +39,16 @@ const PROFIL_SOIGNE = {
   timeout: 120000,
   verrouMs: 90000
 };
+// Profil économique : conversations offertes. Elles ne rapportent rien et servent à convaincre,
+// pas à impressionner — un modèle rapide y suffit largement. Sans cette distinction, chaque essai
+// gratuit coûterait le prix fort, et l'abonnement à 2 €/mois ne couvrirait jamais la dépense.
+const PROFIL_ECONOME = {
+  model: process.env.AI_LISTENER_FREE_MODEL || 'claude-sonnet-5',
+  thinking: { type: 'disabled' },
+  maxTokens: 450,
+  timeout: 60000,
+  verrouMs: 45000
+};
 // Profil rapide : repli tenu dans les 10 s de Netlify (comportement d'origine).
 const PROFIL_RAPIDE = {
   model: process.env.AI_LISTENER_FAST_MODEL || 'claude-sonnet-5',
@@ -94,7 +104,10 @@ exports.repondre = async (body, { rapide = false } = {}) => {
   if (!SB_URL || !SB_KEY) return { statusCode: 503, headers: CORS, body: JSON.stringify({ error: 'Service non configuré' }) };
   if (!process.env.ANTHROPIC_API_KEY) return { statusCode: 503, headers: CORS, body: JSON.stringify({ error: 'ANTHROPIC_API_KEY manquante' }) };
 
-  const profil = rapide ? PROFIL_RAPIDE : PROFIL_SOIGNE;
+  // Le modèle suit la valeur de la session : réflexion étendue pour un abonné, modèle rapide
+  // pour une conversation offerte. Affectation différée, le libellé n'étant connu qu'après
+  // lecture de la session.
+  let profil = rapide ? PROFIL_RAPIDE : PROFIL_SOIGNE;
   const { sessionId, messageId } = body;
 
   if (!sessionId) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'sessionId requis' }) };
@@ -109,6 +122,8 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     const sess = sessions[0];
     // Deux modes : Max tient la session (aucun écoutant connecté), ou Max assiste un écoutant
     // humain qui n'a pas répondu depuis ASSIST_DELAY_MS (il garde la session, Max comble le silence).
+    // Conversation offerte : profil économique. En repli, le profil rapide s'impose déjà.
+    if (!rapide && sess && String(sess.session_label || '').includes('GRATUIT')) profil = PROFIL_ECONOME;
     const holdsSession = sess && sess.agent_email === AI_EMAIL;
     const assisting = sess && !holdsSession && !!sess.agent_email && body.assist === true;
     if (!sess || sess.status !== 'active' || (!holdsSession && !assisting)) {
