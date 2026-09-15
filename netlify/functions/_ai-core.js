@@ -168,7 +168,6 @@ exports.repondre = async (body, { rapide = false } = {}) => {
       const desc = [...msgs].reverse();
       const d = assistDecision(desc, sess.assigned_at, { agentTypingAt: sess.agent_typing_at });
       if (!d.go) {
-        trace('rejet', { s: String(sessionId).slice(0, 8), raison: d.raison, seuilS: Math.round((d.seuil||0)/1000) }); // TEMPORAIRE
         console.log('ai-reply assist non retenu', sessionId, d.raison, 'seuil', d.seuil);
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: `assist_${d.raison}` }) };
       }

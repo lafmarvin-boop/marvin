@@ -7,7 +7,6 @@ const { AI_EMAIL, maxShouldAssist, maxCarriesThread } = require('./_assist');
 // de plus de 8 s. Aucun signal d'arrêt n'est nécessaire — rien ne peut rester bloqué.
 const TYPING_TTL_MS = 8000;
 const isTyping = ts => !!ts && Date.now() - new Date(ts).getTime() < TYPING_TTL_MS;
-const { trace } = require('./_trace'); // TEMPORAIRE
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -139,8 +138,6 @@ exports.handler = async (event) => {
           if (Date.now() < due) {
             const hide = new Set(recent.slice(0, vIdx).filter(fromMax).map(m => m.id));
             if (hide.size) { messagesOut = messages.filter(m => !hide.has(m.id)); retenu = true; }
-            trace('retenue', { s: String(sessionId).slice(0, 8), n: hide.size, porte: portaitDeja, // TEMPORAIRE
-              restantS: Math.round((due - Date.now()) / 1000) });
           }
         }
       }
