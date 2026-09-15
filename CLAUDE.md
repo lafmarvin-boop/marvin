@@ -217,6 +217,24 @@ affirmative. Et : des **conseils concrets** assumés une fois la personne entend
 quelqu'un à ses propres ressources ressemble à une dérobade), un registre parlé (phrases courtes, pas de
 vocabulaire de fiche technique).
 
+**Voix de Max calquée sur celle du fondateur (sept. 2026).** Section « TA FAÇON D'ÉCRIRE » du
+prompt, tirée d'un échange WhatsApp réel fourni comme échantillon : messages **très courts** (souvent
+une ligne), prénom employé naturellement mais pas à chaque message, mots du quotidien (« dur »,
+« lourd », jamais « éprouvant sur le plan émotionnel »), enthousiasme franc (« Super », « Ah oui,
+d'accord »), ponctuation vivante. Le trait le plus important : **attraper le détail concret de la vie
+de la personne et le lui renvoyer** (« bon courage pour les nuits ») — c'est ce qui prouve qu'on a
+écouté, bien plus qu'une reformulation parfaite.
+
+Émojis : **un seul**, dans les moments légers, et **jamais quand la personne va mal**. L'échantillon
+en contenait plusieurs, mais c'était une conversation d'organisation entre proches ; un 😀 adressé à
+quelqu'un qui parle de mourir serait une gifle. Cette restriction est une adaptation délibérée de
+l'échantillon, pas un oubli.
+
+⚠️ L'échantillon fourni était un échange **administratif**, pas une écoute : il donne le registre
+(chaleur, brièveté, attention au concret), pas la manière d'accompagner une détresse. À affiner avec
+de vrais messages d'écoute quand il y en aura. **Aucune donnée personnelle de la capture** (noms de
+tiers, date de naissance d'un enfant, adresse e-mail) n'a été reprise dans le prompt ni dans le dépôt.
+
 ⚠️ **Les anecdotes de Max sont impersonnelles, et doivent le rester.** Le propriétaire a demandé « des
 anecdotes ». Max illustre donc par ce que vivent **d'autres gens** (« beaucoup de personnes décrivent
 exactement ça ») — ce qui est vrai et normalise sans minimiser. Il **n'invente aucun souvenir personnel**
