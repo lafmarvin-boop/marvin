@@ -208,6 +208,24 @@ spontanément, orienter vers 15 / 3114 / 119. Les mêmes recours écrits figuren
 d'urgence et l'avertissement d'`index.html`. **Ne pas réduire ce protocole aux seuls numéros de
 téléphone** : quelqu'un qui ne peut pas parler à voix haute n'est pas quelqu'un qui refuse l'aide.
 
+**Ton de Max — moins de questions, de vrais conseils (sept. 2026).** En relisant une conversation
+réelle, le propriétaire a constaté que Max **posait une question à presque chaque message**, au point que
+le visiteur a fini par demander s'il parlait à une IA. Le prompt disait déjà « tu ne bombardes pas de
+questions » : trop vague pour être appliqué. La consigne est donc devenue **comptable** — une question
+maximum par message, environ **un message sur trois** seulement, les autres se terminant par une phrase
+affirmative. Et : des **conseils concrets** assumés une fois la personne entendue (renvoyer indéfiniment
+quelqu'un à ses propres ressources ressemble à une dérobade), un registre parlé (phrases courtes, pas de
+vocabulaire de fiche technique).
+
+⚠️ **Les anecdotes de Max sont impersonnelles, et doivent le rester.** Le propriétaire a demandé « des
+anecdotes ». Max illustre donc par ce que vivent **d'autres gens** (« beaucoup de personnes décrivent
+exactement ça ») — ce qui est vrai et normalise sans minimiser. Il **n'invente aucun souvenir personnel**
+(« moi aussi j'ai vécu ça », une famille, un passé) : ce serait fabriquer une confidence auprès de
+quelqu'un de vulnérable, alors même que le motif de la demande était un visiteur qui soupçonnait déjà une
+IA. Découvrir ensuite que la confidence était inventée serait bien pire que le soupçon de départ — sans
+compter l'obligation de ne jamais nier sa nature (règlement IA). **Ne pas transformer cette consigne en
+anecdotes à la première personne.**
+
 **Transparence** : la nature de Max (programme) est indiquée une seule fois, dans le message système d'ouverture (et dans le modal / FAQ / CGV) ; ailleurs il est simplement « Max · assistant d'écoute » et ne le rappelle jamais de lui-même, mais ne le nie jamais si on lui demande — ne pas supprimer cette mention (obligation légale, règlement IA / pratiques commerciales). **Variable Netlify requise : `ANTHROPIC_API_KEY`** (sans elle, comportement d'origine : file d'attente). Optionnels : `AI_LISTENER_MODEL` (défaut `claude-opus-5`), `AI_LISTENER_FAST_MODEL` (repli), `AI_THINKING_TOKENS` (0 pour désactiver la réflexion), `AI_EFFORT` (`low`/`medium`/`high`…, défaut `medium`), `AI_SUGGEST_MODEL`, `ASSIST_FIRST_MS` / `ASSIST_DELAY_MS` / `ASSIST_RESUME_MS`.
 
 **⚠️ Forme de la réflexion étendue (sept. 2026 — cause d'un silence total de Max).** `claude-opus-5` **refuse** `thinking: { type: 'enabled', budget_tokens }` : l'API répond 400 « use thinking.type.adaptive and output_config ». La profondeur se règle par `output_config.effort`, plus par un budget de jetons. L'erreur était invisible : elle survenait dans `ai-reply-background`, qui avait **déjà répondu 202**, si bien qu'`ai-reply` croyait l'appel réussi et ne repliait jamais sur le profil rapide. Max s'est tu sur **tous** ses appels, assistance comprise, alors que la règle `_assist.js` se déclenchait correctement (`go: true` dans les traces) — chercher le défaut du côté des délais aurait été sans fin. Deux garde-fous désormais : le champ `thinking` n'est **envoyé que si la réflexion est demandée** (son absence est acceptée par tous les modèles, sa forme non), et `_ai-core.js` **rejoue lui-même en profil rapide** si le profil soigné échoue — un modèle muet vaut moins qu'un modèle plus simple qui parle. Ne pas remettre ce repli à la charge d'`ai-reply` : il ne peut pas voir l'échec d'une fonction background.
