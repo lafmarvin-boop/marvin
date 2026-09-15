@@ -257,6 +257,29 @@ Suppression sur **404 / 410 uniquement** : un 403 signale le plus souvent des cl
 correspondent pas — une erreur de configuration, pas un appareil disparu. Supprimer sur 403
 effacerait d'un coup les abonnements de toute l'équipe.
 
+## 🔔 Alerte visiteur à l'arrivée d'un message
+
+Diagnostic (sept. 2026) : des visiteurs ouvraient une conversation puis ne répondaient jamais. Le
+parcours est sain — vérifié dans un navigateur mobile réel, la zone de saisie apparaît bien quand
+l'écoutant prend le tchat. La cause était ailleurs : **rien n'avertissait le visiteur**. Sa page
+n'était abonnée à aucune notification (`index.html` n'appelle jamais `pushManager`), et il n'y avait
+ni son, ni vibration, ni changement de titre. La réponse de l'écoutant arrivait dans un onglet
+endormi. Vu du visiteur : il a attendu, personne n'est venu.
+
+`pcpAlerteMessage()` dans `index.html` : son doux (deux notes sinusoïdales, gain 0,05 — la personne
+peut être couchée près de quelqu'un la nuit), `navigator.vibrate([35,60,35])`, et titre de l'onglet
+pendant 10 s. Déclenché **uniquement** quand le panneau est replié ou l'onglet en arrière-plan : on
+ne sonne pas dans l'oreille de quelqu'un qui regarde déjà l'écran.
+
+**Émis par la page, donc aucune autorisation à demander** — choix délibéré : solliciter une
+permission de notification auprès de quelqu'un qui cherche de l'aide n'est pas anodin. Le contexte
+audio est armé au premier geste de l'utilisateur (`pointerdown` / `keydown`), les navigateurs
+refusant le son sans interaction préalable.
+
+**Limite assumée** : si le navigateur a gelé l'onglet — application quittée, téléphone verrouillé —
+plus rien ne s'exécute dans la page, sondage compris, et aucune alerte ne part. Seule une
+notification push y remédierait, au prix d'une demande d'autorisation. Écarté pour l'instant.
+
 ## ✓✓ Accusés de réception et indicateur de saisie
 
 Style SMS / WhatsApp, dans les deux sens (`index.html` visiteur, `agent-app.html` écoutant) :

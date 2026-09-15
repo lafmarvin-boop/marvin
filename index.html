@@ -3268,6 +3268,57 @@ async function demanderRemboursement(btn){
   }
 }
 
+// ── ALERTE DISCRÈTE À L'ARRIVÉE D'UN MESSAGE ──
+// Émise par la page elle-même : aucune autorisation à demander, aucune notification système.
+// Un son doux, une vibration brève, et le titre de l'onglet. Volume délibérément bas : la
+// personne peut être couchée à côté de quelqu'un, la nuit.
+// Limite assumée : si le navigateur a gelé l'onglet (application quittée, téléphone verrouillé),
+// plus rien ne s'exécute dans la page — le sondage compris. Cela aide quand l'onglet est encore
+// vivant : autre onglet, panneau replié, écran allumé.
+let _pcpAudio=null,_pcpTitreInitial=null,_pcpTitreTimer=null;
+
+// Les navigateurs n'autorisent le son qu'après un geste de l'utilisateur : on prépare le contexte
+// audio au premier contact avec la page, bien avant d'en avoir besoin.
+function pcpArmerSon(){
+  if(_pcpAudio)return;
+  try{const AC=window.AudioContext||window.webkitAudioContext;if(AC)_pcpAudio=new AC();}catch(e){}
+}
+document.addEventListener('pointerdown',pcpArmerSon,{once:true});
+document.addEventListener('keydown',pcpArmerSon,{once:true});
+
+function pcpAlerteMessage(){
+  try{
+    if(_pcpAudio&&_pcpAudio.state==='suspended')_pcpAudio.resume();
+    if(_pcpAudio&&_pcpAudio.state==='running'){
+      const t=_pcpAudio.currentTime;
+      // Deux notes brèves et rondes, montantes — une présence, pas une alarme.
+      [[587.33,0],[783.99,0.14]].forEach(([freq,retard])=>{
+        const o=_pcpAudio.createOscillator(),g=_pcpAudio.createGain();
+        o.type='sine';o.frequency.value=freq;
+        g.gain.setValueAtTime(0.0001,t+retard);
+        g.gain.exponentialRampToValueAtTime(0.05,t+retard+0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+retard+0.30);
+        o.connect(g);g.connect(_pcpAudio.destination);
+        o.start(t+retard);o.stop(t+retard+0.32);
+      });
+    }
+  }catch(e){}
+  // Vibration très légère (Android ; iOS ne l'implémente pas)
+  try{if(navigator.vibrate)navigator.vibrate([35,60,35]);}catch(e){}
+  // Titre de l'onglet, utile sur ordinateur
+  try{
+    if(_pcpTitreInitial===null)_pcpTitreInitial=document.title;
+    document.title='💬 Nouveau message — Parlons';
+    clearTimeout(_pcpTitreTimer);
+    _pcpTitreTimer=setTimeout(()=>{if(_pcpTitreInitial!==null)document.title=_pcpTitreInitial;},10000);
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&_pcpTitreInitial!==null){
+    clearTimeout(_pcpTitreTimer);document.title=_pcpTitreInitial;
+  }
+});
+
 function appendChatMsg(msg){
   if(msg.sender_type==='system'&&msg.content&&msg.content.startsWith('📱')) return;
   const area=document.getElementById('pcp-msgs');
@@ -3297,6 +3348,8 @@ function appendChatMsg(msg){
   }
   if(msg.created_at)chatLastMsgTime=msg.created_at;
   if(!chatPanelOpen&&(msg.sender_type==='agent'||msg.sender_type==='assistant')){chatUnreadCount++;updateChatBadge();}
+  // Prévenir seulement si la personne ne regarde pas : panneau replié ou onglet en arrière-plan.
+  if((msg.sender_type==='agent'||msg.sender_type==='assistant')&&(!chatPanelOpen||document.visibilityState!=='visible')) pcpAlerteMessage();
   if((msg.sender_type==='agent'||msg.sender_type==='assistant')&&sessionTimer===null&&chatState==='active')startSessionCountdown(msg.created_at||null);
 }
 async function startChatSession(name,sessionType,sessionLabel,durationSec,paymentId){
