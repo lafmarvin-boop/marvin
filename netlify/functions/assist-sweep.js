@@ -13,7 +13,7 @@
 // ai-reply, qui revérifie tout avant d'écrire.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const { AI_EMAIL, assistDecision } = require('./_assist');
+const { AI_EMAIL, ASSIST_FIRST_MS, assistDecision } = require('./_assist');
 const { trace } = require('./_trace'); // TEMPORAIRE
 
 const SB_URL = process.env.SUPABASE_URL;
@@ -67,8 +67,37 @@ exports.handler = async (event) => {
       } catch { /* ai-reply poursuit de son côté */ }
     }));
 
+    // ── Sessions en file d'attente : le trou que personne ne couvrait ──
+    // Une session non attribuée — jamais prise, ou rendue à la file parce que l'écoutant n'a pas
+    // envoyé son premier message dans les deux minutes — n'a **aucun** interlocuteur : Max n'est
+    // attribué qu'au démarrage, et seulement si personne n'est en ligne. Le visiteur pouvait donc
+    // écrire dans le vide indéfiniment, y compris en situation grave. Max prend le relais.
+    const enAttente = await sbGet(`chat_sessions?status=eq.waiting&select=id,created_at&order=created_at.asc&limit=50`);
+    let reprises = 0;
+    await Promise.all(enAttente.map(async (s) => {
+      if (Date.now() - new Date(s.created_at || Date.now()).getTime() < ASSIST_FIRST_MS) return;
+      // Attribution conditionnelle : si un écoutant l'a prise entre-temps, la mise à jour ne
+      // touche aucune ligne et Max s'abstient.
+      const pr = await fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(s.id)}&status=eq.waiting`, {
+        method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+        body: JSON.stringify({ agent_email: AI_EMAIL, status: 'active', assigned_at: new Date().toISOString(), response_deadline: null })
+      });
+      const pris = await pr.json().catch(() => []);
+      if (!Array.isArray(pris) || !pris.length) return;
+      reprises++;
+      trace('file-attente', { s: s.id.slice(0, 8), attenteS: Math.round((Date.now() - new Date(s.created_at).getTime()) / 1000) }); // TEMPORAIRE
+      try {
+        await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: s.id }),
+          signal: AbortSignal.timeout(3000)
+        });
+      } catch { /* ai-reply poursuit de son côté */ }
+    }));
+    if (reprises) console.log(`assist-sweep : ${reprises} session(s) reprise(s) en file d'attente`);
+
     if (declenchees) console.log(`assist-sweep : ${declenchees}/${sessions.length} session(s) assistée(s)`);
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, sessions: sessions.length, declenchees }) };
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, sessions: sessions.length, declenchees, reprises }) };
   } catch (e) {
     console.error('assist-sweep:', e.message);
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: e.message }) };

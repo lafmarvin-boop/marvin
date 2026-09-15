@@ -12,7 +12,7 @@
 //   — PREMIER CONTACT (`ASSIST_FIRST_MS`, 10 s) : le tchat vient d'être attribué
 //     et l'écoutant n'a pas encore dit un mot. Le visiteur ne doit pas rester
 //     seul devant un écran muet ; Max engage, l'écoutant reprend dès qu'il voit.
-//   — SILENCE EN COURS D'ÉCHANGE (`ASSIST_DELAY_MS`, 30 s) : l'écoutant a déjà
+//   — SILENCE EN COURS D'ÉCHANGE (`ASSIST_DELAY_MS`, 20 s) : l'écoutant a déjà
 //     parlé mais tarde à répondre (il gère peut-être un autre visiteur). Le
 //     délai est plus long : c'est le temps qu'on lui laisse pour revenir.
 //   — MAX PORTE DÉJÀ LE FIL (`ASSIST_RESUME_MS`, 1,5 s) : il a parlé après le
@@ -26,7 +26,7 @@
 const AI_EMAIL = 'claude@parlonsecoute.fr';
 // Silence toléré avant que Max ne prenne la parole
 const ASSIST_FIRST_MS = parseInt(process.env.ASSIST_FIRST_MS || '10000', 10);  // tchat jamais ouvert
-const ASSIST_DELAY_MS = parseInt(process.env.ASSIST_DELAY_MS || '30000', 10);  // silence en cours d'échange
+const ASSIST_DELAY_MS = parseInt(process.env.ASSIST_DELAY_MS || '20000', 10);  // silence en cours d'échange
 const RESUME_DELAY_MS = parseInt(process.env.ASSIST_RESUME_MS || '1500', 10);  // Max mène déjà l'échange
 // Une frappe de moins de 8 s signale un écoutant en train d'écrire (voir chat-signal.js)
 const TYPING_TTL_MS = 8000;
