@@ -3357,10 +3357,35 @@ document.addEventListener('visibilitychange',()=>{
   }
 });
 
+// Affichage immédiat du message que le visiteur vient d'envoyer. Sans cela, il écrit, appuie,
+// et ne voit rien jusqu'au sondage suivant — jusqu'à une seconde d'un écran qui ne réagit pas,
+// ce qui inquiète sur une connexion lente. La bulle est marquée provisoire (⏳) et remplacée dès
+// que le serveur renvoie le vrai message. Elle n'entre pas dans le suivi des messages
+// (`chatLastMsgTime`, `chatRenderedIds`) : ce repère pilote le sondage et l'avancer à tort
+// ferait manquer des messages.
+function ajouterBulleProvisoire(contenu){
+  const area=document.getElementById('pcp-msgs'); if(!area) return null;
+  const div=document.createElement('div');
+  div.className='pcp-msg visitor pcp-provisoire';
+  div.dataset.contenu=contenu;
+  div.textContent=contenu;
+  const tick=document.createElement('span');
+  tick.className='pcp-tick';tick.textContent='⏳';tick.title='Envoi en cours…';
+  div.appendChild(tick);
+  const typing=document.getElementById('pcp-typing');
+  if(typing&&typing.parentNode===area)area.insertBefore(div,typing);else area.appendChild(div);
+  area.scrollTop=area.scrollHeight;
+  return div;
+}
+
 function appendChatMsg(msg){
   if(msg.sender_type==='system'&&msg.content&&msg.content.startsWith('📱')) return;
   const area=document.getElementById('pcp-msgs');
   if(!area)return;
+  // Le serveur confirme un message affiché provisoirement : on retire le doublon.
+  if(msg.sender_type==='visitor'&&msg.content){
+    area.querySelectorAll('.pcp-provisoire').forEach(el=>{ if(el.dataset.contenu===msg.content) el.remove(); });
+  }
   if(msg.id){if(chatRenderedIds.has(msg.id))return;chatRenderedIds.add(msg.id);}
   if(msg.sender_type==='system'&&msg.content&&chatRenderedContent.has(msg.content)) return;
   if(msg.sender_type==='system'&&msg.content) chatRenderedContent.add(msg.content);
@@ -3598,11 +3623,17 @@ async function sendChatMessage(){
   const content=(ta&&ta.value.trim())||'';
   if(!content||!chatSessionId)return;
   ta.value='';ta.style.height='auto';
+  const provisoire=ajouterBulleProvisoire(content);
   try{
     await fetch('/.netlify/functions/chat-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:chatSessionId,content,senderType:'visitor'})});
     // Après un envoi, rafraîchir chaque seconde pendant 10 s pour afficher la réponse sans attendre le cycle de 2,5 s
     for(let i=1;i<=10;i++) setTimeout(()=>{ if(chatSessionId) pollChat(); }, i*1000);
-  }catch(e){if(ta)ta.value=content;}
+  }catch(e){
+    // L'envoi a échoué : on retire la bulle et on rend le texte, plutôt que de laisser croire
+    // que le message est parti.
+    if(provisoire)provisoire.remove();
+    if(ta){ta.value=content;ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,90)+'px';}
+  }
 }
 function openAgentRequestForm(){
   const name=document.getElementById('user-name')?document.getElementById('user-name').value.trim():'Visiteur';

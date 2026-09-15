@@ -287,6 +287,17 @@ ne ferait rien vaut moins que pas de commande.
 plus rien ne s'exécute dans la page, sondage compris, et aucune alerte ne part. Seule une
 notification push y remédierait, au prix d'une demande d'autorisation. Écarté pour l'instant.
 
+## ⏳ Affichage immédiat du message envoyé (visiteur)
+
+`ajouterBulleProvisoire()` dans `index.html` : le message du visiteur s'affiche dès le clic, avec une
+coche **⏳**, puis la bulle est remplacée quand le serveur le renvoie au sondage suivant
+(correspondance sur `dataset.contenu`). Sans cela, il écrivait, appuyait, et ne voyait rien pendant
+près d'une seconde — inquiétant sur une connexion lente. Si l'envoi échoue, la bulle est retirée et
+le texte rendu au champ : jamais laisser croire qu'un message est parti.
+
+⚠️ La bulle provisoire **n'entre pas** dans `chatLastMsgTime` ni `chatRenderedIds`. Ce repère pilote
+le `since` du sondage : l'avancer avec un horodatage local ferait manquer des messages du serveur.
+
 ## ✓✓ Accusés de réception et indicateur de saisie
 
 Style SMS / WhatsApp, dans les deux sens (`index.html` visiteur, `agent-app.html` écoutant) :
