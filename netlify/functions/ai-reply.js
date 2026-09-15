@@ -30,7 +30,10 @@ exports.handler = async (event) => {
     const res = await fetch(`${process.env.SUPABASE_URL}/rest/v1/suggestions?payment_id=eq.TRACE&select=content&order=created_at.desc&limit=${Math.min(parseInt(body.limit || '25', 10), 60)}`,
       { headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` } });
     const rows = await res.json().catch(() => []);
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, n: rows.length, traces: rows.map(r => r.content) }, null, 1) };
+    // `build` : repère de déploiement. Sans lui, impossible de distinguer « le correctif est en
+    // ligne et rien ne l'a encore exercé » de « le déploiement n'est pas passé ». (TEMPORAIRE)
+    const { PROFIL_INFO } = require('./_ai-core');
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, build: PROFIL_INFO, n: rows.length, traces: rows.map(r => r.content) }, null, 1) };
   }
 
   // Sauf demande explicite du contraire (repli déjà tenté), on tente le profil soigné.

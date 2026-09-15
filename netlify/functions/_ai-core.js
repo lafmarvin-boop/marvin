@@ -58,6 +58,14 @@ const PROFIL_RAPIDE = {
   timeout: 8000,
   verrouMs: 25000
 };
+// Repère de déploiement lu par le diagnostic d'ai-reply (TEMPORAIRE, avec le traçage)
+exports.PROFIL_INFO = {
+  soigne: PROFIL_SOIGNE.model,
+  reflexion: PROFIL_SOIGNE.thinking ? PROFIL_SOIGNE.thinking.type : 'aucune',
+  effort: PROFIL_SOIGNE.outputConfig ? PROFIL_SOIGNE.outputConfig.effort : null,
+  rapide: PROFIL_RAPIDE.model
+};
+
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type' };
