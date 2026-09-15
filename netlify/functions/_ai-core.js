@@ -45,7 +45,7 @@ const PROFIL_SOIGNE = {
   // En réflexion adaptative, les jetons de réflexion sont décomptés de max_tokens : il faut de la
   // marge, sinon la réponse est tronquée avant d'avoir commencé.
   outputConfig: REFLEXION_ON ? { effort: EFFORT } : null,
-  maxTokens: REFLEXION_ON ? 4000 : 450,
+  maxTokens: REFLEXION_ON ? 8000 : 450,
   timeout: 120000,
   verrouMs: 90000
 };
@@ -292,6 +292,16 @@ exports.repondre = async (body, { rapide = false } = {}) => {
         if (rapide) throw err;
         console.warn('ai-reply : profil soigné en échec (' + err.message + '), repli sur ' + PROFIL_RAPIDE.model);
         trace('repli', { s: String(sessionId).slice(0, 8), de: profil.model, vers: PROFIL_RAPIDE.model, msg: String(err.message).slice(0, 120) }); // TEMPORAIRE
+        response = await appeler(PROFIL_RAPIDE);
+      }
+
+      // Réponse vide : en réflexion adaptative, le modèle peut consommer max_tokens en réfléchissant
+      // et s'arrêter avant d'avoir écrit un mot. Le visiteur recevrait la phrase de secours
+      // ci-dessous — correcte mais impersonnelle — sans que rien ne le signale. On rejoue.
+      const vide = (r) => !r.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      if (!rapide && vide(response)) {
+        trace('vide', { s: String(sessionId).slice(0, 8), stop: response.stop_reason }); // TEMPORAIRE
+        console.warn('ai-reply : réponse vide en profil soigné (' + response.stop_reason + '), repli');
         response = await appeler(PROFIL_RAPIDE);
       }
     } finally { clearInterval(battement); }
