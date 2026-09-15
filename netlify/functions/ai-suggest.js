@@ -105,7 +105,8 @@ exports.handler = async (event) => {
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 400,
-      thinking: { type: 'disabled' },
+      // Pas de champ `thinking` : sa forme varie d'un modèle à l'autre (opus-5 refuse
+      // `enabled`/`budget_tokens`), l'absence du champ vaut « pas de réflexion » partout.
       system: [
         { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
         { type: 'text', text: contexte }

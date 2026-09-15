@@ -30,20 +30,30 @@ const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const { AI_EMAIL, assistDecision, maxCarriesThread } = require('./_assist');
 const { trace } = require('./_trace'); // TEMPORAIRE
-// Réflexion étendue : minimum 1024 jetons côté API, et max_tokens doit rester supérieur au budget.
-const REFLEXION = Math.max(1024, parseInt(process.env.AI_THINKING_TOKENS || '1500', 10));
+// Réflexion étendue. ⚠️ `claude-opus-5` n'accepte PAS `thinking: { type: 'enabled',
+// budget_tokens }` : l'API répond 400 (« use thinking.type.adaptive and output_config »).
+// C'est ce qui a rendu Max muet sur **tous** ses appels — l'erreur survenait dans la fonction
+// background, qui avait déjà répondu 202, donc personne ne la voyait. La profondeur de réflexion
+// se règle désormais par `output_config.effort`, pas par un budget de jetons.
+// `AI_THINKING_TOKENS=0` reste le moyen documenté de couper la réflexion.
+const REFLEXION_ON = parseInt(process.env.AI_THINKING_TOKENS || '1500', 10) > 0;
+const EFFORT = process.env.AI_EFFORT || 'medium';   // low | medium | high | xhigh | max
 // Profil soigné : pas de limite à 10 s dans une fonction background, on privilégie la qualité.
 const PROFIL_SOIGNE = {
   model: process.env.AI_LISTENER_MODEL || 'claude-opus-5',
-  thinking: REFLEXION > 0 ? { type: 'enabled', budget_tokens: REFLEXION } : { type: 'disabled' },
-  maxTokens: REFLEXION > 0 ? REFLEXION + 700 : 450,
+  thinking: REFLEXION_ON ? { type: 'adaptive' } : null,
+  // En réflexion adaptative, les jetons de réflexion sont décomptés de max_tokens : il faut de la
+  // marge, sinon la réponse est tronquée avant d'avoir commencé.
+  outputConfig: REFLEXION_ON ? { effort: EFFORT } : null,
+  maxTokens: REFLEXION_ON ? 4000 : 450,
   timeout: 120000,
   verrouMs: 90000
 };
 // Profil rapide : repli tenu dans les 10 s de Netlify (comportement d'origine).
 const PROFIL_RAPIDE = {
   model: process.env.AI_LISTENER_FAST_MODEL || 'claude-sonnet-5',
-  thinking: { type: 'disabled' },
+  thinking: null,
+  outputConfig: null,
   maxTokens: 450,
   timeout: 8000,
   verrouMs: 25000
@@ -146,11 +156,17 @@ exports.repondre = async (body, { rapide = false } = {}) => {
       }
       console.log('ai-reply assist déclenché', sessionId, 'attente', Math.round(d.attente / 1000), 's', 'seuil', d.seuil);
     } else {
-      if (!last || last.sender_type !== 'visitor') {
+      // Aucun message d'aucune part : Max vient de reprendre une session laissée en file
+      // d'attente (assist-sweep) et personne ne s'est encore adressé au visiteur. Il engage,
+      // comme chat-start / free-session le font quand Max tient la session dès le départ.
+      // Sans cette exception, une session récupérée en file restait muette : le visiteur
+      // n'ayant rien écrit, la garde ci-dessous l'arrêtait net.
+      const ouverture = !last;
+      if (!ouverture && (!last || last.sender_type !== 'visitor')) {
         console.log('ai-reply skip no_pending_visitor_message', sessionId, last?.sender_type);
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'no_pending_visitor_message' }) };
       }
-      if (messageId && last.id !== messageId) {
+      if (!ouverture && messageId && last.id !== messageId) {
         console.log('ai-reply skip superseded', sessionId, messageId, last.id);
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'superseded' }) };
       }
@@ -245,19 +261,39 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     marquerEcrit();
     const battement = setInterval(marquerEcrit, 6000);
 
+    // Un appel au modèle, selon un profil. Isolé pour pouvoir rejouer en profil rapide.
+    const appeler = async (pr) => {
+      const client = new Anthropic({ timeout: pr.timeout, maxRetries: 0 });
+      return client.messages.create({
+        model: pr.model,
+        max_tokens: pr.maxTokens,
+        // On n'envoie ces deux champs que si la réflexion est demandée : leur forme varie d'un
+        // modèle à l'autre, alors que leur absence est acceptée partout.
+        ...(pr.thinking ? { thinking: pr.thinking } : {}),
+        ...(pr.outputConfig ? { output_config: pr.outputConfig } : {}),
+        system: [
+          { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: context }
+        ],
+        messages
+      });
+    };
+
     let response;
     try {
-      const client = new Anthropic({ timeout: profil.timeout, maxRetries: 0 });
-      response = await client.messages.create({
-      model: profil.model,
-      max_tokens: profil.maxTokens,
-      thinking: profil.thinking,
-      system: [
-        { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: context }
-      ],
-      messages
-      });
+      try {
+        response = await appeler(profil);
+      } catch (err) {
+        // ── Filet de sécurité : un échec du profil soigné ne doit JAMAIS valoir silence ──
+        // ai-reply ne peut pas s'en charger : la fonction background lui a déjà répondu 202, il
+        // croit donc l'appel réussi. Une clé refusée, un modèle indisponible ou une option non
+        // supportée laissaient le visiteur sans aucune réponse, sans que rien ne le signale.
+        // Un modèle muet vaut moins qu'un modèle plus simple qui parle.
+        if (rapide) throw err;
+        console.warn('ai-reply : profil soigné en échec (' + err.message + '), repli sur ' + PROFIL_RAPIDE.model);
+        trace('repli', { s: String(sessionId).slice(0, 8), de: profil.model, vers: PROFIL_RAPIDE.model, msg: String(err.message).slice(0, 120) }); // TEMPORAIRE
+        response = await appeler(PROFIL_RAPIDE);
+      }
     } finally { clearInterval(battement); }
 
     // Les blocs de réflexion ne sont pas destinés au visiteur : seul le texte est retenu.
@@ -314,7 +350,7 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     } finally { await unlock(); }
   } catch (e) {
     console.error('ai-reply:', e.message);
-    if (body.assist === true) trace('erreur', { s: String(sessionId).slice(0, 8), msg: String(e.message).slice(0, 180) }); // TEMPORAIRE
+    trace('erreur', { s: String(sessionId).slice(0, 8), assist: body.assist === true, msg: String(e.message).slice(0, 180) }); // TEMPORAIRE
     const profilNom = rapide ? PROFIL_RAPIDE.model : PROFIL_SOIGNE.model;
     // Prévenir l'admin : une réponse de Max a échoué (clé, modèle, délai…)
     if (ADMIN_EMAIL) {
