@@ -177,6 +177,13 @@ subsiste — ne pas le supprimer des CGV en le confondant avec la résiliation.
 **Programme fidélité masqué** : les remises portaient sur les sessions à l'unité. Le bloc reste dans
 `index.html` entre un `<div style="display:none">` pour un retour éventuel des forfaits.
 
+**Friction du parcours gratuit** : la conversation offerte ne demande **que** le prénom et trois
+cases (majorité, service non médical / pas de crise suicidaire, CGV). La case « je renonce à mon
+droit de rétractation — la session démarre après paiement » est **masquée et non exigée** : sans
+paiement il n'y a aucun droit de rétractation en jeu, et la faire cocher à quelqu'un à qui on vient
+de promettre la gratuité sans carte était à la fois sans objet et inquiétant. Elle reste évidemment
+obligatoire pour l'abonnement. **Ne pas la réimposer sur le parcours gratuit.**
+
 ## ✅ Fonctionnalités complètes
 
 - Discount fidélité affiché dans l'app agent (badge 🎁 dans panneau flottant + file d'attente)

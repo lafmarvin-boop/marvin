@@ -1649,12 +1649,12 @@
           <input type="checkbox" id="check-cgv" style="margin-top:2px;accent-color:var(--terracotta);flex-shrink:0;"/>
           <span>J'accepte les <a href="#" onclick="openCGV();return false;" style="color:var(--terracotta)">CGV</a> et la <a href="#" onclick="openPrivacy();return false;" style="color:var(--terracotta)">politique de confidentialité</a></span>
         </label>
-        <label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.72rem;color:var(--mid);cursor:pointer;width:100%;">
+        <label id="retractation-row" style="display:flex;align-items:flex-start;gap:.5rem;font-size:.72rem;color:var(--mid);cursor:pointer;width:100%;">
           <input type="checkbox" id="check-retractation" style="margin-top:2px;accent-color:var(--terracotta);flex-shrink:0;"/>
           <span>Je renonce expressément à mon droit de rétractation — la session démarre immédiatement après paiement</span>
         </label>
-        <!-- EXPLICATION RÉTRACTATION LÉGALE (après les cases) -->
-        <div class="retractation-box" style="margin-top:.3rem;">
+        <!-- EXPLICATION RÉTRACTATION LÉGALE (après les cases) — masquée sur la conversation offerte -->
+        <div class="retractation-box" id="retractation-box" style="margin-top:.3rem;">
           <strong>⚖️ Droit de rétractation (obligation légale)</strong>
           En cochant la case ci-dessus, vous reconnaissez que la prestation de service démarre immédiatement après paiement et renoncez expressément à votre droit de rétractation de 14 jours, conformément à l'article L221-28 du Code de la consommation.
         </div>
@@ -1974,6 +1974,14 @@ function updatePrice(){
   if(subjectField) subjectField.style.display=isSub?'none':'block';
   if(btn) btn.textContent=isFree?'Commencer gratuitement →':'Continuer →';
 
+  // Conversation offerte : ni paiement, ni droit de rétractation en jeu. Faire cocher
+  // « je renonce à mon droit de rétractation — la session démarre après paiement » serait sans
+  // objet, et alarmant pour quelqu'un à qui on vient de promettre la gratuité sans carte.
+  const retRow=document.getElementById('retractation-row');
+  const retBox=document.getElementById('retractation-box');
+  if(retRow) retRow.style.display=isFree?'none':'flex';
+  if(retBox) retBox.style.display=isFree?'none':'';
+
   // Badge fidélité dans la modale
   const isDiscountable = !isNaN(parseInt(selectedAmount)) && !isFree;
   const loyalty = getLoyaltyInfo();
@@ -2004,7 +2012,7 @@ function goToPayment(){
   if(!checkCrisis||!checkCrisis.checked){alert('⚠️ Veuillez confirmer que vous n\'êtes pas en situation de crise suicidaire active.\n\nSi vous êtes en détresse, appelez le 3114 (gratuit, 24h/24).');return;}
   if(!checkCgv||!checkCgv.checked){alert('⚠️ Veuillez accepter les CGV et la politique de confidentialité pour continuer.');return;}
   const checkRetractation=document.getElementById('check-retractation');
-  if(!checkRetractation||!checkRetractation.checked){alert('⚠️ Vous devez renoncer expressément à votre droit de rétractation pour continuer (service démarrant immédiatement).');return;}
+  if(selectedAmount!=='free'&&(!checkRetractation||!checkRetractation.checked)){alert('⚠️ Vous devez renoncer expressément à votre droit de rétractation pour continuer (service démarrant immédiatement).');return;}
 
   // ── CAS GRATUIT : première conversation offerte ──
   if(selectedAmount==='free'){
