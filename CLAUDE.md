@@ -276,6 +276,13 @@ permission de notification auprès de quelqu'un qui cherche de l'aide n'est pas 
 audio est armé au premier geste de l'utilisateur (`pointerdown` / `keydown`), les navigateurs
 refusant le son sans interaction préalable.
 
+**Réglages du visiteur** : deux bascules dans l'en-tête du panneau (`pcp-son-btn`, `pcp-vib-btn`),
+mémorisées dans `localStorage` (`parlons_alerte_son`, `parlons_alerte_vib`), **activées par défaut** —
+quelqu'un qui attend une réponse a besoin d'être prévenu, celui que ça dérange coupe en un geste.
+Toucher la bascule rejoue immédiatement le son ou la vibration, pour savoir à quoi s'attendre. Le
+bouton vibration est masqué quand `typeof navigator.vibrate !== 'function'` (iOS) : une commande qui
+ne ferait rien vaut moins que pas de commande.
+
 **Limite assumée** : si le navigateur a gelé l'onglet — application quittée, téléphone verrouillé —
 plus rien ne s'exécute dans la page, sondage compris, et aucune alerte ne part. Seule une
 notification push y remédierait, au prix d'une demande d'autorisation. Écarté pour l'instant.

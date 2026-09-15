@@ -518,6 +518,9 @@
     .pcp-header-right{display:flex;align-items:center;gap:.5rem;}
     .pcp-timer{font-size:.8rem;font-weight:700;background:rgba(0,0,0,.2);border-radius:20px;padding:.12rem .5rem;}
     .pcp-close{background:none;border:none;color:rgba(255,255,255,.8);font-size:1.05rem;cursor:pointer;padding:0;line-height:1;}
+    /* Bascules son et vibration : réglages du visiteur, mémorisés sur son appareil */
+    .pcp-toggle{background:none;border:none;font-size:.95rem;cursor:pointer;padding:0 .1rem;line-height:1;opacity:1;transition:opacity .15s;}
+    .pcp-toggle[aria-pressed="false"]{opacity:.4;}
     .pcp-close:hover{color:white;}
     .pcp-msgs{flex:1;overflow-y:auto;padding:.8rem;display:flex;flex-direction:column;gap:.45rem;}
     .pcp-msg{max-width:82%;padding:.5rem .75rem;border-radius:14px;font-size:.81rem;line-height:1.5;word-break:break-word;}
@@ -3163,6 +3166,8 @@ document.fonts && document.fonts.ready.then(stackBanners);
     </div>
     <div class="pcp-header-right">
       <button id="pcp-renew-btn" onclick="openModal()" style="display:none;background:rgba(255,255,255,.2);color:white;border:1px solid rgba(255,255,255,.5);border-radius:50px;padding:.18rem .6rem;font-size:.7rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;white-space:nowrap;">🔁 Relancer</button>
+      <button class="pcp-toggle" id="pcp-son-btn" onclick="pcpBasculerSon()" aria-pressed="true" title="Son des nouveaux messages">🔔</button>
+      <button class="pcp-toggle" id="pcp-vib-btn" onclick="pcpBasculerVibration()" aria-pressed="true" title="Vibration des nouveaux messages" style="display:none">📳</button>
       <span class="pcp-timer" id="pcp-timer" style="display:none"></span>
       <button class="pcp-close" onclick="toggleChatPanel()" aria-label="Fermer">✕</button>
     </div>
@@ -3286,7 +3291,36 @@ function pcpArmerSon(){
 document.addEventListener('pointerdown',pcpArmerSon,{once:true});
 document.addEventListener('keydown',pcpArmerSon,{once:true});
 
-function pcpAlerteMessage(){
+// Réglages du visiteur, conservés sur son appareil. Activés par défaut : quelqu'un qui attend une
+// réponse a besoin d'être prévenu ; celui que ça dérange peut couper en un geste.
+function pcpSonActif(){ try{ return localStorage.getItem('parlons_alerte_son')!=='0'; }catch(e){ return true; } }
+function pcpVibActif(){ try{ return localStorage.getItem('parlons_alerte_vib')!=='0'; }catch(e){ return true; } }
+function pcpMajBascules(){
+  const bs=document.getElementById('pcp-son-btn');
+  if(bs){ const a=pcpSonActif(); bs.textContent=a?'🔔':'🔕'; bs.setAttribute('aria-pressed',a?'true':'false');
+    bs.title=a?'Son activé — toucher pour couper':'Son coupé — toucher pour activer'; }
+  const bv=document.getElementById('pcp-vib-btn');
+  if(bv){
+    // Inutile d'afficher une bascule qui ne ferait rien : iOS n'implémente pas la vibration.
+    if(typeof navigator.vibrate!=='function'){ bv.style.display='none'; return; }
+    bv.style.display='';
+    const a=pcpVibActif(); bv.setAttribute('aria-pressed',a?'true':'false');
+    bv.title=a?'Vibration activée — toucher pour couper':'Vibration coupée — toucher pour activer';
+  }
+}
+function pcpBasculerSon(){
+  try{ localStorage.setItem('parlons_alerte_son', pcpSonActif()?'0':'1'); }catch(e){}
+  pcpMajBascules();
+  if(pcpSonActif()) pcpJouerSon();   // un aperçu immédiat, pour savoir à quoi s'attendre
+}
+function pcpBasculerVibration(){
+  try{ localStorage.setItem('parlons_alerte_vib', pcpVibActif()?'0':'1'); }catch(e){}
+  pcpMajBascules();
+  if(pcpVibActif()){ try{ if(typeof navigator.vibrate==='function') navigator.vibrate([35]); }catch(e){} }
+}
+document.addEventListener('DOMContentLoaded',pcpMajBascules);
+
+function pcpJouerSon(){
   try{
     if(_pcpAudio&&_pcpAudio.state==='suspended')_pcpAudio.resume();
     if(_pcpAudio&&_pcpAudio.state==='running'){
@@ -3303,8 +3337,12 @@ function pcpAlerteMessage(){
       });
     }
   }catch(e){}
+}
+
+function pcpAlerteMessage(){
+  if(pcpSonActif()) pcpJouerSon();
   // Vibration très légère (Android ; iOS ne l'implémente pas)
-  try{if(navigator.vibrate)navigator.vibrate([35,60,35]);}catch(e){}
+  if(pcpVibActif()){ try{if(typeof navigator.vibrate==='function')navigator.vibrate([35,60,35]);}catch(e){} }
   // Titre de l'onglet, utile sur ordinateur
   try{
     if(_pcpTitreInitial===null)_pcpTitreInitial=document.title;
