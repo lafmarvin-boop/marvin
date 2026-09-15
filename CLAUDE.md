@@ -248,10 +248,13 @@ anecdotes à la première personne.**
 
 **⚠️ Forme de la réflexion étendue (sept. 2026 — cause d'un silence total de Max).** `claude-opus-5` **refuse** `thinking: { type: 'enabled', budget_tokens }` : l'API répond 400 « use thinking.type.adaptive and output_config ». La profondeur se règle par `output_config.effort`, plus par un budget de jetons. L'erreur était invisible : elle survenait dans `ai-reply-background`, qui avait **déjà répondu 202**, si bien qu'`ai-reply` croyait l'appel réussi et ne repliait jamais sur le profil rapide. Max s'est tu sur **tous** ses appels, assistance comprise, alors que la règle `_assist.js` se déclenchait correctement (`go: true` dans les traces) — chercher le défaut du côté des délais aurait été sans fin. Deux garde-fous désormais : le champ `thinking` n'est **envoyé que si la réflexion est demandée** (son absence est acceptée par tous les modèles, sa forme non), et `_ai-core.js` **rejoue lui-même en profil rapide** si le profil soigné échoue — un modèle muet vaut moins qu'un modèle plus simple qui parle. Ne pas remettre ce repli à la charge d'`ai-reply` : il ne peut pas voir l'échec d'une fonction background.
 
-**Rythme de réponse de Max — 5 à 10 s (sept. 2026).** Une réponse instantanée trahit la machine et
+**Rythme de réponse de Max — 8 à 14 s (sept. 2026).** Une réponse instantanée trahit la machine et
 met le visiteur en position de « chat bot ». `chat-poll.js` retient donc l'affichage de la réponse le
-temps qu'un humain aurait mis à lire et écrire : **5-8 s** pour un message court (< 6 mots), **7-10 s**
-au-delà. Le délai est dérivé de l'identifiant du message visiteur, et non tiré au sort à chaque appel :
+temps qu'un humain aurait mis à lire et écrire : **8-12 s** pour un message court (< 6 mots), **10-14 s**
+au-delà (base 5-8 / 7-10 s, plus un **supplément de 3 à 4 s** demandé par le propriétaire). Ce supplément
+n'est pas cosmétique : avant lui le plancher (5 s) était du même ordre que le temps de rédaction de Max
+(~5 s mesurées en production), la retenue ne mordait donc quasiment jamais et le rythme perçu n'était que
+la vitesse du modèle. **Ne pas le retirer en le prenant pour une marge arbitraire.** Le délai est dérivé de l'identifiant du message visiteur, et non tiré au sort à chaque appel :
 deux sondages successifs doivent calculer la **même** échéance, sinon la réponse apparaîtrait puis
 disparaîtrait. C'est un **minimum** d'affichage, pas un maximum — si Max met plus longtemps à rédiger,
 sa réponse arrive quand elle est prête. Pendant la retenue, l'indicateur « … » reste allumé
