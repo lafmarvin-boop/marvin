@@ -33,7 +33,8 @@ exports.handler = async (event) => {
     // `build` : repère de déploiement. Sans lui, impossible de distinguer « le correctif est en
     // ligne et rien ne l'a encore exercé » de « le déploiement n'est pas passé ». (TEMPORAIRE)
     const { PROFIL_INFO } = require('./_ai-core');
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, build: PROFIL_INFO, n: rows.length, traces: rows.map(r => r.content) }, null, 1) };
+    const { DELAI_INFO } = require('./chat-poll');
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, build: PROFIL_INFO, delai: DELAI_INFO, n: rows.length, traces: rows.map(r => r.content) }, null, 1) };
   }
 
   // Sauf demande explicite du contraire (repli déjà tenté), on tente le profil soigné.

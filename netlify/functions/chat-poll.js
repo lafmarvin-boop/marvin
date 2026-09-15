@@ -7,6 +7,7 @@ const { AI_EMAIL, maxShouldAssist, maxCarriesThread } = require('./_assist');
 // de plus de 8 s. Aucun signal d'arrêt n'est nécessaire — rien ne peut rester bloqué.
 const TYPING_TTL_MS = 8000;
 const isTyping = ts => !!ts && Date.now() - new Date(ts).getTime() < TYPING_TTL_MS;
+const { trace } = require('./_trace'); // TEMPORAIRE
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -29,6 +30,9 @@ function maxReplyDelayMs(visitorMsg) {
   for (const ch of String(visitorMsg.id || '')) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   return words < 6 ? 5000 + (seed % 3001) : 7000 + (seed % 3001);
 }
+
+// Repère de déploiement lu par le diagnostic d'ai-reply (TEMPORAIRE)
+exports.DELAI_INFO = { court: '5-8s', long: '7-10s', assistance: 'oui si Max portait deja le fil' };
 
 async function sbGet(path) {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: H() });
@@ -129,6 +133,11 @@ exports.handler = async (event) => {
           if (Date.now() < due) {
             const hide = new Set(recent.slice(0, vIdx).filter(fromMax).map(m => m.id));
             if (hide.size) { messagesOut = messages.filter(m => !hide.has(m.id)); retenu = true; }
+            trace('retenue', { s: String(sessionId).slice(0, 8), n: hide.size, porte: portaitDeja, // TEMPORAIRE
+              restantS: Math.round((due - Date.now()) / 1000) });
+          } else if (recent.slice(0, vIdx).some(fromMax)) {
+            trace('echue', { s: String(sessionId).slice(0, 8), porte: portaitDeja, // TEMPORAIRE
+              depassementS: Math.round((Date.now() - due) / 1000) });
           }
         }
       }
