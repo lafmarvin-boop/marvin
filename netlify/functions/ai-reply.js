@@ -25,6 +25,14 @@ exports.handler = async (event) => {
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
 
+  // TEMPORAIRE : relecture du traçage de l'assistance (voir _trace.js)
+  if (body.diag === 'trace' && event.headers['x-parlons-diag'] === '1') {
+    const res = await fetch(`${process.env.SUPABASE_URL}/rest/v1/suggestions?payment_id=eq.TRACE&select=content&order=created_at.desc&limit=${Math.min(parseInt(body.limit || '25', 10), 60)}`,
+      { headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` } });
+    const rows = await res.json().catch(() => []);
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, n: rows.length, traces: rows.map(r => r.content) }, null, 1) };
+  }
+
   // Sauf demande explicite du contraire (repli déjà tenté), on tente le profil soigné.
   if (body.rapide !== true) {
     const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';

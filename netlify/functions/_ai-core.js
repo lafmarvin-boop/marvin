@@ -29,6 +29,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const { AI_EMAIL, assistDecision, maxCarriesThread } = require('./_assist');
+const { trace } = require('./_trace'); // TEMPORAIRE
 // Réflexion étendue : minimum 1024 jetons côté API, et max_tokens doit rester supérieur au budget.
 const REFLEXION = Math.max(1024, parseInt(process.env.AI_THINKING_TOKENS || '1500', 10));
 // Profil soigné : pas de limite à 10 s dans une fonction background, on privilégie la qualité.
@@ -111,6 +112,7 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     // humain qui n'a pas répondu depuis ASSIST_DELAY_MS (il garde la session, Max comble le silence).
     const holdsSession = sess && sess.agent_email === AI_EMAIL;
     const assisting = sess && !holdsSession && !!sess.agent_email && body.assist === true;
+    if (body.assist === true) trace('recu', { s: String(sessionId).slice(0, 8), statut: sess?.status || null, agent: sess ? (sess.agent_email === AI_EMAIL ? 'Max' : 'humain') : null, rapide }); // TEMPORAIRE
     if (!sess || sess.status !== 'active' || (!holdsSession && !assisting)) {
       console.log('ai-reply skip session_not_ai', sessionId, sess?.status, sess?.agent_email);
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'session_not_ai' }) };
@@ -132,6 +134,7 @@ exports.repondre = async (body, { rapide = false } = {}) => {
       const desc = [...msgs].reverse();
       const d = assistDecision(desc, sess.assigned_at, { agentTypingAt: sess.agent_typing_at });
       if (!d.go) {
+        trace('rejet', { s: String(sessionId).slice(0, 8), raison: d.raison, seuilS: Math.round((d.seuil||0)/1000) }); // TEMPORAIRE
         console.log('ai-reply assist non retenu', sessionId, d.raison, 'seuil', d.seuil);
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: `assist_${d.raison}` }) };
       }
@@ -294,6 +297,7 @@ exports.repondre = async (body, { rapide = false } = {}) => {
       // le fil. La transparence est portée par la bulle elle-même, signée « Max · assistant »
       // au-dessus de chaque message (index.html) et « Max a répondu pour vous » côté écoutant.
       const insA = await post(text, 'assistant');
+      trace('insertion', { s: String(sessionId).slice(0, 8), ok: insA.ok, http: insA.status }); // TEMPORAIRE
       if (!insA.ok) throw new Error(`Insertion message ${insA.status}`);
     } else {
       const ins = await post(text, 'agent');
@@ -304,6 +308,7 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     } finally { await unlock(); }
   } catch (e) {
     console.error('ai-reply:', e.message);
+    if (body.assist === true) trace('erreur', { s: String(sessionId).slice(0, 8), msg: String(e.message).slice(0, 180) }); // TEMPORAIRE
     const profilNom = rapide ? PROFIL_RAPIDE.model : PROFIL_SOIGNE.model;
     // Prévenir l'admin : une réponse de Max a échoué (clé, modèle, délai…)
     if (ADMIN_EMAIL) {

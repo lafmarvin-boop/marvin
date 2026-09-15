@@ -13,7 +13,8 @@
 // ai-reply, qui revérifie tout avant d'écrire.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const { AI_EMAIL, maxShouldAssist } = require('./_assist');
+const { AI_EMAIL, assistDecision } = require('./_assist');
+const { trace } = require('./_trace'); // TEMPORAIRE
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -43,8 +44,13 @@ exports.handler = async (event) => {
 
     await Promise.all(sessions.map(async (s) => {
       const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(s.id)}&select=id,sender_type,created_at&order=created_at.desc&limit=12`);
-      if (!maxShouldAssist(msgs, s.assigned_at, { agentTypingAt: s.agent_typing_at })) return;
       const last = msgs.find(m => m.sender_type !== 'system');
+      const d = assistDecision(msgs, s.assigned_at, { agentTypingAt: s.agent_typing_at });
+      trace('sweep', { s: s.id.slice(0, 8), n: msgs.length, dernier: last?.sender_type || null, // TEMPORAIRE
+        go: d.go, raison: d.raison, seuilS: Math.round((d.seuil || 0) / 1000),
+        attenteS: Math.round((d.attente || 0) / 1000),
+        ecritDepuisS: s.agent_typing_at ? Math.round((Date.now() - new Date(s.agent_typing_at).getTime()) / 1000) : null });
+      if (!d.go) return;
       declenchees++;
       try {
         await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
