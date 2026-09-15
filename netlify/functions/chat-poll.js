@@ -135,9 +135,6 @@ exports.handler = async (event) => {
             if (hide.size) { messagesOut = messages.filter(m => !hide.has(m.id)); retenu = true; }
             trace('retenue', { s: String(sessionId).slice(0, 8), n: hide.size, porte: portaitDeja, // TEMPORAIRE
               restantS: Math.round((due - Date.now()) / 1000) });
-          } else if (recent.slice(0, vIdx).some(fromMax)) {
-            trace('echue', { s: String(sessionId).slice(0, 8), porte: portaitDeja, // TEMPORAIRE
-              depassementS: Math.round((Date.now() - due) / 1000) });
           }
         }
       }
