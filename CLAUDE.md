@@ -140,6 +140,30 @@ ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS agent_typing_at    TIMESTAMPT
 
 ---
 
+## 💶 Offre commerciale (sept. 2026)
+
+**Deux formules seulement**, mises en avant comme « offre spéciale » :
+
+| | |
+|---|---|
+| Première conversation | **20 min offertes**, sans carte bancaire, une fois par personne |
+| Pass mensuel illimité | **2 €/mois**, sessions illimitées de 30 min max, 24 h/24, résiliable à tout moment |
+
+**Sessions à l'unité (1 € / 3 € / 5 €) désactivées.** Le verrou est **côté serveur**
+(`create-payment-intent.js`, `FORFAITS_UNITAIRES`) : masquer les boutons ne suffirait pas, un appel
+direct à l'API pourrait encore en acheter une. Remettre `FORFAITS_UNITAIRES=on` dans les variables
+Netlify les réactive — tout le code (montants, durées `_plans.js`, remise fidélité) est intact.
+
+**Prix de l'abonnement** : il vient du **Price Stripe** désigné par `STRIPE_PRICE_ID`, pas du code.
+Changer le tarif impose de créer un nouveau Price dans Stripe et de mettre à jour cette variable.
+
+**Résiliation** : arrête le renouvellement ; le mois entamé reste dû et n'est pas remboursé, l'accès
+courant jusqu'à son terme. Le droit de rétractation de 14 jours (CGV art. 11) est **distinct** et
+subsiste — ne pas le supprimer des CGV en le confondant avec la résiliation.
+
+**Programme fidélité masqué** : les remises portaient sur les sessions à l'unité. Le bloc reste dans
+`index.html` entre un `<div style="display:none">` pour un retour éventuel des forfaits.
+
 ## ✅ Fonctionnalités complètes
 
 - Discount fidélité affiché dans l'app agent (badge 🎁 dans panneau flottant + file d'attente)

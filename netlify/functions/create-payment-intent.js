@@ -2,10 +2,19 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const { durationForAmount } = require('./_plans.js');
 
+// Sessions à l'unité — DÉSACTIVÉES (sept. 2026). L'offre se limite à la conversation de
+// 20 minutes offerte et à l'abonnement mensuel illimité à 2 €. Masquer les boutons ne suffit
+// pas : sans ce verrou côté serveur, un appel direct à l'API pourrait encore acheter une
+// session à l'unité. Remettre `FORFAITS_UNITAIRES=on` dans les variables Netlify pour les
+// réactiver — le reste du code est intact.
+const FORFAITS_UNITAIRES = process.env.FORFAITS_UNITAIRES === 'on';
+
 // Object.create(null) : évite qu'un montant "__proto__" ou "constructor" renvoie une propriété
 // héritée du prototype (Object.prototype) au lieu de undefined.
-const BASE_AMOUNTS  = Object.assign(Object.create(null), { '100': 100, '300': 300, '500': 500 });
-const FIXED_AMOUNTS = Object.assign(Object.create(null), { 'sub': 1500 });
+const BASE_AMOUNTS  = FORFAITS_UNITAIRES
+  ? Object.assign(Object.create(null), { '100': 100, '300': 300, '500': 500 })
+  : Object.create(null);
+const FIXED_AMOUNTS = Object.assign(Object.create(null), { 'sub': 200 });
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

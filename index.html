@@ -67,7 +67,7 @@
         {"@type": "Offer", "name": "Session 10 minutes", "price": "1.00", "priceCurrency": "EUR"},
         {"@type": "Offer", "name": "Session 30 minutes", "price": "3.00", "priceCurrency": "EUR"},
         {"@type": "Offer", "name": "Session 1 heure", "price": "5.00", "priceCurrency": "EUR"},
-        {"@type": "Offer", "name": "Pass mensuel illimité", "price": "15.00", "priceCurrency": "EUR"}
+        {"@type": "Offer", "name": "Pass mensuel illimité", "price": "2.00", "priceCurrency": "EUR"}
       ]
     }
   }
@@ -84,7 +84,7 @@
       {"@type":"Question","name":"Qui sont les écoutants Parlons ?","acceptedAnswer":{"@type":"Answer","text":"Ce sont des professionnels de l'écoute — coachs, thérapeutes ou bénévoles formés — sélectionnés pour leur bienveillance et leur discrétion. Chacun signe une charte de confidentialité."}},
       {"@type":"Question","name":"Quelle est la différence avec un psychologue ?","acceptedAnswer":{"@type":"Answer","text":"Parlons n'est pas un service médical. Nos écoutants offrent du soutien conversationnel et de l'écoute active. Pour un suivi thérapeutique ou clinique, consultez un professionnel de santé agréé."}},
       {"@type":"Question","name":"Est-ce remboursé par la Sécurité sociale ?","acceptedAnswer":{"@type":"Answer","text":"Non. Parlons est un service d'écoute privé, non remboursé par l'Assurance maladie. Les tarifs commencent à 1€ pour 10 minutes."}},
-      {"@type":"Question","name":"Quels sont les tarifs ?","acceptedAnswer":{"@type":"Answer","text":"10 minutes : 1€ · 30 minutes : 3€ · 1 heure : 5€ · Pass mensuel illimité : 15€/mois. Paiement sécurisé par carte bancaire via Stripe."}},
+      {"@type":"Question","name":"Quels sont les tarifs ?","acceptedAnswer":{"@type":"Answer","text":"Première conversation de 20 minutes offerte, sans carte bancaire. Ensuite, pass mensuel illimité à 2€/mois, résiliable à tout moment. Paiement sécurisé par carte bancaire via Stripe."}},
       {"@type":"Question","name":"Les cartes bancaires étrangères sont-elles acceptées ?","acceptedAnswer":{"@type":"Answer","text":"Oui. Toute carte Visa ou Mastercard internationale est acceptée. Les paiements sont traités en euros, votre banque convertit automatiquement."}},
       {"@type":"Question","name":"Puis-je utiliser Parlons depuis l'étranger ?","acceptedAnswer":{"@type":"Answer","text":"Oui. Parlons est accessible depuis n'importe quel pays, sur ordinateur, smartphone ou tablette. Le service est en français."}},
       {"@type":"Question","name":"Combien de temps dure une session ?","acceptedAnswer":{"@type":"Answer","text":"30 minutes ou 1 heure selon la formule choisie. Le pass mensuel donne accès à des sessions illimitées de 30 minutes."}},
@@ -95,7 +95,7 @@
       {"@type":"Question","name":"Que faire si je suis en crise suicidaire ?","acceptedAnswer":{"@type":"Answer","text":"Appelez immédiatement le 3114 (numéro national de prévention du suicide, gratuit, 24h/24) ou le 15 (SAMU). Parlons n'est pas un service de crise médicale."}},
       {"@type":"Question","name":"Y a-t-il un âge minimum ?","acceptedAnswer":{"@type":"Answer","text":"Oui, le service est réservé aux personnes de 18 ans et plus."}},
       {"@type":"Question","name":"Mes conversations sont-elles enregistrées ?","acceptedAnswer":{"@type":"Answer","text":"Non. Le contenu des échanges n'est pas conservé après la session. Seules les données minimales nécessaires à la facturation sont gardées, conformément au RGPD."}},
-      {"@type":"Question","name":"Comment fonctionne le pass mensuel illimité ?","acceptedAnswer":{"@type":"Answer","text":"Pour 15€/mois, vous accédez à autant de sessions de 30 minutes que vous souhaitez. Renouvelé automatiquement, résiliable à tout moment depuis votre espace personnel."}},
+      {"@type":"Question","name":"Comment fonctionne le pass mensuel illimité ?","acceptedAnswer":{"@type":"Answer","text":"Pour 2€/mois, vous accédez à autant de sessions de 30 minutes que vous souhaitez, 24h/24. Renouvelé automatiquement, résiliable à tout moment depuis votre espace personnel : le mois en cours reste dû et n'est pas remboursé."}},
       {"@type":"Question","name":"Comment résilier le pass mensuel ?","acceptedAnswer":{"@type":"Answer","text":"Depuis votre espace abonné sur parlonsecoute.fr, rubrique Mon compte, en un clic. La résiliation est immédiate, sans frais ni préavis."}},
       {"@type":"Question","name":"Comment fonctionne le programme fidélité ?","acceptedAnswer":{"@type":"Answer","text":"À chaque session payante, vous accumulez des points. À partir de 3 sessions sur 3 mois glissants, vous bénéficiez d'une réduction automatique sur vos prochaines sessions."}},
       {"@type":"Question","name":"Y a-t-il une application mobile ?","acceptedAnswer":{"@type":"Answer","text":"Oui. Parlons est une Progressive Web App (PWA) installable gratuitement sur iPhone et Android depuis parlonsecoute.fr, sans passer par l'App Store."}},
@@ -857,13 +857,14 @@
     <button id="hero-rating-btn" style="display:none;margin-bottom:.6rem;align-items:center;gap:.45rem;background:white;border:1px solid var(--sand);padding:.35rem .9rem;border-radius:50px;font-size:.78rem;font-weight:600;color:var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;font-family:'DM Sans',sans-serif;" onclick="openAvisModal()"><span id="hero-rating-stars" style="color:#f59e0b;letter-spacing:1px"></span><span id="hero-rating-text" style="color:var(--mid);margin-left:.2rem"></span></button>
     <div class="hero-tag" id="hero-tag"><span class="dot" id="hero-dot"></span><span id="hero-tag-text"> Des écoutants disponibles maintenant</span></div>
     <h1>Besoin de parler ?<br><em>Quelqu'un vous attend.</em></h1>
-    <p>Parfois, on a juste besoin d'une oreille attentive. Discutez en direct avec quelqu'un de bienveillant, sans jugement, en toute confidentialité.</p>
+    <p>Parfois, on a juste besoin d'une oreille attentive. Discutez en direct avec quelqu'un de bienveillant, sans jugement, en toute confidentialité.<br><strong>Vos 20 premières minutes sont offertes</strong>, sans carte bancaire. Ensuite, 2 € par mois en illimité.</p>
     <div class="hero-actions">
       <button class="btn-free-cta" id="hero-free-btn" onclick="openModal()" style="display:none">🎁 Essayer gratuitement · 20 min</button>
       <button class="btn-primary" onclick="openModal()">Démarrer une discussion →</button>
+      <a href="#tarifs" class="btn-secondary">Offre spéciale · 2 €/mois</a>
       <a href="#comment" class="btn-secondary">Comment ça marche ↓</a>
     </div>
-    <div class="loyalty-badge" id="loyalty-hero-badge">🎁 Programme fidélité · -10% dès la 5e session sur 3 mois</div>
+    <div class="loyalty-badge" id="loyalty-hero-badge" style="display:none">🎁 Programme fidélité · -10% dès la 5e session sur 3 mois</div>
     <div class="free-offer-banner" id="free-offer-banner">🎁 <strong>Première conversation offerte</strong> — 20 min gratuites, sans carte bancaire</div>
     <div style="margin-top:.9rem;">
       <a href="/espace.html" style="font-size:.78rem;color:var(--mid);text-decoration:none;border-bottom:1px solid var(--sand);padding-bottom:.1rem;">🔑 Déjà abonné ? Accéder à mon espace →</a>
@@ -903,42 +904,31 @@
 
 <!-- PRICING -->
 <section class="pricing-section" id="tarifs">
-  <div class="section-label">Nos tarifs</div>
-  <h2 style="color:white">Simple et transparent</h2>
-  <p>Pas d'abonnement obligatoire, pas de surprise.</p>
-  <div class="pricing-grid">
+  <div class="section-label">Offre spéciale</div>
+  <h2 style="color:white">20 minutes offertes, puis 2 € par mois</h2>
+  <p>Pas de session à payer à l'unité. Vous essayez gratuitement, et si ça vous aide, c'est 2 € par mois en illimité.</p>
+  <div class="pricing-grid" style="max-width:720px;margin:0 auto;">
     <div class="pricing-card">
-      <div class="p-mins">10 minutes</div>
-      <div class="p-price"><sup>€</sup>1</div>
-      <div class="p-per">par session</div>
-      <ul><li>✓ Chat en direct</li><li>✓ Confidentiel & anonyme</li><li>✓ Idéal pour un premier contact</li></ul>
-      <button class="btn-card" onclick="openModal(100)">Choisir</button>
+      <div class="p-mins">Première conversation</div>
+      <div class="p-price">Offerte</div>
+      <div class="p-per">20 minutes · sans carte bancaire</div>
+      <ul><li>✓ Tchat en direct</li><li>✓ Confidentiel &amp; anonyme</li><li>✓ Aucun engagement</li><li>✓ Rien à renseigner</li></ul>
+      <button class="btn-card" onclick="openModal('free')">Commencer maintenant</button>
     </div>
-    <div class="pricing-card featured">
-      <div class="p-mins">30 minutes</div>
-      <div class="p-price"><sup>€</sup>3</div>
-      <div class="p-per">par session</div>
-      <ul><li>✓ Chat en direct</li><li>✓ Historique 48h</li><li>✓ Confidentiel & anonyme</li><li>✓ Priorité connexion</li></ul>
-      <button class="btn-card" onclick="openModal(300)">Choisir</button>
-    </div>
-    <div class="pricing-card">
-      <div class="p-mins">1 heure</div>
-      <div class="p-price"><sup>€</sup>5</div>
-      <div class="p-per">par session</div>
-      <ul><li>✓ Chat en direct</li><li>✓ Historique 48h</li><li>✓ Confidentiel & anonyme</li><li>✓ Priorité absolue</li></ul>
-      <button class="btn-card" onclick="openModal(500)">Choisir</button>
-    </div>
-    <div class="pricing-card sub">
-      <div class="p-mins">Pass mensuel</div>
-      <div class="p-price"><sup>€</sup>15</div>
-      <div class="p-per">/mois · résiliable</div>
-      <ul><li>✓ Sessions illimitées</li><li>✓ 30 min max / session</li><li>✓ Historique 48h</li><li>✓ Confidentiel & anonyme</li><li>✓ Priorité absolue</li></ul>
-      <button class="btn-card" onclick="openModal('sub')">S'abonner</button>
+    <div class="pricing-card featured sub">
+      <div class="p-mins">Pass mensuel illimité</div>
+      <div class="p-price"><sup>€</sup>2</div>
+      <div class="p-per">/mois · résiliable à tout moment</div>
+      <ul><li>✓ Sessions illimitées</li><li>✓ 30 min max par session</li><li>✓ Disponible 24 h/24</li><li>✓ Confidentiel &amp; anonyme</li><li>✓ Priorité absolue</li></ul>
+      <button class="btn-card" onclick="openModal('sub')">S'abonner · 2 €/mois</button>
     </div>
   </div>
+  <p style="margin-top:1.4rem;font-size:.8rem;opacity:.8">Résiliable en un clic depuis votre espace. La résiliation arrête le renouvellement : le mois en cours reste dû et n'est pas remboursé.</p>
 </section>
 
-<!-- LOYALTY -->
+<!-- LOYALTY — masquée : les remises portaient sur les sessions à l'unité, désactivées (sept. 2026).
+     Le code reste en place pour un retour éventuel des forfaits. -->
+<div style="display:none"><!-- LOYALTY -->
 <section class="loyalty-section" id="fidelite">
   <div class="section-label">Programme fidélité</div>
   <h2>Plus vous revenez, plus vous économisez</h2>
@@ -970,7 +960,7 @@
       <p>30% de réduction. Statut VIP avec accès prioritaire sur 3 mois glissants.</p>
     </div>
   </div>
-</section>
+</section></div>
 
 <!-- NOTIFY -->
 <section class="notify-section" id="notif">
@@ -1371,7 +1361,7 @@
       <div id="faq-extra" style="display:none;">
         <div class="faq-item" onclick="this.classList.toggle('open')">
           <div class="faq-q">Quels sont les tarifs ?<span class="faq-arrow">›</span></div>
-          <div class="faq-a">10 minutes : 1€ · 30 minutes : 3€ · 1 heure : 5€ · Pass mensuel illimité : 15€/mois. Paiement sécurisé par carte bancaire via Stripe.</div>
+          <div class="faq-a">Votre première conversation de 20 minutes est offerte, sans carte bancaire. Ensuite, une seule formule : le pass mensuel illimité à 2 €/mois, résiliable à tout moment. Les sessions à l'unité ne sont plus proposées. Paiement sécurisé par carte bancaire via Stripe.</div>
         </div>
         <div class="faq-item" onclick="this.classList.toggle('open')">
           <div class="faq-q">Les cartes étrangères sont-elles acceptées ?<span class="faq-arrow">›</span></div>
@@ -1415,7 +1405,7 @@
         </div>
         <div class="faq-item" onclick="this.classList.toggle('open')">
           <div class="faq-q">Comment fonctionne le pass mensuel ?<span class="faq-arrow">›</span></div>
-          <div class="faq-a">Pour 15€/mois, vous accédez à autant de sessions de 30 minutes que vous souhaitez. Renouvelé automatiquement, résiliable à tout moment.</div>
+          <div class="faq-a">Pour 2 €/mois, vous accédez à autant de sessions de 30 minutes que vous souhaitez, 24 h/24. Renouvelé automatiquement, résiliable en un clic depuis votre espace : la résiliation arrête le renouvellement, le mois en cours reste dû et n'est pas remboursé.</div>
         </div>
         <div class="faq-item" onclick="this.classList.toggle('open')">
           <div class="faq-q">Comment résilier le pass mensuel ?<span class="faq-arrow">›</span></div>
@@ -1631,10 +1621,7 @@
         <select id="session-select" onchange="updatePrice()">
 
           <option value="free" data-label="20 min GRATUIT" data-sec="1200" style="display:none">🎁 Première conversation · 20 min — GRATUIT</option>
-          <option value="100" data-label="10 min" data-sec="600" selected>💬 Session individuelle · 10 min — 1,00 €</option>
-          <option value="300" data-label="30 min" data-sec="1800">💬 Session individuelle · 30 min — 3,00 € ⭐</option>
-          <option value="500" data-label="1 heure" data-sec="3600">💬 Session individuelle · 1 heure — 5,00 €</option>
-          <option value="sub" data-label="Pass mensuel" data-sec="1800">♾️ Pass mensuel illimité — 15,00 €/mois</option>
+          <option value="sub" data-label="Pass mensuel" data-sec="1800" selected>♾️ Pass mensuel illimité — 2,00 €/mois</option>
 
         </select>
       </div>
@@ -1859,7 +1846,7 @@ const STRIPE_KEY='pk_live_51TZB64Cob93hyzLhnt58hZ8gwkCIsg7jD5HQM69ZtSO6ZKaCH7PRa
   }catch{}
 })();
 
-let stripe,cardElement,selectedAmount=100,selectedLabel='10 min',sessionDurationSec=600;
+let stripe,cardElement,selectedAmount='sub',selectedLabel='Pass mensuel',sessionDurationSec=1800;
 let isOnline=false,queueCount=0;
 let waitTimer=null,sessionTimer=null,waitSeconds=0,sessionSeconds=0,reportShown=false;
 let ratingVal=0;
@@ -2031,7 +2018,7 @@ function goToPayment(){
   // ── CAS NORMAL : paiement ──
   let payEuros;
   if (selectedAmount === 'sub') {
-    payEuros = '15,00';
+    payEuros = '2,00';
   } else {
     const base = selectedAmount / 100;
     const loy = getLoyaltyInfo();
@@ -2274,7 +2261,7 @@ async function reportSlowAgent(){
     const resp=await fetch('/.netlify/functions/report-slow-agent',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({client:name,session:selectedLabel,montant:selectedAmount==='sub'?'15€':((selectedAmount/100).toFixed(2)+'€'),attente:waitSeconds,paymentId})
+      body:JSON.stringify({client:name,session:selectedLabel,montant:selectedAmount==='sub'?'2€':((selectedAmount/100).toFixed(2)+'€'),attente:waitSeconds,paymentId})
     });
     const result=await resp.json();
     const msg=result.rembourse
@@ -2426,7 +2413,9 @@ function openModal(amount){
   const offMsg=document.getElementById('offline-msg'),btn=document.querySelector('#step-1 .btn-primary');
   if(offMsg)offMsg.style.display=isOnline?'none':'block';
   if(btn){btn.disabled=false;btn.style.opacity='1';}
-  if(amount!==undefined){const s=document.getElementById('session-select');for(let o of s.options){if(o.value==amount){o.selected=true;break;}}updatePrice();}
+  // Ne jamais sélectionner une option masquée : la conversation offerte n'apparaît que si le
+  // visiteur y a droit, et la choisir malgré tout l'enverrait vers un refus du serveur.
+  if(amount!==undefined){const s=document.getElementById('session-select');for(let o of s.options){if(o.value==amount&&o.style.display!=='none'){o.selected=true;break;}}updatePrice();}
   document.getElementById('step-1').style.display='block';document.getElementById('step-2').style.display='none';
   document.getElementById('payment-success').style.display='none';document.getElementById('sub-success').style.display='none';document.getElementById('payment-form').style.display='block';
   const modalEl=document.getElementById('modal');
@@ -2807,14 +2796,12 @@ function closeArticle(){document.getElementById('article-modal').classList.remov
     <p>Aucun compte obligatoire. Un pseudonyme suffit. Le service est réservé aux personnes majeures (18 ans et plus). Quand aucun écoutant n'est connecté au démarrage d'une session (offerte, payante ou pass mensuel), <strong>Max</strong>, assistant d'écoute basé sur une intelligence artificielle, engage la conversation et alerte les écoutants par email ; l'utilisateur en est informé au début de la conversation, et un écoutant humain reprend automatiquement la session dès qu'il se connecte, avec l'historique. <strong>Si l'utilisateur va au terme d'une session payante sans qu'un écoutant humain l'ait rejointe, il a droit au remboursement intégral, sur simple demande de sa part</strong> : un bouton lui est proposé à la fin de la conversation et le remboursement est traité immédiatement, sans justification ni examen préalable (pass mensuel : la session n'est pas décomptée, sans démarche ; conversation offerte : sans objet). Une session interrompue par l'utilisateur avant son terme n'ouvre pas droit à remboursement, comme avec un écoutant humain. Max n'est ni un professionnel de santé ni un substitut à un suivi médical.</p>
 
     <h2><span class="cgv-art">Art. 3</span> Tarification et paiement</h2>
-    <h3>Sessions individuelles</h3>
-    <ul>
-      <li><strong>10 minutes</strong> : 1,00 € TTC</li>
-      <li><strong>30 minutes</strong> : 3,00 € TTC</li>
-      <li><strong>1 heure</strong> : 5,00 € TTC</li>
-    </ul>
-    <h3>Pass mensuel</h3>
-    <p>15,00 € TTC/mois · Sessions illimitées · 30 min max par session · Sans engagement · Résiliable à tout moment, sans frais.</p>
+    <h3>Première conversation</h3>
+    <p><strong>20 minutes offertes</strong>, une fois, sans carte bancaire ni engagement.</p>
+    <h3>Pass mensuel illimité</h3>
+    <p><strong>2,00 € TTC/mois</strong> · Sessions illimitées · 30 min max par session · Disponible 24 h/24 · Sans engagement de durée.</p>
+    <p><strong>Résiliation</strong> : possible à tout moment depuis l'espace abonné, sans frais ni justification. Elle met fin au renouvellement automatique ; le mois entamé reste dû et n'est pas remboursé, l'accès restant ouvert jusqu'à son terme. Le droit de rétractation de 14 jours prévu à l'article 11 s'applique séparément, dans les conditions qui y sont décrites.</p>
+    <p>Les <strong>sessions à l'unité</strong> (1 €, 3 €, 5 €) ne sont plus commercialisées depuis septembre 2026.</p>
     <p>Paiement sécurisé par <strong>Stripe</strong>. Aucune donnée de carte stockée par Parlons.</p>
 
     <h2><span class="cgv-art">Art. 4</span> File d'attente et décompte du temps</h2>
