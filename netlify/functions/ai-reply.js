@@ -14,9 +14,22 @@
 // écrire qu'une seule.
 // ─────────────────────────────────────────────────────────────────────────────
 
+const crypto = require('crypto');
 const { repondre } = require('./_ai-core');
 
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type' };
+
+// Même mécanisme que push-notify.js : preuve que l'appel vient du serveur/de l'admin,
+// pas un simple en-tête fixe devinable (`x-parlons-diag: 1`) qui laissait quiconque lire
+// les traces de diagnostic sans aucune vérification côté serveur.
+const INTERNAL_SECRET = process.env.INTERNAL_FN_SECRET || process.env.SUPABASE_SERVICE_KEY || '';
+function validInternalCaller(provided) {
+  if (!INTERNAL_SECRET || typeof provided !== 'string' || !provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(INTERNAL_SECRET);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS };
@@ -26,7 +39,9 @@ exports.handler = async (event) => {
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
 
   // TEMPORAIRE : relecture du traçage de l'assistance (voir _trace.js)
-  if (body.diag === 'trace' && event.headers['x-parlons-diag'] === '1') {
+  if (body.diag === 'trace') {
+    if (!validInternalCaller(event.headers['x-parlons-diag']))
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non autorisé' }) };
     const res = await fetch(`${process.env.SUPABASE_URL}/rest/v1/suggestions?payment_id=eq.TRACE&select=content&order=created_at.desc&limit=${Math.min(parseInt(body.limit || '25', 10), 60)}`,
       { headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` } });
     const rows = await res.json().catch(() => []);
