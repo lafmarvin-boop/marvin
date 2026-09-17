@@ -1,4 +1,4 @@
-const { durationForLabel, clampSeconds } = require('./_plans.js');
+const { durationForLabel, DEFAULT_SECONDS } = require('./_plans.js');
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -39,8 +39,10 @@ exports.handler = async (event) => {
     const sess = sessions[0];
     if (sess.status !== 'active') return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Session non active' }) };
 
-    // Durée ajoutée dérivée du libellé de la formule payée, pas du nombre envoyé par le client
-    const addSec = durationForLabel(label, clampSeconds(newDurationSec));
+    // Durée ajoutée dérivée du libellé de la formule payée. Le repli ne doit jamais
+    // venir du client (comme dans chat-start.js) : un libellé non reconnu permettrait
+    // sinon de choisir soi-même la durée ajoutée via newDurationSec.
+    const addSec = durationForLabel(label, DEFAULT_SECONDS);
     if (addSec <= 0) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Durée invalide' }) };
 
     const remaining = Math.min(parseInt(remainingSec) || 0, 3600);
