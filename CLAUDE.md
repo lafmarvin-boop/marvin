@@ -217,6 +217,16 @@ affirmative. Et : des **conseils concrets** assumés une fois la personne entend
 quelqu'un à ses propres ressources ressemble à une dérobade), un registre parlé (phrases courtes, pas de
 vocabulaire de fiche technique).
 
+**Longueur des réponses — une à trois phrases (sept. 2026).** Le prompt se contredisait : la section
+FORME demandait « 2 à 5 phrases » pendant que la section sur la voix disait « une ligne suffit la
+plupart du temps ». Le modèle arbitrait au milieu, d'où des réponses trop longues. Les deux sections
+disent désormais la même chose : **une à trois phrases, une seule très souvent, quatre c'est déjà trop**
+— sauf en situation de crise, où Max prend la place nécessaire pour les recours et la mise en sécurité.
+S'ajoute un mode d'emploi pour couper (supprimer l'introduction qui annonce, la reformulation qui
+n'apporte rien, la justification du conseil, la conclusion qui répète). **Vérifier la cohérence des
+trois mentions de longueur** (sections « qui tu es », FORME, « ta façon d'écrire ») avant d'en modifier
+une : c'est leur désaccord qui produit des réponses hors cible, pas le chiffre lui-même.
+
 **Voix de Max calquée sur celle du fondateur (sept. 2026).** Section « TA FAÇON D'ÉCRIRE » du
 prompt, tirée d'un échange WhatsApp réel fourni comme échantillon : messages **très courts** (souvent
 une ligne), prénom employé naturellement mais pas à chaque message, mots du quotidien (« dur »,
