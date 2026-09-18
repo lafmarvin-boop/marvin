@@ -208,10 +208,22 @@
     .archive-card.open .archive-chevron{transform:rotate(180deg);}
     .archive-msgs{display:none;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--sand);}
     .archive-card.open .archive-msgs{display:flex;flex-direction:column;gap:.35rem;}
-    .archive-msg{padding:.4rem .7rem;border-radius:10px;font-size:.78rem;line-height:1.5;max-width:80%;word-break:break-word;}
-    .archive-msg.visitor{background:var(--warm);color:var(--dark);align-self:flex-start;}
-    .archive-msg.agent{background:var(--tc);color:white;align-self:flex-end;}
-    .archive-msg.system{background:#f1f5f9;color:var(--light);text-align:center;align-self:center;font-size:.7rem;max-width:92%;}
+    /* Chaque message est une ligne : la bulle et son heure d'envoi côte à côte.
+       L'heure est placée hors de la bulle — à l'intérieur, il faudrait deux couleurs
+       de texte selon l'expéditeur (fond clair côté visiteur, terracotta côté écoutant). */
+    .archive-line{display:flex;align-items:flex-end;gap:.35rem;max-width:88%;}
+    .archive-line.visitor{align-self:flex-start;}
+    .archive-line.agent,.archive-line.assistant{align-self:flex-end;flex-direction:row-reverse;}
+    .archive-line.system{align-self:center;max-width:94%;}
+    .archive-time{font-size:.66rem;color:var(--light);white-space:nowrap;flex-shrink:0;
+      padding-bottom:.18rem;font-variant-numeric:tabular-nums;}
+    .archive-msg{padding:.4rem .7rem;border-radius:10px;font-size:.78rem;line-height:1.5;word-break:break-word;}
+    .archive-msg.visitor{background:var(--warm);color:var(--dark);}
+    .archive-msg.agent{background:var(--tc);color:white;}
+    /* Max en assistance : mêmes teintes que dans index.html et agent-app.html.
+       Sans cette règle, ses messages s'affichaient sans bulle dans les archives. */
+    .archive-msg.assistant{background:#eef2fb;color:var(--dark);border:1px solid #c3cfe8;}
+    .archive-msg.system{background:#f1f5f9;color:var(--light);text-align:center;font-size:.7rem;}
     .archive-loading{color:var(--light);font-size:.78rem;text-align:center;padding:.5rem;}
   </style>
 </head>
@@ -1267,10 +1279,25 @@ async function renderArchives() {
               const md = await mr.json();
               msgsEl.innerHTML = '';
               (md.messages || []).forEach(m => {
+                const ligne = document.createElement('div');
+                ligne.className = `archive-line ${m.sender_type}`;
                 const d = document.createElement('div');
                 d.className = `archive-msg ${m.sender_type}`;
                 d.textContent = m.content;
-                msgsEl.appendChild(d);
+                ligne.appendChild(d);
+                if (m.created_at) {
+                  const dt = new Date(m.created_at);
+                  if (!isNaN(dt)) {
+                    const t = document.createElement('span');
+                    t.className = 'archive-time';
+                    t.textContent = dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                    // Date complète au survol : une conversation peut passer minuit, et
+                    // l'en-tête de la carte ne porte que la date de clôture.
+                    t.title = dt.toLocaleString('fr-FR');
+                    ligne.appendChild(t);
+                  }
+                }
+                msgsEl.appendChild(ligne);
               });
               if (!(md.messages||[]).length) msgsEl.innerHTML = '<div class="archive-loading">Aucun message.</div>';
               msgsEl.dataset.loaded = '1';

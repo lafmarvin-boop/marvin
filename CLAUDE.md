@@ -401,6 +401,19 @@ contrôle, n'importe qui pourrait faire croire au visiteur qu'on lui répond.
 retient volontairement sa réponse le temps « de lire et d'écrire » — c'est bien le moment où il écrit.
 Répondre vaut lecture : il pose `agent_seen_at` avant d'insérer.
 
+## 🕐 Archives de conversation (espace admin)
+
+Onglet « 📁 Archives » d'`espace.html` (`renderArchives`, données par `admin-chat-archive.js`,
+30 derniers jours). Chaque message porte son **heure d'envoi** à côté de la bulle — à l'extérieur et
+non dedans : à l'intérieur il faudrait deux couleurs de texte selon l'expéditeur (fond clair côté
+visiteur, terracotta côté écoutant). Heure au format `HH:MM`, **date complète au survol** (`title`) :
+une conversation peut passer minuit alors que l'en-tête de la carte ne porte que la date de clôture.
+
+⚠️ Les messages de Max en assistance (`sender_type = 'assistant'`) n'avaient **aucun style** ici :
+la feuille ne connaissait que `visitor`, `agent` et `system`, si bien qu'ils s'affichaient sans bulle.
+Corrigé avec les mêmes teintes qu'`index.html` et `agent-app.html` (fond `#eef2fb`). **Penser à cette
+feuille si un nouveau `sender_type` apparaît.**
+
 ## 🔐 Authentification par jetons signés
 
 Depuis sept. 2026, **aucun mot de passe n'est conservé dans le navigateur**. Au login, le serveur
