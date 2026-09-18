@@ -235,6 +235,15 @@ compte de phrases), l'interdiction explicite d'expliquer un conseil, et surtout 
 dans le prompt — le message trop long réellement produit, suivi de sa version correcte. C'est le levier
 qui manquait : une règle abstraite se contourne, un exemple concret beaucoup moins.
 
+⚠️ **Le risque opposé, à ne pas créer en resserrant.** Un plafond strict peut pousser Max à garder
+l'empathie et à lâcher le fond — court, poli, inutile. Le prompt fixe donc une **règle de priorité** :
+raccourcir consiste à enlever l'emballage (l'annonce, la reformulation, l'explication du conseil, la
+conclusion qui répète), jamais le contenu. Et explicitement : **si la personne demande quoi faire, Max
+répond quoi faire** ; entre couper le conseil et couper la phrase d'empathie qui le précède, c'est
+l'empathie qui saute — elle transparaît de toute façon dans la façon d'écrire. L'exemple « correct »
+du prompt fait 146 caractères **et** contient un conseil concret : il démontre les deux exigences
+ensemble, ce qu'aucune règle chiffrée ne fait.
+
 ## 💬 Proposition du pass en fin de conversation offerte
 
 À la fin d'une **conversation offerte** seulement, Max peut mentionner **une fois, en une phrase** que
