@@ -248,12 +248,12 @@
     /* Disponibilité permanente : c'est l'argument qui décide quelqu'un à 3 h du matin.
        Noyé en gras dans le paragraphe, il passait inaperçu — il a désormais sa propre ligne,
        un filet terracotta et une taille supérieure au corps de texte. */
-    .hero-dispo{font-size:1.18rem;line-height:1.5;color:var(--dark);font-weight:500;
+    .hero p.hero-dispo{font-size:1.18rem;line-height:1.5;color:var(--dark);font-weight:700;
       max-width:480px;margin:-1.4rem 0 2.2rem;padding:.7rem 0 .7rem 1.1rem;
       border-left:3px solid var(--terracotta);animation:fadeUp .6s .25s ease both;}
-    .hero-dispo em{font-style:normal;font-weight:700;color:var(--rust);}
+    .hero p.hero-dispo em{font-style:normal;font-weight:700;color:var(--rust);}
     /* Le créneau ne doit jamais se couper : « 7 / j/7 » sur deux lignes est illisible. */
-    .hero-dispo .nobr{white-space:nowrap;}
+    .hero p.hero-dispo .nobr{white-space:nowrap;}
     .hero-actions{display:flex;align-items:center;gap:1.4rem;flex-wrap:wrap;animation:fadeUp .6s .3s ease both;}
     .btn-primary{display:inline-block;background:var(--terracotta);color:white;padding:.95rem 2rem;border-radius:50px;text-decoration:none;font-weight:500;font-size:.95rem;border:none;cursor:pointer;transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 4px 18px rgba(196,113,74,.35);}
     .btn-primary:hover{background:var(--rust);transform:translateY(-2px);box-shadow:0 6px 24px rgba(196,113,74,.45);}
@@ -708,7 +708,7 @@
       .hero{grid-template-columns:1fr;text-align:center;gap:2rem;padding-bottom:5rem;}
       .hero p{margin:0 auto 1.8rem;}
       /* Centré comme le reste du hero : un filet à gauche déséquilibrerait la colonne. */
-      .hero-dispo{margin:-1rem auto 1.8rem;padding:.7rem 1rem;border-left:none;
+      .hero p.hero-dispo{margin:-1rem auto 1.8rem;padding:.7rem 1rem;border-left:none;
         border-top:2px solid var(--terracotta);border-bottom:2px solid var(--terracotta);font-size:1.1rem;}
       .hero-actions{justify-content:center;flex-direction:column;align-items:center;gap:.85rem;}
       .hero-actions .btn-primary{width:100%;max-width:320px;text-align:center;}
@@ -875,7 +875,7 @@
     <div class="hero-tag" id="hero-tag"><span class="dot" id="hero-dot"></span><span id="hero-tag-text"> Des écoutants disponibles maintenant</span></div>
     <h1>Besoin de parler ?<br><em>Quelqu'un vous attend.</em></h1>
     <p>Parfois, on a juste besoin d'une oreille attentive. À toute heure du jour ou de la nuit, quelqu'un vous répond — tout de suite, sans jugement, en toute confidentialité. Vos 20 premières minutes sont offertes, sans carte bancaire.</p>
-    <p class="hero-dispo">Pas de file d'attente, pas d'horaires :<br><em>une écoute disponible <span class="nobr">24 h/24, 7 j/7.</span></em></p>
+    <p class="hero-dispo">Pas de file d'attente, pas d'horaires :<br><em>une écoute disponible <span class="nobr">24h/24, 7j/7.</span></em></p>
     <div class="hero-actions">
       <button class="btn-free-cta" id="hero-free-btn" onclick="openModal()" style="display:none">🎁 Essayer gratuitement · 20 min</button>
       <button class="btn-primary" onclick="openModal()">Démarrer une discussion →</button>
@@ -937,7 +937,7 @@
       <div class="p-mins">Pass mensuel illimité</div>
       <div class="p-price"><sup>€</sup>2</div>
       <div class="p-per">/mois · tarif de lancement · résiliable à tout moment</div>
-      <ul><li>✓ Sessions illimitées</li><li>✓ 30 min max par session</li><li>✓ Disponible 24 h/24</li><li>✓ Confidentiel &amp; anonyme</li><li>✓ Priorité absolue</li></ul>
+      <ul><li>✓ Sessions illimitées</li><li>✓ 30 min max par session</li><li>✓ Disponible 24h/24</li><li>✓ Confidentiel &amp; anonyme</li><li>✓ Priorité absolue</li></ul>
       <button class="btn-card" onclick="openModal('sub')">S'abonner · 2 €/mois</button>
     </div>
   </div>
@@ -1423,7 +1423,7 @@
         </div>
         <div class="faq-item" onclick="this.classList.toggle('open')">
           <div class="faq-q">Comment fonctionne le pass mensuel ?<span class="faq-arrow">›</span></div>
-          <div class="faq-a">Pour 2 €/mois, vous accédez à autant de sessions de 30 minutes que vous souhaitez, 24 h/24. Renouvelé automatiquement, résiliable en un clic depuis votre espace : la résiliation arrête le renouvellement, le mois en cours reste dû et n'est pas remboursé.</div>
+          <div class="faq-a">Pour 2 €/mois, vous accédez à autant de sessions de 30 minutes que vous souhaitez, 24h/24. Renouvelé automatiquement, résiliable en un clic depuis votre espace : la résiliation arrête le renouvellement, le mois en cours reste dû et n'est pas remboursé.</div>
         </div>
         <div class="faq-item" onclick="this.classList.toggle('open')">
           <div class="faq-q">Comment résilier le pass mensuel ?<span class="faq-arrow">›</span></div>
@@ -2825,7 +2825,7 @@ function closeArticle(){document.getElementById('article-modal').classList.remov
     <h3>Première conversation</h3>
     <p><strong>20 minutes offertes</strong>, une fois, sans carte bancaire ni engagement.</p>
     <h3>Pass mensuel illimité</h3>
-    <p><strong>2,00 € TTC/mois</strong> · Sessions illimitées · 30 min max par session · Disponible 24 h/24 · Sans engagement de durée.</p>
+    <p><strong>2,00 € TTC/mois</strong> · Sessions illimitées · 30 min max par session · Disponible 24h/24 · Sans engagement de durée.</p>
     <p><strong>Résiliation</strong> : possible à tout moment depuis l'espace abonné, sans frais ni justification. Elle met fin au renouvellement automatique ; le mois entamé reste dû et n'est pas remboursé, l'accès restant ouvert jusqu'à son terme. Le droit de rétractation de 14 jours prévu à l'article 11 s'applique séparément, dans les conditions qui y sont décrites.</p>
     <p>Les <strong>sessions à l'unité</strong> (1 €, 3 €, 5 €) ne sont plus commercialisées depuis septembre 2026.</p>
     <p>Paiement sécurisé par <strong>Stripe</strong>. Aucune donnée de carte stockée par Parlons.</p>
