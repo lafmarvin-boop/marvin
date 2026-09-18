@@ -29,7 +29,6 @@ const Anthropic = require('@anthropic-ai/sdk');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const { AI_EMAIL, assistDecision, maxCarriesThread } = require('./_assist');
-const { trace } = require('./_trace'); // TEMPORAIRE
 // Réflexion étendue. ⚠️ `claude-opus-5` n'accepte PAS `thinking: { type: 'enabled',
 // budget_tokens }` : l'API répond 400 (« use thinking.type.adaptive and output_config »).
 // C'est ce qui a rendu Max muet sur **tous** ses appels — l'erreur survenait dans la fonction
@@ -58,14 +57,6 @@ const PROFIL_RAPIDE = {
   timeout: 8000,
   verrouMs: 25000
 };
-// Repère de déploiement lu par le diagnostic d'ai-reply (TEMPORAIRE, avec le traçage)
-exports.PROFIL_INFO = {
-  soigne: PROFIL_SOIGNE.model,
-  reflexion: PROFIL_SOIGNE.thinking ? PROFIL_SOIGNE.thinking.type : 'aucune',
-  effort: PROFIL_SOIGNE.outputConfig ? PROFIL_SOIGNE.outputConfig.effort : null,
-  rapide: PROFIL_RAPIDE.model
-};
-
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type' };
@@ -146,7 +137,6 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     // humain qui n'a pas répondu depuis ASSIST_DELAY_MS (il garde la session, Max comble le silence).
     const holdsSession = sess && sess.agent_email === AI_EMAIL;
     const assisting = sess && !holdsSession && !!sess.agent_email && body.assist === true;
-    if (body.assist === true) trace('recu', { s: String(sessionId).slice(0, 8), statut: sess?.status || null, agent: sess ? (sess.agent_email === AI_EMAIL ? 'Max' : 'humain') : null, rapide }); // TEMPORAIRE
     if (!sess || sess.status !== 'active' || (!holdsSession && !assisting)) {
       console.log('ai-reply skip session_not_ai', sessionId, sess?.status, sess?.agent_email);
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'session_not_ai' }) };
@@ -308,7 +298,6 @@ exports.repondre = async (body, { rapide = false } = {}) => {
         // Un modèle muet vaut moins qu'un modèle plus simple qui parle.
         if (rapide) throw err;
         console.warn('ai-reply : profil soigné en échec (' + err.message + '), repli sur ' + PROFIL_RAPIDE.model);
-        trace('repli', { s: String(sessionId).slice(0, 8), de: profil.model, vers: PROFIL_RAPIDE.model, msg: String(err.message).slice(0, 120) }); // TEMPORAIRE
         response = await appeler(PROFIL_RAPIDE);
       }
 
@@ -317,7 +306,6 @@ exports.repondre = async (body, { rapide = false } = {}) => {
       // ci-dessous — correcte mais impersonnelle — sans que rien ne le signale. On rejoue.
       const vide = (r) => !r.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
       if (!rapide && vide(response)) {
-        trace('vide', { s: String(sessionId).slice(0, 8), stop: response.stop_reason }); // TEMPORAIRE
         console.warn('ai-reply : réponse vide en profil soigné (' + response.stop_reason + '), repli');
         response = await appeler(PROFIL_RAPIDE);
       }
@@ -366,7 +354,6 @@ exports.repondre = async (body, { rapide = false } = {}) => {
       // le fil. La transparence est portée par la bulle elle-même, signée « Max · assistant »
       // au-dessus de chaque message (index.html) et « Max a répondu pour vous » côté écoutant.
       const insA = await post(text, 'assistant');
-      trace('insertion', { s: String(sessionId).slice(0, 8), ok: insA.ok, http: insA.status }); // TEMPORAIRE
       if (!insA.ok) throw new Error(`Insertion message ${insA.status}`);
     } else {
       const ins = await post(text, 'agent');
@@ -377,7 +364,6 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     } finally { await unlock(); }
   } catch (e) {
     console.error('ai-reply:', e.message);
-    trace('erreur', { s: String(sessionId).slice(0, 8), assist: body.assist === true, msg: String(e.message).slice(0, 180) }); // TEMPORAIRE
     const profilNom = rapide ? PROFIL_RAPIDE.model : PROFIL_SOIGNE.model;
     // Prévenir l'admin : une réponse de Max a échoué (clé, modèle, délai…)
     if (ADMIN_EMAIL) {

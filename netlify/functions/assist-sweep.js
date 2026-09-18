@@ -14,7 +14,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { AI_EMAIL, ASSIST_FIRST_MS, assistDecision } = require('./_assist');
-const { trace } = require('./_trace'); // TEMPORAIRE
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -81,7 +80,6 @@ exports.handler = async (event) => {
       const pris = await pr.json().catch(() => []);
       if (!Array.isArray(pris) || !pris.length) return;
       reprises++;
-      trace('file-attente', { s: s.id.slice(0, 8), attenteS: Math.round((Date.now() - new Date(s.created_at).getTime()) / 1000) }); // TEMPORAIRE
       try {
         await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },

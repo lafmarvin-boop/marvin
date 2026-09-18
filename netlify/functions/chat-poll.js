@@ -36,9 +36,6 @@ function maxReplyDelayMs(visitorMsg) {
   return base + supplement;
 }
 
-// Repère de déploiement lu par le diagnostic d'ai-reply (TEMPORAIRE)
-exports.DELAI_INFO = { court: '5-8s', long: '7-10s', assistance: 'oui si Max portait deja le fil' };
-
 async function sbGet(path) {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: H() });
   const d = await res.json();
