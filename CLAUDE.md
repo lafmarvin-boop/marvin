@@ -217,7 +217,7 @@ affirmative. Et : des **conseils concrets** assumés une fois la personne entend
 quelqu'un à ses propres ressources ressemble à une dérobade), un registre parlé (phrases courtes, pas de
 vocabulaire de fiche technique).
 
-**Longueur des réponses — une à trois phrases (sept. 2026).** Le prompt se contredisait : la section
+**Longueur des réponses — une ou deux phrases, 250 caractères (sept. 2026).** Le prompt se contredisait : la section
 FORME demandait « 2 à 5 phrases » pendant que la section sur la voix disait « une ligne suffit la
 plupart du temps ». Le modèle arbitrait au milieu, d'où des réponses trop longues. Les deux sections
 disent désormais la même chose : **une à trois phrases, une seule très souvent, quatre c'est déjà trop**
@@ -226,6 +226,29 @@ S'ajoute un mode d'emploi pour couper (supprimer l'introduction qui annonce, la 
 n'apporte rien, la justification du conseil, la conclusion qui répète). **Vérifier la cohérence des
 trois mentions de longueur** (sections « qui tu es », FORME, « ta façon d'écrire ») avant d'en modifier
 une : c'est leur désaccord qui produit des réponses hors cible, pas le chiffre lui-même.
+
+⚠️ **La consigne chiffrée n'a pas suffi.** Une conversation réelle postérieure au déploiement montrait
+encore des paragraphes de six à huit phrases. La cause tenait à une autre consigne du prompt : « donne
+de vrais conseils » produisait systématiquement *conseil + explication de pourquoi il marche*, ce qui
+double la longueur. D'où trois renforts : un plafond **en caractères** (250, plus facile à tenir qu'un
+compte de phrases), l'interdiction explicite d'expliquer un conseil, et surtout un **exemple travaillé**
+dans le prompt — le message trop long réellement produit, suivi de sa version correcte. C'est le levier
+qui manquait : une règle abstraite se contourne, un exemple concret beaucoup moins.
+
+## 💬 Proposition du pass en fin de conversation offerte
+
+À la fin d'une **conversation offerte** seulement, Max peut mentionner **une fois, en une phrase** que
+le pass à 2 €/mois permet de continuer. Le moment est décidé **côté serveur** (`_ai-core.js`, contexte
+dynamique : libellé contenant `GRATUIT` **et** `remainingMin` entre 1 et 4) et non par Max, qui jugerait
+mal à partir du seul « temps restant ». Un abonné n'est jamais sollicité.
+
+⚠️ **Jamais quand la personne va mal** — crise, idées suicidaires, violences, détresse aiguë, ou
+simplement une émotion forte en cours. Quelqu'un qui souffre n'est pas un client à convertir : une
+proposition payante à ce moment-là abîmerait la personne et le service. Jamais de message entier
+consacré à ça, jamais en ouverture, aucune insistance après un refus ou un silence, pas de vocabulaire
+commercial (urgence, « offre spéciale »). L'écoute n'est jamais conditionnée à un paiement, et Max ne
+laisse jamais entendre que la suite serait meilleure en payant. **Ne pas assouplir ces garde-fous pour
+améliorer la conversion.**
 
 **Voix de Max calquée sur celle du fondateur (sept. 2026).** Section « TA FAÇON D'ÉCRIRE » du
 prompt, tirée d'un échange WhatsApp réel fourni comme échantillon : messages **très courts** (souvent
