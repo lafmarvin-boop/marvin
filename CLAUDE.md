@@ -406,7 +406,9 @@ Répondre vaut lecture : il pose `agent_seen_at` avant d'insérer.
 Onglet « 📁 Archives » d'`espace.html` (`renderArchives`, données par `admin-chat-archive.js`,
 30 derniers jours). Chaque message porte son **heure d'envoi** à côté de la bulle — à l'extérieur et
 non dedans : à l'intérieur il faudrait deux couleurs de texte selon l'expéditeur (fond clair côté
-visiteur, terracotta côté écoutant). Heure au format `HH:MM`, **date complète au survol** (`title`) :
+visiteur, terracotta côté écoutant). Heure au format `HH:MM:SS` — les **secondes** comptent ici : les seuils d'intervention de Max se
+mesurent en secondes (10 s au premier contact, 20 s en cours d'échange), et c'est dans les archives
+qu'on relit après coup si le rythme a été tenu. **Date complète au survol** (`title`) :
 une conversation peut passer minuit alors que l'en-tête de la carte ne porte que la date de clôture.
 
 ⚠️ Les messages de Max en assistance (`sender_type = 'assistant'`) n'avaient **aucun style** ici :

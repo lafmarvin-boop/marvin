@@ -1290,7 +1290,10 @@ async function renderArchives() {
                   if (!isNaN(dt)) {
                     const t = document.createElement('span');
                     t.className = 'archive-time';
-                    t.textContent = dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                    // Secondes incluses : les délais d'intervention de Max se comptent en
+                    // secondes (10 s au premier contact, 20 s en cours d'échange), et c'est ici
+                    // qu'on relit après coup si le rythme a été tenu.
+                    t.textContent = dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                     // Date complète au survol : une conversation peut passer minuit, et
                     // l'en-tête de la carte ne porte que la date de clôture.
                     t.title = dt.toLocaleString('fr-FR');
