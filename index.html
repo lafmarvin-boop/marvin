@@ -245,6 +245,15 @@
     h1{font-family:'Playfair Display',serif;font-size:clamp(2.6rem,5vw,4rem);line-height:1.1;margin-bottom:1.4rem;animation:fadeUp .6s .1s ease both;}
     h1 em{font-style:italic;color:var(--terracotta);}
     .hero p{font-size:1.05rem;line-height:1.75;color:var(--mid);max-width:480px;margin-bottom:2.2rem;font-weight:300;animation:fadeUp .6s .2s ease both;}
+    /* Disponibilité permanente : c'est l'argument qui décide quelqu'un à 3 h du matin.
+       Noyé en gras dans le paragraphe, il passait inaperçu — il a désormais sa propre ligne,
+       un filet terracotta et une taille supérieure au corps de texte. */
+    .hero-dispo{font-size:1.18rem;line-height:1.5;color:var(--dark);font-weight:500;
+      max-width:480px;margin:-1.4rem 0 2.2rem;padding:.7rem 0 .7rem 1.1rem;
+      border-left:3px solid var(--terracotta);animation:fadeUp .6s .25s ease both;}
+    .hero-dispo em{font-style:normal;font-weight:700;color:var(--rust);}
+    /* Le créneau ne doit jamais se couper : « 7 / j/7 » sur deux lignes est illisible. */
+    .hero-dispo .nobr{white-space:nowrap;}
     .hero-actions{display:flex;align-items:center;gap:1.4rem;flex-wrap:wrap;animation:fadeUp .6s .3s ease both;}
     .btn-primary{display:inline-block;background:var(--terracotta);color:white;padding:.95rem 2rem;border-radius:50px;text-decoration:none;font-weight:500;font-size:.95rem;border:none;cursor:pointer;transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 4px 18px rgba(196,113,74,.35);}
     .btn-primary:hover{background:var(--rust);transform:translateY(-2px);box-shadow:0 6px 24px rgba(196,113,74,.45);}
@@ -698,6 +707,9 @@
       /* Hero — padding géré par JS */
       .hero{grid-template-columns:1fr;text-align:center;gap:2rem;padding-bottom:5rem;}
       .hero p{margin:0 auto 1.8rem;}
+      /* Centré comme le reste du hero : un filet à gauche déséquilibrerait la colonne. */
+      .hero-dispo{margin:-1rem auto 1.8rem;padding:.7rem 1rem;border-left:none;
+        border-top:2px solid var(--terracotta);border-bottom:2px solid var(--terracotta);font-size:1.1rem;}
       .hero-actions{justify-content:center;flex-direction:column;align-items:center;gap:.85rem;}
       .hero-actions .btn-primary{width:100%;max-width:320px;text-align:center;}
       .hero-actions .btn-secondary{font-size:.85rem;}
@@ -862,7 +874,8 @@
     <button id="hero-rating-btn" style="display:none;margin-bottom:.6rem;align-items:center;gap:.45rem;background:white;border:1px solid var(--sand);padding:.35rem .9rem;border-radius:50px;font-size:.78rem;font-weight:600;color:var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;font-family:'DM Sans',sans-serif;" onclick="openAvisModal()"><span id="hero-rating-stars" style="color:#f59e0b;letter-spacing:1px"></span><span id="hero-rating-text" style="color:var(--mid);margin-left:.2rem"></span></button>
     <div class="hero-tag" id="hero-tag"><span class="dot" id="hero-dot"></span><span id="hero-tag-text"> Des écoutants disponibles maintenant</span></div>
     <h1>Besoin de parler ?<br><em>Quelqu'un vous attend.</em></h1>
-    <p>Parfois, on a juste besoin d'une oreille attentive. À toute heure du jour ou de la nuit, quelqu'un vous répond — tout de suite, sans jugement, en toute confidentialité.<br><strong>Pas de file d'attente, pas d'horaires : une écoute disponible 24 h/24, 7 j/7.</strong> Vos 20 premières minutes sont offertes, sans carte bancaire.</p>
+    <p>Parfois, on a juste besoin d'une oreille attentive. À toute heure du jour ou de la nuit, quelqu'un vous répond — tout de suite, sans jugement, en toute confidentialité. Vos 20 premières minutes sont offertes, sans carte bancaire.</p>
+    <p class="hero-dispo">Pas de file d'attente, pas d'horaires :<br><em>une écoute disponible <span class="nobr">24 h/24, 7 j/7.</span></em></p>
     <div class="hero-actions">
       <button class="btn-free-cta" id="hero-free-btn" onclick="openModal()" style="display:none">🎁 Essayer gratuitement · 20 min</button>
       <button class="btn-primary" onclick="openModal()">Démarrer une discussion →</button>
