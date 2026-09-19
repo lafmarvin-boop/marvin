@@ -18,22 +18,24 @@ const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
 
 // Rythme de réponse de Max : une réponse instantanée trahit la machine et met le visiteur
 // en position de « chat bot ». On retient donc l'affichage de sa réponse le temps qu'un humain
-// aurait mis à lire et écrire — **8 à 14 s**, un peu plus long sur un message long.
+// aurait mis à lire et écrire — **11 à 17 s**, un peu plus long sur un message long.
 // Le délai est dérivé de l'identifiant du message visiteur pour rester stable d'un poll à l'autre :
 // deux sondages successifs doivent calculer la même échéance, sinon la réponse réapparaîtrait
 // et disparaîtrait. C'est un **minimum** d'affichage, pas un maximum : si Max met plus longtemps
 // à rédiger, sa réponse arrive quand elle est prête.
 //
-// SUPPLEMENT : 3 à 4 s ajoutées à la demande du propriétaire (sept. 2026). Avant lui, le plancher
-// (5 s) était du même ordre que le temps de rédaction de Max (~5 s) : la retenue ne mordait donc
-// presque jamais, et le rythme perçu n'était que la vitesse du modèle. Désormais elle mord.
+// SUPPLEMENT : 3 à 4 s ajoutées à la demande du propriétaire, puis **3 s de plus** (sept. 2026),
+// soit 6 à 7 s au-dessus de la base. Avant le premier supplément, le plancher (5 s) était du même
+// ordre que le temps de rédaction de Max (~5 s) : la retenue ne mordait presque jamais, et le rythme
+// perçu n'était que la vitesse du modèle. Désormais elle mord. Ne pas les prendre pour des marges
+// arbitraires : chacun a été demandé après lecture d'une conversation réelle.
 function maxReplyDelayMs(visitorMsg) {
   const words = String(visitorMsg.content || '').trim().split(/\s+/).filter(Boolean).length;
   let seed = 0;
   for (const ch of String(visitorMsg.id || '')) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   const base = words < 6 ? 5000 + (seed % 3001) : 7000 + (seed % 3001);
   const supplement = 3000 + (((seed >>> 7) % 1001));   // 3,0 à 4,0 s
-  return base + supplement;
+  return base + supplement + 3000;                     // + 3 s (2e demande)
 }
 
 async function sbGet(path) {
