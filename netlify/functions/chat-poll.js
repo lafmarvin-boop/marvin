@@ -18,7 +18,8 @@ const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
 
 // Rythme de réponse de Max : une réponse instantanée trahit la machine et met le visiteur
 // en position de « chat bot ». On retient donc l'affichage de sa réponse le temps qu'un humain
-// aurait mis à lire et écrire — **11 à 17 s**, un peu plus long sur un message long.
+// aurait mis à lire et écrire — **9 à 20 s**, selon la longueur du message du visiteur ET celle
+// de la réponse de Max (une réaction de deux mots s'affiche plus vite que trois lignes).
 // Le délai est dérivé de l'identifiant du message visiteur pour rester stable d'un poll à l'autre :
 // deux sondages successifs doivent calculer la même échéance, sinon la réponse réapparaîtrait
 // et disparaîtrait. C'est un **minimum** d'affichage, pas un maximum : si Max met plus longtemps
@@ -29,13 +30,30 @@ const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
 // ordre que le temps de rédaction de Max (~5 s) : la retenue ne mordait presque jamais, et le rythme
 // perçu n'était que la vitesse du modèle. Désormais elle mord. Ne pas les prendre pour des marges
 // arbitraires : chacun a été demandé après lecture d'une conversation réelle.
-function maxReplyDelayMs(visitorMsg) {
+// Seuil 2/3 lignes, calibré sur des messages réels affichés dans un mobile : 82 caractères tenaient
+// en deux lignes, 113 en trois. On coupe à 95 (~45 caractères par ligne). C'est une approximation
+// assumée — la largeur réelle dépend de l'appareil —, mais elle suffit à distinguer un message bref
+// d'un message dense.
+const SEUIL_TROIS_LIGNES = 95;
+
+function maxReplyDelayMs(visitorMsg, reponseMax) {
   const words = String(visitorMsg.content || '').trim().split(/\s+/).filter(Boolean).length;
   let seed = 0;
   for (const ch of String(visitorMsg.id || '')) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   const base = words < 6 ? 5000 + (seed % 3001) : 7000 + (seed % 3001);
   const supplement = 3000 + (((seed >>> 7) % 1001));   // 3,0 à 4,0 s
-  return base + supplement + 3000;                     // + 3 s (2e demande)
+  let delai = base + supplement + 3000;                // + 3 s (2e demande)
+
+  // Ajustement selon la longueur de la réponse de Max : on n'attend pas le même temps devant un
+  // « Ah. » que devant trois lignes. Sans lui, l'indicateur « … » restait allumé quinze secondes
+  // pour un message de quatre mots.
+  const texte = String((reponseMax && reponseMax.content) || '').trim();
+  if (texte) {
+    const motsMax = texte.split(/\s+/).filter(Boolean).length;
+    if (motsMax <= 2) delai -= 2000;                        // réaction brève
+    else if (texte.length > SEUIL_TROIS_LIGNES) delai += 3000;  // trois lignes ou plus
+  }
+  return delai;
 }
 
 async function sbGet(path) {
@@ -133,7 +151,11 @@ exports.handler = async (event) => {
           || (m.sender_type === 'assistant' && portaitDeja);
         if (vIdx > 0) {
           const visitorMsg = recent[vIdx];
-          const due = new Date(visitorMsg.created_at).getTime() + maxReplyDelayMs(visitorMsg);
+          // recent va du plus récent au plus ancien : la dernière de la tranche est la première
+          // réponse qu'a écrite Max après ce message, celle dont on règle l'affichage.
+          const reponsesMax = recent.slice(0, vIdx).filter(fromMax);
+          const due = new Date(visitorMsg.created_at).getTime()
+            + maxReplyDelayMs(visitorMsg, reponsesMax[reponsesMax.length - 1]);
           if (Date.now() < due) {
             const hide = new Set(recent.slice(0, vIdx).filter(fromMax).map(m => m.id));
             if (hide.size) { messagesOut = messages.filter(m => !hide.has(m.id)); retenu = true; }

@@ -300,11 +300,17 @@ anecdotes à la première personne.**
 
 **⚠️ Forme de la réflexion étendue (sept. 2026 — cause d'un silence total de Max).** `claude-opus-5` **refuse** `thinking: { type: 'enabled', budget_tokens }` : l'API répond 400 « use thinking.type.adaptive and output_config ». La profondeur se règle par `output_config.effort`, plus par un budget de jetons. L'erreur était invisible : elle survenait dans `ai-reply-background`, qui avait **déjà répondu 202**, si bien qu'`ai-reply` croyait l'appel réussi et ne repliait jamais sur le profil rapide. Max s'est tu sur **tous** ses appels, assistance comprise, alors que la règle `_assist.js` se déclenchait correctement (`go: true` dans un traçage temporaire, depuis retiré) — chercher le défaut du côté des délais aurait été sans fin. **Leçon à garder** : les journaux Netlify n'étant pas consultables depuis la session de développement, un traçage jetable écrit en base (`suggestions`, `payment_id = 'TRACE'`) a été le seul moyen de trancher entre quatre hypothèses. À refaire si un défaut redevient invisible — et à retirer aussitôt la cause trouvée, y compris le point de lecture HTTP. ⚠️ **Le coût caché d'un tel dispositif** : le filtre qui excluait les lignes de diagnostic du tableau de bord admin (`payment_id=not.eq.TRACE`) masquait aussi, sans qu'on le veuille, **toutes les suggestions dont `payment_id` est `NULL`** — c'est-à-dire celles envoyées sans paiement. En PostgREST comme en SQL, `NOT (colonne = 'x')` vaut `NULL`, donc faux, quand la colonne est nulle. Un filtre d'exclusion sur une colonne nullable doit s'écrire `or=(payment_id.is.null,payment_id.neq.X)`. Retenir surtout que l'instrumentation temporaire a des effets de bord sur le code de production qu'elle traverse. Deux garde-fous désormais : le champ `thinking` n'est **envoyé que si la réflexion est demandée** (son absence est acceptée par tous les modèles, sa forme non), et `_ai-core.js` **rejoue lui-même en profil rapide** si le profil soigné échoue — un modèle muet vaut moins qu'un modèle plus simple qui parle. Ne pas remettre ce repli à la charge d'`ai-reply` : il ne peut pas voir l'échec d'une fonction background.
 
-**Rythme de réponse de Max — 11 à 17 s (sept. 2026).** Une réponse instantanée trahit la machine et
+**Rythme de réponse de Max — 11 à 20 s selon la longueur de sa réponse (sept. 2026).** Une réponse instantanée trahit la machine et
 met le visiteur en position de « chat bot ». `chat-poll.js` retient donc l'affichage de la réponse le
-temps qu'un humain aurait mis à lire et écrire : **11-15 s** pour un message court (< 6 mots), **13-17 s**
-au-delà (base 5-8 / 7-10 s, plus un supplément de 3 à 4 s, plus 3 s — deux demandes successives du
-propriétaire, chacune après lecture d'une conversation réelle). Ce supplément
+temps qu'un humain aurait mis à lire et écrire. Deux facteurs se combinent. **Le message du visiteur**
+donne la base : 5-8 s s'il fait moins de 6 mots, 7-10 s au-delà, plus un supplément de 3 à 4 s, plus
+3 s — deux demandes successives du propriétaire, chacune après lecture d'une conversation réelle.
+**La réponse de Max** ajuste ensuite : **−2 s** si elle tient en un ou deux mots, **+3 s** si elle
+dépasse `SEUIL_TROIS_LIGNES` (95 caractères, calibré sur des bulles réelles — 82 caractères tenaient
+en deux lignes sur mobile, 113 en trois). Mesuré : **11-15 s** pour « Ah. », **13-17 s** pour deux
+lignes, **16-20 s** pour trois. Sans cet ajustement, l'indicateur « … » restait allumé quinze
+secondes devant un message de quatre mots — invraisemblable. ⚠️ Le seuil en caractères est une
+approximation assumée : la largeur d'une ligne dépend de l'appareil. Ce supplément
 n'est pas cosmétique : avant lui le plancher (5 s) était du même ordre que le temps de rédaction de Max
 (~5 s mesurées en production), la retenue ne mordait donc quasiment jamais et le rythme perçu n'était que
 la vitesse du modèle. **Ne pas le retirer en le prenant pour une marge arbitraire.** Le délai est dérivé de l'identifiant du message visiteur, et non tiré au sort à chaque appel :
