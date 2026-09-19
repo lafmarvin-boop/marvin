@@ -327,18 +327,27 @@ anecdotes à la première personne.**
 **Rythme de réponse de Max — lecture puis écriture, 12 à 26 s (sept. 2026).** Une réponse instantanée
 trahit la machine. L'attente est découpée comme chez un humain, et les deux temps sont **successifs** :
 
-| | Dépend de | Durée |
+| Repère | Quand | Dépend de |
 |---|---|---|
-| **Lecture** (rien ne s'affiche) | longueur du message du **visiteur** | 3 s à 6 s |
-| **Écriture** (« … » allumé) | longueur de la réponse de **Max** | 9 s à 20 s |
+| ✓✓ **reçu** | tout de suite | — |
+| ✓✓ **lu** | à la **fin** du temps de lecture (3 s à 6 s) | longueur du message du **visiteur** |
+| « … » | + `PAUSE_AVANT_FRAPPE_MS` (1,5 s) | — |
+| la réponse | après le temps d'écriture (9 s à 20 s) | longueur de la réponse de **Max** |
+
+⚠️ **Le « lu » se pose à la fin de la lecture, jamais au début.** Il tombait auparavant à ~1,5 s quelle
+que soit la longueur : Max « lisait » 286 caractères en une seconde et demie puis restait muet six
+secondes, soit l'inverse d'un humain. Pour la même raison, l'écriture de `agent_seen_at` qui précédait
+l'insertion a été **retirée** : la rédaction (≈ 5 s) va souvent plus vite que la lecture d'un long
+message (jusqu'à 6 s), et ce repère faisait réapparaître le défaut par la bande.
 
 ⚠️ **Source unique : `netlify/functions/_rythme.js`.** Deux fichiers en dépendent — `_ai-core.js` pour
 savoir quand allumer l'indicateur de frappe, `chat-poll.js` pour savoir quand livrer le message.
 Dupliquer le calcul les ferait diverger et l'indicateur s'allumerait à contretemps. Même raison d'être
 que `_assist.js`. **Ne pas réintroduire de copie locale.**
 
-Mesuré : « oui » → « Ah. » = 12-16 s ; message moyen → deux lignes = 17-21 s ; message long → trois
-lignes = 22-26 s. Le total a augmenté en rendant les deux temps successifs (la lecture était
+Mesuré, du message du visiteur : « oui » → lu à 3,1 s, « … » à 4,6 s ; une phrase → lu à 3,8 s ;
+un message de 286 caractères → lu à 6,0 s, « … » à 7,5 s. Total jusqu'à la réponse : « oui » → « Ah. »
+= 12-16 s ; message moyen → deux lignes = 17-21 s ; message long → trois lignes = 22-26 s. Le total a augmenté en rendant les deux temps successifs (la lecture était
 auparavant comprise dans l'attente, pas ajoutée) : c'est un choix explicite du propriétaire.
 
 Les délais sont dérivés du **contenu et de l'identifiant** des messages, jamais tirés au sort à

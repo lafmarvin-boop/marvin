@@ -5,10 +5,12 @@
 // elle se découpe chez un humain :
 //
 //   message du visiteur
-//     │  ✓✓ reçu, ✓✓ lu          posés tout de suite par _ai-core
-//     │  TEMPS DE LECTURE        rien ne s'affiche ; dépend de la longueur
-//     │                          du message du visiteur (3 à 6 s)
-//     │  « … en train d'écrire » allumé par _ai-core au bout de ce temps
+//     │  ✓✓ reçu                 posé tout de suite par _ai-core
+//     │  TEMPS DE LECTURE        dépend de la longueur du message du visiteur
+//     │  ✓✓ lu                   posé À LA FIN de la lecture, pas avant : un
+//     │                          message de cinq lignes ne se lit pas en 1 s
+//     │  PAUSE                   le temps de poser les mains sur le clavier
+//     │  « … en train d'écrire » allumé par _ai-core
 //     │  TEMPS D'ÉCRITURE        dépend de la longueur de la réponse de Max
 //     ▼  la réponse apparaît     chat-poll la libère
 //
@@ -33,6 +35,10 @@ const SEUIL_TROIS_LIGNES = 95;
 const LECTURE_MIN_MS = 3000;
 const LECTURE_MAX_MS = 6000;
 const LECTURE_PAR_CARACTERE_MS = 18;   // ~55 caractères/s, plafonné à 6 s
+
+// Entre la fin de la lecture et les premières frappes. Court, mais non nul :
+// sans lui le « lu » et le « … » s'affichent dans le même souffle.
+const PAUSE_AVANT_FRAPPE_MS = 1500;
 
 function tempsLectureMs(visitorMsg) {
   const n = String((visitorMsg && visitorMsg.content) || '').trim().length;
@@ -67,6 +73,6 @@ function delaiTotalMs(visitorMsg, reponseMax) {
 }
 
 module.exports = {
-  SEUIL_TROIS_LIGNES, LECTURE_MIN_MS, LECTURE_MAX_MS,
+  SEUIL_TROIS_LIGNES, LECTURE_MIN_MS, LECTURE_MAX_MS, PAUSE_AVANT_FRAPPE_MS,
   tempsLectureMs, tempsEcritureMs, delaiTotalMs
 };
