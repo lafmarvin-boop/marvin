@@ -29,6 +29,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const { AI_EMAIL, assistDecision, maxCarriesThread } = require('./_assist');
+const { tempsLectureMs } = require('./_rythme');
 // Réflexion étendue. ⚠️ `claude-opus-5` n'accepte PAS `thinking: { type: 'enabled',
 // budget_tokens }` : l'API répond 400 (« use thinking.type.adaptive and output_config »).
 // C'est ce qui a rendu Max muet sur **tous** ses appels — l'erreur survenait dans la fonction
@@ -309,10 +310,11 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     // demander davantage, on entretient l'horodatage tant que le modèle travaille.
     const marquerEcrit = () => majSession({ agent_typing_at: new Date().toISOString(), agent_fetched_at: new Date().toISOString() });
 
-    // 3 à 5 s de battement avant que « … » apparaisse, le temps que Max « lise ». La rédaction,
-    // elle, a déjà commencé : ce délai ne retarde donc rien, il ne retarde que l'affichage de
-    // l'indicateur.
-    const DELAI_AVANT_ECRITURE = 3000 + Math.floor(Math.random() * 2001);
+    // Le temps que Max « lise », avant que « … » apparaisse : 3 à 6 s selon la longueur du message
+    // du visiteur. Calculé par `_rythme.js`, la même source que chat-poll utilise pour décider quand
+    // livrer la réponse — sans quoi l'indicateur s'allumerait à contretemps. La rédaction, elle, a
+    // déjà commencé : ce délai ne retarde que l'affichage de l'indicateur.
+    const DELAI_AVANT_ECRITURE = tempsLectureMs(last);
     let battement = null;
     const departEcriture = setTimeout(() => {
       marquerEcrit();
