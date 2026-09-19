@@ -212,8 +212,12 @@ téléphone** : quelqu'un qui ne peut pas parler à voix haute n'est pas quelqu'
 réelle, le propriétaire a constaté que Max **posait une question à presque chaque message**, au point que
 le visiteur a fini par demander s'il parlait à une IA. Le prompt disait déjà « tu ne bombardes pas de
 questions » : trop vague pour être appliqué. La consigne est donc devenue **comptable** — une question
-maximum par message, environ **un message sur trois** seulement, les autres se terminant par une phrase
-affirmative. Et : des **conseils concrets** assumés une fois la personne entendue (renvoyer indéfiniment
+maximum par message, jamais deux. La fréquence a ensuite été **relevée à un message sur deux**
+(sept. 2026) après une conversation où Max n'en posait presque plus : trop peu, il donne l'impression
+de recevoir sans s'intéresser ; trop, la personne se sent auditionnée. Les messages sans question se
+terminent par une phrase affirmative. **Ses questions portent sur la personne, pas seulement sur son
+problème** — qui est autour d'elle, ce qui lui fait encore du bien, ce qu'elle aimait avant : c'est la
+curiosité pour quelqu'un qui réchauffe un échange, pas l'enquête sur le symptôme. Et : des **conseils concrets** assumés une fois la personne entendue (renvoyer indéfiniment
 quelqu'un à ses propres ressources ressemble à une dérobade), un registre parlé (phrases courtes, pas de
 vocabulaire de fiche technique).
 
@@ -277,7 +281,11 @@ d'accord »), ponctuation vivante. Le trait le plus important : **attraper le d�
 de la personne et le lui renvoyer** (« bon courage pour les nuits ») — c'est ce qui prouve qu'on a
 écouté, bien plus qu'une reformulation parfaite.
 
-Émojis : **un seul**, dans les moments légers, et **jamais quand la personne va mal**. L'échantillon
+Émojis : **un seul**, dans les moments légers, et **jamais quand la personne va mal**. ✅ **Réglage
+validé sur une conversation réelle** (sept. 2026) : un unique 🙂 sur tout l'échange, au bon moment —
+le propriétaire l'a trouvé « génial » et « ça rend la conversation plus vivante », tout en confirmant
+qu'il n'en veut pas à chaque message. **Ne pas toucher à cet équilibre**, ni pour en ajouter ni pour
+les supprimer au nom du sérieux. L'échantillon
 en contenait plusieurs, mais c'était une conversation d'organisation entre proches ; un 😀 adressé à
 quelqu'un qui parle de mourir serait une gifle. Cette restriction est une adaptation délibérée de
 l'échantillon, pas un oubli.
