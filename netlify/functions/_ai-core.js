@@ -299,10 +299,9 @@ exports.repondre = async (body, { rapide = false } = {}) => {
       body: JSON.stringify(champs)
     }).catch(() => {});
 
-    // Séquence vue par le visiteur : « reçu » tout de suite, « lu » à la fin de la lecture, puis
-    // une courte pause, puis « … ». Sur une session tenue par Max, aucun écoutant ne sonde pour
-    // poser ces repères : c'est donc ici qu'ils se posent.
-    majSession({ agent_fetched_at: new Date().toISOString() });
+    // Séquence vue par le visiteur : « reçu » et « lu » tout de suite, puis le temps de lecture,
+    // puis « … ». Sur une session tenue par Max, aucun écoutant ne sonde pour poser ces repères.
+    majSession({ agent_fetched_at: new Date().toISOString(), agent_seen_at: new Date().toISOString() });
 
     // Max « écrit » : l'indicateur s'éteint seul au bout de 8 s ; comme la réflexion étendue peut
     // demander davantage, on entretient l'horodatage tant que le modèle travaille.
@@ -313,7 +312,6 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     // quoi les deux bouts se désynchroniseraient. La rédaction, elle, a déjà commencé : ces délais
     // ne retardent que l'affichage des repères, jamais la réponse.
     const LECTURE_MS = tempsLectureMs(last);
-    const luTermine = setTimeout(() => majSession({ agent_seen_at: new Date().toISOString() }), LECTURE_MS);
 
     let battement = null;
     const departEcriture = setTimeout(() => {
@@ -362,7 +360,7 @@ exports.repondre = async (body, { rapide = false } = {}) => {
         console.warn('ai-reply : réponse vide en profil soigné (' + response.stop_reason + '), repli');
         response = await appeler(PROFIL_RAPIDE);
       }
-    } finally { clearTimeout(luTermine); clearTimeout(departEcriture); if (battement) clearInterval(battement); }
+    } finally { clearTimeout(departEcriture); if (battement) clearInterval(battement); }
 
     // Les blocs de réflexion ne sont pas destinés au visiteur : seul le texte est retenu.
     let text = response.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
@@ -381,9 +379,7 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     if (holdsSession && check[0].agent_email !== AI_EMAIL)
       return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true, skipped: 'handed_over' }) };
 
-    // Pas de « lu » ici : `luTermine` s'en charge à la fin du temps de lecture. La rédaction va
-    // souvent plus vite (≈ 5 s) que la lecture d'un long message (jusqu'à 6 s) ; poser le repère
-    // ici le ferait apparaître trop tôt, précisément le défaut qu'on corrige.
+    // Pas de « lu » ici : il est déjà posé au tout début, quand Max prend la main.
 
     const post = (content, sender_type) => fetch(`${SB_URL}/rest/v1/chat_messages`, {
       method: 'POST',

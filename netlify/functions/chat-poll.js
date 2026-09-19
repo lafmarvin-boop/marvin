@@ -16,7 +16,7 @@ const CORS = {
 
 const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
 
-const { delaiTotalMs } = require('./_rythme');   // temps de lecture + temps d'écriture
+const { delaiTotalMs, tempsLectureMs, PAUSE_AVANT_FRAPPE_MS } = require('./_rythme');   // temps de lecture + temps d'écriture
 
 async function sbGet(path) {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: H() });
@@ -120,7 +120,17 @@ exports.handler = async (event) => {
             + delaiTotalMs(visitorMsg, reponsesMax[reponsesMax.length - 1]);
           if (Date.now() < due) {
             const hide = new Set(recent.slice(0, vIdx).filter(fromMax).map(m => m.id));
-            if (hide.size) { messagesOut = messages.filter(m => !hide.has(m.id)); retenu = true; }
+            if (hide.size) {
+              messagesOut = messages.filter(m => !hide.has(m.id));
+              // ⚠️ `retenu` allume « … ». Il ne doit pas le faire avant que la phase d'écriture ait
+              // commencé : Max rédige parfois en 2 s, et l'indicateur s'allumait alors bien avant la
+              // fin du temps de lecture — c'est ce qui le faisait apparaître en moins de 3 s sur un
+              // message long. Le message reste caché dans tous les cas ; seul l'indicateur est
+              // conditionné.
+              const debutEcriture = new Date(visitorMsg.created_at).getTime()
+                + tempsLectureMs(visitorMsg) + PAUSE_AVANT_FRAPPE_MS;
+              retenu = Date.now() >= debutEcriture;
+            }
           }
         }
       }

@@ -329,16 +329,17 @@ trahit la machine. L'attente est découpée comme chez un humain, et les deux te
 
 | Repère | Quand | Dépend de |
 |---|---|---|
-| ✓✓ **reçu** | tout de suite | — |
-| ✓✓ **lu** | à la **fin** du temps de lecture (3 s à 6 s) | longueur du message du **visiteur** |
-| « … » | + `PAUSE_AVANT_FRAPPE_MS` (1,5 s) | — |
+| ✓✓ **reçu** et ✓✓ **lu** | tout de suite (~1,5 s) | — |
+| « … » | après le temps de lecture (3 s à 6 s) + `PAUSE_AVANT_FRAPPE_MS` (1,5 s) | longueur du message du **visiteur** |
 | la réponse | après le temps d'écriture (9 s à 20 s) | longueur de la réponse de **Max** |
 
-⚠️ **Le « lu » se pose à la fin de la lecture, jamais au début.** Il tombait auparavant à ~1,5 s quelle
-que soit la longueur : Max « lisait » 286 caractères en une seconde et demie puis restait muet six
-secondes, soit l'inverse d'un humain. Pour la même raison, l'écriture de `agent_seen_at` qui précédait
-l'insertion a été **retirée** : la rédaction (≈ 5 s) va souvent plus vite que la lecture d'un long
-message (jusqu'à 6 s), et ce repère faisait réapparaître le défaut par la bande.
+⚠️ **`retenu` ne doit pas allumer « … » avant la fin de la lecture.** Dans `chat-poll`,
+`otherTyping: isTyping(…) || retenu` faisait apparaître l'indicateur **dès que Max avait fini de
+rédiger**, indépendamment du temps de lecture : quand il répondait en 2 s, « … » s'allumait en moins
+de 3 s sur un message de 286 caractères. `retenu` est donc conditionné à `created_at du message
+visiteur + lecture + pause`. Le message reste caché dans tous les cas ; **seul l'indicateur est
+conditionné**. Le minuteur d'`_ai-core` ne suffisait pas à lui seul, parce que ce second chemin
+allumait l'indicateur en parallèle.
 
 ⚠️ **Source unique : `netlify/functions/_rythme.js`.** Deux fichiers en dépendent — `_ai-core.js` pour
 savoir quand allumer l'indicateur de frappe, `chat-poll.js` pour savoir quand livrer le message.
