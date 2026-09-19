@@ -309,9 +309,10 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     // demander davantage, on entretient l'horodatage tant que le modèle travaille.
     const marquerEcrit = () => majSession({ agent_typing_at: new Date().toISOString(), agent_fetched_at: new Date().toISOString() });
 
-    // 3 à 4 s de battement avant que « … » apparaisse. La rédaction, elle, a déjà commencé : ce
-    // délai ne retarde donc rien, il ne retarde que l'affichage de l'indicateur.
-    const DELAI_AVANT_ECRITURE = 3000 + Math.floor(Math.random() * 1001);
+    // 3 à 5 s de battement avant que « … » apparaisse, le temps que Max « lise ». La rédaction,
+    // elle, a déjà commencé : ce délai ne retarde donc rien, il ne retarde que l'affichage de
+    // l'indicateur.
+    const DELAI_AVANT_ECRITURE = 3000 + Math.floor(Math.random() * 2001);
     let battement = null;
     const departEcriture = setTimeout(() => {
       marquerEcrit();

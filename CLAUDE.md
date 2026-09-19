@@ -486,7 +486,7 @@ retient volontairement sa réponse le temps « de lire et d'écrire » : c'est b
 **Séquence vue par le visiteur — reçu, lu, temps mort, puis « … » (sept. 2026).** L'ordre était
 exactement inverse : `marquerEcrit()` allumait « … » dès la première milliseconde, et `agent_seen_at`
 (le « lu ») n'était posé qu'à l'insertion, dix secondes plus tard. Désormais `_ai-core` pose
-`agent_fetched_at` **et** `agent_seen_at` dès qu'il prend la main, puis attend **3 à 4 s**
+`agent_fetched_at` **et** `agent_seen_at` dès qu'il prend la main, puis attend **3 à 5 s**
 (`DELAI_AVANT_ECRITURE`, tiré au sort) avant d'allumer l'indicateur de frappe. C'est l'ordre humain :
 on lit, on réfléchit, et seulement ensuite on tape. ⚠️ Ce délai **ne retarde pas la réponse** — la
 rédaction a déjà commencé, seul l'affichage de l'indicateur est différé. Le `setTimeout` est annulé
