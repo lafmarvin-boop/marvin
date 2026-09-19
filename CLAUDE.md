@@ -273,6 +273,19 @@ apparaissait quand même : une interdiction en liste tient mal, un exemple contr
 alterner — après deux réponses de deux ou trois lignes, une de quelques mots (« Ah. », « C'est dur,
 ça. », « Depuis combien de temps ? »), qui sont de vraies réponses et non des remplissages.
 
+**⚠️ Le prompt enseigne par l'exemple autant que par la règle (sept. 2026).** Max plaçait des tirets
+longs à la place d'un point (« ça se passe comment — tu le fais dans son dos ? »), alors que le prompt
+disait déjà « pas de tirets cadratins ». Cause trouvée en comptant : **le prompt lui-même en contenait
+32**. Le modèle imitait le style de ses instructions plutôt que d'obéir à l'une d'elles. La prose du
+prompt en est désormais expurgée ; il n'en reste que **trois, dans les exemples « À éviter »**, où ils
+montrent la faute. Même le séparateur des exemples contrastifs est passé de « — Mieux : » à
+« → Mieux : », pour la même raison.
+
+**Règle générale à retenir** : avant d'ajouter une interdiction de forme au prompt, vérifier que le
+prompt ne la viole pas lui-même. Et préférer partout l'**exemple contrastif** (« À éviter : … → Mieux :
+… ») à la liste d'interdits : trois tics successifs — « Je comprends », l'écho en tête de message, le
+tiret long — figuraient en liste et n'ont cédé qu'une fois montrés par l'exemple.
+
 **Voix de Max calquée sur celle du fondateur (sept. 2026).** Section « TA FAÇON D'ÉCRIRE » du
 prompt, tirée d'un échange WhatsApp réel fourni comme échantillon : messages **très courts** (souvent
 une ligne), prénom employé naturellement mais pas à chaque message, mots du quotidien (« dur »,
