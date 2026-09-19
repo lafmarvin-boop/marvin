@@ -293,16 +293,30 @@ exports.repondre = async (body, { rapide = false } = {}) => {
       opening ? `Tu as ouvert la conversation par : « ${opening} »` : ''
     ].filter(Boolean).join('\n');
 
-    // Max « écrit » : l'indicateur « … » s'affiche côté visiteur pendant la rédaction, au même
-    // titre que pour un écoutant humain. Il s'éteint seul au bout de 8 s ; comme la réflexion
-    // étendue peut demander davantage, on entretient l'horodatage tant que le modèle travaille.
-    const marquerEcrit = () => fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+    const majSession = (champs) => fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
       method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      // « reçu » aussi : sur une session tenue par Max, aucun écoutant ne sonde pour le poser
-      body: JSON.stringify({ agent_typing_at: new Date().toISOString(), agent_fetched_at: new Date().toISOString() })
+      body: JSON.stringify(champs)
     }).catch(() => {});
-    marquerEcrit();
-    const battement = setInterval(marquerEcrit, 6000);
+
+    // Séquence vue par le visiteur : « reçu », puis « lu », puis un temps mort, puis « … ».
+    // C'est l'ordre humain — on lit d'abord, on réfléchit, et seulement ensuite on tape. Auparavant
+    // « … » s'allumait dès la première milliseconde et le « lu » n'arrivait qu'à l'insertion, soit
+    // exactement l'inverse. Sur une session tenue par Max, aucun écoutant ne sonde pour poser ces
+    // deux repères : c'est donc ici qu'ils se posent.
+    majSession({ agent_fetched_at: new Date().toISOString(), agent_seen_at: new Date().toISOString() });
+
+    // Max « écrit » : l'indicateur s'éteint seul au bout de 8 s ; comme la réflexion étendue peut
+    // demander davantage, on entretient l'horodatage tant que le modèle travaille.
+    const marquerEcrit = () => majSession({ agent_typing_at: new Date().toISOString(), agent_fetched_at: new Date().toISOString() });
+
+    // 3 à 4 s de battement avant que « … » apparaisse. La rédaction, elle, a déjà commencé : ce
+    // délai ne retarde donc rien, il ne retarde que l'affichage de l'indicateur.
+    const DELAI_AVANT_ECRITURE = 3000 + Math.floor(Math.random() * 1001);
+    let battement = null;
+    const departEcriture = setTimeout(() => {
+      marquerEcrit();
+      battement = setInterval(marquerEcrit, 6000);
+    }, DELAI_AVANT_ECRITURE);
 
     // Un appel au modèle, selon un profil. Isolé pour pouvoir rejouer en profil rapide.
     const appeler = async (pr) => {
@@ -345,7 +359,7 @@ exports.repondre = async (body, { rapide = false } = {}) => {
         console.warn('ai-reply : réponse vide en profil soigné (' + response.stop_reason + '), repli');
         response = await appeler(PROFIL_RAPIDE);
       }
-    } finally { clearInterval(battement); }
+    } finally { clearTimeout(departEcriture); if (battement) clearInterval(battement); }
 
     // Les blocs de réflexion ne sont pas destinés au visiteur : seul le texte est retenu.
     let text = response.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
