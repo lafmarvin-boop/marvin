@@ -7,7 +7,7 @@
 //   message du visiteur
 //     │  ✓✓ reçu                 posé tout de suite par _ai-core
 //     │  ✓✓ lu                   posé tout de suite lui aussi (~1,5 s)
-//     │  TEMPS DE LECTURE        rien ne bouge ; 3 à 15 s selon la longueur
+//     │  TEMPS DE LECTURE        rien ne bouge ; 4 à 17 s selon la longueur
 //     │  « … en train d'écrire » allumé par _ai-core, et par `retenu` côté
 //     │                          chat-poll — les deux respectent ce délai
 //     │  TEMPS D'ÉCRITURE        dépend de la longueur de la réponse de Max
@@ -32,27 +32,27 @@ const SEUIL_TROIS_LIGNES = 95;
 // Trois paliers, calés sur le nombre de lignes qu'occupe le message du visiteur
 // (~45 caractères par ligne sur mobile, même calibrage que SEUIL_TROIS_LIGNES) :
 //
-//   message court, une ligne      →  3 à 4 s
-//   deux lignes                   →  4 à 6 s
-//   au-delà                       →  8 à 15 s, selon la longueur
+//   message court, une ligne      →  4 à 5 s
+//   deux lignes                   →  5 à 7 s
+//   au-delà                       →  9 à 17 s, selon la longueur
 //
 // Le saut entre 6 s et 8 s au passage de la deuxième à la troisième ligne est
 // voulu : c'est le moment où on cesse de parcourir un message pour le lire.
 const UNE_LIGNE_CAR  = 50;
 const DEUX_LIGNES_CAR = 95;   // = SEUIL_TROIS_LIGNES
-const LONG_PLAFOND_CAR = 400; // au-delà, la lecture plafonne à 15 s
+const LONG_PLAFOND_CAR = 400; // au-delà, la lecture plafonne à 17 s
 
 function tempsLectureMs(visitorMsg) {
   const n = String((visitorMsg && visitorMsg.content) || '').trim().length;
   if (n <= UNE_LIGNE_CAR) {
-    return Math.round(3000 + (n / UNE_LIGNE_CAR) * 1000);                    // 3 → 4 s
+    return Math.round(4000 + (n / UNE_LIGNE_CAR) * 1000);                    // 4 → 5 s
   }
   if (n <= DEUX_LIGNES_CAR) {
     const t = (n - UNE_LIGNE_CAR) / (DEUX_LIGNES_CAR - UNE_LIGNE_CAR);
-    return Math.round(4000 + t * 2000);                                      // 4 → 6 s
+    return Math.round(5000 + t * 2000);                                      // 5 → 7 s
   }
   const t = Math.min(1, (n - DEUX_LIGNES_CAR) / (LONG_PLAFOND_CAR - DEUX_LIGNES_CAR));
-  return Math.round(8000 + t * 7000);                                        // 8 → 15 s
+  return Math.round(9000 + t * 8000);                                        // 9 → 17 s
 }
 
 // ── Temps d'écriture : il démarre une fois la lecture finie ───────────────────
