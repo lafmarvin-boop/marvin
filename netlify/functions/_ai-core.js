@@ -29,7 +29,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const { AI_EMAIL, assistDecision, maxCarriesThread } = require('./_assist');
-const { tempsLectureMs, PAUSE_AVANT_FRAPPE_MS } = require('./_rythme');
+const { tempsLectureMs } = require('./_rythme');
 // Réflexion étendue. ⚠️ `claude-opus-5` n'accepte PAS `thinking: { type: 'enabled',
 // budget_tokens }` : l'API répond 400 (« use thinking.type.adaptive and output_config »).
 // C'est ce qui a rendu Max muet sur **tous** ses appels — l'erreur survenait dans la fonction
@@ -317,7 +317,7 @@ exports.repondre = async (body, { rapide = false } = {}) => {
     const departEcriture = setTimeout(() => {
       marquerEcrit();
       battement = setInterval(marquerEcrit, 6000);
-    }, LECTURE_MS + PAUSE_AVANT_FRAPPE_MS);
+    }, LECTURE_MS);
 
     // Un appel au modèle, selon un profil. Isolé pour pouvoir rejouer en profil rapide.
     const appeler = async (pr) => {

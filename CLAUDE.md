@@ -324,40 +324,36 @@ anecdotes à la première personne.**
 
 **⚠️ Forme de la réflexion étendue (sept. 2026 — cause d'un silence total de Max).** `claude-opus-5` **refuse** `thinking: { type: 'enabled', budget_tokens }` : l'API répond 400 « use thinking.type.adaptive and output_config ». La profondeur se règle par `output_config.effort`, plus par un budget de jetons. L'erreur était invisible : elle survenait dans `ai-reply-background`, qui avait **déjà répondu 202**, si bien qu'`ai-reply` croyait l'appel réussi et ne repliait jamais sur le profil rapide. Max s'est tu sur **tous** ses appels, assistance comprise, alors que la règle `_assist.js` se déclenchait correctement (`go: true` dans un traçage temporaire, depuis retiré) — chercher le défaut du côté des délais aurait été sans fin. **Leçon à garder** : les journaux Netlify n'étant pas consultables depuis la session de développement, un traçage jetable écrit en base (`suggestions`, `payment_id = 'TRACE'`) a été le seul moyen de trancher entre quatre hypothèses. À refaire si un défaut redevient invisible — et à retirer aussitôt la cause trouvée, y compris le point de lecture HTTP. ⚠️ **Le coût caché d'un tel dispositif** : le filtre qui excluait les lignes de diagnostic du tableau de bord admin (`payment_id=not.eq.TRACE`) masquait aussi, sans qu'on le veuille, **toutes les suggestions dont `payment_id` est `NULL`** — c'est-à-dire celles envoyées sans paiement. En PostgREST comme en SQL, `NOT (colonne = 'x')` vaut `NULL`, donc faux, quand la colonne est nulle. Un filtre d'exclusion sur une colonne nullable doit s'écrire `or=(payment_id.is.null,payment_id.neq.X)`. Retenir surtout que l'instrumentation temporaire a des effets de bord sur le code de production qu'elle traverse. Deux garde-fous désormais : le champ `thinking` n'est **envoyé que si la réflexion est demandée** (son absence est acceptée par tous les modèles, sa forme non), et `_ai-core.js` **rejoue lui-même en profil rapide** si le profil soigné échoue — un modèle muet vaut moins qu'un modèle plus simple qui parle. Ne pas remettre ce repli à la charge d'`ai-reply` : il ne peut pas voir l'échec d'une fonction background.
 
-**Rythme de réponse de Max — lecture puis écriture, 12 à 26 s (sept. 2026).** Une réponse instantanée
-trahit la machine. L'attente est découpée comme chez un humain, et les deux temps sont **successifs** :
+**Rythme de réponse de Max — lecture puis écriture, 14 à 33 s (sept. 2026).** Une réponse instantanée
+trahit la machine. L'attente est découpée comme chez un humain, et les deux temps sont **successifs**.
 
-| Repère | Quand | Dépend de |
-|---|---|---|
-| ✓✓ **reçu** et ✓✓ **lu** | tout de suite (~1,5 s) | — |
-| « … » | après le temps de lecture (3 s à 6 s) + `PAUSE_AVANT_FRAPPE_MS` (1,5 s) | longueur du message du **visiteur** |
-| la réponse | après le temps d'écriture (9 s à 20 s) | longueur de la réponse de **Max** |
+**Temps de lecture** — entre le ✓✓ bleu (posé tout de suite, ~1,5 s) et l'apparition de « … ».
+Trois paliers calés sur le nombre de lignes du message du visiteur (~45 caractères par ligne) :
+
+| Message du visiteur | Lecture |
+|---|---|
+| une ligne (≤ 50 car.) | 3 s → 4 s |
+| deux lignes (≤ 95 car.) | 4 s → 6 s |
+| au-delà (jusqu'à 400 car.) | 8 s → 15 s |
+
+Le **saut de 6 s à 8 s** au passage de la deuxième à la troisième ligne est voulu : c'est le moment
+où l'on cesse de parcourir un message pour le lire vraiment.
+
+**Temps d'écriture** — 9 s à 20 s, selon la longueur de la réponse de Max, `« … »` allumé.
 
 ⚠️ **`retenu` ne doit pas allumer « … » avant la fin de la lecture.** Dans `chat-poll`,
 `otherTyping: isTyping(…) || retenu` faisait apparaître l'indicateur **dès que Max avait fini de
 rédiger**, indépendamment du temps de lecture : quand il répondait en 2 s, « … » s'allumait en moins
 de 3 s sur un message de 286 caractères. `retenu` est donc conditionné à `created_at du message
-visiteur + lecture + pause`. Le message reste caché dans tous les cas ; **seul l'indicateur est
-conditionné**. Le minuteur d'`_ai-core` ne suffisait pas à lui seul, parce que ce second chemin
-allumait l'indicateur en parallèle.
+visiteur + tempsLectureMs`. Le message reste caché dans tous les cas ; **seul l'indicateur est
+conditionné**. Le minuteur d'`_ai-core` ne suffisait pas seul : ce second chemin l'allumait en
+parallèle. **Les deux bouts doivent rester alignés sur `_rythme.js`.**
 
-⚠️ **Source unique : `netlify/functions/_rythme.js`.** Deux fichiers en dépendent — `_ai-core.js` pour
-savoir quand allumer l'indicateur de frappe, `chat-poll.js` pour savoir quand livrer le message.
-Dupliquer le calcul les ferait diverger et l'indicateur s'allumerait à contretemps. Même raison d'être
-que `_assist.js`. **Ne pas réintroduire de copie locale.**
-
-Mesuré, du message du visiteur : « oui » → lu à 3,1 s, « … » à 4,6 s ; une phrase → lu à 3,8 s ;
-un message de 286 caractères → lu à 6,0 s, « … » à 7,5 s. Total jusqu'à la réponse : « oui » → « Ah. »
-= 12-16 s ; message moyen → deux lignes = 17-21 s ; message long → trois lignes = 22-26 s. Le total a augmenté en rendant les deux temps successifs (la lecture était
-auparavant comprise dans l'attente, pas ajoutée) : c'est un choix explicite du propriétaire.
-
-Les délais sont dérivés du **contenu et de l'identifiant** des messages, jamais tirés au sort à
-l'appel : deux sondages successifs doivent trouver la même échéance, sinon la réponse apparaîtrait
-puis disparaîtrait. C'est un **minimum** d'affichage, pas un maximum — si Max met plus longtemps à
-rédiger, sa réponse arrive quand elle est prête. Pendant la retenue, l'indicateur reste allumé
-(`otherTyping: … || retenu`). `SEUIL_TROIS_LIGNES` (95 caractères) est calibré sur des bulles réelles
-— 82 caractères tenaient en deux lignes sur mobile, 113 en trois — et reste une approximation, la
-largeur d'une ligne dépendant de l'appareil.
+⚠️ **Conséquence assumée : l'attente totale est longue.** Mesuré — « oui » suivi d'une réponse de deux
+lignes = 14-18 s ; message de 286 caractères = 23-27 s ; **pire cas** (message très long + réponse de
+trois lignes) = **29 à 33 s**. C'est mécanique : les deux temps s'additionnent, et le propriétaire a
+demandé successivement d'allonger chacun. Le levier à baisser en priorité est le **temps d'écriture**,
+le temps de lecture ayant été calibré palier par palier.
 
 **Le rythme s'applique aussi en assistance, mais pas au premier relais.** Il en était exclu au motif
 que le visiteur avait déjà patienté `ASSIST_DELAY_MS` — vrai de la *première* intervention seulement.

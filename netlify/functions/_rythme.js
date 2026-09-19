@@ -6,11 +6,10 @@
 //
 //   message du visiteur
 //     │  ✓✓ reçu                 posé tout de suite par _ai-core
-//     │  TEMPS DE LECTURE        dépend de la longueur du message du visiteur
-//     │  ✓✓ lu                   posé À LA FIN de la lecture, pas avant : un
-//     │                          message de cinq lignes ne se lit pas en 1 s
-//     │  PAUSE                   le temps de poser les mains sur le clavier
-//     │  « … en train d'écrire » allumé par _ai-core
+//     │  ✓✓ lu                   posé tout de suite lui aussi (~1,5 s)
+//     │  TEMPS DE LECTURE        rien ne bouge ; 3 à 15 s selon la longueur
+//     │  « … en train d'écrire » allumé par _ai-core, et par `retenu` côté
+//     │                          chat-poll — les deux respectent ce délai
 //     │  TEMPS D'ÉCRITURE        dépend de la longueur de la réponse de Max
 //     ▼  la réponse apparaît     chat-poll la libère
 //
@@ -29,20 +28,31 @@
 // la largeur d'une ligne dépendant de l'appareil.
 const SEUIL_TROIS_LIGNES = 95;
 
-// ── Temps de lecture : 3 s pour un mot, jusqu'à 6 s pour un long message ──────
-// Proportionnel à la longueur du message du visiteur : on ne lit pas « oui » et
-// cinq lignes de confidences à la même vitesse.
-const LECTURE_MIN_MS = 3000;
-const LECTURE_MAX_MS = 6000;
-const LECTURE_PAR_CARACTERE_MS = 18;   // ~55 caractères/s, plafonné à 6 s
-
-// Entre la fin de la lecture et les premières frappes. Court, mais non nul :
-// sans lui le « lu » et le « … » s'affichent dans le même souffle.
-const PAUSE_AVANT_FRAPPE_MS = 1500;
+// ── Temps de lecture : entre le « lu » bleu et l'apparition de « … » ─────────
+// Trois paliers, calés sur le nombre de lignes qu'occupe le message du visiteur
+// (~45 caractères par ligne sur mobile, même calibrage que SEUIL_TROIS_LIGNES) :
+//
+//   message court, une ligne      →  3 à 4 s
+//   deux lignes                   →  4 à 6 s
+//   au-delà                       →  8 à 15 s, selon la longueur
+//
+// Le saut entre 6 s et 8 s au passage de la deuxième à la troisième ligne est
+// voulu : c'est le moment où on cesse de parcourir un message pour le lire.
+const UNE_LIGNE_CAR  = 50;
+const DEUX_LIGNES_CAR = 95;   // = SEUIL_TROIS_LIGNES
+const LONG_PLAFOND_CAR = 400; // au-delà, la lecture plafonne à 15 s
 
 function tempsLectureMs(visitorMsg) {
   const n = String((visitorMsg && visitorMsg.content) || '').trim().length;
-  return Math.min(LECTURE_MAX_MS, LECTURE_MIN_MS + n * LECTURE_PAR_CARACTERE_MS);
+  if (n <= UNE_LIGNE_CAR) {
+    return Math.round(3000 + (n / UNE_LIGNE_CAR) * 1000);                    // 3 → 4 s
+  }
+  if (n <= DEUX_LIGNES_CAR) {
+    const t = (n - UNE_LIGNE_CAR) / (DEUX_LIGNES_CAR - UNE_LIGNE_CAR);
+    return Math.round(4000 + t * 2000);                                      // 4 → 6 s
+  }
+  const t = Math.min(1, (n - DEUX_LIGNES_CAR) / (LONG_PLAFOND_CAR - DEUX_LIGNES_CAR));
+  return Math.round(8000 + t * 7000);                                        // 8 → 15 s
 }
 
 // ── Temps d'écriture : il démarre une fois la lecture finie ───────────────────
@@ -73,6 +83,6 @@ function delaiTotalMs(visitorMsg, reponseMax) {
 }
 
 module.exports = {
-  SEUIL_TROIS_LIGNES, LECTURE_MIN_MS, LECTURE_MAX_MS, PAUSE_AVANT_FRAPPE_MS,
+  SEUIL_TROIS_LIGNES, UNE_LIGNE_CAR, DEUX_LIGNES_CAR, LONG_PLAFOND_CAR,
   tempsLectureMs, tempsEcritureMs, delaiTotalMs
 };

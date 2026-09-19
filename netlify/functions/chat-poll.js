@@ -16,7 +16,7 @@ const CORS = {
 
 const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
 
-const { delaiTotalMs, tempsLectureMs, PAUSE_AVANT_FRAPPE_MS } = require('./_rythme');   // temps de lecture + temps d'écriture
+const { delaiTotalMs, tempsLectureMs } = require('./_rythme');   // temps de lecture + temps d'écriture
 
 async function sbGet(path) {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: H() });
@@ -128,7 +128,7 @@ exports.handler = async (event) => {
               // message long. Le message reste caché dans tous les cas ; seul l'indicateur est
               // conditionné.
               const debutEcriture = new Date(visitorMsg.created_at).getTime()
-                + tempsLectureMs(visitorMsg) + PAUSE_AVANT_FRAPPE_MS;
+                + tempsLectureMs(visitorMsg);
               retenu = Date.now() >= debutEcriture;
             }
           }
