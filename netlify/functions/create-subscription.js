@@ -13,7 +13,7 @@ const CORS = {
 function generatePassword() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
   let pwd = '';
-  for (let i = 0; i < 10; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 10; i++) pwd += chars[crypto.randomInt(chars.length)];
   return pwd;
 }
 
