@@ -248,7 +248,7 @@ l'empathie qui saute — elle transparaît de toute façon dans la façon d'écr
 du prompt fait 146 caractères **et** contient un conseil concret : il démontre les deux exigences
 ensemble, ce qu'aucune règle chiffrée ne fait.
 
-## 💬 Proposition du pass en fin de conversation offerte
+## 💬 Fin de conversation : le pass, puis l'invitation à laisser un mot
 
 À la fin d'une **conversation offerte** seulement, Max peut mentionner **une fois, en une phrase** que
 le pass à 2 €/mois permet de continuer. Le moment est décidé **côté serveur** (`_ai-core.js`, contexte
@@ -262,6 +262,19 @@ consacré à ça, jamais en ouverture, aucune insistance après un refus ou un s
 commercial (urgence, « offre spéciale »). L'écoute n'est jamais conditionnée à un paiement, et Max ne
 laisse jamais entendre que la suite serait meilleure en payant. **Ne pas assouplir ces garde-fous pour
 améliorer la conversion.**
+
+**Invitation à laisser un commentaire (oct. 2026).** Le panneau de notation (`showPcpRating` dans
+`index.html`) s'ouvre tout seul à la fin de la session : des étoiles, et un champ de commentaire
+**facultatif** que presque personne ne remplit. Max invite donc à y laisser un mot, **une fois, en une
+phrase**, sur les **deux dernières minutes** (`remainingMin <= 2`) et pour **toutes les formules** —
+un abonné a autant de raisons d'écrire qu'un visiteur.
+
+⚠️ **Jamais deux demandes dans le même message.** Quand le pass et le commentaire se chevauchent
+(conversation offerte, dernières minutes), le pass vient en premier et le commentaire seulement dans
+le tout dernier message : deux sollicitations collées transforment une fin de conversation en
+formulaire. Max ne réclame jamais une bonne note, ne dit jamais « cinq étoiles », n'oriente pas le
+contenu du mot, et n'insiste pas. **Mêmes garde-fous que pour le pass : rien du tout si la personne va
+mal** — quelqu'un qui pleure n'a pas à noter le service qui vient de l'écouter.
 
 **Pas d'écho en tête de message, et des longueurs variées (sept. 2026).** Deux tics relevés sur une
 conversation réelle. **L'écho** : la personne écrit « depuis toujours », Max répond « Depuis toujours,
