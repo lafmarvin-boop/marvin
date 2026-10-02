@@ -17,7 +17,11 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { client, session, paymentId } = JSON.parse(event.body || '{}');
+    const body = JSON.parse(event.body || '{}');
+    const paymentId = body.paymentId;
+    // Longueur max : ces valeurs ne servent qu'à l'affichage admin et aux métadonnées Stripe.
+    const client = typeof body.client === 'string' ? body.client.slice(0, 100) : body.client;
+    const session = typeof body.session === 'string' ? body.session.slice(0, 100) : body.session;
 
     if (!paymentId || !process.env.STRIPE_SECRET_KEY) {
       return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Paramètres manquants' }) };
@@ -53,11 +57,13 @@ exports.handler = async (event) => {
       }
 
       if (delaiOk) {
+        // Clé d'idempotence : deux appels concurrents pour le même paiement (double clic, requête
+        // rejouée) créeraient sinon deux remboursements avant que le premier ne soit visible.
         const refund = await stripe.refunds.create({
           charge: pi.latest_charge,
           reason: 'requested_by_customer',
           metadata: { motif: 'agent_lent', client, session, elapsed_sec: String(elapsedSec) },
-        });
+        }, { idempotencyKey: `slow_${paymentId}` });
         rembourse = refund.status === 'succeeded' || refund.status === 'pending';
         refundId = refund.id;
       }

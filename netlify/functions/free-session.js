@@ -131,8 +131,7 @@ exports.handler = async (event) => {
         await sbPatch(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
           agent_email: AI_EMAIL, status: 'active', assigned_at: new Date().toISOString(), response_deadline: null
         });
-        await post('Aucun écoutant n\'est connecté à cet instant. Max, votre assistant automatisé, vous écoute dès maintenant et alerte nos écoutants par email. Dès que l\'un d\'eux se connecte, il reprend l\'échange avec tout l\'historique.', 'system');
-        await post(`Bonjour ${name}, je suis Max, l'assistant d'écoute de Parlons. Je viens d'alerter nos écoutants pour que l'un d'eux vous rejoigne, et je suis là avec vous dès maintenant, sans jugement et en toute confidentialité. Qu'est-ce qui vous donne envie de parler aujourd'hui ?`, 'agent');
+        await post(`Bonjour ${name}, je suis Max, l'assistant d'écoute automatisé de Parlons. Aucun écoutant n'est connecté à cet instant : je viens de les alerter pour que l'un d'eux vous rejoigne et reprenne notre échange. En attendant, je suis là avec vous, sans jugement et en toute confidentialité. Qu'est-ce qui vous donne envie de parler aujourd'hui ?`, 'agent');
         aiAssigned = true;
 
         // Alerter par email l'administrateur + les écoutants qui ont activé « Recevoir les demandes d'écoutant ».
@@ -164,15 +163,17 @@ exports.handler = async (event) => {
       }
 
       const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
-      fetch(`${siteUrl}/.netlify/functions/push-notify`, {
+      await fetch(`${siteUrl}/.netlify/functions/push-notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: assignedAgent ? '🎁 Tchat gratuit assigné' : aiAssigned ? '🎁 Conversation offerte avec Max — un écoutant est attendu' : '🎁 Nouvelle conversation gratuite',
           message: aiAssigned ? `${name} parle avec Max : connectez-vous pour prendre le relais` : `${name} attend (offre découverte 20 min)`,
           url: '/agent-app.html',
+          internalSecret: process.env.INTERNAL_FN_SECRET || process.env.SUPABASE_SERVICE_KEY,
           ...(assignedAgent ? { agentEmail: assignedAgent } : {})
-        })
+        }),
+        signal: AbortSignal.timeout(2500)
       }).catch(() => {});
 
       return {

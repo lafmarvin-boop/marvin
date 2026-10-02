@@ -1,7 +1,20 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-const BASE_AMOUNTS  = { '100': 100, '300': 300, '500': 500 };
-const FIXED_AMOUNTS = { 'sub': 1500 };
+const { durationForAmount } = require('./_plans.js');
+
+// Sessions à l'unité — DÉSACTIVÉES (sept. 2026). L'offre se limite à la conversation de
+// 20 minutes offerte et à l'abonnement mensuel illimité à 2 €. Masquer les boutons ne suffit
+// pas : sans ce verrou côté serveur, un appel direct à l'API pourrait encore acheter une
+// session à l'unité. Remettre `FORFAITS_UNITAIRES=on` dans les variables Netlify pour les
+// réactiver — le reste du code est intact.
+const FORFAITS_UNITAIRES = process.env.FORFAITS_UNITAIRES === 'on';
+
+// Object.create(null) : évite qu'un montant "__proto__" ou "constructor" renvoie une propriété
+// héritée du prototype (Object.prototype) au lieu de undefined.
+const BASE_AMOUNTS  = FORFAITS_UNITAIRES
+  ? Object.assign(Object.create(null), { '100': 100, '300': 300, '500': 500 })
+  : Object.create(null);
+const FIXED_AMOUNTS = Object.assign(Object.create(null), { 'sub': 200 });
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -45,7 +58,8 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { montant, formule, pseudo, duree, email, visitorId } = JSON.parse(event.body || '{}');
+    // `duree` n'est volontairement pas lu depuis le client : la durée est dérivée du montant (_plans.js)
+    const { montant, formule, pseudo, email, visitorId } = JSON.parse(event.body || '{}');
 
     let amountCents;
     let effectiveDiscount = 0;
@@ -66,7 +80,7 @@ exports.handler = async (event) => {
       currency: 'eur',
       automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
       description: `Parlons - ${formule} - ${pseudo}`,
-      metadata: { formule, pseudo, duree: String(duree || 1800), plateforme: 'parlons', discount: String(effectiveDiscount), ...(visitorId ? { visitor_id: visitorId } : {}), ...(email ? { email } : {}) },
+      metadata: { formule, pseudo, duree: String(durationForAmount(montant)), plateforme: 'parlons', discount: String(effectiveDiscount), ...(visitorId ? { visitor_id: visitorId } : {}), ...(email ? { email } : {}) },
     });
 
     // Enregistrement optionnel dans Supabase

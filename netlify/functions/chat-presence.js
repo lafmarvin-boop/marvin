@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { issueToken, verifyToken } = require('./_auth.js');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
@@ -48,10 +49,11 @@ async function notifyPendingRequests() {
     body: JSON.stringify({ notified_at: notifiedAt })
   }).catch(() => {});
   // Envoyer les push notifications visiteurs (fire-and-forget)
-  fetch(`${SITE_URL}/.netlify/functions/visitor-push-notify`, {
+  await fetch(`${SITE_URL}/.netlify/functions/visitor-push-notify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ requestIds: pending.map(r => r.id) })
+    body: JSON.stringify({ requestIds: pending.map(r => r.id) }),
+    signal: AbortSignal.timeout(2500)
   }).catch(() => {});
 
   // Envoyer les emails
@@ -87,12 +89,14 @@ exports.handler = async (event) => {
   try {
     // ── PASSER EN LIGNE : vérifie le mot de passe, génère un token ──
     if (status === 'online') {
-      if (!password) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
+      if (!password && !verifyToken(body.authToken, { role: ['agent', 'admin'], sub: agentEmail }))
+        return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
 
-      // Bypass admin : accepte les identifiants admin directement
-      const isAdmin = ADMIN_EMAIL && agentEmail.toLowerCase() === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD;
+      // Identifiants admin, ou jeton d'authentification signé émis au login (agent-stats)
+      const preAuthorized = (ADMIN_EMAIL && agentEmail.toLowerCase() === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD)
+        || !!verifyToken(body.authToken, { role: ['agent', 'admin'], sub: agentEmail });
 
-      if (!isAdmin) {
+      if (!preAuthorized) {
         const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(agentEmail)}&select=password_hash,password_salt&limit=1`);
         if (!pwdRows.length) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Agent non autorisé' }) };
 
@@ -138,7 +142,7 @@ exports.handler = async (event) => {
           takenOver++;
           await fetch(`${SB_URL}/rest/v1/chat_messages`, {
             method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-            body: JSON.stringify({ session_id: s.id, content: `${pseudo}, écoutant humain, vient de se connecter et prend le relais de Max. Votre conversation reste visible pour lui.`, sender_type: 'system' })
+            body: JSON.stringify({ session_id: s.id, content: `${pseudo}, votre écoutant, vient de se connecter et prend le relais. Votre conversation reste visible pour lui.`, sender_type: 'system' })
           });
         }
         if (takenOver) {
@@ -173,10 +177,12 @@ exports.handler = async (event) => {
 
     // ── REPRENDRE SESSION EXISTANTE (depuis autre appareil/onglet) ──
     if (status === 'resume') {
-      if (!password) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
+      if (!password && !verifyToken(body.authToken, { role: ['agent', 'admin'], sub: agentEmail }))
+        return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
 
-      const isAdmin = ADMIN_EMAIL && agentEmail.toLowerCase() === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD;
-      if (!isAdmin) {
+      const preAuthorized = (ADMIN_EMAIL && agentEmail.toLowerCase() === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD)
+        || !!verifyToken(body.authToken, { role: ['agent', 'admin'], sub: agentEmail });
+      if (!preAuthorized) {
         const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(agentEmail)}&select=password_hash,password_salt&limit=1`);
         if (!pwdRows.length) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Agent non autorisé' }) };
         const hash = hashPassword(password, pwdRows[0].password_salt);

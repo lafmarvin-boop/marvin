@@ -1,3 +1,5 @@
+const { issueToken, verifyToken } = require('./_auth.js');
+
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_PWD = process.env.ADMIN_PASSWORD;
@@ -28,7 +30,10 @@ exports.handler = async (event) => {
 
   const email = (body.email || '').toLowerCase().trim();
   const password = body.password || '';
-  if (!ADMIN_EMAIL || email !== ADMIN_EMAIL || !ADMIN_PWD || password !== ADMIN_PWD)
+  // Mot de passe admin, ou jeton signé émis au login (le navigateur ne conserve plus le mot de passe)
+  const byPassword = ADMIN_PWD && password === ADMIN_PWD;
+  const byToken = !!verifyToken(body.token, { role: 'admin', sub: email });
+  if (!ADMIN_EMAIL || email !== ADMIN_EMAIL || (!byPassword && !byToken))
     return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non autorisé' }) };
 
   const { action, sessionId } = body;

@@ -12,6 +12,11 @@
 [functions."ai-sweep"]
   schedule = "*/10 * * * *"
 
+# Max assiste un écoutant humain silencieux depuis plus de 30 s. Vérification côté serveur,
+# à la minute : les sondages des navigateurs ne suffisent pas (onglets mis en veille sur mobile).
+[functions."assist-sweep"]
+  schedule = "* * * * *"
+
 # Clôture comptable mensuelle : le 26 de chaque mois à 05:00 UTC (07:00 Paris en été, 06:00 en hiver)
 # → documents du mois précédent (factures + relevés URSSAF écoutants, récapitulatif + contrôles admin)
 [functions."monthly-accounting"]

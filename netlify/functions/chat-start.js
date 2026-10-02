@@ -1,3 +1,5 @@
+const { durationForLabel } = require('./_plans.js');
+
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const AI_EMAIL = 'claude@parlonsecoute.fr'; // identité de Max, l'assistant d'écoute IA (voir ai-reply.js)
@@ -44,7 +46,8 @@ exports.handler = async (event) => {
 
   if (!SB_URL || !SB_KEY) return { statusCode: 503, headers: CORS, body: JSON.stringify({ error: 'Service non configuré' }) };
 
-  const { visitorId, name, sessionType, sessionLabel, durationSec, paymentId, loyaltyDiscount } = body;
+  // durationSec n'est plus lu depuis le client : la durée vient de _plans.js via le libellé
+  const { visitorId, name, sessionType, sessionLabel, paymentId, loyaltyDiscount } = body;
   if (!visitorId || !name)
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Données manquantes' }) };
 
@@ -60,7 +63,8 @@ exports.handler = async (event) => {
       pre_name: name,
       session_type: sessionType || 'paid',
       session_label: sessionLabel || '',
-      duration_sec: parseInt(durationSec) || 1800,
+      // Durée dérivée de la formule côté serveur : un client ne peut pas payer 1 € et demander 1 h
+      duration_sec: durationForLabel(sessionLabel, sessionType === 'free' ? 1200 : 1800),
       stripe_payment_id: paymentId || null,
       visitor_ip: visitorIp,
       loyalty_discount: parseInt(loyaltyDiscount) || 0
@@ -97,8 +101,7 @@ exports.handler = async (event) => {
         method: 'POST', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify({ session_id: sessionId, content, sender_type })
       });
-      await post('Aucun écoutant n\'est connecté à cet instant. Max, votre assistant automatisé, vous écoute dès maintenant et alerte nos écoutants par email. Dès que l\'un d\'eux se connecte, il reprend l\'échange avec tout l\'historique. Si vous allez au bout de votre session sans qu\'un écoutant vous ait rejoint, elle vous est intégralement remboursée.', 'system');
-      await post(`Bonjour ${name}, je suis Max, l'assistant d'écoute de Parlons. Je viens d'alerter nos écoutants pour que l'un d'eux vous rejoigne, et je suis là avec vous dès maintenant, sans jugement et en toute confidentialité. Qu'est-ce qui vous donne envie de parler aujourd'hui ?`, 'agent');
+      await post(`Bonjour ${name}, je suis Max, l'assistant d'écoute automatisé de Parlons. Aucun écoutant n'est connecté à cet instant : je viens de les alerter pour que l'un d'eux vous rejoigne et reprenne notre échange. En attendant, je suis là avec vous, sans jugement et en toute confidentialité. Qu'est-ce qui vous donne envie de parler aujourd'hui ?`, 'agent');
       aiAssigned = true;
 
       // Alerter par email l'administrateur + les écoutants qui ont activé « Recevoir les demandes d'écoutant ».
@@ -111,7 +114,7 @@ exports.handler = async (event) => {
           const html = `<p style="font-family:sans-serif">Un visiteur vient de démarrer une <strong>session payante</strong> et personne n'est connecté : Max (assistant IA) engage la conversation en attendant un écoutant.</p>
 <p style="font-family:sans-serif"><strong>Prénom :</strong> ${String(name).replace(/[<>&]/g, '')}<br><strong>Formule :</strong> ${String(sessionLabel || 'session').replace(/[<>&]/g, '')}<br><strong>Heure :</strong> ${new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })}</p>
 <p><a href="${siteUrl}/agent-app.html" style="display:inline-block;background:#C4714A;color:white;text-decoration:none;padding:.65rem 1.5rem;border-radius:50px;font-weight:700">Me connecter et prendre le relais →</a></p>
-<p style="font-size:.8rem;color:#888;font-family:sans-serif">Si le visiteur va au bout de sa session sans écoutant, il est remboursé automatiquement. Vous recevez cet email car vous avez activé les demandes d'écoutant dans votre profil.</p>`;
+<p style="font-size:.8rem;color:#888;font-family:sans-serif">Si le visiteur va au bout de sa session sans écoutant, il peut demander le remboursement en un clic. Vous recevez cet email car vous avez activé les demandes d'écoutant dans votre profil.</p>`;
           const results = await Promise.allSettled(targets.map(to => fetch('https://api.resend.com/emails', {
             method: 'POST', headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ from: FROM_EMAIL, to, subject: `🚨 ${name} attend un écoutant — session payante en cours avec Max`, html }),
@@ -159,15 +162,17 @@ exports.handler = async (event) => {
 
     // Push notification : à l'agent assigné, ou à tous si personne n'était disponible
     const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
-    fetch(`${siteUrl}/.netlify/functions/push-notify`, {
+    await fetch(`${siteUrl}/.netlify/functions/push-notify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: assignedAgent ? '💬 Nouveau tchat assigné' : aiAssigned ? '🚨 Visiteur payant avec Max — un écoutant est attendu' : '💬 Nouveau tchat en attente',
-        message: aiAssigned ? `${name} parle avec Max (IA) : connectez-vous pour prendre le relais (remboursé si personne ne vient)` : `${name} attend votre aide`,
+        message: aiAssigned ? `${name} parle avec Max (IA) : connectez-vous pour prendre le relais (remboursable si personne ne vient)` : `${name} attend votre aide`,
         url: '/agent-app.html',
+        internalSecret: process.env.INTERNAL_FN_SECRET || process.env.SUPABASE_SERVICE_KEY,
         ...(assignedAgent ? { agentEmail: assignedAgent } : {})
-      })
+      }),
+      signal: AbortSignal.timeout(2500)
     }).catch(() => {});
 
     return {

@@ -1,6 +1,12 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
-const AI_EMAIL = 'claude@parlonsecoute.fr'; // Max, assistant d'écoute IA (ai-reply.js)
+// Max, assistant d'écoute IA (ai-reply.js) et règle d'assistance partagée (_assist.js)
+const { AI_EMAIL, maxShouldAssist, maxCarriesThread } = require('./_assist');
+
+// « … en train d'écrire » : l'indicateur s'éteint seul si la dernière frappe date
+// de plus de 8 s. Aucun signal d'arrêt n'est nécessaire — rien ne peut rester bloqué.
+const TYPING_TTL_MS = 8000;
+const isTyping = ts => !!ts && Date.now() - new Date(ts).getTime() < TYPING_TTL_MS;
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -9,6 +15,8 @@ const CORS = {
 };
 
 const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
+
+const { delaiTotalMs, tempsLectureMs } = require('./_rythme');   // temps de lecture + temps d'écriture
 
 async function sbGet(path) {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: H() });
@@ -32,32 +40,112 @@ exports.handler = async (event) => {
     if (role === 'visitor') {
       const { sessionId, since } = body;
       if (!sessionId) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'sessionId requis' }) };
+      // « Lu » porté par le sondage : il passe déjà toutes les 2,5 s, inutile d'une requête à part,
+      // et l'état se rétablit tout seul au sondage suivant si un signal s'est perdu.
+      const vuVisiteur = body.seen === true;
 
       const sinceIso = since ? new Date(since).toISOString() : new Date(0).toISOString();
 
-      const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email,assigned_at,extension_pending,transfer_session_id,duration_sec,response_deadline&limit=1`);
+      const sessions = await sbGet(`chat_sessions?id=eq.${encodeURIComponent(sessionId)}&select=status,agent_email,assigned_at,extension_pending,transfer_session_id,duration_sec,response_deadline,agent_fetched_at,agent_seen_at,agent_typing_at,visitor_fetched_at&limit=1`);
       if (!sessions.length) return { statusCode: 404, headers: CORS, body: JSON.stringify({ error: 'Session introuvable' }) };
       const s = sessions[0];
 
-      // Filet de sécurité Max : si le dernier message est du visiteur depuis plus de 4 s et qu'aucune
-      // réponse n'est en cours (pas de verrou), on génère la réponse ici, avant de renvoyer les messages.
+      // Max répond ici dans deux cas :
+      //   — il tient la session (aucun écoutant connecté) : dès 1,5 s, pour être prêt à l'échéance
+      //     d'affichage calculée par _rythme.js (lecture + écriture) ;
+      //   — il assiste un écoutant humain silencieux depuis plus de ASSIST_DELAY_MS (tchat jamais
+      //     ouvert, ou écoutant occupé ailleurs). ai-reply revérifie les conditions de son côté.
       const lockFree = !s.response_deadline || new Date(s.response_deadline).getTime() < Date.now();
-      if (s.status === 'active' && s.agent_email === AI_EMAIL && lockFree) {
-        const lastRows = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,sender_type,created_at&order=created_at.desc&limit=1`);
-        const last = lastRows[0];
-        if (last && last.sender_type === 'visitor' && Date.now() - new Date(last.created_at).getTime() > 4000) {
+      const humanHeld = !!s.agent_email && s.agent_email !== AI_EMAIL;
+      if (s.status === 'active' && (s.agent_email === AI_EMAIL ? lockFree : humanHeld)) {
+        const lastRows = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,sender_type,created_at&order=created_at.desc&limit=12`);
+        // Les messages système (« l'utilisateur a quitté la page », prolongation…) s'intercalent
+        // entre le visiteur et la réponse attendue : ils ne doivent pas masquer qui attend.
+        const last = lastRows.find(m => m.sender_type !== 'system');
+        const waitingMs = last && last.sender_type === 'visitor' ? Date.now() - new Date(last.created_at).getTime() : 0;
+        let trigger = false, assist = false;
+        if (!humanHeld) {
+          trigger = !!last && last.sender_type === 'visitor' && waitingMs > 1500;
+        } else {
+          trigger = maxShouldAssist(lastRows, s.assigned_at, { agentTypingAt: s.agent_typing_at });
+          assist = true;
+        }
+        if (trigger) {
           const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
           try {
             await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ sessionId, messageId: last.id }),
-              signal: AbortSignal.timeout(8500)
+              body: JSON.stringify({ sessionId, messageId: last && last.sender_type === 'visitor' ? last.id : null, assist }),
+              // 3 s : le temps que la requête parte. Au-delà, ai-reply poursuit de son côté et
+              // le message apparaîtra au sondage suivant — attendre plus ferait dépasser
+              // chat-poll, que Netlify coupe à 10 s.
+              signal: AbortSignal.timeout(3000)
             });
           } catch (e) { console.error('chat-poll ai fallback:', e.message); }
         }
       }
 
       const messages = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&created_at=gt.${encodeURIComponent(sinceIso)}&select=id,content,sender_type,created_at&order=created_at.asc&limit=50`);
+
+      // Retenir la réponse de Max tant que le délai « le temps de lire et d'écrire » n'est pas écoulé.
+      let messagesOut = messages, retenu = false;
+      // Deux cas où Max écrit : il TIENT la session (ses messages sont de type `agent`), ou il
+      // ASSISTE un écoutant humain (type `assistant`).
+      //
+      // L'assistance était exclue de ce rythme, au motif que le visiteur avait déjà patienté
+      // ASSIST_DELAY_MS. C'est vrai du **premier** relais seulement : ensuite, tant que Max porte
+      // le fil, il répond au bout d'ASSIST_RESUME_MS (1,5 s) et la réponse tombait instantanément
+      // — exactement ce qui trahit la machine. On applique donc le délai quand Max portait déjà le
+      // fil **au moment où le visiteur a écrit**, et pas sur sa première prise de parole, qui
+      // ferait alors 15-20 s d'attente cumulée.
+      //
+      // Garde préalable sans requête : la lecture du fil n'a lieu que si ce sondage rapporte
+      // effectivement une réponse susceptible de venir de Max. Sans elle, on ajouterait une
+      // requête Supabase à *chaque* sondage — toutes les 2,5 s et pour chaque visiteur.
+      const peutVenirDeMax = messages.some(m =>
+        (s.agent_email === AI_EMAIL && m.sender_type === 'agent') || m.sender_type === 'assistant');
+      if (peutVenirDeMax) {
+        const recent = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=id,content,sender_type,created_at&order=created_at.desc&limit=8`);
+        const vIdx = recent.findIndex(m => m.sender_type === 'visitor');
+        // État du fil juste avant ce message du visiteur (recent va du plus récent au plus ancien)
+        const portaitDeja = vIdx >= 0 && maxCarriesThread(recent.slice(vIdx + 1));
+        const fromMax = m => (s.agent_email === AI_EMAIL && m.sender_type === 'agent')
+          || (m.sender_type === 'assistant' && portaitDeja);
+        if (vIdx > 0) {
+          const visitorMsg = recent[vIdx];
+          // recent va du plus récent au plus ancien : la dernière de la tranche est la première
+          // réponse qu'a écrite Max après ce message, celle dont on règle l'affichage.
+          const reponsesMax = recent.slice(0, vIdx).filter(fromMax);
+          const due = new Date(visitorMsg.created_at).getTime()
+            + delaiTotalMs(visitorMsg, reponsesMax[reponsesMax.length - 1]);
+          if (Date.now() < due) {
+            const hide = new Set(recent.slice(0, vIdx).filter(fromMax).map(m => m.id));
+            if (hide.size) {
+              messagesOut = messages.filter(m => !hide.has(m.id));
+              // ⚠️ `retenu` allume « … ». Il ne doit pas le faire avant que la phase d'écriture ait
+              // commencé : Max rédige parfois en 2 s, et l'indicateur s'allumait alors bien avant la
+              // fin du temps de lecture — c'est ce qui le faisait apparaître en moins de 3 s sur un
+              // message long. Le message reste caché dans tous les cas ; seul l'indicateur est
+              // conditionné.
+              const debutEcriture = new Date(visitorMsg.created_at).getTime()
+                + tempsLectureMs(visitorMsg);
+              retenu = Date.now() >= debutEcriture;
+            }
+          }
+        }
+      }
+
+      // « Reçu » : le visiteur vient de recevoir ces messages. On n'écrit que si
+      // quelque chose est réellement arrivé — inutile d'une écriture par sondage.
+      if (messages.length || vuVisiteur || !s.visitor_fetched_at) {
+        const now = new Date().toISOString();
+        const maj = { visitor_fetched_at: now };
+        if (vuVisiteur) maj.visitor_seen_at = now;   // conversation ouverte et onglet au premier plan
+        fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+          method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify(maj)
+        }).catch(() => {});
+      }
 
       let agentPseudo = null;
       if (s.agent_email === AI_EMAIL) agentPseudo = 'Max'; // l'interface ajoute « vous écoute »
@@ -77,7 +165,12 @@ exports.handler = async (event) => {
           extensionPending: s.extension_pending || null,
           transferSessionId: s.transfer_session_id || null,
           durationSec: s.duration_sec || null,
-          messages
+          // Accusés portant sur les messages du visiteur : jusqu'où l'autre a reçu, jusqu'où il a lu
+          deliveredAt: s.agent_fetched_at || null,
+          readAt: s.agent_seen_at || null,
+          // Réponse de Max déjà écrite mais volontairement retenue : c'est bien « en train d'écrire »
+          otherTyping: isTyping(s.agent_typing_at) || retenu,
+          messages: messagesOut
         })
       };
     }
@@ -165,7 +258,7 @@ exports.handler = async (event) => {
 
       // Toutes les sessions actives de cet agent
       const activeSessions = await sbGet(
-        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip,loyalty_discount,response_deadline&order=assigned_at.asc&limit=3`
+        `chat_sessions?agent_email=eq.${encodeURIComponent(agentEmail)}&status=eq.active&select=id,pre_name,pre_topic,session_label,duration_sec,assigned_at,extension_pending,visitor_ip,loyalty_discount,response_deadline,visitor_fetched_at,visitor_seen_at,visitor_typing_at,agent_fetched_at,agent_typing_at&order=assigned_at.asc&limit=3`
       );
 
       // L'agent poll = il voit ses sessions : lever response_deadline si encore actif
@@ -180,6 +273,31 @@ exports.handler = async (event) => {
         ));
       }
 
+      // ── Assistance de Max, déclenchée depuis le sondage de l'ÉCOUTANT ──
+      // Le sondage du visiteur ne suffit pas : sur mobile, sa page passe en arrière-plan dès qu'il
+      // change d'application et le navigateur y suspend les minuteurs. L'application de l'écoutant,
+      // elle, tourne au premier plan — et c'est précisément lui qui tarde à répondre.
+      // Une seule requête pour toutes ses sessions, le sondage étant fréquent.
+      if (activeSessions.length) {
+        try {
+          const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
+          await Promise.all(activeSessions.map(async (sess) => {
+            // Une requête par session : un « in.(…) » commun, borné en nombre de lignes, peut
+            // n'en couvrir qu'une seule si l'une d'elles est bavarde.
+            const msgs = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sess.id)}&select=id,sender_type,created_at&order=created_at.desc&limit=12`);
+            if (!maxShouldAssist(msgs, sess.assigned_at, { agentTypingAt: sess.agent_typing_at })) return;
+            const last = msgs.find(m => m.sender_type !== 'system');
+            try {
+              await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId: sess.id, messageId: last && last.sender_type === 'visitor' ? last.id : null, assist: true }),
+                signal: AbortSignal.timeout(2500)
+              });
+            } catch { /* ai-reply poursuit de son côté */ }
+          }));
+        } catch (e) { console.error('chat-poll assist (agent):', e.message); }
+      }
+
       // Pour chaque session active, récupérer les messages depuis sinceIso.
       // Session attribuée depuis le dernier poll (nouvelle, transfert, relais de Max) → tout l'historique,
       // pour que l'écoutant voie la conversation déjà engagée.
@@ -188,7 +306,25 @@ exports.handler = async (event) => {
         const msgs = await sbGet(
           `chat_messages?session_id=eq.${encodeURIComponent(s.id)}${newlyAssigned ? '' : `&created_at=gt.${encodeURIComponent(sinceIso)}`}&select=id,content,sender_type,created_at&order=created_at.asc&limit=${newlyAssigned ? 300 : 100}`
         );
-        return { ...s, messages: msgs };
+        // « Reçu » côté écoutant : son application vient de recevoir ces messages.
+        // La conversation que l'écoutant a réellement sous les yeux passe aussi en « lu »
+        const vuEcoutant = body.viewingSessionId === s.id;
+        if (msgs.length || vuEcoutant || !s.agent_fetched_at) {
+          const now = new Date().toISOString();
+          const maj = { agent_fetched_at: now };
+          if (vuEcoutant) maj.agent_seen_at = now;
+          fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(s.id)}`, {
+            method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify(maj)
+          }).catch(() => {});
+        }
+        return {
+          ...s, messages: msgs,
+          // Accusés portant sur les messages de l'écoutant
+          deliveredAt: s.visitor_fetched_at || null,
+          readAt: s.visitor_seen_at || null,
+          otherTyping: isTyping(s.visitor_typing_at)
+        };
       }));
 
       // Compat: session courante + messages (basé sur current_session_id)

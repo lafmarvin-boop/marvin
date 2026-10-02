@@ -1,3 +1,5 @@
+const { durationForLabel, DEFAULT_SECONDS } = require('./_plans.js');
+
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const AI_EMAIL = 'claude@parlonsecoute.fr'; // Max, assistant d'écoute IA (ai-reply.js)
@@ -37,10 +39,13 @@ exports.handler = async (event) => {
     const sess = sessions[0];
     if (sess.status !== 'active') return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Session non active' }) };
 
-    const addSec = parseInt(newDurationSec) || 0;
+    // Durée ajoutée dérivée du libellé de la formule payée. Le repli ne doit jamais
+    // venir du client (comme dans chat-start.js) : un libellé non reconnu permettrait
+    // sinon de choisir soi-même la durée ajoutée via newDurationSec.
+    const addSec = durationForLabel(label, DEFAULT_SECONDS);
     if (addSec <= 0) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Durée invalide' }) };
 
-    const remaining = parseInt(remainingSec) || 0;
+    const remaining = Math.min(parseInt(remainingSec) || 0, 3600);
     const totalForNew = addSec + remaining;
     const mins = Math.floor(addSec / 60);
 

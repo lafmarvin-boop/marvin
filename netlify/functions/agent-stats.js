@@ -1,3 +1,4 @@
+const { issueToken, verifyToken } = require('./_auth.js');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
@@ -25,6 +26,9 @@ async function sbGet(path) {
 }
 
 async function buildAgentStats(email) {
+  // L'administrateur utilise aussi l'application écoutant : son jeton porte le rôle admin,
+  // accepté à la fois par les fonctions agent et par les fonctions d'administration.
+  const tokenRole = (ADMIN_EMAIL && email === ADMIN_EMAIL) ? 'admin' : 'agent';
   const now = new Date();
   const startOfDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dow = now.getDay();
@@ -98,6 +102,7 @@ async function buildAgentStats(email) {
 
   return {
     role: 'agent',
+    token: issueToken(email, tokenRole),
     profile,
     periods,
     byPlan,
@@ -123,19 +128,28 @@ exports.handler = async (event) => {
 
   // ── Sauvegarder le profil ──
   if (action === 'save_profile') {
-    const isAdminSave = ADMIN_EMAIL && email === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD;
-    if (!isAdminSave) {
+    const isAdminSave = (ADMIN_EMAIL && email === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD)
+      || !!verifyToken(body.token, { role: 'admin' });
+    if (!isAdminSave && !verifyToken(body.token, { role: ['agent', 'admin'], sub: email })) {
       const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
       if (!pwdRows.length) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
       const hash = hashPassword(password, pwdRows[0].password_salt);
       if (hash !== pwdRows[0].password_hash) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non authentifié' }) };
     }
 
+    // Longueur max : aucune limite avant sur ces champs saisis librement (profil écoutant).
+    const cap = (v, n) => typeof v === 'string' ? v.slice(0, n) : v;
     const { pseudo, nom, prenom, adresse, code_postal, ville, siret, iban, notify_email, notify_requests } = body.profile || {};
     await fetch(`${SB_URL}/rest/v1/agent_profiles`, {
       method: 'POST',
       headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify({ email, pseudo, nom, prenom, adresse, code_postal, ville, siret, iban, notify_email: notify_email || null, notify_requests: !!notify_requests, updated_at: new Date().toISOString() })
+      body: JSON.stringify({
+        email,
+        pseudo: cap(pseudo, 100), nom: cap(nom, 100), prenom: cap(prenom, 100),
+        adresse: cap(adresse, 200), code_postal: cap(code_postal, 10), ville: cap(ville, 100),
+        siret: cap(siret, 20), iban: cap(iban, 34), notify_email: cap(notify_email, 200) || null,
+        notify_requests: !!notify_requests, updated_at: new Date().toISOString()
+      })
     });
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
   }
@@ -143,8 +157,10 @@ exports.handler = async (event) => {
   // ── Connexion ──
   // Bypass admin : accepte directement les identifiants admin
   const isAdmin = ADMIN_EMAIL && email === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD;
+  // Jeton signé : reconnexion automatique sans conserver le mot de passe dans le navigateur
+  const byToken = !!verifyToken(body.token, { role: ['agent', 'admin'], sub: email });
 
-  if (!isAdmin) {
+  if (!isAdmin && !byToken) {
     const pwdRows = await sbGet(`agent_passwords?email=eq.${encodeURIComponent(email)}&select=password_hash,password_salt&limit=1`);
 
     if (!pwdRows.length)

@@ -117,7 +117,20 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 .bubble{padding:.6rem .85rem;border-radius:16px;font-size:.88rem;line-height:1.45;}
 .msg.visitor .bubble{background:var(--white);border:1px solid var(--sand);border-bottom-left-radius:4px;color:var(--dark);}
 .msg.agent .bubble{background:var(--tc);color:var(--white);border-bottom-right-radius:4px;}
+.msg.assistant{align-self:flex-end;}
+.msg.assistant .bubble{background:#eef2fb;color:var(--dark);border:1px solid #c3cfe8;border-bottom-right-radius:4px;}
+.msg.assistant .bubble::before{content:'Max a répondu pour vous';display:block;font-size:.62rem;font-weight:700;color:#5a72a8;margin-bottom:.15rem;}
 .msg.system .bubble{background:#f0e8e0;color:var(--mid);font-size:.78rem;text-align:center;border-radius:50px;padding:.3rem .9rem;}
+/* Accusés sous les messages de l'écoutant : ✓ envoyé, ✓✓ reçu, ✓✓ bleu lu */
+.msg-tick{font-size:.62rem;letter-spacing:-.08em;color:var(--light);margin-left:.25rem;}
+.msg-tick.lu{color:#2f80d0;}
+/* « … le visiteur écrit » */
+.chat-typing{align-self:flex-start;background:#f0ece8;border-radius:14px;border-bottom-left-radius:4px;padding:.55rem .75rem;display:none;gap:.22rem;align-items:center;margin:.1rem 0;}
+.chat-typing.on{display:flex;}
+.chat-typing span{width:6px;height:6px;border-radius:50%;background:#b3a396;animation:agBlink 1.3s infinite;}
+.chat-typing span:nth-child(2){animation-delay:.18s;}
+.chat-typing span:nth-child(3){animation-delay:.36s;}
+@keyframes agBlink{0%,60%,100%{opacity:.28;transform:translateY(0);}30%{opacity:1;transform:translateY(-2px);}}
 .msg-time{font-size:.62rem;color:var(--light);}
 .msg.agent .msg-time{text-align:right;}
 .chat-input-row{background:var(--white);border-top:1px solid var(--sand);padding:.6rem .7rem;padding-bottom:max(.6rem,env(safe-area-inset-bottom));display:flex;align-items:flex-end;gap:.5rem;flex-shrink:0;}
@@ -174,6 +187,15 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
 .profil-save-btn{width:100%;padding:.75rem;background:var(--tc);color:white;border:none;border-radius:50px;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;transition:background .2s;}
 
 /* ── SHORTCUTS ── */
+/* Co-pilote : propositions de réponse, insérées dans la zone de saisie et jamais envoyées seules */
+.copilot-popup{position:absolute;bottom:100%;left:0;right:0;background:var(--white);border:1.5px solid #c3cfe8;border-bottom:none;border-radius:12px 12px 0 0;box-shadow:0 -4px 16px rgba(0,0,0,.08);z-index:11;max-height:250px;overflow-y:auto;}
+.copilot-head{display:flex;align-items:center;justify-content:space-between;padding:.4rem .7rem;background:#eef2fb;font-size:.66rem;font-weight:700;color:#5a72a8;letter-spacing:.02em;position:sticky;top:0;}
+.copilot-head button{background:none;border:none;font-size:1rem;line-height:1;cursor:pointer;color:#5a72a8;padding:0;}
+.copilot-item{padding:.5rem .7rem;font-size:.78rem;line-height:1.45;color:var(--dark);border-top:1px solid var(--sand);cursor:pointer;}
+.copilot-item:hover,.copilot-item:active{background:#f6f8fd;}
+.copilot-note{padding:.35rem .7rem .5rem;font-size:.63rem;color:var(--mid);border-top:1px solid var(--sand);}
+.copilot-btn{background:#eef2fb;color:#5a72a8;border:1.5px solid #c3cfe8;border-radius:50%;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;}
+.copilot-btn:disabled{opacity:.5;cursor:default;}
 .shortcuts-popup{position:absolute;bottom:100%;left:0;right:0;background:var(--white);border:1.5px solid var(--sand);border-bottom:none;border-radius:12px 12px 0 0;overflow:hidden;box-shadow:0 -4px 16px rgba(0,0,0,.08);z-index:10;max-height:200px;overflow-y:auto;}
 .sc-row{display:flex;align-items:center;gap:.7rem;padding:.6rem .9rem;cursor:pointer;border-bottom:1px solid #f3ede7;}
 .sc-row:active{background:#fdf8f3;}
@@ -299,8 +321,10 @@ body{display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:r
       <div id="send-error" style="display:none;font-size:.72rem;color:#ef4444;text-align:center;padding:.25rem .75rem;background:#fef2f2;"></div>
       <div style="position:relative;flex-shrink:0;">
         <div id="shortcuts-popup" class="shortcuts-popup" style="display:none;"></div>
+        <div id="copilot-popup" class="copilot-popup" style="display:none;"></div>
         <div class="chat-input-row">
           <textarea class="chat-ta" id="chat-ta" rows="1" placeholder="Message… (/ pour raccourci)" oninput="chatTaInput(this)" onkeydown="taKeydown(event)"></textarea>
+          <button class="copilot-btn" id="copilot-btn" onclick="askCopilot()" title="Propositions de réponse" aria-label="Propositions de réponse">💡</button>
           <button class="chat-send" onclick="sendMsg()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
@@ -465,7 +489,9 @@ const API = '/.netlify/functions';
 function togglePwd(id){const el=document.getElementById(id);el.type=el.type==='password'?'text':'password';}
 
 // ── STATE ──
-let appEmail = '', appPassword = '', appToken = null, appOnline = false;
+// appAuthToken : jeton signé émis au login (agent-stats). Remplace le mot de passe,
+// qui n'est plus conservé dans le navigateur (une XSS ne peut plus le voler).
+let appEmail = '', appAuthToken = '', appToken = null, appOnline = false;
 let appSessions = new Map();   // sessionId → session state
 let appStats = null;
 let activeChatId = null;       // session currently open in chat view
@@ -546,10 +572,10 @@ async function doLogin(){
     const res=await fetch(`${API}/agent-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pwd})});
     const data=await res.json();
     if(!res.ok||data.error){ err.textContent=data.error||'Erreur de connexion'; btn.disabled=false; btn.textContent='Se connecter'; return; }
-    appEmail=email; appPassword=pwd;
+    appEmail=email; appAuthToken=data.token || '';
     statsData=data;
     localStorage.setItem('parlons_agent_email',email);
-    localStorage.setItem('parlons_agent_pwd',pwd);
+    localStorage.setItem('parlons_agent_authtoken', appAuthToken);
     renderHeader();
     showApp();
     showView('home');
@@ -563,9 +589,9 @@ async function doLogin(){
 
 async function doLogout(){
   if(appToken) await goOffline();
-  appEmail=''; appPassword=''; appToken=null;
+  appEmail=''; appAuthToken=''; appToken=null;
   localStorage.removeItem('parlons_agent_email');
-  localStorage.removeItem('parlons_agent_pwd');
+  localStorage.removeItem('parlons_agent_authtoken');
   appSessions.clear();
   chatTimers.forEach(id=>clearInterval(id)); chatTimers.clear();
   sessionEndTimers.forEach(id=>clearInterval(id)); sessionEndTimers.clear();
@@ -610,7 +636,7 @@ async function toggleOnline(){
 async function goOnline(){
   showLoading('Mise en ligne…');
   try{
-    const res=await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,password:appPassword,status:'online'})});
+    const res=await fetch(`${API}/chat-presence`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agentEmail:appEmail,authToken:appAuthToken,status:'online'})});
     const data=await res.json();
     if(!data.ok){ alert(data.error||'Erreur'); hideLoading(); return; }
     appToken=data.token;
@@ -624,6 +650,7 @@ async function goOnline(){
     if(Notification.permission==='granted') _autoSubscribePush().catch(()=>{});
     else if(Notification.permission==='default') Notification.requestPermission().then(()=>updatePushBanner()).catch(()=>{});
     updatePushDiag();
+    _ensurePushRegistered(true).catch(()=>{});
     if(data.assignedSession){ await refreshSessions(); openChatView(data.assignedSession); }
   }catch(e){ alert('Erreur réseau'); }
   hideLoading();
@@ -696,11 +723,17 @@ function startPoll(){ stopPoll(); poll(); pollTimer=setInterval(poll,3000); }
 function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 
 let _pollSeq=0;
+// Conversation réellement sous les yeux de l'écoutant : celle qui est ouverte, application au
+// premier plan. C'est ce qui vaut « lu » — pas le simple fait d'avoir reçu le message.
+function agentViewingSessionId(){
+  if(!activeChatId||document.visibilityState!=='visible')return null;
+  return document.getElementById('chat-view')?.classList.contains('active')?activeChatId:null;
+}
 async function poll(){
   if(!appToken) return;
   const seq=++_pollSeq;
   try{
-    const res=await fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken,since:pollSince})});
+    const res=await fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken,since:pollSince,viewingSessionId:agentViewingSessionId()})});
     // Ignorer une réponse arrivée après un passage hors ligne, ou dépassée par un poll plus récent
     if(!appToken||seq!==_pollSeq) return;
     if(res.status===401){
@@ -708,7 +741,7 @@ async function poll(){
       localStorage.removeItem('parlons_agent_token_email');
       appToken=null; appOnline=false; stopPoll();
       pollSince=null; renderedIds={};
-      if(appEmail && appPassword && !_reconnecting){
+      if(appEmail && appAuthToken && !_reconnecting){
         // Token invalidé → reconnexion silencieuse
         _reconnecting=true;
         await goOnline();
@@ -757,6 +790,11 @@ function processPoll(d){
       if(!activeChatId) setTimeout(()=>openChatView(s.id), 50);
     }
     const sess=appSessions.get(s.id);
+    // Accusés portant sur les messages de l'écoutant, et « le visiteur écrit »
+    sess.deliveredAt=s.deliveredAt||null;
+    sess.readAt=s.readAt||null;
+    sess.otherTyping=!!s.otherTyping;
+    if(s.id===activeChatId) setAgentTyping(sess.otherTyping);
     if(s.duration_sec&&s.duration_sec>sess.durationSec){
       const added=s.duration_sec-sess.durationSec;
       sess.durationSec=s.duration_sec;
@@ -777,6 +815,7 @@ function processPoll(d){
       const tmpIdx=sess.messages.findIndex(x=>x.id.startsWith('tmp')&&x.content===m.content&&x.sender_type===m.sender_type);
       if(tmpIdx!==-1) sess.messages.splice(tmpIdx,1);
       sess.messages.push(m);
+      if(s.id===activeChatId&&m.sender_type==='visitor') agentMarkSeen();
       if(s.id!==activeChatId||(document.getElementById('chat-view')&&!document.getElementById('chat-view').classList.contains('active'))){
           sess.unread++;
           if(m.sender_type==='visitor'&&activeChatId&&s.id!==activeChatId&&document.getElementById('chat-view')?.classList.contains('active')){
@@ -784,7 +823,7 @@ function processPoll(d){
           }
         }
       // Start timer on first agent msg — use message timestamp (same reference as visitor side)
-      if(!sess.timerStartedAt&&m.sender_type==='agent'){
+      if(!sess.timerStartedAt&&(m.sender_type==='agent'||m.sender_type==='assistant')){
         const ref=m.created_at?new Date(m.created_at).getTime():Date.now();
         sess.timerStartedAt=ref;
         sess.sessionEndAt=ref+sess.durationSec*1000;
@@ -912,6 +951,8 @@ function openChatView(sessionId){
   renderChatMessages(sessionId);
   startChatTimer(sessionId);
   renderExtBar(sessionId);
+  agentMarkSeen();
+  closeCopilot();
 }
 
 function closeChatView(){
@@ -929,11 +970,22 @@ function renderChatMessages(sessionId){
   const sess=appSessions.get(sessionId); if(!sess) return;
   const el=document.getElementById('chat-msgs');
   const wasAtBottom=el.scrollHeight-el.scrollTop-el.clientHeight<80;
+  const recu=sess.deliveredAt?new Date(sess.deliveredAt).getTime():0;
+  const lu=sess.readAt?new Date(sess.readAt).getTime():0;
   el.innerHTML=sess.messages.map(m=>{
-    const type=m.sender_type==='agent'?'agent':m.sender_type==='system'?'system':'visitor';
+    const type=m.sender_type==='agent'?'agent':m.sender_type==='assistant'?'assistant':m.sender_type==='system'?'system':'visitor';
     const time=m.created_at?new Date(m.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
-    return `<div class="msg ${type}"><div class="bubble">${esc(m.content)}</div>${type!=='system'?`<div class="msg-time">${time}</div>`:''}</div>`;
-  }).join('');
+    // Seuls les messages envoyés par l'écoutant portent un accusé (un message non encore
+    // enregistré n'a pas d'horodatage : il reste à « envoyé »)
+    let tick='';
+    if(type==='agent'){
+      const t=m.created_at?new Date(m.created_at).getTime():Infinity;
+      if(lu>=t) tick=`<span class="msg-tick lu" title="Lu">✓✓</span>`;
+      else if(recu>=t) tick=`<span class="msg-tick" title="Reçu">✓✓</span>`;
+      else tick=`<span class="msg-tick" title="Envoyé">✓</span>`;
+    }
+    return `<div class="msg ${type}"><div class="bubble">${esc(m.content)}</div>${type!=='system'?`<div class="msg-time">${time}${tick}</div>`:''}</div>`;
+  }).join('')+'<div class="chat-typing'+(sess.otherTyping?' on':'')+'" id="chat-typing"><span></span><span></span><span></span></div>';
   if(wasAtBottom||el.scrollHeight===el.clientHeight) el.scrollTop=el.scrollHeight;
   renderExtBar(sessionId);
 }
@@ -1071,8 +1123,32 @@ function autoResize(ta){ ta.style.height='auto'; ta.style.height=Math.min(ta.scr
 
 // ── SHORTCUTS ──
 let _scMatches=[];
+// Signale que l'écoutant écrit / que la conversation est sous ses yeux.
+// Limité à un envoi toutes les 3 s : le serveur éteint l'indicateur seul après 8 s.
+let agentTypingSentAt=0;
+function signalChat(payload){
+  if(!activeChatId||!appToken) return;
+  fetch(`${API}/chat-signal`,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({sessionId:activeChatId,role:'agent',agentEmail:appEmail,agentToken:appToken},payload))}).catch(()=>{});
+}
+// « Lu » : la conversation est ouverte et l'application est au premier plan.
+function agentMarkSeen(){
+  if(activeChatId&&document.visibilityState==='visible'&&document.getElementById('chat-view')?.classList.contains('active'))
+    signalChat({seen:true});
+}
+function setAgentTyping(on){
+  const el=document.getElementById('chat-typing'); if(!el) return;
+  const zone=document.getElementById('chat-msgs');
+  const wasOn=el.classList.contains('on');
+  el.classList.toggle('on',!!on);
+  if(on&&!wasOn&&zone) zone.scrollTop=zone.scrollHeight;
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')agentMarkSeen();});
+
 function chatTaInput(ta){
   autoResize(ta);
+  closeCopilot();
+  if(Date.now()-agentTypingSentAt>=3000){ agentTypingSentAt=Date.now(); signalChat({typing:true}); }
   const popup=document.getElementById('shortcuts-popup');
   if(!popup) return;
   const val=ta.value;
@@ -1087,6 +1163,49 @@ function chatTaInput(ta){
   _scMatches=[];
   popup.style.display='none';
 }
+// ── CO-PILOTE ──
+// Propose trois façons de poursuivre. Le choix est **inséré dans la zone de saisie**, jamais
+// envoyé : l'écoutant relit, adapte, et envoie lui-même. Le message part en son nom, il faut
+// donc qu'il l'ait réellement fait sien — sinon on ferait passer un texte automatique pour
+// une parole humaine, ce que la bulle signée « Max » assume au contraire ouvertement.
+let _copilotItems=[],_copilotBusy=false;
+function closeCopilot(){ const p=document.getElementById('copilot-popup'); if(p)p.style.display='none'; }
+function renderCopilot(html){
+  const p=document.getElementById('copilot-popup'); if(!p) return;
+  p.innerHTML='<div class="copilot-head"><span>💡 Propositions — à relire et adapter</span>'
+    +'<button onclick="closeCopilot()" aria-label="Fermer">×</button></div>'+html;
+  p.style.display='block';
+}
+async function askCopilot(){
+  if(!activeChatId||!appToken||_copilotBusy) return;
+  const btn=document.getElementById('copilot-btn');
+  _copilotBusy=true; if(btn)btn.disabled=true;
+  renderCopilot('<div class="copilot-note">Recherche de propositions…</div>');
+  try{
+    const res=await fetch(`${API}/ai-suggest`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sessionId:activeChatId,agentEmail:appEmail,agentToken:appToken})});
+    const d=await res.json();
+    _copilotItems=d.suggestions||[];
+    if(!_copilotItems.length){
+      renderCopilot('<div class="copilot-note">'+esc(d.error||'Aucune proposition pour l\'instant — la conversation vient peut-être de commencer.')+'</div>');
+    } else {
+      renderCopilot(_copilotItems.map((t,i)=>`<div class="copilot-item" onclick="useCopilot(${i})">${esc(t)}</div>`).join('')
+        +'<div class="copilot-note">Ces phrases partiront en votre nom : relisez-les et modifiez-les avant d\'envoyer.</div>');
+    }
+  }catch(e){
+    renderCopilot('<div class="copilot-note">Propositions indisponibles pour le moment.</div>');
+  }
+  _copilotBusy=false; if(btn)btn.disabled=false;
+}
+function useCopilot(idx){
+  const t=_copilotItems[idx]; if(!t) return;
+  const ta=document.getElementById('chat-ta');
+  // On remplit la zone de saisie sans envoyer : la relecture et l'envoi restent à l'écoutant.
+  ta.value=t; autoResize(ta); ta.focus();
+  ta.setSelectionRange(ta.value.length,ta.value.length);
+  closeCopilot();
+}
+
 function useShortcut(idx){
   const sc=_scMatches[idx]; if(!sc) return;
   const ta=document.getElementById('chat-ta');
@@ -1231,7 +1350,7 @@ async function renderProfilView(){
     const r = await fetch(`${API}/agent-profile`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({action:'get', email:appEmail, password:appPassword})
+      body: JSON.stringify({action:'get', email:appEmail, token:appAuthToken})
     });
     const d = await r.json();
     if(d.profile){
@@ -1255,7 +1374,7 @@ async function saveProfilSettings(){
     const r = await fetch(`${API}/agent-profile`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'save', email:appEmail, password:appPassword, notify_email:notifyEmail, notify_requests:profilNotifyOn})
+      body:JSON.stringify({action:'save', email:appEmail, token:appAuthToken, notify_email:notifyEmail, notify_requests:profilNotifyOn})
     });
     const d = await r.json();
     if(d.ok){ msgEl.textContent='Enregistré ✓'; msgEl.style.display='block'; setTimeout(()=>{ msgEl.style.display='none'; },3000); }
@@ -1272,9 +1391,9 @@ async function renderAdminView(){
 
   try{
     const [presRes, pollRes, statsRes] = await Promise.all([
-      fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,password:appPassword,action:'presence'})}),
+      fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,token:appAuthToken,action:'presence'})}),
       fetch(`${API}/chat-poll`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'agent',agentEmail:appEmail,agentToken:appToken||'',since:new Date(0).toISOString()})}),
-      fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,password:appPassword})})
+      fetch(`${API}/admin-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:appEmail,token:appAuthToken})})
     ]);
     const pres=await presRes.json();
     const poll=await pollRes.json().catch(()=>({}));
@@ -1350,6 +1469,40 @@ function updatePushBanner(){
   banner.style.display='flex';
 }
 
+// Vérifie que l'abonnement existe **côté serveur**, et le recrée sinon.
+// Le navigateur peut détenir un abonnement alors que la ligne en base a disparu : push-notify
+// la supprime dès qu'un envoi échoue (endpoint expiré). L'écoutant se croit alors joignable et
+// ne reçoit plus rien, sans le moindre signe — c'est exactement ce qui s'est produit.
+// On refait un abonnement complet (désinscription puis réinscription) plutôt que de renvoyer
+// l'ancien : s'il avait été supprimé parce que l'endpoint était mort, le réenvoyer ne servirait
+// à rien. Silencieux : aucune alerte, l'écoutant n'a rien à faire.
+let _dernierControlePush = 0;
+async function _ensurePushRegistered(force){
+  if(!appToken || Notification.permission !== 'granted') return;
+  if(!force && Date.now() - _dernierControlePush < 1800000) return;  // au plus toutes les 30 min
+  _dernierControlePush = Date.now();
+  try{
+    const r = await fetch(`${API}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({agentEmail:appEmail, agentToken:appToken, action:'status'})});
+    const d = await r.json();
+    if(d.ok && d.present) return;
+    console.warn('push : aucun abonnement en base, réinscription automatique');
+    const sw = await navigator.serviceWorker.ready;
+    const existant = await sw.pushManager.getSubscription();
+    if(existant) await existant.unsubscribe();
+    const keyRes = await fetch(`${API}/push-vapid-key`);
+    const {key} = await keyRes.json();
+    if(!key) return;
+    const sub = await sw.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(key)});
+    await fetch(`${API}/push-subscribe`,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({agentEmail:appEmail, agentToken:appToken, subscription:sub.toJSON()})});
+    updatePushDiag();
+  }catch(e){ console.error('contrôle abonnement push :', e); }
+}
+// Au retour au premier plan, et toutes les 30 min tant que l'écoutant est en ligne
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') _ensurePushRegistered(); });
+setInterval(()=>{ _ensurePushRegistered().catch(()=>{}); }, 1800000);
+
 async function _autoSubscribePush(){
   try{
     const sw=await navigator.serviceWorker.ready;
@@ -1396,7 +1549,7 @@ async function resubscribePush(){
     const res = await fetch(`${API}/push-subscribe`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({agentEmail:appEmail, agentToken:appToken, subscription:sub.toJSON()})});
     const d = await res.json();
     if(d.ok) alert('✅ Souscription push renouvelée avec succès');
-    else alert('Erreur : ' + (d.error||'inconnue'));
+    else alert('Erreur : ' + (d.error||'inconnue') + (d.detail ? '\n\n' + d.detail : ''));
     updatePushDiag();
   }catch(e){ alert('Erreur : ' + e.message); }
 }
@@ -1406,10 +1559,11 @@ async function diagPush(){
   const el = document.getElementById('push-diag-status');
   if(el) el.textContent = '⏳ Envoi en cours…';
   try{
-    const res = await fetch(`${API}/push-notify`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({title:'🔔 Test Parlons', message:'Les notifications fonctionnent correctement !', url:'/agent-app.html', agentEmail:appEmail})});
+    const res = await fetch(`${API}/push-notify`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({agentEmail:appEmail, agentToken:appToken})});
     const d = await res.json();
     if(el){
       if(d.skipped) el.textContent = '⚠️ VAPID non configuré — variables d\'environnement manquantes sur Netlify';
+      else if(d.error) el.textContent = '❌ ' + d.error + (d.detail ? ' — ' + d.detail : '');
       else if(d.sent > 0) el.textContent = '✅ Notification envoyée (' + d.sent + ') — vérifiez votre téléphone';
       else if(d.sent === 0) el.textContent = '❌ Aucune souscription en base — cliquez "Réactiver"';
       else el.textContent = JSON.stringify(d);
@@ -1557,7 +1711,7 @@ function playBeep(){
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden) return;
   if(appOnline && appToken){ poll(); return; }
-  if(localStorage.getItem('parlons_agent_online')==='1' && appEmail && appPassword && !appOnline) goOnline();
+  if(localStorage.getItem('parlons_agent_online')==='1' && appEmail && appAuthToken && !appOnline) goOnline();
 });
 
 // ── SERVICE WORKER ──
@@ -1568,14 +1722,13 @@ if('serviceWorker' in navigator){
 // ── AUTO-RECONNECT ──
 (function init(){
   const savedEmail=localStorage.getItem('parlons_agent_email');
-  const savedPwd=localStorage.getItem('parlons_agent_pwd');
-  if(savedEmail&&savedPwd){
+  const savedToken=localStorage.getItem('parlons_agent_authtoken');
+  if(savedEmail&&savedToken){
     document.getElementById('login-email').value=savedEmail;
-    document.getElementById('login-password').value=savedPwd;
-    // Auto-login silently
-    appEmail=savedEmail; appPassword=savedPwd;
+    // Le jeton n'est jamais affiché dans le champ mot de passe
+    appEmail=savedEmail; appAuthToken=savedToken;
     showLoading('Reconnexion…');
-    fetch(`${API}/agent-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:savedEmail,password:savedPwd})})
+    fetch(`${API}/agent-stats`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:savedEmail,token:savedToken})})
       .then(r=>r.json())
       .then(data=>{
         if(data.error){ hideLoading(); return; }
@@ -1595,6 +1748,7 @@ if('serviceWorker' in navigator){
           updateStatusUI(); startPoll();
           if(Notification.permission==='granted') _autoSubscribePush().catch(()=>{});
           updatePushDiag();
+          _ensurePushRegistered(true).catch(()=>{});
         } else if(localStorage.getItem('parlons_agent_online')==='1'){
           goOnline();
         }

@@ -15,10 +15,14 @@ exports.handler = async (event) => {
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Bad Request' }; }
 
-  const { name, message } = body;
+  // Longueur max : évite un payload disproportionné dans l'email admin (aucune limite avant).
+  const name = typeof body.name === 'string' ? body.name.slice(0, 100) : '';
+  const message = typeof body.message === 'string' ? body.message.slice(0, 2000) : '';
 
   // Email de notification si Resend configuré
   if (RESEND_API_KEY) {
+    // Neutralise les caractères HTML (même mécanisme que chat-start.js / free-session.js).
+    const esc = (v) => (v == null ? '' : String(v).replace(/[<>&]/g, ''));
     try {
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -27,7 +31,7 @@ exports.handler = async (event) => {
           from: FROM_EMAIL,
           to: ADMIN_EMAIL,
           subject: '🔔 Parlons — Demande d\'écoutant',
-          html: `<p><strong>Nom :</strong> ${name || 'Anonyme'}</p><p><strong>Message :</strong> ${message || '—'}</p><p><em>Un visiteur attend qu'un écoutant se connecte.</em></p>`
+          html: `<p><strong>Nom :</strong> ${esc(name) || 'Anonyme'}</p><p><strong>Message :</strong> ${esc(message) || '—'}</p><p><em>Un visiteur attend qu'un écoutant se connecte.</em></p>`
         })
       });
     } catch (e) { console.error('chat-request email:', e.message); }

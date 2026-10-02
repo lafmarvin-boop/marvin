@@ -58,8 +58,11 @@ exports.handler = async (event) => {
   }
 
   if (RESEND_KEY) {
+    // Neutralise les caractères HTML (même mécanisme que chat-start.js / free-session.js) :
+    // la regex de validation d'email ci-dessus n'exclut pas < ni >.
+    const safeEmail = emailLower.replace(/[<>&]/g, '');
     const emailHtml = `<p style="font-family:sans-serif">Un visiteur souhaite parler à un écoutant.</p>
-<p style="font-family:sans-serif"><strong>Email :</strong> ${emailLower}</p>
+<p style="font-family:sans-serif"><strong>Email :</strong> ${safeEmail}</p>
 <p style="font-family:sans-serif"><strong>Date :</strong> ${new Date().toLocaleString('fr-FR')}</p>
 <p style="font-family:sans-serif">Il sera automatiquement prévenu dès qu'un écoutant se connectera.</p>`;
 

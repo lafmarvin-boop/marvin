@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { verifyToken } = require('./_auth.js');
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -8,6 +9,12 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type'
 };
 
+// Même mécanisme de vérification que admin-stats.js (login abonné) :
+// mot de passe requis et vérifié dès qu'un hash existe pour ce compte.
+function hashPassword(password, salt) {
+  return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS };
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: CORS, body: 'Method Not Allowed' };
@@ -15,7 +22,7 @@ exports.handler = async (event) => {
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return { statusCode: 400, headers: CORS, body: 'Invalid JSON' }; }
 
-  const { email, pseudo } = body;
+  const { email, pseudo, password } = body;
   if (!email || !email.includes('@'))
     return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Email invalide' }) };
 
@@ -30,6 +37,17 @@ exports.handler = async (event) => {
     return { statusCode: 403, headers: CORS, body: JSON.stringify({ error: 'Aucun abonnement actif pour cet email' }) };
 
   const sub = subs[0];
+
+  // Vérifier le mot de passe si un hash est défini pour ce compte (comme admin-stats.js)
+  // Jeton signé accepté à la place du mot de passe (reconnexion automatique de l'espace abonné)
+  const byToken = !!verifyToken(body.token, { role: 'subscriber', sub: email });
+  if (!byToken && sub.password_hash && sub.password_salt) {
+    if (!password)
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe requis' }) };
+    if (hashPassword(password, sub.password_salt) !== sub.password_hash)
+      return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Mot de passe incorrect' }) };
+  }
+
   const now = new Date();
   if (sub.expires_at && new Date(sub.expires_at) <= now)
     return { statusCode: 403, headers: CORS, body: JSON.stringify({ error: 'Abonnement expiré — renouvelez depuis l\'espace abonné' }) };

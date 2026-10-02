@@ -141,6 +141,21 @@ exports.handler = async (event) => {
     };
   } catch (err) {
     console.error('create-subscription error:', err.message);
+    // Un abonnement qui échoue, c'est un client acquis puis perdu — et rien ne le signalait.
+    // Le cas le plus probable est un STRIPE_PRICE_ID erroné (« No such price ») : sans alerte,
+    // la panne peut durer des jours pendant que la publicité continue d'amener du monde.
+    const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
+    await fetch(`${siteUrl}/.netlify/functions/notify-admin`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'recontact', prenom: 'Abonnement', email: 'abonnement@auto',
+        message: `ÉCHEC souscription — ${normalEmail} — ${err.message}` +
+          (String(err.message).toLowerCase().includes('no such price')
+            ? ' — VÉRIFIEZ STRIPE_PRICE_ID dans Netlify : tarif introuvable (identifiant erroné, ou créé en mode test alors que la clé est en production).'
+            : '')
+      }),
+      signal: AbortSignal.timeout(2500)
+    }).catch(() => {});
     return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Erreur serveur' }) };
   }
 };

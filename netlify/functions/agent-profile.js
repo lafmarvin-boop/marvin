@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+const { verifyToken } = require('./_auth.js');
+
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
@@ -12,7 +14,9 @@ const CORS = {
 
 const H = () => ({ apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` });
 
-async function verifyAgent(email, password) {
+// Jeton signé (agent ou admin) accepté à la place du mot de passe
+async function verifyAgent(email, password, token) {
+  if (verifyToken(token, { role: ['agent', 'admin'], sub: email })) return true;
   const emailLower = email.toLowerCase().trim();
   if (ADMIN_EMAIL && emailLower === ADMIN_EMAIL && ADMIN_PWD && password === ADMIN_PWD) return true;
   const res = await fetch(
@@ -34,10 +38,10 @@ exports.handler = async (event) => {
 
   if (!SB_URL || !SB_KEY) return { statusCode: 503, headers: CORS, body: JSON.stringify({ error: 'Service non configuré' }) };
 
-  const { action, email, password, notify_email, notify_requests } = body;
-  if (!email || !password) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Identifiants requis' }) };
+  const { action, email, password, token, notify_email, notify_requests } = body;
+  if (!email || (!password && !token)) return { statusCode: 400, headers: CORS, body: JSON.stringify({ error: 'Identifiants requis' }) };
 
-  const ok = await verifyAgent(email, password).catch(() => false);
+  const ok = await verifyAgent(email, password, token).catch(() => false);
   if (!ok) return { statusCode: 401, headers: CORS, body: JSON.stringify({ error: 'Non autorisé' }) };
 
   const emailLower = email.toLowerCase().trim();

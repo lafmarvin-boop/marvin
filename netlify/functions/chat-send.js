@@ -1,6 +1,7 @@
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 const AI_EMAIL = 'claude@parlonsecoute.fr'; // Max, assistant d'écoute IA (ai-reply.js)
+const { maxCarriesThread } = require('./_assist');
 
 const CORS = {
   'Content-Type': 'application/json',
@@ -61,6 +62,20 @@ exports.handler = async (event) => {
     let inserted = null;
     try { const d = await insRes.json(); inserted = Array.isArray(d) ? d[0] : d; } catch {}
 
+    // Répondre vaut lecture : celui qui écrit a forcément lu ce qui précède. Sans cette règle,
+    // le « lu » dépendrait du seul signal du navigateur, qui peut manquer (onglet rechargé,
+    // application relancée) alors que la réponse, elle, prouve la lecture.
+    if (senderType === 'visitor' || senderType === 'agent') {
+      const now = new Date().toISOString();
+      const champ = senderType === 'visitor'
+        ? { visitor_seen_at: now, visitor_fetched_at: now }
+        : { agent_seen_at: now, agent_fetched_at: now };
+      fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}`, {
+        method: 'PATCH', headers: { ...H(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify(champ)
+      }).catch(() => {});
+    }
+
     // Premier message agent : effacer le délai de réponse (fire-and-forget)
     if (senderType === 'agent') {
       fetch(`${SB_URL}/rest/v1/chat_sessions?id=eq.${encodeURIComponent(sessionId)}&response_deadline=not.is.null`, {
@@ -70,35 +85,54 @@ exports.handler = async (event) => {
       }).catch(() => {});
     }
 
+    // Les appels sortants sont attendus, mais **ensemble** : une fonction Netlify peut être gelée
+    // dès qu'elle a répondu, et une requête lancée sans être attendue n'a alors jamais le temps de
+    // partir. C'est la leçon déjà tirée pour l'envoi des emails ; elle vaut autant pour les
+    // notifications push, qui manquaient précisément quand l'application était en arrière-plan.
+    // Les attendre en parallèle évite d'additionner les délais sur l'envoi d'un message.
+    const envois = [];
+
     // Message visiteur sur une session tenue par Max (IA) : déclencher la réponse.
     // On attend jusqu'à 1,5 s que la requête soit bien partie (sinon la fonction peut être gelée
     // avant l'envoi), puis on abandonne l'attente : ai-reply continue de son côté.
-    if (senderType === 'visitor' && sessions[0].agent_email === AI_EMAIL) {
+    // Même déclenchement immédiat quand Max porte déjà le fil d'une session tenue par un écoutant
+    // qui n'est pas revenu : tant qu'il mène l'échange, il répond au rythme d'une conversation
+    // qu'il mènerait seul, sans réimposer le délai de premier relais. Dès que l'écoutant reprend
+    // la main, maxCarriesThread() redevient faux et ce raccourci s'éteint de lui-même.
+    let assistNow = false;
+    if (senderType === 'visitor' && sessions[0].agent_email && sessions[0].agent_email !== AI_EMAIL) {
+      const recents = await sbGet(`chat_messages?session_id=eq.${encodeURIComponent(sessionId)}&select=sender_type,created_at&order=created_at.desc&limit=12`);
+      assistNow = maxCarriesThread(recents);
+    }
+    if (senderType === 'visitor' && (sessions[0].agent_email === AI_EMAIL || assistNow)) {
       const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
-      try {
-        await fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, messageId: inserted?.id || null }),
-          signal: AbortSignal.timeout(1500)
-        });
-      } catch {}
+      envois.push(fetch(`${siteUrl}/.netlify/functions/ai-reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, messageId: inserted?.id || null, assist: assistNow || undefined }),
+        signal: AbortSignal.timeout(1500)
+      }).catch(() => {}));
     }
 
-    // Message visiteur : notifier l'agent assigné par push (fire-and-forget)
+    // Message visiteur : notifier l'écoutant assigné par push. C'est la seule façon de l'atteindre
+    // quand son application est en arrière-plan — le sondage, lui, est suspendu par le navigateur.
     if (senderType === 'visitor' && sessions[0].agent_email && sessions[0].agent_email !== AI_EMAIL) {
       const siteUrl = process.env.SITE_URL || process.env.URL || 'https://parlonsecoute.fr';
-      fetch(`${siteUrl}/.netlify/functions/push-notify`, {
+      envois.push(fetch(`${siteUrl}/.netlify/functions/push-notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: '💬 Nouveau message',
           message: content.trim().slice(0, 80),
           url: '/agent-app.html',
-          agentEmail: sessions[0].agent_email
-        })
-      }).catch(() => {});
+          agentEmail: sessions[0].agent_email,
+          internalSecret: process.env.INTERNAL_FN_SECRET || process.env.SUPABASE_SERVICE_KEY
+        }),
+        signal: AbortSignal.timeout(2500)
+      }).catch(() => {}));
     }
+
+    if (envois.length) await Promise.allSettled(envois);
 
     return { statusCode: 200, headers: CORS, body: JSON.stringify({ ok: true }) };
   } catch (e) {
