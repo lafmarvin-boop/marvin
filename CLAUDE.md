@@ -337,7 +337,7 @@ anecdotes à la première personne.**
 
 **⚠️ Forme de la réflexion étendue (sept. 2026 — cause d'un silence total de Max).** `claude-opus-5` **refuse** `thinking: { type: 'enabled', budget_tokens }` : l'API répond 400 « use thinking.type.adaptive and output_config ». La profondeur se règle par `output_config.effort`, plus par un budget de jetons. L'erreur était invisible : elle survenait dans `ai-reply-background`, qui avait **déjà répondu 202**, si bien qu'`ai-reply` croyait l'appel réussi et ne repliait jamais sur le profil rapide. Max s'est tu sur **tous** ses appels, assistance comprise, alors que la règle `_assist.js` se déclenchait correctement (`go: true` dans un traçage temporaire, depuis retiré) — chercher le défaut du côté des délais aurait été sans fin. **Leçon à garder** : les journaux Netlify n'étant pas consultables depuis la session de développement, un traçage jetable écrit en base (`suggestions`, `payment_id = 'TRACE'`) a été le seul moyen de trancher entre quatre hypothèses. À refaire si un défaut redevient invisible — et à retirer aussitôt la cause trouvée, y compris le point de lecture HTTP. ⚠️ **Le coût caché d'un tel dispositif** : le filtre qui excluait les lignes de diagnostic du tableau de bord admin (`payment_id=not.eq.TRACE`) masquait aussi, sans qu'on le veuille, **toutes les suggestions dont `payment_id` est `NULL`** — c'est-à-dire celles envoyées sans paiement. En PostgREST comme en SQL, `NOT (colonne = 'x')` vaut `NULL`, donc faux, quand la colonne est nulle. Un filtre d'exclusion sur une colonne nullable doit s'écrire `or=(payment_id.is.null,payment_id.neq.X)`. Retenir surtout que l'instrumentation temporaire a des effets de bord sur le code de production qu'elle traverse. Deux garde-fous désormais : le champ `thinking` n'est **envoyé que si la réflexion est demandée** (son absence est acceptée par tous les modèles, sa forme non), et `_ai-core.js` **rejoue lui-même en profil rapide** si le profil soigné échoue — un modèle muet vaut moins qu'un modèle plus simple qui parle. Ne pas remettre ce repli à la charge d'`ai-reply` : il ne peut pas voir l'échec d'une fonction background.
 
-**Rythme de réponse de Max — lecture puis écriture, 15 à 35 s (sept. 2026).** Une réponse instantanée
+**Rythme de réponse de Max — lecture puis écriture, 15 à 38 s (sept.-oct. 2026).** Une réponse instantanée
 trahit la machine. L'attente est découpée comme chez un humain, et les deux temps sont **successifs**.
 
 **Temps de lecture** — entre le ✓✓ bleu (posé tout de suite, ~1,5 s) et l'apparition de « … ».
@@ -352,7 +352,11 @@ Trois paliers calés sur le nombre de lignes du message du visiteur (~45 caract�
 Le **saut de 7 s à 9 s** au passage de la deuxième à la troisième ligne est voulu : c'est le moment
 où l'on cesse de parcourir un message pour le lire vraiment.
 
-**Temps d'écriture** — 9 s à 20 s, selon la longueur de la réponse de Max, `« … »` allumé.
+**Temps d'écriture** — 9 s à 20 s, selon la longueur de la réponse de Max, `« … »` allumé, **plus
+2 à 3 s dès le deuxième échange** (`supplementEchangeSuivantMs`). Le **tout premier échange en est
+exempt** : quelqu'un qui vient d'arriver et attend de savoir s'il y a quelqu'un en face est celui qui
+supporte le moins l'attente ; ensuite le lien est établi. Le premier échange se reconnaît dans
+`chat-poll` à l'absence de message visiteur antérieur dans les 8 derniers messages.
 
 ⚠️ **`retenu` ne doit pas allumer « … » avant la fin de la lecture.** Dans `chat-poll`,
 `otherTyping: isTyping(…) || retenu` faisait apparaître l'indicateur **dès que Max avait fini de
@@ -363,8 +367,8 @@ conditionné**. Le minuteur d'`_ai-core` ne suffisait pas seul : ce second chemi
 parallèle. **Les deux bouts doivent rester alignés sur `_rythme.js`.**
 
 ⚠️ **Conséquence assumée : l'attente totale est longue.** Mesuré — « oui » suivi d'une réponse de deux
-lignes = 15-19 s ; message de 286 caractères = 25-29 s ; **pire cas** (message très long + réponse de
-trois lignes) = **31 à 35 s**. Le risque a été signalé au propriétaire (quelqu'un qui vient d'écrire un
+lignes = 15-19 s au premier échange, 17-22 s ensuite ; message de 286 caractères = 25-29 s puis
+27-32 s ; **pire cas** (message très long + réponse de trois lignes) = **33 à 38 s**. Le risque a été signalé au propriétaire (quelqu'un qui vient d'écrire un
 long message difficile est celui qui supporte le moins l'attente) et il a demandé d'allonger encore :
 c'est une décision prise en connaissance de cause, **ne pas la défaire au nom du réalisme**. C'est mécanique : les deux temps s'additionnent, et le propriétaire a
 demandé successivement d'allonger chacun. Le levier à baisser en priorité est le **temps d'écriture**,

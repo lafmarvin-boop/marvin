@@ -10,7 +10,8 @@
 //     │  TEMPS DE LECTURE        rien ne bouge ; 4 à 17 s selon la longueur
 //     │  « … en train d'écrire » allumé par _ai-core, et par `retenu` côté
 //     │                          chat-poll — les deux respectent ce délai
-//     │  TEMPS D'ÉCRITURE        dépend de la longueur de la réponse de Max
+//     │  TEMPS D'ÉCRITURE        dépend de la longueur de la réponse de Max,
+//     │                          plus 2 à 3 s dès le deuxième échange
 //     ▼  la réponse apparaît     chat-poll la libère
 //
 // ⚠️ Les deux fonctions vivent ici parce que **deux fichiers en dépendent** :
@@ -60,7 +61,14 @@ function tempsLectureMs(visitorMsg) {
 // message se rédige rarement d'un trait), puis deux suppléments demandés après
 // lecture de conversations réelles, puis un ajustement selon la longueur de la
 // réponse de Max : une réaction de deux mots ne se tape pas en quinze secondes.
-function tempsEcritureMs(visitorMsg, reponseMax) {
+// 2 à 3 s ajoutées à partir du deuxième échange. Le tout premier message en est exempt :
+// quelqu'un qui vient d'arriver et attend de savoir s'il y a quelqu'un en face est celui qui
+// supporte le moins l'attente. Ensuite le lien est établi, quelques secondes de plus passent bien.
+function supplementEchangeSuivantMs(seed) {
+  return 2000 + ((seed >>> 13) % 1001);
+}
+
+function tempsEcritureMs(visitorMsg, reponseMax, opts = {}) {
   const mots = String((visitorMsg && visitorMsg.content) || '').trim().split(/\s+/).filter(Boolean).length;
   let seed = 0;
   for (const ch of String((visitorMsg && visitorMsg.id) || '')) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
@@ -74,12 +82,13 @@ function tempsEcritureMs(visitorMsg, reponseMax) {
     if (motsMax <= 2) ms -= 2000;                              // réaction brève
     else if (texte.length > SEUIL_TROIS_LIGNES) ms += 3000;    // trois lignes ou plus
   }
+  if (!opts.premierEchange) ms += supplementEchangeSuivantMs(seed);
   return ms;
 }
 
 // Attente totale entre le message du visiteur et l'apparition de la réponse.
-function delaiTotalMs(visitorMsg, reponseMax) {
-  return tempsLectureMs(visitorMsg) + tempsEcritureMs(visitorMsg, reponseMax);
+function delaiTotalMs(visitorMsg, reponseMax, opts = {}) {
+  return tempsLectureMs(visitorMsg) + tempsEcritureMs(visitorMsg, reponseMax, opts);
 }
 
 module.exports = {

@@ -116,8 +116,11 @@ exports.handler = async (event) => {
           // recent va du plus récent au plus ancien : la dernière de la tranche est la première
           // réponse qu'a écrite Max après ce message, celle dont on règle l'affichage.
           const reponsesMax = recent.slice(0, vIdx).filter(fromMax);
+          // Premier échange : aucun message du visiteur avant celui-ci. `recent` remonte 8 messages,
+          // largement assez — un fil plus long en contient forcément un plus ancien.
+          const premierEchange = !recent.slice(vIdx + 1).some(m => m.sender_type === 'visitor');
           const due = new Date(visitorMsg.created_at).getTime()
-            + delaiTotalMs(visitorMsg, reponsesMax[reponsesMax.length - 1]);
+            + delaiTotalMs(visitorMsg, reponsesMax[reponsesMax.length - 1], { premierEchange });
           if (Date.now() < due) {
             const hide = new Set(recent.slice(0, vIdx).filter(fromMax).map(m => m.id));
             if (hide.size) {
