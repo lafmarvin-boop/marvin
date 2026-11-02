@@ -143,8 +143,8 @@ footer a{color:#c8c0d8}
       <div class="row"><b>Peau</b><div class="btns" id="oSkin"></div></div>
       <div class="row"><b>Muscles</b><div class="btns" id="oBuild"></div></div>
       <div class="row" id="rowBeard"><b>Barbe</b><div class="btns" id="oBeard"></div></div>
-      <div class="row"><b>Coiffure</b><div class="btns" id="oHairS"></div></div>
-      <div class="row"><b>Cheveux</b><div class="btns" id="oHair"></div></div>
+      <div class="row" id="rowHairS"><b>Coiffure</b><div class="btns" id="oHairS"></div></div>
+      <div class="row" id="rowHair"><b>Cheveux</b><div class="btns" id="oHair"></div></div>
       <div class="row"><b>Tunique</b><div class="btns" id="oArmor"></div></div>
       <div class="row"><b>Pantalon</b><div class="btns" id="oPants"></div></div>
       <div class="row"><b>Arme</b><div class="btns" id="oWeapon"></div></div>
@@ -259,6 +259,18 @@ const RACES={
     skins:['light','amber','olive','taupe','bronze','brown']},
   orc:{name:'Orc',hp:115,mp:25,atk:13,def:5,spd:0.95,passive:'Brute : +20% dégâts physiques',head:'orc',sx:1.25,sy:1.25,
     skins:['green','dark_green','bright_green','pale_green','zombie_green','taupe']},
+  lezard:{name:'Lézard',hp:105,mp:35,atk:10,def:7,spd:1.05,passive:'Écailles : régénère 1% de vie par seconde',head:'beast',hid:'head_lizard',noHair:1,sx:1.02,sy:1.04,
+    skins:['bright_green','green','dark_green','pale_green','olive','blue']},
+  minotaure:{name:'Minotaure',hp:135,mp:20,atk:12,def:7,spd:0.9,passive:'Colosse : +20% de vie maximum',head:'beast',hid:'head_minotaur',noHair:1,sx:1.28,sy:1.22,
+    skins:['fur_brown','fur_black','fur_tan','fur_white','fur_copper','fur_grey']},
+  loup:{name:'Homme-loup',hp:100,mp:30,atk:12,def:4,spd:1.12,passive:'Prédateur : +20% de chances de coup critique',head:'beast',hid:'head_wolf',noHair:1,sx:1.08,sy:1.08,
+    skins:['fur_grey','fur_black','fur_brown','fur_white','fur_tan','fur_gold']},
+  vampire:{name:'Vampire',hp:90,mp:55,atk:11,def:4,spd:1.08,passive:'Soif de sang : vole 8% des dégâts infligés',head:'beast',hid:'head_vampire',sx:.98,sy:1.04,
+    skins:['lavender','light','pale_green','zombie','blue','taupe']},
+  troll:{name:'Troll',hp:140,mp:15,atk:12,def:6,spd:0.85,passive:'Régénération : régénère 2% de vie par seconde',head:'beast',hid:'head_troll',noHair:1,sx:1.3,sy:1.26,
+    skins:['pale_green','green','dark_green','zombie_green','olive','blue']},
+  gobelin:{name:'Gobelin',hp:80,mp:45,atk:9,def:4,spd:1.2,passive:'Agile : esquive 15% des attaques',head:'beast',hid:'head_goblin',noHair:1,sx:.88,sy:.78,
+    skins:['green','bright_green','dark_green','pale_green','olive','taupe']},
 };
 const HAIRC=['black','dark_brown','chestnut','light_brown','blonde','platinum','white','redhead','carrot','rose','purple','blue','green'];
 const CLOTH=['leather','brown','red','maroon','blue','navy','green','forest','purple','teal','black','white','gray','yellow'];
@@ -609,7 +621,7 @@ function stats(s=save){
   const R=RACES[s.look.race],l=s.lvl-1,b={atk:0,def:0,hp:0,mp:0,spd:0};
   for(const it of Object.values(equippedOf(s)))for(const [k,v] of Object.entries(it.st))b[k]+=v;
   const P_=id=>hasP(id,s);
-  return{hp:Math.round((R.hp+l*12+b.hp)*(P_('vigueur')?1.2:1)),mp:Math.round((R.mp+l*5+b.mp)*(P_('sagesse')?1.3:1)),
+  return{hp:Math.round((R.hp+l*12+b.hp)*(P_('vigueur')?1.2:1)*(s.look.race==='minotaure'?1.2:1)),mp:Math.round((R.mp+l*5+b.mp)*(P_('sagesse')?1.3:1)),
     atk:Math.round((R.atk+l*2+(s.weaponLvl||0)*3+b.atk)*(P_('force')?1.15:1)),def:Math.round((R.def+l+(s.armorLvl||0)*2+b.def)*(P_('fer')?1.2:1)),
     spd:R.spd*(1+b.spd)*(P_('celerite')?1.12:1)};
 }
@@ -944,12 +956,12 @@ function heroLayers(L,eq){
   const b=L.build??1,slim=!f&&L.race==='elfe'&&b<2,thin=f||slim,musc=!f&&!slim&&b>=1;
   out.push([f?'body_female':slim?'body_teen':musc?'body_muscular':'body_male',L.skin]);
   const paH=eq&&eq.inv&&equippedOf(eq).casque&&equippedOf(eq).casque.set==='pa';
-  if(!paH){out.push(['head_'+R.head+(f?'_female':'_male'),L.skin]);
+  if(!paH){out.push([R.hid||'head_'+R.head+(f?'_female':'_male'),L.skin]);
     if(R.head==='human')out.push(['eyes']);
     if(L.race==='elfe')out.push(['ears_elven',L.skin]);}
-  if(!f&&L.beard&&L.beard!=='none'&&!(eq&&eq.inv&&equippedOf(eq).casque&&equippedOf(eq).casque.set==='pa'))out.push([L.beard,L.hair]);
+  if(!f&&!R.noHair&&L.beard&&L.beard!=='none'&&!(eq&&eq.inv&&equippedOf(eq).casque&&equippedOf(eq).casque.set==='pa'))out.push([L.beard,L.hair]);
   const paHelm=eq&&eq.inv&&equippedOf(eq).casque&&equippedOf(eq).casque.set==='pa';
-  if(paHelm){}else if(L.hairStyle==='ponytail'){out.push(['hair_ponytail_fg',L.hair]);out.push(['hair_ponytail_bg',L.hair]);}
+  if(paHelm||R.noHair){}else if(L.hairStyle==='ponytail'){out.push(['hair_ponytail_fg',L.hair]);out.push(['hair_ponytail_bg',L.hair]);}
   else if(L.hairStyle!=='none')out.push(['hair_'+L.hairStyle,L.hair]);
   const tor=f?'_female':slim?'_teen':'_male',E=equippedOf(eq),add=a=>a.forEach(x=>out.push(x));
   const ctx={tor,thin,f,body:bodyIdOf(L)};
@@ -1017,7 +1029,7 @@ function renderCreator(){
   optRow($('#oRace'),Object.entries(RACES).map(([k,r])=>[k,r.name]),look.race,v=>{look.race=v;if(v==='nain'&&look.beard==='none'||v==='nain'&&look.beard==='beard_trimmed')look.beard='beard'});
   $('#raceDesc').textContent=R.passive;
   optRow($('#oSkin'),R.skins.map(c=>[c]),look.skin,v=>look.skin=v,'body');
-  $('#rowBeard').hidden=look.sex!=='m';
+  $('#rowBeard').hidden=look.sex!=='m'||!!R.noHair;$('#rowHairS').hidden=$('#rowHair').hidden=!!R.noHair;
   optRow($('#oBuild'),look.sex==='m'?[[0,'Pas musclé'],[1,'Musclé'],[2,'Très musclé']]:[[0,'Pas musclée'],[1,'Musclée'],[2,'Très musclée']],look.build,v=>look.build=v);
   optRow($('#oBeard'),Object.entries(BEARDS),look.beard,v=>look.beard=v);
   optRow($('#oHairS'),Object.entries(HSTYLES),look.hairStyle,v=>look.hairStyle=v);
@@ -1401,11 +1413,12 @@ function txt(x,y,s,c){texts.push({x,y,s,c,life:.9});}
 
 function hitEnemy(e,mult,phys,kb=120){
   if(e.hp<=0)return 0;
-  const st=stats(),crit=hasP('critique')&&Math.random()<.15;
+  const st=stats(),crit=Math.random()<(hasP('critique')?.15:0)+(save.look.race==='loup'?.2:0);
   const d=Math.max(1,Math.round(st.atk*mult*(phys&&save.look.race==='orc'?1.2:1)*rnd(.9,1.1)*(crit?2:1)*(1-(e.D.armor||0))));
   e.hp-=d;e.hurt=.15;
   if(!e.D.boss){const a=Math.atan2(e.y-P.y,e.x-P.x);e.kx=Math.cos(a)*kb;e.ky=Math.sin(a)*kb;}
   if(hasP('vampire')&&P.hp>0)P.hp=Math.min(st.hp,P.hp+d*.06);
+  if(save.look.race==='vampire'&&P.hp>0)P.hp=Math.min(st.hp,P.hp+d*.08);
   txt(e.x,e.y-28*e.sc,crit?d+'!':d,crit?'#ffd040':'#fff');hitFx(e.x,e.y-12*e.sc,e.D.ai==='ghost'?3:8+(crit?10:0));
   if(e.hp<=0)kill(e);
   return d;
@@ -1437,6 +1450,7 @@ function gainXp(v){
 }
 function hurtPlayer(raw,sx,sy){
   if(P.inv>0||P.dash>0||state!=='play')return;
+  if(save.look.race==='gobelin'&&Math.random()<.15){P.inv=.4;txt(P.x,P.y-40,'Esquive','#c8ffb0');return;}
   const st=stats(),def=st.def*(P.shield>0?3:1);
   let d=Math.max(1,raw*rnd(.9,1.1)-def*.6);if(save.look.race==='nain')d*=.8;d=Math.round(d);
   P.hp-=d;P.inv=.8;
@@ -1535,6 +1549,7 @@ function update(dt){
     if(tap('KeyR','KeyQ')){if(save.potions>0&&P.hp<st.hp){save.potions--;const h=Math.round(st.hp*(save.look.race==='nain'?.6:.45));P.hp=Math.min(st.hp,P.hp+h);txt(P.x,P.y-50,'+'+h,'#5fd36b');fx(P.x,P.y-20,'#e05080',14)}}
     if(tap('KeyE','Enter'))interact();
     for(const k in P.cds)P.cds[k]=Math.max(0,P.cds[k]-dt);
+    {const rg=save.look.race==='troll'?.02:save.look.race==='lezard'?.01:0;if(rg&&P.hp>0)P.hp=Math.min(st.hp,P.hp+st.hp*rg*dt);}
     P.mp=Math.min(st.mp,P.mp+dt*3*(save.look.race==='elfe'?1.6:1)*(hasP('sagesse')?1.3:1));
     if(hasP('regen'))P.hp=Math.min(st.hp,P.hp+st.hp*.01*dt);
     P.inv-=dt;P.shield-=dt;P.whirl-=dt;
