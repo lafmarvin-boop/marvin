@@ -46,14 +46,17 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 .doll .col{display:flex;flex-direction:column;gap:8px;min-width:0}
 .doll .mid{text-align:center}
 .doll canvas{width:100%;max-width:260px;aspect-ratio:1;background:radial-gradient(#3e5a3a,#1d2b1c);border:4px solid var(--line);margin:0 auto 6px}
-.slot{background:var(--panel2);border:3px solid var(--line);padding:6px 8px;font-size:12px;cursor:pointer;text-align:left;min-height:62px}
+.slot{background:var(--panel2);border:3px solid var(--line);padding:6px 8px;font-size:12px;cursor:pointer;text-align:left;min-height:62px;display:grid;grid-template-columns:48px 1fr;gap:8px;align-items:center;position:relative}
+.ic{width:48px;height:48px;image-rendering:pixelated;background:rgba(0,0,0,.3);border:2px solid var(--line);display:block;box-sizing:border-box}
+.ihead{display:grid;grid-template-columns:48px 1fr;gap:8px;align-items:start;margin-bottom:6px}
+.ihead h4{margin-top:2px}
 .slot:hover,.slot.on{border-color:var(--gold)}
 .slot .lab{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:1px}
 .slot .nm{font-weight:bold;font-size:13px;overflow-wrap:anywhere}
 .slot .st{color:var(--dim)}
 .slot.empty{border-style:dashed;opacity:.6}
-.slot .x{float:right;padding:0 6px;font-size:11px}
-@media (max-width:620px){.doll{grid-template-columns:1fr 110px 1fr;gap:6px}.slot{font-size:11px;padding:4px}.slot .nm{font-size:11px}}
+.slot .x{position:absolute;top:4px;right:4px;padding:0 6px;font-size:11px}
+@media (max-width:620px){.doll{grid-template-columns:1fr 110px 1fr;gap:6px}.slot{font-size:11px;padding:4px;grid-template-columns:36px 1fr;gap:4px}.slot .ic{width:36px;height:36px}.slot .nm{font-size:11px}}
 #loot{border:4px solid var(--rc);background:#000a;padding:10px;margin:8px 0;box-shadow:0 0 24px var(--rc)}
 #loot .lootT{font-size:22px;font-weight:bold;color:var(--rc);text-align:center;margin-bottom:6px;text-shadow:2px 2px 0 #000}
 #loot.pop{animation:pop .5s ease-out}
@@ -981,9 +984,25 @@ function openCamp(msg){
     cs.appendChild(b);});
   $('#bGo').textContent=P?'Reprendre l\'aventure ▶':`Partir — ${REGIONS[save.region%3].name} ▶`;
 }
+/* Icône d'objet : le sprite de l'objet seul, recadré */
+const iconCache={};
+function itemIcon(it){
+  const L=save.look,key=[it.s,it.r,it.d||0,L.weapon,L.sex].join('|');if(iconCache[key])return iconCache[key];
+  const f=L.sex==='f';
+  const layers=it.s==='arme'?(()=>{const W=weaponOf(L,{arme:it});return[[W.model+'_bg',W.met],[W.model+'_fg',W.met]]})():itemLook(it,{tor:f?'_female':'_male',thin:f,f});
+  const dir={cape:0,bouclier:1,arme:3}[it.s]??2,row=M.anims.walk.row+dir;
+  const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');
+  layers.filter(x=>M.layers[x[0]]).sort((a,b)=>M.layers[a[0]].z-M.layers[b[0]].z).forEach(([l,p])=>g.drawImage(recolor(l,p),0,row*64,64,64,0,0,64,64));
+  const a=g.getImageData(0,0,64,64).data;let x0=64,y0=64,x1=-1,y1=-1;
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++)if(a[(y*64+x)*4+3]){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}
+  const o=document.createElement('canvas');o.width=o.height=48;const go=o.getContext('2d');go.imageSmoothingEnabled=false;
+  if(x1>=0){const w=x1-x0+1,h=y1-y0+1,k=Math.max(1,Math.floor(Math.min(46/w,46/h)*2)/2);go.drawImage(c,x0,y0,w,h,Math.round((48-w*k)/2),Math.round((48-h*k)/2),w*k,h*k);}
+  return iconCache[key]=o.toDataURL();
+}
+const iconHTML=it=>`<img class="ic" alt="" src="${itemIcon(it)}" style="border-color:${RAR[it.r].c}">`;
 function itemCard(it,btns){
   const d=document.createElement('div');d.className='item';d.style.borderColor=RAR[it.r].c;
-  d.innerHTML=`<h4 style="color:${RAR[it.r].c}">${it.n}</h4><p>${SLOTS[it.s].n} · ${RAR[it.r].n}<br>${statTxt(it.st)}</p>`;
+  d.innerHTML=`<div class="ihead">${iconHTML(it)}<div><h4 style="color:${RAR[it.r].c}">${it.n}</h4><p>${SLOTS[it.s].n} · ${RAR[it.r].n}<br>${statTxt(it.st)}</p></div></div>`;
   const w=document.createElement('div');w.className='btns';btns.forEach(([t,f,dis])=>{const b=document.createElement('button');b.textContent=t;b.disabled=!!dis;b.onclick=f;w.appendChild(b)});d.appendChild(w);return d;
 }
 function equip(it){save.eq[it.s]=it.id;heroC=null;openCamp('Équipé : '+it.n);}
@@ -993,9 +1012,9 @@ function renderGear(res){
   for(const [col,list] of Object.entries(side)){const el=$('#'+col);el.innerHTML='';
     list.forEach(sl=>{const it=E[sl],d=document.createElement('div');d.className='slot'+(it?'':' empty')+(invFilter===sl?' on':'');
       if(it){d.style.borderColor=invFilter===sl?'':RAR[it.r].c;
-        d.innerHTML=`<button class="x" title="Retirer">✕</button><div class="lab">${SLOTS[sl].n} · ${RAR[it.r].n}</div><div class="nm" style="color:${RAR[it.r].c}">${it.n}</div><div class="st">${statTxt(it.st)}</div>`;
+        d.innerHTML=`<button class="x" title="Retirer">✕</button>${iconHTML(it)}<div><div class="lab">${SLOTS[sl].n} · ${RAR[it.r].n}</div><div class="nm" style="color:${RAR[it.r].c}">${it.n}</div><div class="st">${statTxt(it.st)}</div></div>`;
         d.querySelector('.x').onclick=e=>{e.stopPropagation();delete save.eq[sl];openCamp('Retiré : '+it.n)};}
-      else d.innerHTML=`<div class="lab">${SLOTS[sl].n}</div><div class="st">Vide</div>`;
+      else d.innerHTML=`<div class="ic"></div><div><div class="lab">${SLOTS[sl].n}</div><div class="st">Vide</div></div>`;
       d.onclick=()=>{invFilter=invFilter===sl?null:sl;openCamp()};el.appendChild(d);});}
   $('#bAll').hidden=!invFilter;
   const ch=$('#chests');ch.innerHTML='';
