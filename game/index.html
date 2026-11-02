@@ -57,6 +57,10 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 .fname{font-family:'Cinzel',Georgia,serif;font-weight:800;font-size:15px}
 .fstate{font-size:13px;margin-top:2px}.fstate.ok{color:#8fe08a}.fstate.new{color:#ffcf4a}
 .fsub{font-size:12px;color:#c8b890;margin-top:2px}
+.modes{display:flex;gap:6px;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
+.modes button{font-family:'Cinzel',Georgia,serif;font-weight:800;letter-spacing:1px;background:#3a2414;color:#c8b890;border-color:#6b5323}
+.modes button.sel{background:linear-gradient(#9a2020,#5a0e0e);color:#ffe8a0;border-color:var(--hi)}
+.edesc{font-size:14px;color:#e8d8b0;text-align:center;margin:0 0 8px}
 .floors .btns button{background:#3a2414;color:#f0dca0;border-color:var(--gold)}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:3px solid var(--line);margin:4px 0 10px}
 .tabs button{border-bottom:0;margin-bottom:-3px;padding:9px 14px;font-family:'Cinzel',Georgia,serif;font-weight:800;letter-spacing:1px;background:linear-gradient(#8a1c1c,#5a0e0e);color:#f0d890;border-color:var(--gold)}
@@ -149,7 +153,7 @@ footer a{color:#c8c0d8}
     <canvas id="game" width="480" height="270"></canvas>
     <div id="ovl"><h2 id="ovlT"></h2><div id="ovlS"></div><button class="big" id="ovlB">Retour au camp</button></div>
   </div>
-    <div id="tools"><button id="bFull">⛶ Plein écran</button><button id="bCamp">🔥 Camp</button></div>
+    <div id="tools"><button id="bFull">⛶ Plein écran</button><button id="bCamp">🔥 Camp</button><button id="bSpeed" hidden>⏩ x1</button></div>
     <div id="touch">
       <button data-k="Digit1" class="sk" id="tb0"><img alt=""><span class="cd"></span><i>1</i></button>
       <button data-k="Digit2" class="sk" id="tb1"><img alt=""><span class="cd"></span><i>2</i></button>
@@ -170,13 +174,21 @@ footer a{color:#c8c0d8}
     <div class="opts">
       <h3 style="margin:0">🔥 Camp — <span class="gold" id="campGold"></span></h3>
       <div class="floors">
-        <div class="fmode">⚔ Mode Aventure</div>
+        <div class="modes"><button id="mAdv" class="sel">⚔ Aventure</button><button id="mExp">🤖 Expédition auto</button></div>
+        <div id="advBox">
         <div class="fsel">
           <button id="fPrev" aria-label="Étage précédent">◀</button>
           <div class="fcard" id="fCard"></div>
           <button id="fNext" aria-label="Étage suivant">▶</button>
         </div>
         <div class="btns" style="justify-content:center"><button id="fLast">⏭ Dernier étage</button></div>
+        </div>
+        <div id="expBox" hidden>
+          <p class="edesc">Ton héros part seul : il cherche les ennemis, se bat, ouvre les coffres, ramasse le butin, puis prend le portail vers l'étage suivant. L'expédition continue jusqu'à ce qu'il tombe. Tout le butin est gardé, sans perte d'or.</p>
+          <div class="fsel"><button id="ePrev">◀</button><div class="fcard" id="eCard"></div><button id="eNext">▶</button></div>
+          <div class="btns" style="justify-content:center"><button id="eSpeed">Vitesse x1</button></div>
+          <div class="fsub" id="eBest" style="text-align:center"></div>
+        </div>
       </div>
       <div id="msg"></div>
       <div class="tabs" role="tablist">
@@ -785,7 +797,7 @@ function fitView(){
 }
 addEventListener('resize',fitView);
 $('#bFull').onclick=()=>{const d=document,el=d.documentElement;try{if(d.fullscreenElement)d.exitFullscreen();else (el.requestFullscreen||el.webkitRequestFullscreen).call(el).catch?.(()=>{})}catch(e){}};
-$('#bCamp').onclick=()=>{if(state==='play'&&Math.hypot(P.x-camp.x,P.y-camp.y)<48)interact();else{P.x=camp.x+40;P.y=camp.y;txt(P.x,P.y-50,'Retour au camp','#ffcf4a')}};
+$('#bCamp').onclick=()=>{if(AUTO){endExpedition('Expédition arrêtée par toi.');return}if(state==='play'&&Math.hypot(P.x-camp.x,P.y-camp.y)<48)interact();else{P.x=camp.x+40;P.y=camp.y;txt(P.x,P.y-50,'Retour au camp','#ffcf4a')}};
 /* --- stick virtuel (doigt ou souris, moitié gauche de l'écran) --- */
 const joy={on:false,id:null,ox:0,oy:0,x:0,y:0,R:34};
 function toCanvas(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width*VW,(e.clientY-r.top)/r.height*VH]}
@@ -848,7 +860,7 @@ function hitEnemy(e,mult,phys,kb=120){
   if(e.hp<=0)kill(e);
   return d;
 }
-function kill(e){
+function kill(e){if(AUTO)AUTO.kills++;
   const D=e.D,bon=save.look.race==='humain'?1.2:1,ri=save.region;
   if(D.split)for(let i=0;i<2;i++){const s_=addEnemy('slime',e.x+rnd(-12,12),e.y+rnd(-8,8),1+.28*ri);s_.kx=rnd(-120,120);s_.ky=rnd(-120,120)}
   const dk=darkness();if(dk<.2){fx(e.x,e.y-12,'#ffffff',14,90);fx(e.x,e.y-12,'#ffe070',8,50)}
@@ -880,17 +892,19 @@ function hurtPlayer(raw,sx,sy){
   if(P.hp<=0){P.hp=0;die();}
 }
 function die(){
+  if(AUTO){state='dead';P.deadT=0;const f=AUTO.floor;setTimeout(()=>endExpedition(`Ton héros est tombé à l'étage ${f+1}.`),900);return}
   state='dead';P.deadT=0;const lost=Math.floor(save.gold*.3);save.gold-=lost;store();
   setTimeout(()=>{const dk=darkness();$('#ovlT').textContent=dk<.5?'VAINCU…':'TU ES MORT';$('#ovlS').textContent=dk<.5?`Tu perds ${lost} or. Les monstres reviennent. Améliore-toi et réessaie !`:`Les charognards t'arrachent ${lost} or. Les morts se relèvent… Reviens plus fort.`;$('#ovlB').textContent='Retour au camp';$('#ovl').classList.add('on')},900);
 }
 function clearRegion(){
+  if(AUTO){nextExpFloor();return}
   for(const d of drops){if(d.k==='gold')save.gold+=d.v;else if(d.k==='potion')save.potions++}drops=[];
   const was=save.region;if(save.region>=save.best)save.best=save.region+1;save.region=save.best;store();state='clear';
   $('#ovlS').dataset.floor=was;
   const dk=darkness();$('#ovlT').textContent=(dk<.4?'ÉTAGE TERMINÉ !':'ÉTAGE PURIFIÉ');$('#ovlS').textContent=dk<.3?'Le portail t\'emmène vers la région suivante… le ciel s\'assombrit un peu.':'Le portail s\'ouvre sur des terres encore plus sombres…';$('#ovlB').textContent='Aller au camp';
   $('#ovl').classList.add('on');
 }
-$('#ovlB').onclick=()=>{if(state==='dead'){spawnEnemies();P=null}else if(state==='clear'){buildRegion();P=null}openCamp()};
+$('#ovlB').onclick=()=>{if(state==='expEnd'){buildRegion();P=null;openCamp();return}if(state==='dead'){spawnEnemies();P=null}else if(state==='clear'){buildRegion();P=null}openCamp()};
 
 function nearestEnemy(range){let b=null,bd=range;for(const e of enemies){const d=Math.hypot(e.x-P.x,e.y-P.y);if(d<bd){bd=d;b=e}}return b}
 function useSkill(i){
@@ -938,8 +952,9 @@ function update(dt){
     let ix=(down('ArrowRight','KeyD')?1:0)-(down('ArrowLeft','KeyA')?1:0);
     let iy=(down('ArrowDown','KeyS')?1:0)-(down('ArrowUp','KeyW')?1:0);
     const jv=joyVec();ix+=jv[0]+gpAxes[0];iy+=jv[1]+gpAxes[1];
+    let autoMag=0;if(AUTO){const v=autoPilot(dt);ix=v[0];iy=v[1];autoMag=Math.hypot(ix,iy)?1:0;}
     let len=Math.hypot(ix,iy);if(len){ix/=len;iy/=len;P.aim=[ix,iy];}
-    const mag=Math.min(1,Math.max(Math.hypot(jv[0],jv[1]),Math.hypot(...gpAxes),keyMove()?1:0));
+    const mag=Math.min(1,Math.max(Math.hypot(jv[0],jv[1]),Math.hypot(...gpAxes),keyMove()?1:0,autoMag));
     P.moving=!!len;
     const sp=86*st.spd*(P.act&&P.act.anim!=='walk'?.35:1);
     if(P.dash>0){P.dash-=dt;moveEnt(P,P.dv[0]*330*dt,P.dv[1]*330*dt);fx(P.x,P.y-16,'#ffe040',1,20);
@@ -1273,11 +1288,12 @@ function hud(){
   if(portal&&state==='play')text(T>portal.ready&&!drops.length?'Le portail est ouvert ! Entre dedans.':'Ramassage du butin…',VW/2,60,'#c8b0ff','center');
   if(joy.on){cx.globalAlpha=.55;cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(joy.ox,joy.oy,joy.R,0,7);cx.stroke();
     cx.fillStyle='#fff';cx.beginPath();const[jx,jy]=[joy.x-joy.ox,joy.y-joy.oy],d=Math.hypot(jx,jy),k=d>joy.R?joy.R/d:1;cx.arc(joy.ox+jx*k,joy.oy+jy*k,13,0,7);cx.fill();cx.globalAlpha=1;}
+  if(AUTO){text('🤖 EXPÉDITION AUTO · Étage '+(AUTO.floor+1)+' · '+AUTO.kills+' ennemis vaincus',VW/2,50,'#7fd0ff','center',8);}
   if(banner>0){cx.globalAlpha=Math.min(1,banner);const dkk=darkness();if(isLordRegion(save.region))text('⚠ ANTRE DU SEIGNEUR — ennemis enragés !',VW/2,82,'#ff4040','center',10);text('Étage '+(save.region+1)+' — '+regName(save.region),VW/2,100,dkk<.5?'#ffd040':'#c0101e','center',18);text((dkk<.5?'Trouve et bats le boss ':'Abats le boss ')+bossDir()+' — explore la carte',VW/2,120,'#f0e8d8','center',9);cx.globalAlpha=1;}
 }
 
 function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;pollPad();
-  if(state==='play'||state==='dead'||state==='clear'){update(dt);render();}
+  if(state==='play'||state==='dead'||state==='clear'){const n=AUTO?simSpeed:1;for(let i=0;i<n;i++){update(dt);if(i<n-1)for(const k in hit)hit[k]=false;}render();}
   for(const k in hit)hit[k]=false;
   requestAnimationFrame(loop);}
 
@@ -1322,8 +1338,8 @@ function openCamp(msg){applyTheme();
     if(slot>=0)b.classList.add('sel');
     b.onclick=()=>{if(slot>=0)save.slots.splice(slot,1);else if(save.slots.length<save.maxSlots)save.slots.push(id);else{save.slots.shift();save.slots.push(id)}openCamp();};
     cs.appendChild(b);});
-  renderFloor();
   $('#bGo').textContent=P?`Reprendre l'étage ${save.region+1} ▶`:`Partir — Étage ${save.region+1} ▶`;
+  renderFloor();
 }
 /* Icône d'objet : le sprite de l'objet seul, recadré */
 const iconCache={};
@@ -1378,9 +1394,80 @@ function showLoot(it){
   L.appendChild(itemCard(it,[['Équiper',()=>{L.hidden=true;equip(it)}],['Garder',()=>{L.hidden=true}]]));
   L.classList.remove('pop');void L.offsetWidth;L.classList.add('pop');
 }
-$('#bGo').onclick=()=>startPlay(!P);
+$('#bGo').onclick=()=>{if(gameMode==='exp')startExpedition();else startPlay(!P)};
 /* ---- étages : le dernier par défaut, les étages terminés peuvent être rejoués ---- */
+/* =============== MODE EXPÉDITION (automatique) =============== */
+let gameMode='adv',expStart=0,AUTO=null,simSpeed=1;
+$('#mAdv').onclick=()=>{gameMode='adv';openCamp()};
+$('#mExp').onclick=()=>{gameMode='exp';expStart=Math.min(expStart,save.best);openCamp()};
+$('#ePrev').onclick=()=>{expStart=Math.max(0,expStart-1);renderFloor()};
+$('#eNext').onclick=()=>{expStart=Math.min(save.best,expStart+1);renderFloor()};
+const SPEEDS=[1,2,4];
+$('#eSpeed').onclick=()=>{simSpeed=SPEEDS[(SPEEDS.indexOf(simSpeed)+1)%3];renderFloor()};
+$('#bSpeed').onclick=()=>{simSpeed=SPEEDS[(SPEEDS.indexOf(simSpeed)+1)%3];$('#bSpeed').textContent='⏩ x'+simSpeed};
+function startExpedition(){
+  AUTO={home:save.region,floor:expStart,start:expStart,kills:0,gold:save.gold,items:save.inv.length,xp0:save.lvl,t:0,floorT:0,path:null,pathT:0,tgt:null,ban:new Set(),stuck:0,lastPos:{x:0,y:0}};
+  save.expHome=save.region;save.region=AUTO.floor;buildRegion();P=null;startPlay(true);$('#bSpeed').hidden=false;$('#bSpeed').textContent='⏩ x'+simSpeed;
+}
+function endExpedition(reason){
+  const A=AUTO;if(!A)return;AUTO=null;save.region=A.home;delete save.expHome;save.bestExp=Math.max(save.bestExp||0,A.floor);store();
+  $('#bSpeed').hidden=true;state='expEnd';
+  $('#ovlT').textContent='EXPÉDITION TERMINÉE';
+  $('#ovlS').innerHTML=`${reason}<br>Étages : ${A.start+1} → ${A.floor+1} · Ennemis vaincus : ${A.kills}<br>Or gagné : +${save.gold-A.gold} · Objets trouvés : +${save.inv.length-A.items} · Niveaux : ${A.xp0} → ${save.lvl}`;
+  $('#ovlB').textContent='Retour au camp';$('#ovl').classList.add('on');
+}
+function nextExpFloor(){
+  const A=AUTO;for(const d of drops){if(d.k==='gold')save.gold+=d.v;else if(d.k==='potion')save.potions++}drops=[];
+  A.floor++;A.floorT=0;A.path=null;A.tgt=null;A.ban.clear();save.region=A.floor;store();
+  const keep=P.hp/stats().hp;buildRegion();P=null;startPlay(true);P.hp=Math.min(stats().hp,stats().hp*Math.min(1,keep+.25));
+  txt(P.x,P.y-60,'Étage '+(A.floor+1)+' !','#ffcf4a');
+}
+/* chemin le plus court sur la grille (BFS) */
+function bfsPath(sx,sy,tx,ty){
+  const N=MW*MH,prev=new Int32Array(N).fill(-1),q=new Int32Array(N);let h=0,t=0;const s0=idx(sx,sy),g=idx(tx,ty);prev[s0]=s0;q[t++]=s0;
+  while(h<t){const k=q[h++];if(k===g)break;const x=k%MW,y=(k/MW)|0;
+    for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy;if(nx<1||ny<1||nx>=MW-1||ny>=MH-1)continue;const n=idx(nx,ny);if(prev[n]!==-1||(solid[n]&&n!==g))continue;prev[n]=k;q[t++]=n;}}
+  if(prev[g]===-1)return null;const path=[];for(let k=g;k!==s0;k=prev[k])path.push(k);return path.reverse();
+}
+function autoPilot(dt){
+  const A=AUTO,st=stats();A.t+=dt;A.floorT+=dt;
+  // soins
+  if(P.hp<st.hp*.35&&save.potions>0)hit.KeyR=true;
+  save.slots.forEach((id,i)=>{if(!id||i>=save.maxSlots)return;const S=SKILLS[id];if((P.cds[id]||0)>0||P.mp<S.mp)return;
+    const ne=nearestEnemy(id==='thunder'?200:id==='whirl'?60:id==='dash'?120:id==='vampire'?50:210),n2=enemies.filter(e=>Math.hypot(e.x-P.x,e.y-P.y)<70).length;
+    if(id==='heal'?P.hp<st.hp*.55:id==='shield'?(ne&&P.hp<st.hp*.7):id==='whirl'?n2>=2:!!ne)useSkill(i);});
+  // choix de la cible : ennemis, coffres, boss, butin, portail
+  const pt=(x,y)=>[clamp(Math.floor(x/TS),1,MW-2),clamp(Math.floor(y/TS),1,MH-2)];
+  let tgt=null;
+  if(portal&&!drops.length&&A.floorT>0)tgt={x:portal.x,y:portal.y,k:'portal'};
+  else if(drops.length){const d=drops.reduce((a,b)=>Math.hypot(a.x-P.x,a.y-P.y)<Math.hypot(b.x-P.x,b.y-P.y)?a:b);tgt={x:d.x,y:d.y,k:'drop'}}
+  else{
+    const cands=enemies.filter(e=>!A.ban.has(e)&&(e!==bossRef||enemies.length===1||enemies.every(x=>x===bossRef||A.ban.has(x))));
+    const ch=objs.filter(o=>o.k==='chest'&&!o.open&&!A.ban.has(o));
+    let best=null,bd=1e9;for(const e of cands){const d=Math.hypot(e.x-P.x,e.y-P.y);if(d<bd){bd=d;best=e}}
+    for(const o of ch){const d=Math.hypot(o.x-P.x,o.y-P.y)*1.3;if(d<bd){bd=d;best=o}}
+    if(best)tgt=best;else if(bossRef)tgt=bossRef;
+  }
+  if(!tgt)return[0,0];
+  if(tgt.k==='chest'&&Math.hypot(tgt.x-P.x,tgt.y-P.y)<36){openChest(tgt);return[0,0]}
+  // proche : aller droit au but
+  const d=Math.hypot(tgt.x-P.x,tgt.y-P.y);
+  if(A.tgt!==tgt){A.tgt=tgt;A.path=null;A.tgtT=0}A.tgtT=(A.tgtT||0)+dt;
+  if(A.tgtT>12&&tgt.k!=='portal'&&tgt!==bossRef){A.ban.add(tgt);A.tgt=null;return[0,0]}   // inatteignable : on passe
+  if(d<26&&tgt.k!=='portal')return[0,0];
+  if(d<40)return[(tgt.x-P.x)/d,(tgt.y-P.y)/d];
+  A.pathT-=dt;
+  if(!A.path||A.pathT<=0){const[sx,sy]=pt(P.x,P.y),[tx,ty]=pt(tgt.x,tgt.y);A.path=bfsPath(sx,sy,tx,ty);A.pathT=.6;if(!A.path){A.ban.add(tgt);A.tgt=null;return[0,0]}}
+  while(A.path.length){const k=A.path[0],cx_=(k%MW)*TS+16,cy_=((k/MW)|0)*TS+16;if(Math.hypot(cx_-P.x,cy_-P.y)<10&&A.path.length>1)A.path.shift();else{const dd=Math.hypot(cx_-P.x,cy_-P.y)||1;return[(cx_-P.x)/dd,(cy_-P.y)/dd]}}
+  return[0,0];
+}
 function renderFloor(){
+  $('#mAdv').classList.toggle('sel',gameMode==='adv');$('#mExp').classList.toggle('sel',gameMode==='exp');
+  $('#advBox').hidden=gameMode!=='adv';$('#expBox').hidden=gameMode!=='exp';
+  if(gameMode==='exp'){$('#eCard').innerHTML=`<div class="fnum">Départ : étage ${expStart+1}</div><div class="fname">${regName(expStart)}</div><div class="fsub">Étages débloqués : 1 à ${save.best+1}</div>`;
+    $('#ePrev').disabled=expStart<=0;$('#eNext').disabled=expStart>=save.best;$('#eSpeed').textContent='Vitesse x'+simSpeed;
+    $('#eBest').textContent=save.bestExp?`Record d'expédition : étage ${save.bestExp+1}`:'';
+    $('#bGo').textContent=`Lancer l'expédition — étage ${expStart+1} ▶`;return;}
   const f=save.region,last=save.best,done=f<last;
   $('#fCard').innerHTML=`<div class="fnum">Étage ${f+1}</div><div class="fname">${regName(f)}</div>
     <div class="fstate ${done?'ok':'new'}">${done?'✓ Terminé — rejouable':'★ Nouvel étage'}${isLordRegion(f)?' · ⚠ Seigneur':''}</div>
@@ -1399,6 +1486,7 @@ Promise.all(Object.keys(ASSETS.files).map(k=>new Promise(r=>{const i=new Image()
   renderCreator();
   save=load();
   if(save&&save.look&&save.look.build===undefined)save.look.build=1;
+  if(save&&save.expHome!==undefined){save.region=save.expHome;delete save.expHome;}
   if(save&&save.look&&!save.passives)save.passives=[];
   if(save&&save.look&&!save.inv){save.inv=[];save.eq={};
     if(save.cape){const it=makeItem('cape',0);save.inv.push(it);save.eq.cape=it.id}
