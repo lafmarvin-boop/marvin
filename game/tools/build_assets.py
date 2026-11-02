@@ -59,17 +59,41 @@ LAYERS = {
  'cape_fg': ('cape/solid/fg/', 85, None, 'cloth', 'white'),
  'cape_bg': ('cape/solid/bg/', 5, None, 'cloth', 'white'),
  'helmet': ('hat/helmet/barbarian/adult/', 130, None, 'metal', 'steel'),
- 'sword_fg': ('weapon/sword/longsword/', 140, 'longsword', None, None),
- 'sword_bg': ('weapon/sword/longsword/universal_behind/', 9, 'longsword', None, None),
- 'axe_fg': ('weapon/blunt/waraxe/', 140, 'waraxe', None, None),
- 'axe_bg': ('weapon/blunt/waraxe/behind/', 9, 'waraxe', None, None),
+ 'sword_fg': ('weapon/sword/longsword/', 140, 'longsword', 'metal', 'steel'),
+ 'sword_bg': ('weapon/sword/longsword/universal_behind/', 9, 'longsword', 'metal', 'steel'),
+ 'axe_fg': ('weapon/blunt/waraxe/', 140, 'waraxe', 'metal', 'steel'),
+ 'axe_bg': ('weapon/blunt/waraxe/behind/', 9, 'waraxe', 'metal', 'steel'),
+ # equipement (coffres)
+ 'helm_kettle': ('hat/helmet/kettle/adult/', 135, None, 'metal', 'steel'),
+ 'helm_horned': ('hat/helmet/horned/adult/', 130, None, 'metal', 'steel'),
+ 'helm_armet': ('hat/helmet/armet/adult/', 130, None, 'metal', 'steel'),
+ 'legion_male': ('torso/armour/legion/male/', 60, None, 'metal', 'steel'),
+ 'legion_female': ('torso/armour/legion/female/', 60, None, 'metal', 'steel'),
+ 'legion_teen': ('torso/armour/legion/teen/', 60, None, 'metal', 'steel'),
+ 'gloves_male': ('arms/hands/gloves/male/', 70, None, 'metal', 'steel'),
+ 'gloves_thin': ('arms/hands/gloves/thin/', 70, None, 'metal', 'steel'),
+ 'armplate_male': ('arms/armour/plate/male/', 61, None, 'metal', 'steel'),
+ 'armplate_thin': ('arms/armour/plate/thin/', 61, None, 'metal', 'steel'),
+ 'legplate_male': ('legs/armour/plate/male/', 21, None, 'metal', 'steel'),
+ 'legplate_thin': ('legs/armour/plate/thin/', 21, None, 'metal', 'steel'),
+ 'feetplate_male': ('feet/armour/plate/male/', 15, None, 'metal', 'steel'),
+ 'feetplate_thin': ('feet/armour/plate/thin/', 15, None, 'metal', 'steel'),
+ 'boots_rimmed_male': ('feet/boots/rimmed/male/', 25, None, 'cloth', 'white'),
+ 'boots_rimmed_thin': ('feet/boots/rimmed/thin/', 25, None, 'cloth', 'white'),
+ 'shield_round_brown': ('shield/round/', 110, 'brown', None, None),
+ 'shield_round_gold': ('shield/round/', 110, 'gold', None, None),
+ 'shield_kite_male': ('shield/kite/male/', 110, 'kite_blue_gray', None, None),
+ 'shield_kite_female': ('shield/kite/female/', 110, 'kite_blue_gray', None, None),
+ 'shield_crusader_bg': ('shield/crusader/bg/', 2, 'crusader', None, None),
+ 'shield_crusader_male': ('shield/crusader/fg/male/', 110, 'crusader', None, None),
+ 'shield_crusader_female': ('shield/crusader/fg/female/', 110, 'crusader', None, None),
  'spear_fg': ('weapon/polearm/spear/foreground/', 140, 'iron', None, None),
  'spear_bg': ('weapon/polearm/spear/background/', 9, 'iron', None, None),
  'spear_gold_fg': ('weapon/polearm/spear/foreground/', 140, 'gold', None, None),
  'spear_gold_bg': ('weapon/polearm/spear/background/', 9, 'gold', None, None),
 }
 OVERSIZE = {  # attaques 192 px
- 'sword_atk_fg': ('weapon/sword/longsword/attack_slash/', 150, 'longsword'),
+ 'sword_atk_fg': ('weapon/sword/longsword/attack_slash/', 150, 'longsword'),  # recoloriees en metal
  'sword_atk_bg': ('weapon/sword/longsword/attack_slash/behind/', -1, 'longsword'),
  'axe_atk_fg': ('weapon/blunt/waraxe/attack_slash/', 150, 'waraxe'),
  'axe_atk_bg': ('weapon/blunt/waraxe/attack_slash/behind/', -1, 'waraxe'),
@@ -78,7 +102,7 @@ OVERSIZE = {  # attaques 192 px
 files = set(subprocess.check_output(['git', '-C', LPC, 'ls-tree', '-r', '--name-only', 'HEAD'], text=True).split('\n'))
 
 def resolve(d, anim, var):
-    for c in [f'spritesheets/{d}{anim}.png', f'spritesheets/{d}{anim}/{var}.png']:
+    for c in [f'spritesheets/{d}{anim}/{var}.png', f'spritesheets/{d}{anim}.png']:
         if c in files: return c
     sub = sorted(f for f in files if f.startswith(f'spritesheets/{d}{anim}/') and f.count('/') == (f'spritesheets/{d}{anim}/').count('/'))
     return sub[0] if sub else None
@@ -116,7 +140,7 @@ for lid, (d, z, var) in OVERSIZE.items():
     p = need[(lid, 'slash')]
     im = Image.open(f'{LPC}/{p}').convert('RGBA').crop((0, 0, 6 * 192, 4 * 192))
     im.save(f'{OUT}/char/{lid}.png', optimize=True); used.append(p)
-    manifest['oversize'][lid] = {'z': z, 'frame': 192}
+    manifest['oversize'][lid] = {'z': z, 'frame': 192, 'mat': 'metal', 'base': 'steel'}
 for mat, f in [('body', 'body/body_ulpc'), ('hair', 'hair/hair_ulpc'), ('cloth', 'cloth/cloth_ulpc'), ('metal', 'metal/metal_ulpc')]:
     manifest['palettes'][mat] = json.loads(subprocess.check_output(['git', '-C', LPC, 'show', f'HEAD:palette_definitions/{f}.json'], text=True))
 json.dump(manifest, open(f'{OUT}/char/manifest.json', 'w'), separators=(',', ':'))

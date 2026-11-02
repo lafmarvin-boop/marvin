@@ -38,6 +38,12 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 .item p{margin:0 0 6px;color:var(--dim)}
 .gold{color:var(--gold)}
 #msg{color:var(--ok);min-height:18px;margin:6px 0}
+.item.empty{opacity:.45;border-style:dashed}
+#loot{border:4px solid var(--rc);background:#000a;padding:10px;margin:8px 0;box-shadow:0 0 24px var(--rc)}
+#loot .lootT{font-size:22px;font-weight:bold;color:var(--rc);text-align:center;margin-bottom:6px;text-shadow:2px 2px 0 #000}
+#loot.pop{animation:pop .5s ease-out}
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){#loot.pop{animation:none}}
 #touch{position:absolute;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,58px);gap:8px;align-items:center;justify-items:center}
 #touch button{width:56px;height:56px;font-size:18px;touch-action:none;padding:0;border-radius:50%;background:rgba(30,20,50,.55);border-color:rgba(255,255,255,.35)}
 #touch .atk{grid-column:3;grid-row:1/3;width:76px;height:76px;font-size:30px;background:rgba(160,40,40,.6)}
@@ -111,6 +117,10 @@ footer a{color:var(--dim)}
     <div class="opts">
       <h3 style="margin:0">🔥 Camp — <span class="gold" id="campGold"></span></h3>
       <div id="msg"></div>
+      <div id="loot" hidden></div>
+      <div class="row"><b>Coffres d'équipement</b><div class="grid" id="chests"></div></div>
+      <div class="row"><b>Équipement porté</b><div class="grid" id="gear"></div></div>
+      <div class="row"><b>Inventaire <span id="invCount"></span></b><div class="grid" id="inv"></div></div>
       <div class="row"><b>Boutique</b><div class="grid" id="shop"></div></div>
       <div class="row"><b>Compétences équipées (clique pour équiper / retirer)</b><div id="campSkills"></div></div>
       <div class="btns" style="margin-top:10px">
@@ -192,12 +202,49 @@ const REGIONS=[
 /* ================= SAUVEGARDE ================= */
 const KEY='pixelRealm2';
 let save=null;
-function newSave(look,skills){return{look,skills:[...skills],slots:[...skills],maxSlots:2,lvl:1,xp:0,gold:0,region:0,best:0,weaponLvl:0,armorLvl:0,potions:2,cape:false,helmet:false};}
+function newSave(look,skills){return{look,skills:[...skills],slots:[...skills],maxSlots:2,lvl:1,xp:0,gold:0,region:0,best:0,weaponLvl:0,armorLvl:0,potions:2,inv:[],eq:{}};}
 function store(){try{localStorage.setItem(KEY,JSON.stringify(save))}catch(e){}}
 function load(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}}
+/* ================= ÉQUIPEMENT ================= */
+const RAR=[
+  {n:'Commun',c:'#c9c9c9',m:1,metal:'copper',cloth:'brown',sell:8},
+  {n:'Rare',c:'#4ea8ff',m:2,metal:'steel',cloth:'blue',sell:25},
+  {n:'Très rare',c:'#b46cff',m:3.4,metal:'silver',cloth:'purple',sell:70},
+  {n:'Légendaire',c:'#ff9a1f',m:5.5,metal:'gold',cloth:'red',sell:180},
+];
+const SLOTS={
+  arme:{n:'Arme',st:{atk:4}},torse:{n:'Armure',st:{def:3,hp:10}},casque:{n:'Casque',st:{def:2,hp:6}},
+  gants:{n:'Gants',st:{atk:1,def:1}},jambes:{n:'Jambes',st:{def:2,hp:4}},bottes:{n:'Bottes',st:{def:1,spd:.03}},
+  bouclier:{n:'Bouclier',st:{def:3}},cape:{n:'Cape',st:{hp:10,mp:6}},
+};
+const SLOT_ORDER=Object.keys(SLOTS);
+const NAMES={
+  arme:{epee:["Épée de fer","Épée d'acier","Lame d'argent","Excalibur"],hache:['Hache de fer','Hache de guerre','Hache runique','Fendeuse des Rois'],lance:['Lance de fer',"Pique d'acier","Lance d'argent",'Lance du Dragon']},
+  torse:['Veste de cuir','Cuirasse de légion','Armure de plates','Armure du Paladin'],
+  casque:['Casque barbare','Chapel de fer','Heaume cornu','Heaume du Roi'],
+  gants:['Gants de cuir',"Gantelets d'acier","Brassards d'argent",'Poings de Titan'],
+  jambes:['Braies de toile','Braies renforcées',"Jambières d'argent",'Jambières dorées'],
+  bottes:['Bottes de marche','Bottes à revers',"Solerets d'argent",'Solerets du Vent'],
+  bouclier:['Rondache en bois','Écu de bataille','Bouclier du Croisé','Égide dorée'],
+  cape:['Cape de voyage','Cape de chevalier','Cape mystique','Cape du Phénix'],
+};
+const CHESTS=[{n:'Coffre en bois',c:80,p:[70,24,5,1]},{n:'Coffre en fer',c:220,p:[30,45,20,5]},{n:'Coffre doré',c:600,p:[0,40,45,15]}];
+const STN={atk:'ATQ',def:'DEF',hp:'PV',mp:'PM',spd:'VIT'};
+const INV_MAX=40;
+function rollRarity(p){let x=Math.random()*100;for(let r=0;r<4;r++){if(x<p[r])return r;x-=p[r]}return 0}
+function makeItem(s,r){
+  const k=RAR[r].m*(1+.3*(save.best||0)),st={};
+  for(const [a,v] of Object.entries(SLOTS[s].st))st[a]=a==='spd'?Math.round(v*(1+r)*100)/100:Math.max(1,Math.round(v*k*rnd(.85,1.15)));
+  if(r===3)st.mp=(st.mp||0)+10;
+  return{id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),s,r,n:s==='arme'?NAMES.arme[save.look.weapon][r]:NAMES[s][r],st};
+}
+function statTxt(st){return Object.entries(st).map(([k,v])=>'+'+(k==='spd'?Math.round(v*100)+'%':v)+' '+STN[k]).join(' · ')}
+function equippedOf(s){const o={};if(s&&s.eq&&s.inv)for(const [k,id] of Object.entries(s.eq)){const it=s.inv.find(i=>i.id===id);if(it)o[k]=it}return o}
+function gainItem(it){if(save.inv.length>=INV_MAX)return false;save.inv.push(it);return true}
 function stats(s=save){
-  const R=RACES[s.look.race],l=s.lvl-1;
-  return{hp:R.hp+l*12+(s.cape?15:0),mp:R.mp+l*5,atk:R.atk+l*2+s.weaponLvl*3,def:R.def+l+s.armorLvl*2+(s.helmet?3:0),spd:R.spd};
+  const R=RACES[s.look.race],l=s.lvl-1,b={atk:0,def:0,hp:0,mp:0,spd:0};
+  for(const it of Object.values(equippedOf(s)))for(const [k,v] of Object.entries(it.st))b[k]+=v;
+  return{hp:R.hp+l*12+b.hp,mp:R.mp+l*5+b.mp,atk:R.atk+l*2+(s.weaponLvl||0)*3+b.atk,def:R.def+l+(s.armorLvl||0)*2+b.def,spd:R.spd*(1+b.spd)};
 }
 const xpNeed=l=>20+l*15;
 
@@ -227,13 +274,25 @@ function compose(layers,weapon,o={}){
     if(o.orc&&onHead(l)){for(const an of Object.values(M.anims))for(let d=0;d<an.dirs;d++){const y=(an.row+d)*64,dy=an.dirs>1?ORC_DY[d]:3;gg.drawImage(src,0,y,576,64,0,y+dy,576,64)}}
     else gg.drawImage(src,0,0);};
   Ls.forEach(x=>put(g,x));
-  const atk=weapon==='epee'?{bg:recolor('sword_atk_bg'),fg:recolor('sword_atk_fg')}:weapon==='hache'?{bg:recolor('axe_atk_bg'),fg:recolor('axe_atk_fg')}:null;
+  const mt=o.metal||undefined,atk=weapon==='epee'?{bg:recolor('sword_atk_bg',mt),fg:recolor('sword_atk_fg',mt)}:weapon==='hache'?{bg:recolor('axe_atk_bg',mt),fg:recolor('axe_atk_fg',mt)}:null;
   return{sheet:c,atk,atkAnim:weapon==='lance'?'thrust':'slash'};
 }
 // Muscles : homme = corps de base / athlétique / athlétique élargi ; femme = corps féminin de plus en plus large
 function heroScale(L){const R=RACES[L.race],b=L.build??1;
   const k=L.sex==='f'?[[1,1],[1.06,1.01],[1.12,1.03]][b]:b===2?[1.12,1.03]:[1,1];return[R.sx*k[0],R.sy*k[1]];}
-function heroChar(L,eq){return compose(heroLayers(L,eq),L.weapon,{orc:RACES[L.race].head==='orc'});}
+function heroChar(L,eq){const E=equippedOf(eq);return compose(heroLayers(L,eq),L.weapon,{orc:RACES[L.race].head==='orc',metal:E.arme?RAR[E.arme.r].metal:null});}
+function itemLook(it,tor,thin,f){
+  const r=it.r,M_=RAR[r].metal,C_=RAR[r].cloth;
+  switch(it.s){
+    case 'torse':return r===0?[['leather'+tor,'brown']]:r===1?[['legion'+tor,'steel']]:[['plate'+tor,M_]];
+    case 'casque':return[[['helmet','helm_kettle','helm_horned','helm_armet'][r],M_]];
+    case 'gants':return r<2?[[thin?'gloves_thin':'gloves_male',M_]]:[[thin?'armplate_thin':'armplate_male',M_],[thin?'gloves_thin':'gloves_male',M_]];
+    case 'jambes':return r<2?[[thin?'pants_thin':'pants_male',C_]]:[[thin?'legplate_thin':'legplate_male',M_]];
+    case 'bottes':return r===0?[[thin?'boots_thin':'boots_male','brown']]:r===1?[[thin?'boots_rimmed_thin':'boots_rimmed_male','black']]:[[thin?'feetplate_thin':'feetplate_male',M_]];
+    case 'bouclier':return r===0?[['shield_round_brown']]:r===1?[[f?'shield_kite_female':'shield_kite_male']]:r===2?[['shield_crusader_bg'],[f?'shield_crusader_female':'shield_crusader_male']]:[['shield_round_gold']];
+    case 'cape':{const c=['brown','navy','purple','red'][r];return[['cape_fg',c],['cape_bg',c]];}
+  }return[];
+}
 function heroLayers(L,eq){
   const f=L.sex==='f',R=RACES[L.race],out=[];
   const b=L.build??1,slim=!f&&L.race==='elfe'&&b<2,thin=f||slim,musc=!f&&!slim&&b>=1;
@@ -244,16 +303,15 @@ function heroLayers(L,eq){
   if(!f&&L.beard&&L.beard!=='none')out.push([L.beard,L.hair]);
   if(L.hairStyle==='ponytail'){out.push(['hair_ponytail_fg',L.hair]);out.push(['hair_ponytail_bg',L.hair]);}
   else if(L.hairStyle!=='none')out.push(['hair_'+L.hairStyle,L.hair]);
-  out.push([thin?'pants_thin':'pants_male',L.pants]);
-  out.push([thin?'boots_thin':'boots_male','brown']);
-  const tor=f?'_female':slim?'_teen':'_male';
-  if(eq.armorLvl>=3)out.push(['plate'+tor,eq.armorLvl>=6?'gold':'steel']);
-  else if(L.armor!=='none')out.push(['leather'+tor,L.armor]);
-  if(eq.cape){out.push(['cape_fg','maroon']);out.push(['cape_bg','maroon']);}
-  if(eq.helmet)out.push(['helmet',eq.armorLvl>=6?'gold':'iron']);
-  if(L.weapon==='epee'){out.push(['sword_fg']);out.push(['sword_bg']);}
-  else if(L.weapon==='hache'){out.push(['axe_fg']);out.push(['axe_bg']);}
-  else{const g=eq.weaponLvl>=4?'spear_gold_':'spear_';out.push([g+'fg']);out.push([g+'bg']);}
+  const tor=f?'_female':slim?'_teen':'_male',E=equippedOf(eq),add=a=>a.forEach(x=>out.push(x));
+  if(E.jambes)add(itemLook(E.jambes,tor,thin,f));else out.push([thin?'pants_thin':'pants_male',L.pants]);
+  if(E.bottes)add(itemLook(E.bottes,tor,thin,f));else out.push([thin?'boots_thin':'boots_male','brown']);
+  if(E.torse)add(itemLook(E.torse,tor,thin,f));else if(L.armor!=='none')out.push(['leather'+tor,L.armor]);
+  for(const sl of ['casque','gants','bouclier','cape'])if(E[sl])add(itemLook(E[sl],tor,thin,f));
+  const met=E.arme?RAR[E.arme.r].metal:undefined;
+  if(L.weapon==='epee'){out.push(['sword_fg',met]);out.push(['sword_bg',met]);}
+  else if(L.weapon==='hache'){out.push(['axe_fg',met]);out.push(['axe_bg',met]);}
+  else{const g=E.arme&&E.arme.r===3?'spear_gold_':'spear_';out.push([g+'fg']);out.push([g+'bg']);}
   return out;
 }
 const SPECS={
@@ -319,7 +377,7 @@ $('#iName').oninput=e=>look.name=e.target.value||'Héros';
 $('#bStart').onclick=()=>{save=newSave({...look},pickedSkills);store();buildRegion();startPlay();};
 $('#bTurn').onclick=()=>pvDir=(pvDir+1)%4;
 $('#bAnim').onclick=()=>pvAtk=performance.now();
-function getChar(L,eq){const k=JSON.stringify([L,eq.armorLvl,eq.weaponLvl,eq.cape,eq.helmet]);if(k!==pvKey){pvKey=k;pvChar=heroChar(L,eq)}return pvChar;}
+function getChar(L,eq){const k=JSON.stringify([L,Object.values(equippedOf(eq)).map(i=>i.s+i.r)]);if(k!==pvKey){pvKey=k;pvChar=heroChar(L,eq)}return pvChar;}
 function animPreview(){
   const t=performance.now()/1000;
   for(const id of ['#pv','#pv2']){
@@ -585,7 +643,8 @@ function openChest(o){
   o.open=true;const ri=save.region;fx(o.x,o.y-14,'#ffcf4a',24,80);
   const g=Math.round(rnd(12,25)*(1+.3*ri));for(let i=0;i<5;i++)drops.push({x:o.x,y:o.y+6,z:10,vz:rnd(80,150),vx:rnd(-60,60),vy:rnd(10,60),k:'gold',v:Math.ceil(g/5)});
   if(Math.random()<.4)drops.push({x:o.x,y:o.y+8,z:10,vz:140,vx:rnd(-30,30),vy:30,k:'potion'});
-  if(o.boss||Math.random()<.15){if(Math.random()<.5){save.weaponLvl++;txt(o.x,o.y-40,'Arme +1 !','#8ef0ff')}else{save.armorLvl++;txt(o.x,o.y-40,'Armure +1 !','#8ef0ff')}heroC=heroChar(save.look,save);}
+  if(o.boss||Math.random()<.15){const it=makeItem(pick(SLOT_ORDER),rollRarity(o.boss?[0,50,38,12]:[75,25,0,0]));
+    if(gainItem(it))txt(o.x,o.y-40,it.n+' !',RAR[it.r].c);else txt(o.x,o.y-40,'Inventaire plein','#ff8080');}
   if(o.boss){const rare=Object.keys(SKILLS).filter(k=>SKILLS[k].rare&&!save.skills.includes(k));
     if(rare.length){save.skills.push(rare[0]);txt(o.x,o.y-54,'Compétence : '+SKILLS[rare[0]].name,'#b8a0ff')}}
 }
@@ -757,6 +816,7 @@ function render(){
   L.push({y:P.y,f:()=>{
     shadow(g,P.x,P.y,10);
     if(P.shield>0){g.strokeStyle='rgba(80,200,255,.7)';g.lineWidth=2;g.beginPath();g.ellipse(P.x,P.y-22,20,26,0,0,7);g.stroke();}
+    if(Object.values(equippedOf(save)).some(i=>i.r===3)&&Math.random()<.35)parts.push({x:P.x+rnd(-12,12),y:P.y-rnd(4,44),vx:0,vy:-18,life:.6,c:Math.random()<.5?'#ffcf4a':'#fff3b0'});
     if(!(P.inv>0&&Math.floor(T*20)%2)){const[an,d,f]=heroFrame(),[hx,hy]=heroScale(save.look);drawChar(g,heroC,an,d,f,P.x,P.y,hx,hy);}
     if(P.whirl>0){g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=3;g.beginPath();g.ellipse(P.x,P.y-10,64*(1-P.whirl/.35)+8,(64*(1-P.whirl/.35)+8)*.6,0,0,7);g.stroke();}
   }});
@@ -823,14 +883,12 @@ function openCamp(msg){
   const st=stats(),R=RACES[save.look.race];
   $('#campGold').textContent=save.gold+' or';
   $('#msg').textContent=msg||'';
-  $('#campStats').innerHTML=`<b>${save.look.name}</b> — ${R.name}<br>Niveau ${save.lvl} (${save.xp}/${xpNeed(save.lvl)} XP)<br>PV ${st.hp} · PM ${st.mp}<br>ATQ ${st.atk} · DEF ${st.def}<br>Arme +${save.weaponLvl} · Armure +${save.armorLvl}<br>Potions ${save.potions}<br>Régions libérées : ${save.best}<br><small>${R.passive}</small>`;
-  const Wn=WEAPONS[save.look.weapon].name;
+  $('#campStats').innerHTML=`<b>${save.look.name}</b> — ${R.name}<br>Niveau ${save.lvl} (${save.xp}/${xpNeed(save.lvl)} XP)<br>PV ${st.hp} · PM ${st.mp}<br>ATQ ${st.atk} · DEF ${st.def}<br>VIT ${Math.round(st.spd*100)}%<br>Potions ${save.potions}<br>Régions libérées : ${save.best}<br><small>${R.passive}</small>`;
+  renderGear();
   const items=[
-    {n:Wn+' +'+(save.weaponLvl+1),d:'+3 ATQ.'+(save.look.weapon==='lance'?' Lance dorée à +4.':''),c:30+save.weaponLvl*30,ok:true,f:()=>save.weaponLvl++},
-    {n:'Armure +'+(save.armorLvl+1),d:'+2 DEF. Armure de plates à +3, dorée à +6.',c:30+save.armorLvl*30,ok:true,f:()=>save.armorLvl++},
+    {n:'Forge : affûtage +'+(save.weaponLvl+1),d:'+3 ATQ permanent.',c:30+save.weaponLvl*30,ok:true,f:()=>save.weaponLvl++},
+    {n:'Forge : renfort +'+(save.armorLvl+1),d:'+2 DEF permanent.',c:30+save.armorLvl*30,ok:true,f:()=>save.armorLvl++},
     {n:'Potion de vie',d:'Rend 45% PV (touche R). Max 6.',c:15,ok:save.potions<6,f:()=>save.potions++},
-    {n:'Cape pourpre',d:'+15 PV max. Visible sur ton héros.',c:60,ok:!save.cape,f:()=>save.cape=true},
-    {n:'Casque barbare',d:'+3 DEF. Visible sur ton héros.',c:90,ok:!save.helmet,f:()=>save.helmet=true},
     {n:'3e emplacement',d:'Équipe une compétence de plus (touche 3).',c:120,ok:save.maxSlots<3,f:()=>save.maxSlots=3},
   ];
   Object.keys(SKILLS).filter(k=>!save.skills.includes(k)).forEach(k=>{const S=SKILLS[k];
@@ -848,6 +906,37 @@ function openCamp(msg){
     cs.appendChild(b);});
   $('#bGo').textContent=P?'Reprendre l\'aventure ▶':`Partir — ${REGIONS[save.region%3].name} ▶`;
 }
+function itemCard(it,btns){
+  const d=document.createElement('div');d.className='item';d.style.borderColor=RAR[it.r].c;
+  d.innerHTML=`<h4 style="color:${RAR[it.r].c}">${it.n}</h4><p>${SLOTS[it.s].n} · ${RAR[it.r].n}<br>${statTxt(it.st)}</p>`;
+  const w=document.createElement('div');w.className='btns';btns.forEach(([t,f,dis])=>{const b=document.createElement('button');b.textContent=t;b.disabled=!!dis;b.onclick=f;w.appendChild(b)});d.appendChild(w);return d;
+}
+function equip(it){save.eq[it.s]=it.id;heroC=null;openCamp('Équipé : '+it.n);}
+function renderGear(res){
+  const E=equippedOf(save),eqEl=$('#gear');eqEl.innerHTML='';
+  SLOT_ORDER.forEach(sl=>{const it=E[sl];
+    if(it)eqEl.appendChild(itemCard(it,[['Retirer',()=>{delete save.eq[sl];openCamp('Retiré : '+it.n)}]]));
+    else{const d=document.createElement('div');d.className='item empty';d.innerHTML=`<h4>${SLOTS[sl].n}</h4><p>Vide</p>`;eqEl.appendChild(d)}});
+  const ch=$('#chests');ch.innerHTML='';
+  CHESTS.forEach(C=>{const d=document.createElement('div');d.className='item';
+    d.innerHTML=`<h4>${C.n}</h4><p>${C.p.map((v,i)=>v?`<span style="color:${RAR[i].c}">${RAR[i].n} ${v}%</span>`:'').filter(Boolean).join(' · ')}</p>`;
+    const b=document.createElement('button');b.textContent=`Ouvrir — ${C.c} or`;b.disabled=save.gold<C.c||save.inv.length>=INV_MAX;
+    b.onclick=()=>{save.gold-=C.c;const it=makeItem(pick(SLOT_ORDER),rollRarity(C.p));gainItem(it);openCamp();showLoot(it)};d.appendChild(b);ch.appendChild(d);});
+  const inv=$('#inv');inv.innerHTML='';const eqIds=new Set(Object.values(save.eq));
+  const bag=save.inv.filter(i=>!eqIds.has(i.id)).sort((a,b)=>b.r-a.r||SLOT_ORDER.indexOf(a.s)-SLOT_ORDER.indexOf(b.s));
+  $('#invCount').textContent=`(${save.inv.length}/${INV_MAX})`;
+  if(!bag.length)inv.innerHTML='<p style="color:var(--dim)">Vide. Ouvre un coffre !</p>';
+  bag.forEach(it=>{const cur=E[it.s];
+    const cmp=cur?' ('+Object.keys({...it.st,...cur.st}).map(k=>{const d=(it.st[k]||0)-(cur.st[k]||0);return d?(d>0?'+':'')+(k==='spd'?Math.round(d*100)+'%':d)+' '+STN[k]:''}).filter(Boolean).join(', ')+')':'';
+    const c=itemCard(it,[['Équiper',()=>equip(it)],[`Vendre ${RAR[it.r].sell} or`,()=>{save.inv=save.inv.filter(x=>x!==it);save.gold+=RAR[it.r].sell;openCamp('Vendu : '+it.n)}]]);
+    if(cmp.length>3)c.querySelector('p').insertAdjacentHTML('beforeend',`<br><small>vs équipé${cmp}</small>`);inv.appendChild(c);});
+}
+function showLoot(it){
+  const L=$('#loot');L.hidden=false;L.innerHTML='';L.style.setProperty('--rc',RAR[it.r].c);
+  L.insertAdjacentHTML('beforeend',`<div class="lootT">${RAR[it.r].n} !</div>`);
+  L.appendChild(itemCard(it,[['Équiper',()=>{L.hidden=true;equip(it)}],['Garder',()=>{L.hidden=true}]]));
+  L.classList.remove('pop');void L.offsetWidth;L.classList.add('pop');
+}
 $('#bGo').onclick=()=>startPlay(!P);
 $('#bNew').onclick=()=>{if(confirm('Effacer ton héros et en créer un nouveau ?')){save=null;P=null;try{localStorage.removeItem(KEY)}catch(e){}show('sCreate');renderCreator();state='menu'}};
 
@@ -857,6 +946,10 @@ Promise.all(Object.keys(ASSETS.files).map(k=>new Promise(r=>{const i=new Image()
   renderCreator();
   save=load();
   if(save&&save.look&&save.look.build===undefined)save.look.build=1;
+  if(save&&save.look&&!save.inv){save.inv=[];save.eq={};
+    if(save.cape){const it=makeItem('cape',0);save.inv.push(it);save.eq.cape=it.id}
+    if(save.helmet){const it=makeItem('casque',0);save.inv.push(it);save.eq.casque=it.id}
+    delete save.cape;delete save.helmet;}
   if(save&&save.look&&!save.look.beard)save.look.beard=save.look.race==='nain'?'beard':'none';
   if(save&&save.look){buildRegion();openCamp('Bon retour, '+save.look.name+' !');}else{save=null;show('sCreate');}
   requestAnimationFrame(animPreview);

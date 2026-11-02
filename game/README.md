@@ -7,7 +7,9 @@ Action-RPG en vue de dessus, en pixel art. Ouvre `index.html` dans un navigateur
 - Monde ouvert en 4 directions. Régions : Prairie, Marais, Ruines. Puis le cycle recommence, plus dur.
 - Ennemis : slimes, serpents, abeilles, chauves-souris, yeux, fantômes, gobelins, zombies, squelettes, loups-garous, orcs.
 - Boss : Chef Orc, Roi Citrouille, Minotaure.
-- Butin : or, potions, coffres. L'équipement change l'apparence (armure de plates, cape, casque, lance dorée).
+- Butin : or, potions, coffres.
+- Coffres d'équipement au camp (bois, fer, doré) : arme, armure, casque, gants, jambes, bottes, bouclier, cape.
+- Raretés : commun, rare, très rare, légendaire. L'équipement porté se voit sur le héros.
 - Camp : feu de camp (touche E) avec boutique et gestion des compétences.
 - Sauvegarde automatique (localStorage).
 
