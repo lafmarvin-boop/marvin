@@ -70,6 +70,7 @@ footer a{color:var(--dim)}
       <div class="row"><b>Corps</b><div class="btns" id="oSex"></div></div>
       <div class="row"><b>Race</b><div class="btns" id="oRace"></div><small id="raceDesc" style="color:var(--dim)"></small></div>
       <div class="row"><b>Peau</b><div class="btns" id="oSkin"></div></div>
+      <div class="row"><b>Silhouette</b><div class="btns" id="oBuild"></div></div>
       <div class="row" id="rowBeard"><b>Barbe</b><div class="btns" id="oBeard"></div></div>
       <div class="row"><b>Coiffure</b><div class="btns" id="oHairS"></div></div>
       <div class="row"><b>Cheveux</b><div class="btns" id="oHair"></div></div>
@@ -212,16 +213,62 @@ function recolor(lid,pal){
   }
   return recCache[key]=c;
 }
-function compose(layers,weapon){
+const ORC_DY=[3,5,2,5]; // la tête orc est plus basse que la tête humaine (haut, gauche, bas, droite)
+const onHead=l=>/^(hair_|beard|stache_|helmet)/.test(l);
+function compose(layers,weapon,o={}){
   const c=document.createElement('canvas');c.width=576;c.height=17*64;const g=c.getContext('2d');
-  layers.filter(Boolean).sort((a,b)=>M.layers[a[0]].z-M.layers[b[0]].z).forEach(([l,p])=>g.drawImage(recolor(l,p),0,0));
+  const Ls=layers.filter(Boolean).sort((a,b)=>M.layers[a[0]].z-M.layers[b[0]].z);
+  const torso=l=>/^(body_|pants_|boots_|leather_|plate_)/.test(l);
+  const put=(gg,[l,p])=>{const src=recolor(l,p);
+    if(o.orc&&onHead(l)){for(const an of Object.values(M.anims))for(let d=0;d<an.dirs;d++){const y=(an.row+d)*64,dy=an.dirs>1?ORC_DY[d]:3;gg.drawImage(src,0,y,576,64,0,y+dy,576,64)}}
+    else gg.drawImage(src,0,0);};
+  if(o.curve){ // corps + vêtements déformés à part, puis tête, cheveux, armes par-dessus
+    const b=document.createElement('canvas');b.width=c.width;b.height=c.height;const gb=b.getContext('2d');
+    Ls.filter(x=>torso(x[0])).forEach(x=>put(gb,x));curvify(b,recolor(Ls.find(x=>/^body_/.test(x[0]))[0],Ls.find(x=>/^body_/.test(x[0]))[1]),o.curve);
+    let done=false;Ls.forEach(x=>{if(torso(x[0])){if(!done){g.drawImage(b,0,0);done=true}}else put(g,x)});
+  }else Ls.forEach(x=>put(g,x));
   const atk=weapon==='epee'?{bg:recolor('sword_atk_bg'),fg:recolor('sword_atk_fg')}:weapon==='hache'?{bg:recolor('axe_atk_bg'),fg:recolor('axe_atk_fg')}:null;
   return{sheet:c,atk,atkAnim:weapon==='lance'?'thrust':'slash'};
 }
+/* Silhouette féminine : déformation ligne par ligne (poitrine, hanches) sur le sprite assemblé */
+function curvify(c,body,lvl){
+  const g=c.getContext('2d'),W=c.width,id=g.getImageData(0,0,W,c.height),a=id.data,src=new Uint8ClampedArray(a);
+  const bd=body.getContext('2d').getImageData(0,0,W,c.height).data;
+  const amp=lvl>0?{ch:1.05,hp:.95}:{ch:-.22,hp:-.25};
+  const gau=(y,m,s)=>Math.exp(-((y-m)*(y-m))/(2*s*s));
+  for(const [name,an] of Object.entries(M.anims)){if(an.dirs<4)continue;
+    for(let d=0;d<4;d++)for(let f=0;f<an.frames;f++){
+      const ox=f*64,oy=(an.row+d)*64;let top=-1,minx=64,maxx=0;
+      for(let y=0;y<64&&top<0;y++)for(let x=0;x<64;x++)if(bd[((oy+y)*W+ox+x)*4+3]){top=y;break}
+      if(top<0)continue;
+      for(let y=top;y<Math.min(64,top+20);y++)for(let x=0;x<64;x++)if(bd[((oy+y)*W+ox+x)*4+3]){minx=Math.min(minx,x);maxx=Math.max(maxx,x)}
+      const cxm=(minx+maxx+1)/2,face=d===3?1:d===1?-1:0;
+      for(let y=top+3;y<Math.min(64,top+20);y++){
+        const wc=gau(y,top+7.5,2.3)*(d===0?.25:1),wh=gau(y,top+14,2.8);
+        const kc=1+amp.ch*wc,kh=1+amp.hp*wh;if(Math.abs(kc-1)<.02&&Math.abs(kh-1)<.02)continue;
+        const row=(oy+y)*W*4,line=src.subarray(row+ox*4,row+ox*4+256);
+        const CORE=face?7:8;
+        for(let x=0;x<64;x++){
+          const rel=x+.5-cxm,ar=Math.abs(rel);let k=1;
+          if(face===0)k=Math.max(kc,kh)>1?Math.max(kc,kh):Math.min(kc,kh);
+          else k=(rel*face>0?kc:1)*(rel*face<0?kh:1);
+          if(k===1)continue;
+          const di=row+(ox+x)*4,origA=line[x*4+3];
+          if(ar>CORE*Math.max(k,1))continue;               // hors du tronc : on garde (bras, mains)
+          if(ar>CORE&&origA)continue;                      // bras par-dessus le tronc élargi
+          if(k<1&&ar>CORE*k){if(ar<=CORE){a[di+3]=0}continue} // tronc affiné
+          const sx=Math.floor(cxm+rel/k);if(sx<0||sx>63)continue;
+          if(!line[sx*4+3])continue;
+          a[di]=line[sx*4];a[di+1]=line[sx*4+1];a[di+2]=line[sx*4+2];a[di+3]=line[sx*4+3];}
+      }}}
+  g.putImageData(id,0,0);
+}
+function heroScale(L){const R=RACES[L.race],b=L.sex==='m'&&L.build===2?[1.12,1.03]:[1,1];return[R.sx*b[0],R.sy*b[1]];}
+function heroChar(L,eq){return compose(heroLayers(L,eq),L.weapon,{orc:RACES[L.race].head==='orc',curve:L.sex==='f'?(L.build===0?-1:L.build===2?1:0):0});}
 function heroLayers(L,eq){
   const f=L.sex==='f',R=RACES[L.race],out=[];
-  const slim=!f&&L.race==='elfe',musc=!f&&!slim,thin=f||slim;
-  out.push([f?'body_female':slim?'body_teen':'body_muscular',L.skin]);
+  const b=L.build??1,slim=!f&&L.race==='elfe'&&b<2,thin=f||slim,musc=!f&&!slim&&b>=1;
+  out.push([f?'body_female':slim?'body_teen':musc?'body_muscular':'body_male',L.skin]);
   out.push(['head_'+R.head+(f?'_female':'_male'),L.skin]);
   if(R.head==='human')out.push(['eyes']);
   if(L.race==='elfe')out.push(['ears_elven',L.skin]);
@@ -263,7 +310,7 @@ function drawChar(g,C,anim,dir,frame,x,y,sc=1,syy){
 function shadow(g,x,y,rx){g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(Math.round(x),Math.round(y),rx,rx*.42,0,0,7);g.fill();}
 
 /* ================= CRÉATION ================= */
-let look={name:'Héros',sex:'m',beard:'beard_trimmed',race:'humain',skin:'light',hairStyle:'messy1',hair:'chestnut',armor:'leather',pants:'brown',weapon:'epee'};
+let look={name:'Héros',sex:'m',build:1,beard:'beard_trimmed',race:'humain',skin:'light',hairStyle:'messy1',hair:'chestnut',armor:'leather',pants:'brown',weapon:'epee'};
 let pickedSkills=['fireball','heal'],pvDir=2,pvAtk=0,pvChar=null,pvKey='';
 const sw=(mat,p)=>M.palettes[mat][p][3];
 function optRow(el,items,cur,pickf,swmat){
@@ -280,10 +327,12 @@ function renderCreator(){
   $('#raceDesc').textContent=R.passive;
   optRow($('#oSkin'),R.skins.map(c=>[c]),look.skin,v=>look.skin=v,'body');
   $('#rowBeard').hidden=look.sex!=='m';
+  optRow($('#oBuild'),look.sex==='m'?[[0,'Pas musclé'],[1,'Musclé'],[2,'Très musclé']]:[[0,'Pas féminine'],[1,'Féminine'],[2,'Très féminine']],look.build,v=>look.build=v);
   optRow($('#oBeard'),Object.entries(BEARDS),look.beard,v=>look.beard=v);
   optRow($('#oHairS'),Object.entries(HSTYLES),look.hairStyle,v=>look.hairStyle=v);
   optRow($('#oHair'),HAIRC.map(c=>[c]),look.hair,v=>look.hair=v,'hair');
-  optRow($('#oArmor'),[['none','Torse nu'],...CLOTH.map(c=>[c])],look.armor,v=>look.armor=v,'cloth');
+  if(look.sex==='f'&&look.armor==='none')look.armor='leather';
+  optRow($('#oArmor'),[...(look.sex==='m'?[['none','Torse nu']]:[]),...CLOTH.map(c=>[c])],look.armor,v=>look.armor=v,'cloth');
   optRow($('#oPants'),CLOTH.map(c=>[c]),look.pants,v=>look.pants=v,'cloth');
   optRow($('#oWeapon'),Object.entries(WEAPONS).map(([k,w])=>[k,w.name+' ('+w.desc+')']),look.weapon,v=>look.weapon=v);
   const sk=$('#oSkills');sk.innerHTML='';
@@ -301,7 +350,7 @@ $('#iName').oninput=e=>look.name=e.target.value||'Héros';
 $('#bStart').onclick=()=>{save=newSave({...look},pickedSkills);store();buildRegion();startPlay();};
 $('#bTurn').onclick=()=>pvDir=(pvDir+1)%4;
 $('#bAnim').onclick=()=>pvAtk=performance.now();
-function getChar(L,eq){const k=JSON.stringify([L,eq.armorLvl,eq.weaponLvl,eq.cape,eq.helmet]);if(k!==pvKey){pvKey=k;pvChar=compose(heroLayers(L,eq),L.weapon)}return pvChar;}
+function getChar(L,eq){const k=JSON.stringify([L,eq.armorLvl,eq.weaponLvl,eq.cape,eq.helmet]);if(k!==pvKey){pvKey=k;pvChar=heroChar(L,eq)}return pvChar;}
 function animPreview(){
   const t=performance.now()/1000;
   for(const id of ['#pv','#pv2']){
@@ -311,9 +360,9 @@ function animPreview(){
     const C=getChar(L,eq),g=c.getContext('2d');g.imageSmoothingEnabled=false;g.clearRect(0,0,128,128);
     shadow(g,64,112,16);
     const at=(performance.now()-pvAtk)/1000;
-    const Rr=RACES[L.race],k=1.45;
-    if(at<.5){const an=C.atkAnim;drawChar(g,C,an,pvDir,Math.floor(at/.5*M.anims[an].frames),64,116,k*Rr.sx,k*Rr.sy)}
-    else drawChar(g,C,'walk',pvDir,1+Math.floor(t*9)%8,64,116,k*Rr.sx,k*Rr.sy);
+    const[hx,hy]=heroScale(L),k=1.45;
+    if(at<.5){const an=C.atkAnim;drawChar(g,C,an,pvDir,Math.floor(at/.5*M.anims[an].frames),64,116,k*hx,k*hy)}
+    else drawChar(g,C,'walk',pvDir,1+Math.floor(t*9)%8,64,116,k*hx,k*hy);
   }
   requestAnimationFrame(animPreview);
 }
@@ -442,7 +491,7 @@ function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.to
 let heroC=null;
 function startPlay(fresh=true){
   const st=stats();
-  heroC=compose(heroLayers(save.look,save),save.look.weapon);
+  heroC=heroChar(save.look,save);
   if(fresh||!P)P={x:camp.x+40,y:camp.y,r:8,dir:2,walkT:0,moving:false,act:null,atkCd:0,inv:0,hp:st.hp,mp:st.mp,shield:0,dash:0,dv:[0,0],whirl:0,cds:{},kx:0,ky:0,aim:[0,1]};
   P.hp=Math.min(P.hp,st.hp);P.mp=Math.min(P.mp,st.mp);
   state='play';banner=fresh?3:0;$('#ovl').classList.remove('on');show('sPlay');
@@ -538,7 +587,7 @@ function openChest(o){
   o.open=true;const ri=save.region;fx(o.x,o.y-14,'#ffcf4a',24,80);
   const g=Math.round(rnd(12,25)*(1+.3*ri));for(let i=0;i<5;i++)drops.push({x:o.x,y:o.y+6,z:10,vz:rnd(80,150),vx:rnd(-60,60),vy:rnd(10,60),k:'gold',v:Math.ceil(g/5)});
   if(Math.random()<.4)drops.push({x:o.x,y:o.y+8,z:10,vz:140,vx:rnd(-30,30),vy:30,k:'potion'});
-  if(o.boss||Math.random()<.15){if(Math.random()<.5){save.weaponLvl++;txt(o.x,o.y-40,'Arme +1 !','#8ef0ff')}else{save.armorLvl++;txt(o.x,o.y-40,'Armure +1 !','#8ef0ff')}heroC=compose(heroLayers(save.look,save),save.look.weapon);}
+  if(o.boss||Math.random()<.15){if(Math.random()<.5){save.weaponLvl++;txt(o.x,o.y-40,'Arme +1 !','#8ef0ff')}else{save.armorLvl++;txt(o.x,o.y-40,'Armure +1 !','#8ef0ff')}heroC=heroChar(save.look,save);}
   if(o.boss){const rare=Object.keys(SKILLS).filter(k=>SKILLS[k].rare&&!save.skills.includes(k));
     if(rare.length){save.skills.push(rare[0]);txt(o.x,o.y-54,'Compétence : '+SKILLS[rare[0]].name,'#b8a0ff')}}
 }
@@ -704,7 +753,7 @@ function render(){
   L.push({y:P.y,f:()=>{
     shadow(g,P.x,P.y,10);
     if(P.shield>0){g.strokeStyle='rgba(80,200,255,.7)';g.lineWidth=2;g.beginPath();g.ellipse(P.x,P.y-22,20,26,0,0,7);g.stroke();}
-    if(!(P.inv>0&&Math.floor(T*20)%2)){const[an,d,f]=heroFrame(),Rr=RACES[save.look.race];drawChar(g,heroC,an,d,f,P.x,P.y,Rr.sx,Rr.sy);}
+    if(!(P.inv>0&&Math.floor(T*20)%2)){const[an,d,f]=heroFrame(),[hx,hy]=heroScale(save.look);drawChar(g,heroC,an,d,f,P.x,P.y,hx,hy);}
     if(P.whirl>0){g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=3;g.beginPath();g.ellipse(P.x,P.y-10,64*(1-P.whirl/.35)+8,(64*(1-P.whirl/.35)+8)*.6,0,0,7);g.stroke();}
   }});
   L.sort((a,b)=>a.y-b.y).forEach(o=>o.f());
@@ -801,6 +850,7 @@ Promise.all(Object.keys(ASSETS.files).map(k=>new Promise(r=>{const i=new Image()
   $('#loading').remove();
   renderCreator();
   save=load();
+  if(save&&save.look&&save.look.build===undefined)save.look.build=1;
   if(save&&save.look&&!save.look.beard)save.look.beard=save.look.race==='nain'?'beard':'none';
   if(save&&save.look){buildRegion();openCamp('Bon retour, '+save.look.name+' !');}else{save=null;show('sCreate');}
   requestAnimationFrame(animPreview);
