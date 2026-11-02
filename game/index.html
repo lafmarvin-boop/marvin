@@ -140,8 +140,8 @@ footer a{color:#c8c0d8}
       <div class="row"><b>Nom</b><input id="iName" maxlength="12" value="Héros"></div>
       <div class="row"><b>Corps</b><div class="btns" id="oSex"></div></div>
       <div class="row"><b>Race</b><div class="btns" id="oRace"></div><small id="raceDesc" style="color:var(--dim)"></small></div>
-      <div class="row"><b>Peau</b><div class="btns" id="oSkin"></div></div>
-      <div class="row"><b>Muscles</b><div class="btns" id="oBuild"></div></div>
+      <div class="row" id="rowSkin"><b>Peau</b><div class="btns" id="oSkin"></div></div>
+      <div class="row" id="rowBuild"><b>Muscles</b><div class="btns" id="oBuild"></div></div>
       <div class="row" id="rowBeard"><b>Barbe</b><div class="btns" id="oBeard"></div></div>
       <div class="row" id="rowHairS"><b>Coiffure</b><div class="btns" id="oHairS"></div></div>
       <div class="row" id="rowHair"><b>Cheveux</b><div class="btns" id="oHair"></div></div>
@@ -271,6 +271,26 @@ const RACES={
     skins:['pale_green','green','dark_green','zombie_green','olive','blue']},
   gobelin:{name:'Gobelin',hp:80,mp:45,atk:9,def:4,spd:1.2,passive:'Agile : esquive 15% des attaques',head:'beast',hid:'head_goblin',noHair:1,sx:.88,sy:.78,
     skins:['green','bright_green','dark_green','pale_green','olive','taupe']},
+  squelette:{name:'Squelette',hp:85,mp:45,atk:10,def:5,spd:1.1,passive:'Ossature : -15% dégâts reçus, esquive 8%',head:'beast',hid:'head_skeleton',body:'body_skeleton',noHair:1,sx:.96,sy:1.02,
+    skins:['light'],dmgIn:.85,dodge:.08},
+  zombie:{name:'Zombie',hp:120,mp:25,atk:10,def:5,spd:0.85,passive:'Increvable : régénère 1,5% de vie/s, vole 4% des dégâts',head:'beast',hid:'head_zombie',body:'body_zombie',noHair:1,sx:1,sy:1,
+    skins:['light'],regen:.015,steal:.04},
+  sanglier:{name:'Homme-sanglier',hp:125,mp:20,atk:12,def:6,spd:0.95,passive:'Furie : +15% dégâts physiques, +10% vie',head:'beast',hid:'head_boarman',noHair:1,sx:1.15,sy:1.1,
+    skins:['fur_brown','fur_black','fur_tan','fur_copper','fur_grey','fur_white'],dmgP:1.15,hpM:1.1},
+  golem:{name:'Golem de chair',hp:150,mp:10,atk:11,def:8,spd:0.8,passive:'Cousu : -30% dégâts reçus',head:'beast',hid:'head_frankenstein',noHair:1,sx:1.22,sy:1.2,
+    skins:['pale_green','green','zombie_green','zombie','olive','taupe'],dmgIn:.7},
+  citrouille:{name:'Tête-de-citrouille',hp:90,mp:65,atk:9,def:4,spd:1.05,passive:'Sortilège : +30% dégâts magiques',head:'beast',hid:'head_jack',noHair:1,sx:1,sy:1.04,
+    skins:['light'],dmgM:1.3},
+  porc:{name:'Homme-porc',hp:130,mp:30,atk:10,def:6,spd:0.92,passive:'Gourmand : potions +60%, +15% vie',head:'beast',hid:'head_pig',noHair:1,sx:1.15,sy:1.04,
+    skins:['light','amber','taupe','bronze','fur_tan','fur_white'],potM:1.6,hpM:1.15},
+  lapin:{name:'Lapin',hp:80,mp:40,atk:9,def:3,spd:1.3,passive:'Bondissant : très rapide, esquive 20%',head:'beast',hid:'head_rabbit',noHair:1,sx:.9,sy:.9,
+    skins:['fur_white','fur_tan','fur_grey','fur_brown','fur_black','fur_gold'],dodge:.2},
+  rat:{name:'Homme-rat',hp:85,mp:40,atk:10,def:4,spd:1.15,passive:'Fouineur : +40% or ramassé',head:'beast',hid:'head_rat',noHair:1,sx:.92,sy:.9,
+    skins:['fur_grey','fur_brown','fur_black','fur_tan','fur_white','fur_copper'],gold:1.4},
+  belier:{name:'Bélier',hp:115,mp:30,atk:11,def:7,spd:0.98,passive:'Tête dure : +25% défense',head:'beast',hid:'head_sheep',noHair:1,sx:1.08,sy:1.06,
+    skins:['fur_white','fur_tan','fur_grey','fur_black','fur_brown','fur_gold'],defM:1.25},
+  taureau:{name:'Taureau de guerre',hp:130,mp:15,atk:14,def:6,spd:0.88,passive:'Charge : +25% dégâts physiques',head:'beast',hid:'head_wartotaur',noHair:1,sx:1.3,sy:1.24,
+    skins:['fur_black','fur_brown','fur_grey','fur_copper','fur_tan','fur_white'],dmgP:1.25},
 };
 const HAIRC=['black','dark_brown','chestnut','light_brown','blonde','platinum','white','redhead','carrot','rose','purple','blue','green'];
 const CLOTH=['leather','brown','red','maroon','blue','navy','green','forest','purple','teal','black','white','gray','yellow'];
@@ -602,7 +622,7 @@ function makePack(bodyId,v){
   for(const k in ids)recCache[ids[k]+'|pa_'+v]=C[k];
   return ids;
 }
-function bodyIdOf(L){const f=L.sex==='f',b=L.build??1,slim=!f&&L.race==='elfe'&&b<2,musc=!f&&!slim&&b>=1;return f?'body_female':slim?'body_teen':musc?'body_muscular':'body_male'}
+function bodyIdOf(L){if(RACES[L.race].body)return RACES[L.race].body;const f=L.sex==='f',b=L.build??1,slim=!f&&L.race==='elfe'&&b<2,musc=!f&&!slim&&b>=1;return f?'body_female':slim?'body_teen':musc?'body_muscular':'body_male'}
 /* pièces de l'armure d'Azur, par emplacement */
 function paSlotLayers(slot,ctx,v='azur'){
   paPalettes();const ids=makePack(ctx.body||'body_muscular',v),pal='pa_'+v,tr=PA[v].trim,t=ctx.thin?'_thin':'_male',fe=ctx.f?'_female':'_male';
@@ -621,8 +641,8 @@ function stats(s=save){
   const R=RACES[s.look.race],l=s.lvl-1,b={atk:0,def:0,hp:0,mp:0,spd:0};
   for(const it of Object.values(equippedOf(s)))for(const [k,v] of Object.entries(it.st))b[k]+=v;
   const P_=id=>hasP(id,s);
-  return{hp:Math.round((R.hp+l*12+b.hp)*(P_('vigueur')?1.2:1)*(s.look.race==='minotaure'?1.2:1)),mp:Math.round((R.mp+l*5+b.mp)*(P_('sagesse')?1.3:1)),
-    atk:Math.round((R.atk+l*2+(s.weaponLvl||0)*3+b.atk)*(P_('force')?1.15:1)),def:Math.round((R.def+l+(s.armorLvl||0)*2+b.def)*(P_('fer')?1.2:1)),
+  return{hp:Math.round((R.hp+l*12+b.hp)*(P_('vigueur')?1.2:1)*(s.look.race==='minotaure'?1.2:1)*(R.hpM||1)),mp:Math.round((R.mp+l*5+b.mp)*(P_('sagesse')?1.3:1)),
+    atk:Math.round((R.atk+l*2+(s.weaponLvl||0)*3+b.atk)*(P_('force')?1.15:1)),def:Math.round((R.def+l+(s.armorLvl||0)*2+b.def)*(P_('fer')?1.2:1)*(R.defM||1)),
     spd:R.spd*(1+b.spd)*(P_('celerite')?1.12:1)};
 }
 const xpNeed=l=>20+l*15;
@@ -954,7 +974,7 @@ function weaponOf(L,E){
 function heroLayers(L,eq){
   const f=L.sex==='f',R=RACES[L.race],out=[];
   const b=L.build??1,slim=!f&&L.race==='elfe'&&b<2,thin=f||slim,musc=!f&&!slim&&b>=1;
-  out.push([f?'body_female':slim?'body_teen':musc?'body_muscular':'body_male',L.skin]);
+  out.push([R.body||(f?'body_female':slim?'body_teen':musc?'body_muscular':'body_male'),L.skin]);
   const paH=eq&&eq.inv&&equippedOf(eq).casque&&equippedOf(eq).casque.set==='pa';
   if(!paH){out.push([R.hid||'head_'+R.head+(f?'_female':'_male'),L.skin]);
     if(R.head==='human')out.push(['eyes']);
@@ -1029,7 +1049,7 @@ function renderCreator(){
   optRow($('#oRace'),Object.entries(RACES).map(([k,r])=>[k,r.name]),look.race,v=>{look.race=v;if(v==='nain'&&look.beard==='none'||v==='nain'&&look.beard==='beard_trimmed')look.beard='beard'});
   $('#raceDesc').textContent=R.passive;
   optRow($('#oSkin'),R.skins.map(c=>[c]),look.skin,v=>look.skin=v,'body');
-  $('#rowBeard').hidden=look.sex!=='m'||!!R.noHair;$('#rowHairS').hidden=$('#rowHair').hidden=!!R.noHair;
+  $('#rowBeard').hidden=look.sex!=='m'||!!R.noHair;$('#rowHairS').hidden=$('#rowHair').hidden=!!R.noHair;$('#rowSkin').hidden=R.skins.length<2;$('#rowBuild').hidden=!!R.body;
   optRow($('#oBuild'),look.sex==='m'?[[0,'Pas musclé'],[1,'Musclé'],[2,'Très musclé']]:[[0,'Pas musclée'],[1,'Musclée'],[2,'Très musclée']],look.build,v=>look.build=v);
   optRow($('#oBeard'),Object.entries(BEARDS),look.beard,v=>look.beard=v);
   optRow($('#oHairS'),Object.entries(HSTYLES),look.hairStyle,v=>look.hairStyle=v);
@@ -1413,12 +1433,13 @@ function txt(x,y,s,c){texts.push({x,y,s,c,life:.9});}
 
 function hitEnemy(e,mult,phys,kb=120){
   if(e.hp<=0)return 0;
-  const st=stats(),crit=Math.random()<(hasP('critique')?.15:0)+(save.look.race==='loup'?.2:0);
-  const d=Math.max(1,Math.round(st.atk*mult*(phys&&save.look.race==='orc'?1.2:1)*rnd(.9,1.1)*(crit?2:1)*(1-(e.D.armor||0))));
+  const st=stats(),RR=RACES[save.look.race],crit=Math.random()<(hasP('critique')?.15:0)+(save.look.race==='loup'?.2:0)+(RR.crit||0);
+  const d=Math.max(1,Math.round(st.atk*mult*(phys&&save.look.race==='orc'?1.2:1)*(phys?RR.dmgP||1:RR.dmgM||1)*rnd(.9,1.1)*(crit?2:1)*(1-(e.D.armor||0))));
   e.hp-=d;e.hurt=.15;
   if(!e.D.boss){const a=Math.atan2(e.y-P.y,e.x-P.x);e.kx=Math.cos(a)*kb;e.ky=Math.sin(a)*kb;}
   if(hasP('vampire')&&P.hp>0)P.hp=Math.min(st.hp,P.hp+d*.06);
   if(save.look.race==='vampire'&&P.hp>0)P.hp=Math.min(st.hp,P.hp+d*.08);
+  if(RR.steal&&P.hp>0)P.hp=Math.min(st.hp,P.hp+d*RR.steal);
   txt(e.x,e.y-28*e.sc,crit?d+'!':d,crit?'#ffd040':'#fff');hitFx(e.x,e.y-12*e.sc,e.D.ai==='ghost'?3:8+(crit?10:0));
   if(e.hp<=0)kill(e);
   return d;
@@ -1430,7 +1451,7 @@ function kill(e){if(AUTO)AUTO.kills++;
   else{gore(e.x,e.y-12*e.sc,Math.round((D.boss?80:30)*dk));if(e.D.ai!=='ghost')bloodStamp(ground.getContext('2d'),e.x,e.y,(D.boss?26:8+e.r*.6)*dk);}
   const expM=AUTO?EXP_GAIN:1;   // expédition : gains réduits
   gainXp(Math.max(1,Math.round(D.xp*(1+.25*ri)*bon*(hasP('erudit')?1.25:1)*expM)));
-  const g=Math.max(1,Math.round(rnd(D.gold[0],D.gold[1])*(1+.2*ri)*bon*(hasP('fortune')?1.25:1)*expM)),coins=Math.min(8,Math.ceil(g/4));
+  const g=Math.max(1,Math.round(rnd(D.gold[0],D.gold[1])*(1+.2*ri)*bon*(RACES[save.look.race].gold||1)*(hasP('fortune')?1.25:1)*expM)),coins=Math.min(8,Math.ceil(g/4));
   for(let i=0;i<coins;i++)drops.push({x:e.x,y:e.y,z:0,vz:rnd(80,140),vx:rnd(-50,50),vy:rnd(-50,50),k:'gold',v:Math.ceil(g/coins)});
   if(Math.random()<(D.boss?1:.07))drops.push({x:e.x,y:e.y,z:0,vz:120,vx:rnd(-30,30),vy:rnd(-30,30),k:'potion'});
   if(D.boss){bossRef=null;vacuum=true;portal={x:e.x,y:e.y,ready:T+2.5,born:T};
@@ -1450,9 +1471,9 @@ function gainXp(v){
 }
 function hurtPlayer(raw,sx,sy){
   if(P.inv>0||P.dash>0||state!=='play')return;
-  if(save.look.race==='gobelin'&&Math.random()<.15){P.inv=.4;txt(P.x,P.y-40,'Esquive','#c8ffb0');return;}
+  {const RR=RACES[save.look.race];if((save.look.race==='gobelin'&&Math.random()<.15)||(RR.dodge&&Math.random()<RR.dodge)){P.inv=.4;txt(P.x,P.y-40,'Esquive','#c8ffb0');return;}}
   const st=stats(),def=st.def*(P.shield>0?3:1);
-  let d=Math.max(1,raw*rnd(.9,1.1)-def*.6);if(save.look.race==='nain')d*=.8;d=Math.round(d);
+  let d=Math.max(1,raw*rnd(.9,1.1)-def*.6);if(save.look.race==='nain')d*=.8;d*=RACES[save.look.race].dmgIn||1;d=Math.round(d);
   P.hp-=d;P.inv=.8;
   if(hasP('epines')){const e=enemies.filter(e=>e.hp>0).sort((a,b)=>Math.hypot(a.x-sx,a.y-sy)-Math.hypot(b.x-sx,b.y-sy))[0];
     if(e&&Math.hypot(e.x-sx,e.y-sy)<30){const r=Math.max(1,Math.round(d*.4));e.hp-=r;e.hurt=.15;txt(e.x,e.y-28*e.sc,r,'#c8ff80');if(e.hp<=0)kill(e);}}const a=Math.atan2(P.y-sy,P.x-sx);P.kx=Math.cos(a)*160;P.ky=Math.sin(a)*160;
@@ -1546,10 +1567,10 @@ function update(dt){
       const tg=inReach||nearestEnemy(Wp.reach+20);
       if(tg){const a=Math.atan2(tg.y-8*tg.sc-(P.y-8),tg.x-P.x);P.act.aim=[Math.cos(a),Math.sin(a)];P.dir=dirOf(tg.x-P.x,tg.y-P.y);}}
     if(tap('Digit1','Numpad1'))useSkill(0);if(tap('Digit2','Numpad2'))useSkill(1);if(tap('Digit3','Numpad3'))useSkill(2);
-    if(tap('KeyR','KeyQ')){if(save.potions>0&&P.hp<st.hp){save.potions--;const h=Math.round(st.hp*(save.look.race==='nain'?.6:.45));P.hp=Math.min(st.hp,P.hp+h);txt(P.x,P.y-50,'+'+h,'#5fd36b');fx(P.x,P.y-20,'#e05080',14)}}
+    if(tap('KeyR','KeyQ')){if(save.potions>0&&P.hp<st.hp){save.potions--;const h=Math.round(st.hp*(save.look.race==='nain'?.6:.45)*(RACES[save.look.race].potM||1));P.hp=Math.min(st.hp,P.hp+h);txt(P.x,P.y-50,'+'+h,'#5fd36b');fx(P.x,P.y-20,'#e05080',14)}}
     if(tap('KeyE','Enter'))interact();
     for(const k in P.cds)P.cds[k]=Math.max(0,P.cds[k]-dt);
-    {const rg=save.look.race==='troll'?.02:save.look.race==='lezard'?.01:0;if(rg&&P.hp>0)P.hp=Math.min(st.hp,P.hp+st.hp*rg*dt);}
+    {const rg=save.look.race==='troll'?.02:save.look.race==='lezard'?.01:(RACES[save.look.race].regen||0);if(rg&&P.hp>0)P.hp=Math.min(st.hp,P.hp+st.hp*rg*dt);}
     P.mp=Math.min(st.mp,P.mp+dt*3*(save.look.race==='elfe'?1.6:1)*(hasP('sagesse')?1.3:1));
     if(hasP('regen'))P.hp=Math.min(st.hp,P.hp+st.hp*.01*dt);
     P.inv-=dt;P.shield-=dt;P.whirl-=dt;
