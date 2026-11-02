@@ -60,7 +60,7 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 .modes{display:flex;gap:6px;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
 .modes button{font-family:'Cinzel',Georgia,serif;font-weight:800;letter-spacing:1px;background:#3a2414;color:#c8b890;border-color:#6b5323}
 .modes button.sel{background:linear-gradient(#9a2020,#5a0e0e);color:#ffe8a0;border-color:var(--hi)}
-.rbon{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}.rbon button{width:min(30%,220px);min-width:150px;padding:10px 8px;line-height:1.3;white-space:normal}.rbon b{display:block;font-size:15px;color:#7a1010}.rbon small{display:block;opacity:.85}
+.rbon{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}.rbon button{width:min(30%,220px);min-width:150px;padding:10px 8px;line-height:1.3;white-space:normal}.rbon b{display:block;font-size:15px;color:#7a1010}.rbon.mal button{background:#3a0e0e;border-color:#c03030}.rbon.mal b{color:#ff9090}.rbon.mal small{color:#f0d0d0}.rbon small{display:block;opacity:.85}
 .edesc{font-size:14px;color:#e8d8b0;text-align:center;margin:0 0 8px}
 .floors .btns button{background:#3a2414;color:#f0dca0;border-color:var(--gold)}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:3px solid var(--line);margin:4px 0 10px}
@@ -193,7 +193,7 @@ footer a{color:#c8c0d8}
         <div class="btns" style="justify-content:center"><button id="fLast">⏭ Dernier étage</button></div>
         </div>
         <div id="riftBox" hidden>
-          <p class="edesc">Combats automatiques dans une arène. Ton héros part du bas, les ennemis arrivent par le haut. Après chaque victoire, choisis 1 bonus parmi 3. Les bonus se cumulent jusqu'à ta chute. Un boss tous les 10 étages.</p>
+          <p class="edesc">Combats automatiques dans une arène. Ton héros part du bas, les ennemis arrivent par le haut. Après chaque victoire, choisis 1 bonus parmi 3. Les bonus se cumulent jusqu'à ta chute. Un boss tous les 10 étages. Tous les 5 étages, la Fissure t'impose aussi un malus.</p>
           <div class="fcard" id="rCard" style="margin:0 auto 8px;max-width:420px"></div>
           <div class="btns" style="justify-content:center"><button id="rSpeed">Vitesse x1</button></div>
         </div>
@@ -647,10 +647,10 @@ function stats(s=save){
   const R=RACES[s.look.race],l=s.lvl-1,b={atk:0,def:0,hp:0,mp:0,spd:0};
   for(const it of Object.values(equippedOf(s)))for(const [k,v] of Object.entries(it.st))b[k]+=v;
   const P_=id=>hasP(id,s);
-  const rb=k=>s===save&&AUTO&&AUTO.rift?(AUTO.bon[k]||0):0;
-  return{hp:Math.round((1+.12*rb('hp'))*(R.hp+l*12+b.hp)*(P_('vigueur')?1.2:1)*(s.look.race==='minotaure'?1.2:1)*(R.hpM||1)),mp:Math.round((1+.2*rb('mp'))*(R.mp+l*5+b.mp)*(P_('sagesse')?1.3:1)),
-    atk:Math.round((1+.1*rb('atk'))*(R.atk+l*2+(s.weaponLvl||0)*3+b.atk)*(P_('force')?1.15:1)),def:Math.round((1+.15*rb('def'))*(R.def+l+(s.armorLvl||0)*2+b.def)*(P_('fer')?1.2:1)*(R.defM||1)),
-    spd:R.spd*(1+b.spd)*(P_('celerite')?1.12:1)*(1+.06*rb('spd'))};
+  const rb=k=>s===save&&AUTO&&AUTO.rift?(AUTO.bon[k]||0):0,rm=(k,p)=>s===save?Math.max(.3,1-p*RM(k)):1;
+  return{hp:Math.round(rm('mhp',.1)*(1+.12*rb('hp'))*(R.hp+l*12+b.hp)*(P_('vigueur')?1.2:1)*(s.look.race==='minotaure'?1.2:1)*(R.hpM||1)),mp:Math.round(rm('mmp',.2)*(1+.2*rb('mp'))*(R.mp+l*5+b.mp)*(P_('sagesse')?1.3:1)),
+    atk:Math.round(rm('matk',.08)*(1+.1*rb('atk'))*(R.atk+l*2+(s.weaponLvl||0)*3+b.atk)*(P_('force')?1.15:1)),def:Math.round(rm('mdef',.12)*(1+.15*rb('def'))*(R.def+l+(s.armorLvl||0)*2+b.def)*(P_('fer')?1.2:1)*(R.defM||1)),
+    spd:R.spd*(1+b.spd)*(P_('celerite')?1.12:1)*(1+.06*rb('spd'))*rm('mspd',.05)};
 }
 const xpNeed=l=>20+l*15;
 
@@ -1930,7 +1930,7 @@ function hud(){
   else if(AUTO&&!AUTO.rift&&bossRef&&state==='play'&&enemies.length<=6&&enemies.length>1)text(`Plus que ${enemies.length} ennemis (boss compris)`,VW/2,60,'#c8b0ff','center');
   if(joy.on){cx.globalAlpha=.55;cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(joy.ox,joy.oy,joy.R,0,7);cx.stroke();
     cx.fillStyle='#fff';cx.beginPath();const[jx,jy]=[joy.x-joy.ox,joy.y-joy.oy],d=Math.hypot(jx,jy),k=d>joy.R?joy.R/d:1;cx.arc(joy.ox+jx*k,joy.oy+jy*k,13,0,7);cx.fill();cx.globalAlpha=1;}
-  if(AUTO&&AUTO.rift){text('🌀 FISSURE · Étage '+(AUTO.floor+1)+(AUTO.hold>0?' · Prêt…':''),VW/2,50,'#c8a0ff','center',8);const bl=Object.entries(AUTO.bon).map(([k,n])=>RBON[k].ic+n).join('  ');if(bl)text(bl,VW/2,62,'#e8d8ff','center',7);if(AUTO.hold>0)text(AUTO.hold>.6?String(Math.ceil(AUTO.hold-.6)):'COMBAT !',VW/2,VH/2-40,'#ffcf4a','center',20);}
+  if(AUTO&&AUTO.rift){text('🌀 FISSURE · Étage '+(AUTO.floor+1)+(AUTO.hold>0?' · Prêt…':''),VW/2,50,'#c8a0ff','center',8);const bl=Object.entries(AUTO.bon).map(([k,n])=>RBON[k].ic+n).join('  ');if(bl)text(bl,VW/2,62,'#e8d8ff','center',7);const ml=Object.entries(AUTO.mal||{}).map(([k,n])=>RMAL[k].ic+n).join('  ');if(ml)text(ml,VW/2,73,'#ff8080','center',7);if(AUTO.hold>0)text(AUTO.hold>.6?String(Math.ceil(AUTO.hold-.6)):'COMBAT !',VW/2,VH/2-40,'#ffcf4a','center',20);}
   else if(AUTO){text('🤖 EXPÉDITION AUTO · Étage '+(AUTO.floor+1)+' · '+AUTO.kills+' ennemis vaincus',VW/2,50,'#7fd0ff','center',8);}
   if(banner>0&&AUTO&&AUTO.rift){cx.globalAlpha=Math.min(1,banner);const bs=AUTO.floor%10===9;text('Fissure — Étage '+(AUTO.floor+1),VW/2,100,'#c8a0ff','center',18);text(bs?'⚠ BOSS DE LA FISSURE !':'Arène : '+enemies.length+' ennemis',VW/2,120,bs?'#ff4040':'#f0e8d8','center',9);cx.globalAlpha=1;}
   else if(banner>0){cx.globalAlpha=Math.min(1,banner);const dkk=darkness();if(isLordRegion(save.region))text('⚠ ANTRE DU SEIGNEUR — ennemis enragés !',VW/2,82,'#ff4040','center',10);text('Étage '+(save.region+1)+' — '+regName(save.region),VW/2,100,dkk<.5?'#ffd040':'#c0101e','center',18);text((dkk<.5?'Trouve et bats le boss ':'Abats le boss ')+bossDir()+' — explore la carte',VW/2,120,'#f0e8d8','center',9);cx.globalAlpha=1;}
@@ -2146,7 +2146,12 @@ function autoPilot(dt){
   return[0,0];
 }
 /* =============== MODE FISSURE : arène auto + bonus cumulés =============== */
-const RB=k=>AUTO&&AUTO.rift?(AUTO.bon[k]||0):0;
+const RB=k=>AUTO&&AUTO.rift?(AUTO.bon[k]||0):0,RM=k=>AUTO&&AUTO.rift&&AUTO.mal?(AUTO.mal[k]||0):0;
+/* malus imposés tous les 5 étages (cumulables) */
+const RMAL={
+  matk:{ic:'⚔',n:'Lame émoussée',d:'-8% attaque'},mhp:{ic:'💔',n:'Blessure profonde',d:'-10% vie max'},mdef:{ic:'🛡',n:'Armure fendue',d:'-12% défense'},
+  mspd:{ic:'⛓',n:'Chaînes',d:'-5% vitesse'},mmp:{ic:'💧',n:'Esprit troublé',d:'-20% mana max'},emhp:{ic:'👹',n:'Ennemis robustes',d:'Ennemis +12% vie'},
+  ematk:{ic:'🗡',n:'Ennemis féroces',d:'Ennemis +10% attaque'},ecount:{ic:'👥',n:'Horde',d:'+1 ennemi par combat'},tired:{ic:'😮‍💨',n:'Épuisement',d:'Plus de soin entre les étages'}};
 const RBON={
   atk:{ic:'⚔',n:'Force',d:'+10% attaque'},hp:{ic:'❤',n:'Vitalité',d:'+12% vie max'},def:{ic:'🛡',n:'Carapace',d:'+15% défense'},
   spd:{ic:'💨',n:'Célérité',d:'+6% vitesse'},crit:{ic:'✦',n:'Précision',d:'+5% coups critiques'},steal:{ic:'🩸',n:'Soif',d:'Vole 3% des dégâts'},
@@ -2163,11 +2168,11 @@ function buildArena(f){
   for(let x=2;x<MW-2;x++)for(let y=1;y<MH-2;y++)if(solid[idx(x,y)]&&!solid[idx(x,y+1)]&&terr[idx(x,y+1)]===1&&x%4===1)objs.push({k:'wtorch',x:x*TS+16,y:y*TS+30});
   DROOMS=[{x:1,y:1,w:MW-2,h:MH-2,bossRoom:f%10===9}];renderDungeon();
   enemies=[];proj=[];parts=[];texts=[];drops=[];portal=null;vacuum=false;bossRef=null;
-  const m=(1+.28*f)*.85,boss=f%10===9,pool=regPool(f),n=boss?2:Math.min(10,3+Math.floor(f*.45));   // arène : tous attaquent en même temps -> un peu moins forts
-  for(let i=0;i<n;i++){const t=pick(pool),x=(cx0-6+((i*37)%13))*TS+16,y=(3+(i%3)*1.5)*TS+16;const e=addEnemy(t,x,y,m);e.aggro=9999;}
+  const m=(1+.28*f)*.85,boss=f%10===9,pool=regPool(f),n=(boss?2:Math.min(10,3+Math.floor(f*.45)))+RM('ecount');   // arène : tous attaquent en même temps -> un peu moins forts
+  for(let i=0;i<n;i++){const t=pick(pool),x=(cx0-6+((i*37)%13))*TS+16,y=(3+(i%4)*1.3)*TS+16;const e=addEnemy(t,x,y,m);e.aggro=9999;}
   if(boss){bossRef=addEnemy(REGIONS[Math.floor(f/10)%3].boss,bossPt.x*TS+16,bossPt.y*TS+16,m*1.15);bossRef.aggro=9999;
     if(f>=19){bossRef.rage=1;bossRef.atk*=1.15;}}
-  enemies.forEach(e=>{if(e.home)e.home={x:e.x,y:e.y}});
+  enemies.forEach(e=>{if(e.home)e.home={x:e.x,y:e.y};const h=1+.12*RM('emhp');e.hp=e.max=Math.round(e.max*h);e.atk*=1+.1*RM('ematk');});
   reveal(12,11,20);
 }
 function startRift(){
@@ -2187,17 +2192,30 @@ function riftWin(){
 }
 function pickRiftBonus(k){
   const A=AUTO;if(!A||state!=='riftBonus')return;$('#ovlB').hidden=false;$('#ovl').classList.remove('on');
-  const keep=P.hp/stats().hp;
   if(k==='potion')save.potions+=2;else if(!RBON[k].once)A.bon[k]=(A.bon[k]||0)+1;
+  A.heal=k==='heal'?.6:0;
+  if(A.floor%5===4){riftMalus();return}
+  riftNext();
+}
+function riftMalus(){
+  const A=AUTO;state='riftBonus';A.mal=A.mal||{};
+  const keys=Object.keys(RMAL).filter(k=>k!=='tired'||!A.mal.tired).sort(()=>Math.random()-.5).slice(0,3);
+  $('#ovlT').textContent='LA FISSURE EXIGE UN PRIX';
+  $('#ovlS').innerHTML='Tous les 5 étages, tu dois accepter un malus. Choisis le moins pire :<div class="rbon mal">'+keys.map(k=>{const b=RMAL[k],n=A.mal[k]||0;return `<button data-k="${k}"><b>${b.ic} ${b.n}</b><small>${b.d}</small>${n?`<small>déjà ×${n}</small>`:''}</button>`}).join('')+'</div>';
+  $('#ovlB').hidden=true;$('#ovl').classList.add('on');
+  $('#ovlS').querySelectorAll('.rbon button').forEach(b=>b.onclick=()=>{A.mal[b.dataset.k]=(A.mal[b.dataset.k]||0)+1;$('#ovlB').hidden=false;$('#ovl').classList.remove('on');riftNext();});
+}
+function riftNext(){
+  const A=AUTO;if(!A)return;const keep=P.hp/stats().hp,k=A.heal?'heal':'';
   A.floor++;A.floorT=0;A.path=null;A.tgt=null;A.hold=2.4;A.won=0;save.region=A.floor;store();
-  buildRegion();P=null;startPlay(true);P.dir=0;const st=stats();P.hp=Math.min(st.hp,st.hp*Math.min(1,keep+.15+(k==='heal'?.6:0)));
+  buildRegion();P=null;startPlay(true);P.dir=0;const st=stats();P.hp=Math.min(st.hp,st.hp*Math.min(1,keep+(RM('tired')?0:.15)+(k==='heal'?.6:0)));
 }
 function endRift(reason){
   const A=AUTO;if(!A)return;AUTO=null;save.region=A.home;delete save.expHome;store();
   $('#bSpeed').hidden=true;state='expEnd';$('#ovlB').hidden=false;
-  const bl=Object.entries(A.bon).map(([k,n])=>RBON[k].ic+' '+RBON[k].n+' ×'+n).join(' · ')||'aucun';
+  const bl=Object.entries(A.bon).map(([k,n])=>RBON[k].ic+' '+RBON[k].n+' ×'+n).join(' · ')||'aucun',ml=Object.entries(A.mal||{}).map(([k,n])=>RMAL[k].ic+' '+RMAL[k].n+' ×'+n).join(' · ')||'aucun';
   $('#ovlT').textContent='FISSURE REFERMÉE';
-  $('#ovlS').innerHTML=`${reason}<br>Étage atteint : ${A.floor+1} · Record : ${save.bestRift||0}<br>Bonus : ${bl}<br>Or gagné : +${save.gold-A.gold} · Objets : +${save.inv.length-A.items} · Niveaux : ${A.xp0} → ${save.lvl}`;
+  $('#ovlS').innerHTML=`${reason}<br>Étage atteint : ${A.floor+1} · Record : ${save.bestRift||0}<br>Bonus : ${bl}<br>Malus : ${ml}<br>Or gagné : +${save.gold-A.gold} · Objets : +${save.inv.length-A.items} · Niveaux : ${A.xp0} → ${save.lvl}`;
   $('#ovlB').textContent='Retour au camp';$('#ovl').classList.add('on');
 }
 $('#mRift').onclick=()=>{gameMode='rift';openCamp()};
