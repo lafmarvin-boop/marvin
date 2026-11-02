@@ -8,27 +8,31 @@
 :root{--bg:#9fd4f0;--bgtop:#e9f8ff;--panel:#fff6e2;--panel2:#ffe9c4;--line:#d0a060;--txt:#3b2a18;--dim:#7c6448;--gold:#b8740c;--acc:#e0564a;--ok:#2f8a3a;
   --hi:#f2a516;--glow:#ffffff;--big1:#ff8a3c;--big2:#e0503a;--pv1:#bfe8a8;--pv2:#5ea24a;--sel:#ffd98a;--drip:0;--inset:rgba(255,255,255,.4);color-scheme:light}
 *{box-sizing:border-box}
-html,body{margin:0;background:radial-gradient(ellipse at top,var(--bgtop) 0%,var(--bg) 60%) fixed,var(--bg);color:var(--txt);font-family:"Courier New",monospace;-webkit-user-select:none;user-select:none}
+html,body{margin:0;background:radial-gradient(ellipse at top,rgba(255,200,120,.18),rgba(0,0,0,0) 45%) fixed,repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 2px,transparent 2px 34px) fixed,linear-gradient(var(--bgtop),var(--bg) 70%) fixed,var(--bg);color:var(--txt);font-family:'Alegreya',Georgia,serif;font-size:15px;-webkit-user-select:none;user-select:none}
 #wrap{max-width:1100px;margin:0 auto;padding:8px 16px}
-h1{font-family:var(--tfont,'Fredoka'),'Pirata One',Georgia,sans-serif;font-weight:600;font-size:40px;letter-spacing:4px;text-align:center;margin:6px 0 14px;color:var(--hi);text-shadow:0 0 12px var(--glow),2px 2px 0 #000;position:relative}
+h1{font-family:'Cinzel Decorative','Cinzel',Georgia,serif;font-weight:900;font-size:42px;letter-spacing:3px;text-align:center;margin:8px 0 16px;color:var(--hi);text-shadow:0 2px 0 #6b4a10,0 4px 10px rgba(0,0,0,.8);position:relative;line-height:1.05}
+h1 small{display:block;font-family:'Cinzel',Georgia,serif;font-weight:600;font-size:13px;letter-spacing:6px;color:#d8c8a0;text-transform:uppercase;margin-top:4px;text-shadow:0 2px 4px #000}
+h1 small::before,h1 small::after{content:"⚜";color:var(--hi);margin:0 10px}
+h1 .crest{font-size:30px;vertical-align:6px;color:#c8ccd8;text-shadow:0 2px 0 #333}
 h1::after{opacity:var(--drip);content:"";position:absolute;left:50%;top:78%;width:220px;height:16px;transform:translateX(-50%);pointer-events:none;
   background:radial-gradient(3px 12px at 12% 0,#8a0612 98%,transparent),radial-gradient(2px 8px at 31% 0,#8a0612 98%,transparent),radial-gradient(3px 15px at 52% 0,#8a0612 98%,transparent),radial-gradient(2px 7px at 70% 0,#8a0612 98%,transparent),radial-gradient(3px 11px at 88% 0,#8a0612 98%,transparent)}
-.screen{box-shadow:inset 0 0 60px var(--inset),0 0 30px rgba(0,0,0,.35)}
-button.big{font-family:var(--tfont,'Fredoka'),'Pirata One',Georgia,sans-serif;font-size:21px;letter-spacing:1px;background:linear-gradient(var(--big1),var(--big2));border-color:#1a0002;color:#fff;text-shadow:1px 1px 0 #000}
+.screen{box-shadow:inset 0 0 70px rgba(110,70,20,.35),0 0 0 2px #2a2016,0 0 0 6px var(--gold),0 0 0 8px #2a2016,0 12px 40px rgba(0,0,0,.7);background-image:radial-gradient(ellipse at center,rgba(255,250,235,.55),rgba(0,0,0,0) 70%)}
+button.big{font-family:'Cinzel',Georgia,serif;font-weight:800;font-size:19px;letter-spacing:2px;background:linear-gradient(var(--big1),var(--big2));border:3px solid var(--hi);outline:2px solid #2a1a0a;color:#f8e8c0;text-shadow:1px 1px 0 #000;text-transform:uppercase}
 canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 #sPlay.on{position:fixed;inset:0;z-index:50;background:#000;padding:0;border:0}
 #game{position:absolute;left:0;top:0;background:#000;touch-action:none}
 #sPlay.on{overflow:hidden}
-.screen{display:none;background:var(--panel);border:4px solid var(--line);padding:14px}
+.screen{display:none;background:var(--panel);border:2px solid #2a2016;padding:18px;margin:6px}
 .screen.on{display:block}
 .cols{display:flex;gap:16px;flex-wrap:wrap}
 .preview{flex:0 0 260px;text-align:center}
 .preview canvas{width:256px;height:256px;margin:0 auto;background:radial-gradient(var(--pv1),var(--pv2));border:4px solid var(--line)}
 .opts{flex:1;min-width:260px}
 .row{margin:8px 0}
-.row b{display:block;color:var(--dim);font-size:12px;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px}
+.row b{display:block;color:var(--acc);font-family:'Cinzel',Georgia,serif;font-weight:800;font-size:13px;margin-bottom:6px;text-transform:uppercase;letter-spacing:2px;border-bottom:1px solid rgba(107,83,35,.45);padding-bottom:3px}
+.row b::before{content:"⚜ ";color:var(--gold)}
 .btns{display:flex;flex-wrap:wrap;gap:6px}
-button{font-family:inherit;font-size:13px;background:var(--panel2);color:var(--txt);border:3px solid var(--line);padding:6px 10px;cursor:pointer}
+button{font-family:'Alegreya',Georgia,serif;font-weight:700;font-size:14px;background:var(--panel2);color:var(--txt);border:3px solid var(--line);padding:6px 10px;cursor:pointer}
 button:hover{border-color:var(--gold)}
 button.sel{border-color:var(--gold);background:var(--sel)}
 button:disabled{opacity:.4;cursor:not-allowed}
@@ -39,20 +43,20 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 .skill{text-align:left;width:100%;display:block;margin-bottom:4px}
 .skill small{color:var(--dim)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
-.item{background:var(--panel2);border:3px solid var(--line);padding:8px;font-size:13px}
-.item h4{margin:0 0 4px;color:var(--gold);font-size:14px}
+.item{background:var(--panel2);border:3px solid var(--line);padding:8px;font-size:14px;box-shadow:inset 0 0 12px rgba(107,83,35,.25)}
+.item h4{margin:0 0 4px;color:var(--gold);font-family:'Cinzel',Georgia,serif;font-weight:800;font-size:14px}
 .item p{margin:0 0 6px;color:var(--dim)}
 .gold{color:var(--gold)}
 #msg{color:var(--ok);min-height:18px;margin:6px 0}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:3px solid var(--line);margin:4px 0 10px}
-.tabs button{border-bottom:0;margin-bottom:-3px;padding:8px 12px}
+.tabs button{border-bottom:0;margin-bottom:-3px;padding:9px 14px;font-family:'Cinzel',Georgia,serif;font-weight:800;letter-spacing:1px;background:linear-gradient(#8a1c1c,#5a0e0e);color:#f0d890;border-color:var(--gold)}
 .tabs button.notif::after{content:" ●";color:var(--acc)}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px}
 .pgrid .skill{margin:0}
 #campPassives .item{margin-bottom:4px;padding:6px 10px}
 .pn{font-weight:bold;color:var(--gold)}
 .pic{display:inline-block;width:1.4em;text-align:center;color:var(--gold)}
-.tabs button.sel{background:var(--panel);border-color:var(--gold);color:var(--gold)}
+.tabs button.sel{background:var(--panel);border-color:var(--gold);color:var(--acc)}
 .item.empty{opacity:.45;border-style:dashed}
 .doll{display:grid;grid-template-columns:1fr minmax(140px,260px) 1fr;gap:10px;align-items:center}
 .doll .col{display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -90,7 +94,7 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 #ovl.on{display:flex}
 #ovl h2{font-family:var(--tfont,'Fredoka'),'Pirata One',Georgia,sans-serif;font-weight:600;letter-spacing:3px;color:var(--hi);text-shadow:0 0 16px var(--glow),2px 2px 0 #000;font-size:44px;margin:0;text-shadow:3px 3px 0 #000}
 #loading{text-align:center;padding:60px;font-size:18px;color:var(--gold)}
-footer{font-size:11px;color:#c8c0d8;text-align:center;margin:10px 0}
+footer{font-size:12px;color:#c8bca0;text-align:center;margin:10px 0}
 footer a{color:#c8c0d8}
 @media (pointer:fine){#touch{display:none}}
 @media (pointer:coarse){#help{display:none}}
@@ -98,8 +102,8 @@ footer a{color:#c8c0d8}
 </head>
 <body>
 <div id="wrap">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Fredoka:wght@600&display=swap">
-<h1>Pixel Realm</h1>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Cinzel:wght@600;800&family=Cinzel+Decorative:wght@700;900&family=Alegreya:wght@400;700&display=swap">
+<h1><span class="crest">⚔</span> Pixel Realm <span class="crest">⚔</span><small>Chroniques du Royaume</small></h1>
 <div id="loading">Chargement des graphismes…</div>
 
 <!-- CREATION -->
@@ -277,10 +281,10 @@ const darkness=()=>save?Math.min(1,save.region/DARK_FULL):0;
 function mixHex(a,b,t){const A=hexInt(a),B=hexInt(b),m=s=>Math.round(((A>>s)&255)*(1-t)+((B>>s)&255)*t);return'#'+((1<<24)|(m(16)<<16)|(m(8)<<8)|m(0)).toString(16).slice(1)}
 const THEME_L={bg:'#9fd4f0',bgtop:'#e9f8ff',panel:'#fff6e2',panel2:'#ffe9c4',line:'#d0a060',txt:'#3b2a18',dim:'#7c6448',gold:'#b8740c',acc:'#e0564a',ok:'#2f8a3a',hi:'#f2a516',glow:'#ffffff',big1:'#ff8a3c',big2:'#e0503a',pv1:'#bfe8a8',pv2:'#5ea24a',sel:'#ffd98a',inset:'#ffffff'};
 const THEME_D={bg:'#070304',bgtop:'#2a0a0e',panel:'#140809',panel2:'#1f0d0e',line:'#4a1518',txt:'#e6d6c6',dim:'#9a7d76',gold:'#c9a24a',acc:'#9e0f1c',ok:'#c8584a',hi:'#b0101e',glow:'#5a0008',big1:'#8a0c18',big2:'#4a0408',pv1:'#3a1418',pv2:'#0a0304',sel:'#4a3a18',inset:'#5a000a'};
-const THEME_MENU={bg:'#1f2740',bgtop:'#4a5878',panel:'#e9d9b8',panel2:'#dcc79e',line:'#7a5a30',txt:'#24180c',dim:'#5a4630',gold:'#8a5208',acc:'#b8402a',ok:'#2a6e34',hi:'#f2a516',glow:'#000000',big1:'#d8682a',big2:'#9a3418',pv1:'#7fae6a',pv2:'#2e5424',sel:'#f0c46a'};
+const THEME_MENU={bg:'#16181f',bgtop:'#3c4152',panel:'#ecdfc0',panel2:'#e0cfa6',line:'#6b5323',txt:'#22180c',dim:'#5a4630',gold:'#9a6a14',acc:'#8a1c1c',ok:'#2a6e34',hi:'#e3b448',glow:'#000000',big1:'#9a2020',big2:'#5a0e0e',pv1:'#8a9a7a',pv2:'#3a4a34',sel:'#f0d48a'};
 function applyTheme(){const r=document.documentElement.style; // menus : thème fixe (crépuscule), seul le monde du jeu s'assombrit
   for(const k in THEME_MENU)r.setProperty('--'+k,THEME_MENU[k]);
-  r.setProperty('--inset','rgba(0,0,0,.18)');r.setProperty('--drip',0);r.setProperty('--tfont',"'Fredoka'");r.setProperty('color-scheme','light');
+  r.setProperty('--inset','rgba(0,0,0,.18)');r.setProperty('--drip',0);r.setProperty('--tfont',"'Cinzel'");r.setProperty('color-scheme','light');
   $('#loading')&&($('#loading').style.color='#f2a516');}
 const regName=ri=>{const R=REGIONS[ri%3],d=Math.min(1,ri/DARK_FULL);return R.names[d<.34?0:d<.67?1:2]};
 const REGIONS=[
