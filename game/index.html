@@ -42,6 +42,18 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 .tabs button{border-bottom:0;margin-bottom:-3px;padding:8px 12px}
 .tabs button.sel{background:var(--panel);border-color:var(--gold);color:var(--gold)}
 .item.empty{opacity:.45;border-style:dashed}
+.doll{display:grid;grid-template-columns:1fr minmax(140px,260px) 1fr;gap:10px;align-items:center}
+.doll .col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.doll .mid{text-align:center}
+.doll canvas{width:100%;max-width:260px;aspect-ratio:1;background:radial-gradient(#3e5a3a,#1d2b1c);border:4px solid var(--line);margin:0 auto 6px}
+.slot{background:var(--panel2);border:3px solid var(--line);padding:6px 8px;font-size:12px;cursor:pointer;text-align:left;min-height:62px}
+.slot:hover,.slot.on{border-color:var(--gold)}
+.slot .lab{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:1px}
+.slot .nm{font-weight:bold;font-size:13px;overflow-wrap:anywhere}
+.slot .st{color:var(--dim)}
+.slot.empty{border-style:dashed;opacity:.6}
+.slot .x{float:right;padding:0 6px;font-size:11px}
+@media (max-width:620px){.doll{grid-template-columns:1fr 110px 1fr;gap:6px}.slot{font-size:11px;padding:4px}.slot .nm{font-size:11px}}
 #loot{border:4px solid var(--rc);background:#000a;padding:10px;margin:8px 0;box-shadow:0 0 24px var(--rc)}
 #loot .lootT{font-size:22px;font-weight:bold;color:var(--rc);text-align:center;margin-bottom:6px;text-shadow:2px 2px 0 #000}
 #loot.pop{animation:pop .5s ease-out}
@@ -127,8 +139,14 @@ footer a{color:var(--dim)}
         <button role="tab" data-tab="shop">🧪 Boutique</button>
       </div>
       <div class="tab" id="t-equip" role="tabpanel">
-        <div class="row"><b>Équipement porté</b><div class="grid" id="gear"></div></div>
-        <div class="row"><b>Inventaire <span id="invCount"></span></b><div class="grid" id="inv"></div></div>
+        <div class="row"><b>Équipement porté <small>(clique sur un emplacement pour filtrer l'inventaire)</small></b>
+          <div class="doll">
+            <div class="col" id="dollL"></div>
+            <div class="mid"><canvas id="pv3" width="128" height="128"></canvas><button id="bTurn3">↻ Tourner</button></div>
+            <div class="col" id="dollR"></div>
+          </div>
+        </div>
+        <div class="row"><b>Inventaire <span id="invCount"></span> <button id="bAll" hidden>Tout afficher</button></b><div class="grid" id="inv"></div></div>
       </div>
       <div class="tab" id="t-coffres" role="tabpanel">
         <div id="loot" hidden></div>
@@ -431,7 +449,7 @@ $('#bAnim').onclick=()=>pvAtk=performance.now();
 function getChar(L,eq){const k=JSON.stringify([L,Object.values(equippedOf(eq)).map(i=>i.s+i.r+(i.d||0))]);if(k!==pvKey){pvKey=k;pvChar=heroChar(L,eq)}return pvChar;}
 function animPreview(){
   const t=performance.now()/1000;
-  for(const id of ['#pv','#pv2']){
+  for(const id of ['#pv','#pv2','#pv3']){
     const c=$(id);if(!c.offsetParent)continue;
     const L=id==='#pv'?look:save&&save.look;if(!L)continue;
     const eq=id==='#pv'?{armorLvl:0,weaponLvl:0}:save;
@@ -929,7 +947,9 @@ function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;pollPad();
   requestAnimationFrame(loop);}
 
 /* ================= CAMP / BOUTIQUE ================= */
-let campTab='equip';
+let campTab='equip',invFilter=null;
+$('#bAll').onclick=()=>{invFilter=null;openCamp()};
+$('#bTurn3').onclick=()=>pvDir=(pvDir+1)%4;
 document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>{campTab=b.dataset.tab;$('#loot').hidden=true;openCamp()});
 function openCamp(msg){
   state='camp';store();show('sCamp');
@@ -968,19 +988,25 @@ function itemCard(it,btns){
 }
 function equip(it){save.eq[it.s]=it.id;heroC=null;openCamp('Équipé : '+it.n);}
 function renderGear(res){
-  const E=equippedOf(save),eqEl=$('#gear');eqEl.innerHTML='';
-  SLOT_ORDER.forEach(sl=>{const it=E[sl];
-    if(it)eqEl.appendChild(itemCard(it,[['Retirer',()=>{delete save.eq[sl];openCamp('Retiré : '+it.n)}]]));
-    else{const d=document.createElement('div');d.className='item empty';d.innerHTML=`<h4>${SLOTS[sl].n}</h4><p>Vide</p>`;eqEl.appendChild(d)}});
+  const E=equippedOf(save);
+  const side={dollL:['casque','torse','gants','jambes'],dollR:['cape','arme','bouclier','bottes']};
+  for(const [col,list] of Object.entries(side)){const el=$('#'+col);el.innerHTML='';
+    list.forEach(sl=>{const it=E[sl],d=document.createElement('div');d.className='slot'+(it?'':' empty')+(invFilter===sl?' on':'');
+      if(it){d.style.borderColor=invFilter===sl?'':RAR[it.r].c;
+        d.innerHTML=`<button class="x" title="Retirer">✕</button><div class="lab">${SLOTS[sl].n} · ${RAR[it.r].n}</div><div class="nm" style="color:${RAR[it.r].c}">${it.n}</div><div class="st">${statTxt(it.st)}</div>`;
+        d.querySelector('.x').onclick=e=>{e.stopPropagation();delete save.eq[sl];openCamp('Retiré : '+it.n)};}
+      else d.innerHTML=`<div class="lab">${SLOTS[sl].n}</div><div class="st">Vide</div>`;
+      d.onclick=()=>{invFilter=invFilter===sl?null:sl;openCamp()};el.appendChild(d);});}
+  $('#bAll').hidden=!invFilter;
   const ch=$('#chests');ch.innerHTML='';
   CHESTS.forEach(C=>{const d=document.createElement('div');d.className='item';
     d.innerHTML=`<h4>${C.n}</h4><p>${C.p.map((v,i)=>v?`<span style="color:${RAR[i].c}">${RAR[i].n} ${v}%</span>`:'').filter(Boolean).join(' · ')}</p>`;
     const b=document.createElement('button');b.textContent=`Ouvrir — ${C.c} or`;b.disabled=save.gold<C.c||save.inv.length>=INV_MAX;
     b.onclick=()=>{save.gold-=C.c;const it=makeItem(pick(SLOT_ORDER),rollRarity(C.p));gainItem(it);openCamp();showLoot(it)};d.appendChild(b);ch.appendChild(d);});
   const inv=$('#inv');inv.innerHTML='';const eqIds=new Set(Object.values(save.eq));
-  const bag=save.inv.filter(i=>!eqIds.has(i.id)).sort((a,b)=>b.r-a.r||SLOT_ORDER.indexOf(a.s)-SLOT_ORDER.indexOf(b.s));
+  const bag=save.inv.filter(i=>!eqIds.has(i.id)&&(!invFilter||i.s===invFilter)).sort((a,b)=>b.r-a.r||SLOT_ORDER.indexOf(a.s)-SLOT_ORDER.indexOf(b.s));
   $('#invCount').textContent=`(${save.inv.length}/${INV_MAX})`;
-  if(!bag.length)inv.innerHTML='<p style="color:var(--dim)">Vide. Ouvre un coffre !</p>';
+  if(!bag.length)inv.innerHTML=`<p style="color:var(--dim)">${invFilter?'Aucun objet de ce type.':'Vide.'} Ouvre un coffre !</p>`;
   bag.forEach(it=>{const cur=E[it.s];
     const cmp=cur?' ('+Object.keys({...it.st,...cur.st}).map(k=>{const d=(it.st[k]||0)-(cur.st[k]||0);return d?(d>0?'+':'')+(k==='spd'?Math.round(d*100)+'%':d)+' '+STN[k]:''}).filter(Boolean).join(', ')+')':'';
     const c=itemCard(it,[['Équiper',()=>equip(it)],[`Vendre ${RAR[it.r].sell} or`,()=>{save.inv=save.inv.filter(x=>x!==it);save.gold+=RAR[it.r].sell;openCamp('Vendu : '+it.n)}]]);
