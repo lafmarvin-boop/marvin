@@ -38,6 +38,9 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 .item p{margin:0 0 6px;color:var(--dim)}
 .gold{color:var(--gold)}
 #msg{color:var(--ok);min-height:18px;margin:6px 0}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:3px solid var(--line);margin:4px 0 10px}
+.tabs button{border-bottom:0;margin-bottom:-3px;padding:8px 12px}
+.tabs button.sel{background:var(--panel);border-color:var(--gold);color:var(--gold)}
 .item.empty{opacity:.45;border-style:dashed}
 #loot{border:4px solid var(--rc);background:#000a;padding:10px;margin:8px 0;box-shadow:0 0 24px var(--rc)}
 #loot .lootT{font-size:22px;font-weight:bold;color:var(--rc);text-align:center;margin-bottom:6px;text-shadow:2px 2px 0 #000}
@@ -117,12 +120,27 @@ footer a{color:var(--dim)}
     <div class="opts">
       <h3 style="margin:0">🔥 Camp — <span class="gold" id="campGold"></span></h3>
       <div id="msg"></div>
-      <div id="loot" hidden></div>
-      <div class="row"><b>Coffres d'équipement</b><div class="grid" id="chests"></div></div>
-      <div class="row"><b>Équipement porté</b><div class="grid" id="gear"></div></div>
-      <div class="row"><b>Inventaire <span id="invCount"></span></b><div class="grid" id="inv"></div></div>
-      <div class="row"><b>Boutique</b><div class="grid" id="shop"></div></div>
-      <div class="row"><b>Compétences équipées (clique pour équiper / retirer)</b><div id="campSkills"></div></div>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="equip">🛡 Équipement</button>
+        <button role="tab" data-tab="coffres">🎁 Coffres</button>
+        <button role="tab" data-tab="skills">✨ Compétences</button>
+        <button role="tab" data-tab="shop">🧪 Boutique</button>
+      </div>
+      <div class="tab" id="t-equip" role="tabpanel">
+        <div class="row"><b>Équipement porté</b><div class="grid" id="gear"></div></div>
+        <div class="row"><b>Inventaire <span id="invCount"></span></b><div class="grid" id="inv"></div></div>
+      </div>
+      <div class="tab" id="t-coffres" role="tabpanel">
+        <div id="loot" hidden></div>
+        <div class="row"><b>Coffres d'équipement</b><div class="grid" id="chests"></div></div>
+      </div>
+      <div class="tab" id="t-skills" role="tabpanel">
+        <div class="row"><b>Compétences équipées (clique pour équiper / retirer)</b><div id="campSkills"></div></div>
+        <div class="row"><b>Apprendre</b><div class="grid" id="learn"></div></div>
+      </div>
+      <div class="tab" id="t-shop" role="tabpanel">
+        <div class="row"><b>Potions et forge</b><div class="grid" id="shop"></div></div>
+      </div>
       <div class="btns" style="margin-top:10px">
         <button class="big" id="bGo"></button>
         <button id="bNew">Nouveau personnage</button>
@@ -911,6 +929,8 @@ function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;pollPad();
   requestAnimationFrame(loop);}
 
 /* ================= CAMP / BOUTIQUE ================= */
+let campTab='equip';
+document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.onclick=()=>{campTab=b.dataset.tab;$('#loot').hidden=true;openCamp()});
 function openCamp(msg){
   state='camp';store();show('sCamp');
   const st=stats(),R=RACES[save.look.race];
@@ -918,19 +938,21 @@ function openCamp(msg){
   $('#msg').textContent=msg||'';
   $('#campStats').innerHTML=`<b>${save.look.name}</b> — ${R.name}<br>Niveau ${save.lvl} (${save.xp}/${xpNeed(save.lvl)} XP)<br>PV ${st.hp} · PM ${st.mp}<br>ATQ ${st.atk} · DEF ${st.def}<br>VIT ${Math.round(st.spd*100)}%<br>Potions ${save.potions}<br>Régions libérées : ${save.best}<br><small>${R.passive}</small>`;
   renderGear();
+  document.querySelectorAll('.tabs [data-tab]').forEach(b=>{const on=b.dataset.tab===campTab;b.classList.toggle('sel',on);b.setAttribute('aria-selected',on)});
+  document.querySelectorAll('#sCamp .tab').forEach(t=>t.hidden=t.id!=='t-'+campTab);
   const items=[
     {n:'Forge : affûtage +'+(save.weaponLvl+1),d:'+3 ATQ permanent.',c:30+save.weaponLvl*30,ok:true,f:()=>save.weaponLvl++},
     {n:'Forge : renfort +'+(save.armorLvl+1),d:'+2 DEF permanent.',c:30+save.armorLvl*30,ok:true,f:()=>save.armorLvl++},
     {n:'Potion de vie',d:'Rend 45% PV (touche R). Max 6.',c:15,ok:save.potions<6,f:()=>save.potions++},
-    {n:'3e emplacement',d:'Équipe une compétence de plus (touche 3).',c:120,ok:save.maxSlots<3,f:()=>save.maxSlots=3},
   ];
+  const learn=[{n:'3e emplacement',d:'Équipe une compétence de plus (touche 3).',c:120,ok:save.maxSlots<3,f:()=>save.maxSlots=3}];
   Object.keys(SKILLS).filter(k=>!save.skills.includes(k)).forEach(k=>{const S=SKILLS[k];
-    items.push({n:'Apprendre : '+S.name,d:S.desc+' · '+S.mp+' PM',c:S.rare?150:70,ok:true,f:()=>save.skills.push(k)});});
-  const sh=$('#shop');sh.innerHTML='';
-  items.forEach(it=>{const d=document.createElement('div');d.className='item';
+    learn.push({n:'Apprendre : '+S.name,d:S.desc+' · '+S.mp+' PM',c:S.rare?150:70,ok:true,f:()=>save.skills.push(k)});});
+  const fill=(el,list)=>{el.innerHTML='';list.forEach(it=>{const sh=el;const d=document.createElement('div');d.className='item';
     d.innerHTML=`<h4>${it.n}</h4><p>${it.d}</p>`;const b=document.createElement('button');
     b.textContent=it.ok?`Acheter — ${it.c} or`:'Acquis';b.disabled=!it.ok||save.gold<it.c;
-    b.onclick=()=>{save.gold-=it.c;it.f();openCamp('Acheté : '+it.n)};d.appendChild(b);sh.appendChild(d);});
+    b.onclick=()=>{save.gold-=it.c;it.f();openCamp('Acheté : '+it.n)};d.appendChild(b);sh.appendChild(d);});};
+  fill($('#shop'),items);fill($('#learn'),learn);
   const cs=$('#campSkills');cs.innerHTML='';
   save.skills.forEach(id=>{const S=SKILLS[id],b=document.createElement('button');b.className='skill';const slot=save.slots.indexOf(id);
     b.innerHTML=`${slot>=0?'['+(slot+1)+']':'[ ]'} <span style="color:${S.col}">${S.ic}</span> ${S.name} <small>— ${S.desc} · ${S.mp} PM</small>`;
