@@ -902,6 +902,25 @@ function drawCampfire(g){
 }
 function text(s,x,y,c='#fff',al='left',sz=8){cx.font=`bold ${sz}px monospace`;cx.textAlign=al;cx.fillStyle='#000';cx.fillText(s,x+1,y+1);cx.fillStyle=c;cx.fillText(s,x,y);}
 function bar(x,y,w,h,f,c){cx.fillStyle='#000';cx.fillRect(x-1,y-1,w+2,h+2);cx.fillStyle='#3a2e45';cx.fillRect(x,y,w,h);cx.fillStyle=c;cx.fillRect(x,y,Math.round(w*clamp(f,0,1)),h);cx.fillStyle='rgba(255,255,255,.25)';cx.fillRect(x,y,Math.round(w*clamp(f,0,1)),1);}
+/* Sang sur le héros : plus il perd de PV, plus il y a de taches (seulement sur ses pixels) */
+const BLOOD=(()=>{const r=rng(4242),out=[],cols=['#6a0610','#8a0a14','#b0101e','#c8202a'];
+  for(let i=0;i<70;i++){const head=r()<.18,x=Math.floor(head?26+r()*12:21+r()*22),y=Math.floor(head?18+r()*12:30+r()*30);
+    const px=[[0,0]];const n=1+Math.floor(r()*(i>45?7:4));for(let k=0;k<n;k++){const [bx,by]=px[Math.floor(r()*px.length)];px.push([bx+Math.round(r()*2-1),by+Math.round(r()*2-1)])}
+    if(r()<.35)for(let k=1;k<=1+Math.floor(r()*3);k++)px.push([0,k]); // coulure
+    out.push({x,y,px,c:cols[Math.floor(r()*cols.length)]});}
+  return out;})();
+const bloodTmp=document.createElement('canvas');bloodTmp.width=bloodTmp.height=192;const bloodG=bloodTmp.getContext('2d');bloodG.imageSmoothingEnabled=false;
+function drawBloodyHero(g,an,d,f,hx,hy){
+  const lost=state==='dead'?1:1-clamp(P.hp/stats().hp,0,1),n=Math.floor(Math.pow(lost,.8)*BLOOD.length);
+  if(!n){drawChar(g,heroC,an,d,f,P.x,P.y,hx,hy);return}
+  bloodG.clearRect(0,0,192,192);drawChar(bloodG,heroC,an,d,f,96,124);   // cadre 64 px placé en (64,64)
+  bloodG.globalCompositeOperation='source-atop';
+  const bob=(an==='walk'&&f%4===2)?1:0;
+  for(let i=0;i<n;i++){const b=BLOOD[i];bloodG.fillStyle=b.c;for(const [ox,oy] of b.px)bloodG.fillRect(64+b.x+ox,64+b.y+oy+bob,1,1);}
+  bloodG.globalCompositeOperation='source-over';
+  g.drawImage(bloodTmp,Math.round(P.x-96*hx),Math.round(P.y-124*hy),Math.round(192*hx),Math.round(192*hy));
+  if(lost>.5&&state==='play'&&Math.random()<lost*.12)parts.push({x:P.x+rnd(-6,6),y:P.y-rnd(14,34),vx:0,vy:rnd(20,40),life:.35,c:'#9a0c18'});
+}
 function heroFrame(){
   if(state==='dead')return['hurt',0,Math.min(5,Math.floor(P.deadT*8))];
   if(P.act){const an=P.act.anim;return[an,P.dir,Math.floor(P.act.t/P.act.dur*M.anims[an].frames)]}
@@ -938,7 +957,7 @@ function render(){
     shadow(g,P.x,P.y,10);
     if(P.shield>0){g.strokeStyle='rgba(80,200,255,.7)';g.lineWidth=2;g.beginPath();g.ellipse(P.x,P.y-22,20,26,0,0,7);g.stroke();}
     if(Object.values(equippedOf(save)).some(i=>i.r===3)&&Math.random()<.35)parts.push({x:P.x+rnd(-12,12),y:P.y-rnd(4,44),vx:0,vy:-18,life:.6,c:Math.random()<.5?'#ffcf4a':'#fff3b0'});
-    if(!(P.inv>0&&Math.floor(T*20)%2)){const[an,d,f]=heroFrame(),[hx,hy]=heroScale(save.look);drawChar(g,heroC,an,d,f,P.x,P.y,hx,hy);}
+    if(!(P.inv>0&&Math.floor(T*20)%2)){const[an,d,f]=heroFrame(),[hx,hy]=heroScale(save.look);drawBloodyHero(g,an,d,f,hx,hy);}
     if(P.whirl>0){g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=3;g.beginPath();g.ellipse(P.x,P.y-10,64*(1-P.whirl/.35)+8,(64*(1-P.whirl/.35)+8)*.6,0,0,7);g.stroke();}
   }});
   L.sort((a,b)=>a.y-b.y).forEach(o=>o.f());
