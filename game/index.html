@@ -685,10 +685,14 @@ class SMPart{
     return this}
   spr(x0,y0,rows,map){rows.forEach((r,j)=>[...r].forEach((ch,i)=>{if(map[ch])this.set(x0+i,y0+j,map[ch])}));return this}
 }
+const SM_UP=new Map();for(const pl of Object.values(SMP))for(let i=1;i<5;i++)if(!SM_UP.has(pl[i]))SM_UP.set(pl[i],pl[i+1]);
+let SM_AU=null,SM_AON=false;const SM_LN=smCol('#081236');
+/* contour : noir sur le vide, bleu nuit entre deux pièces ; arêtes hautes éclaircies (« edge highlight ») */
 function smAdd(F,P,ol=1){const p=P.p;
   if(ol)for(let y=0;y<64;y++)for(let x=0;x<64;x++){const i=y*64+x;if(p[i])continue;
-    if((x>0&&p[i-1])||(x<63&&p[i+1])||(y>0&&p[i-64])||(y<63&&p[i+64]))F[i]=SM_OUT;}
-  for(let i=0;i<4096;i++)if(p[i])F[i]=p[i];}
+    if((x>0&&p[i-1])||(x<63&&p[i+1])||(y>0&&p[i-64])||(y<63&&p[i+64]))F[i]=F[i]&&F[i]!==SM_OUT?SM_LN:SM_OUT;}
+  for(let i=0;i<4096;i++)if(p[i]){let c=p[i];if(!P.flat&&i>=64&&!p[i-64]){const u=SM_UP.get(c);if(u)c=u}F[i]=c;if(SM_AON)SM_AU[i]=1;}}
+const smOn=(K,sl)=>{SM_AON=(K.L[sl]||0)>=10};
 /* arme : épée, hache ou lance tronçonneuse ; u = le long de l'arme depuis le poing */
 function smWeapon(P,fx,fy,a,K){
   const B=SMP.B,G=SMP.G,Kp=SMP.K,S=SMP.S,teeth=K.lv>=4?SMP.R:S,tz=K.lv>=4?[3,5]:[3,5],gild=K.lv>=7;
@@ -712,13 +716,16 @@ function smWeapon(P,fx,fy,a,K){
     if(v<=2.6)return Kp[2];
     return Math.floor(u)%2?teeth[tz[1]]:teeth[tz[0]-1];});
 }
-function smArm(F,sx,sy,fx,fy,side,pu,pf,bias=0){
+function smArm(F,sx,sy,fx,fy,side,pu,pf,bias=0,K){const al=K&&K.arm?(K.L.gants||1):0;
   const L1=7,L2=7.6;let dx=fx-sx,dy=fy-sy,d=Math.hypot(dx,dy)||.01;const mx=L1+L2-.2;if(d>mx){fx=sx+dx*mx/d;fy=sy+dy*mx/d;dx=fx-sx;dy=fy-sy;d=mx}
   const a=Math.acos(Math.max(-1,Math.min(1,(L1*L1+d*d-L2*L2)/(2*L1*d)))),an=Math.atan2(dy,dx)+side*a,ex=sx+Math.cos(an)*L1,ey=sy+Math.sin(an)*L1;
-  const U=new SMPart();U.cap(sx,sy,ex,ey,4,3.6,pu,bias);smAdd(F,U);
-  const Fo=new SMPart();Fo.cap(ex,ey,fx,fy,3.7,4.3,pf,bias);Fo.ell(fx,fy+.6,3.4,3.1,pf,2.4,bias-1);smAdd(F,Fo);
+  if(K)smOn(K,'torse');const U=new SMPart();U.cap(sx,sy,ex,ey,4,3.6,pu,bias);smAdd(F,U);if(K)smOn(K,'gants');
+  const Fo=new SMPart();Fo.cap(ex,ey,fx,fy,3.7,4.3,pf,bias);Fo.ell(ex,ey,2.6,2.4,pf,2,bias+1);
+  const wx=ex+(fx-ex)*.78,wy=ey+(fy-ey)*.78;for(let k=-3;k<=3;k++){const nx=-(fy-ey),ny=fx-ex,l=Math.hypot(nx,ny)||1;Fo.set(wx+nx/l*k*.9,wy+ny/l*k*.9,al>=7?SMP.G[3]:SMP.K[2]);}
+  Fo.ell(fx,fy+.6,3.4,3.1,pf,2.4,bias-1);if(al>=4)for(let k=-2;k<=1;k++)Fo.set(fx+k,fy-.4,SMP.G[k<0?4:3]);smAdd(F,Fo);SM_AON=false;
   return[fx,fy];}
-function smPauld(F,cx,cy,emb,bias=0){const P=new SMPart();P.ell(cx,cy+.9,9.7,8.6,SMP.G,2.1,bias);P.ell(cx,cy-.1,8.5,7.4,SMP.B,2.1,bias);
+function smPauld(F,cx,cy,emb,bias=0,lv=1){const P=new SMPart(),t=lv>=9?.7:0;P.ell(cx,cy+.9,9.7+t,8.6+t,SMP.G,2.1,bias);if(lv>=5)for(const a of[-2.4,-1.57,-.74]){P.set(cx+Math.cos(a)*7.6,cy+Math.sin(a)*6.6,SMP.G[4]);}P.ell(cx,cy-.1,8.5,7.4,SMP.B,2.1,bias);
+  if(lv>=5)for(const a of[-2.5,-1.57,-.64])P.set(cx+Math.cos(a)*6.4,cy-.1+Math.sin(a)*5.4,SMP.G[4]);
   if(emb)P.spr(cx-2,cy-3,emb,{W:SMP.W[4],w:SMP.W[2]});smAdd(F,P);}
 function smSeal(F,x,y){const P=new SMPart(),T=smPal(['#2a2010','#6a5838','#b8a070','#e0d0a0','#f4ecd0','#fff']);
   for(let j=1;j<=4;j++){P.set(x-1,y+j,T[j<3?4:3]);P.set(x+1,y+j+(j>3?0:0),T[j<4?3:2]);}P.ell(x+.5,y+.5,1.7,1.6,SMP.R,2);smAdd(F,P);}
@@ -727,6 +734,8 @@ const SM_EMB={chap:['..W..','.WWW.','WWwWW','.W.W.','W...W'],squad:['W...W','WW.
   bolt:['...WW','..WW.','.WWWW','...W.','..W..','.W...']};
 function smHead(F,view,cx,cy,K){
   const H=new SMPart();
+  const hl=K.L.casque||1;smOn(K,'casque');
+  if(K.helm&&hl>=7){const C=new SMPart();if(view==='w')C.cap(cx-1,cy-6.5,cx+5.5,cy-5,1.7,1.2,SMP.R);else C.cap(cx,cy-5,cx,cy-9.2,1.8,1.5,SMP.R);smAdd(F,C);}
   if(K.helm){const B=SMP.B;H.ell(cx,cy,5.8,6.2,B,2.2);
     if(view==='s'){for(let x=-4;x<=4;x++)H.set(cx+x,cy-1,B[2]);
       for(const ex of[-3,1]){H.set(cx+ex,cy,SMP.R[5]);H.set(cx+ex+1,cy,SMP.R[4]);H.set(cx+ex,cy+1,SMP.R[3]);H.set(cx+ex+1,cy+1,SMP.R[2]);}
@@ -734,81 +743,95 @@ function smHead(F,view,cx,cy,K){
     else if(view==='w'){for(let x=-6;x<=0;x++)H.set(cx+x,cy-1,B[2]);H.set(cx-5,cy,SMP.R[5]);H.set(cx-4,cy,SMP.R[4]);H.set(cx-5,cy+1,SMP.R[3]);H.set(cx-4,cy+1,SMP.R[2]);
       H.ell(cx+.8,cy+3.4,1.5,1.5,SMP.K,2);H.set(cx+3,cy-4,B[2]);}
     else{for(let x=-4;x<=4;x++)H.set(cx+x,cy+4,B[1]);}
+    if(hl>=3){const y=view==='n'?cy+4:cy-1;for(let x=view==='w'?-6:-4;x<=(view==='w'?0:4);x++)H.set(cx+x,y,SMP.G[x<0?4:3]);}
+    if(hl>=5&&view!=='w')for(let y=-6;y<=-2;y++){H.set(cx-1,cy+y,SMP.W[3]);H.set(cx,cy+y,SMP.W[2]);}
+    if(hl>=5&&view==='w')for(let x=-3;x<=3;x++)H.set(cx+x,cy-5.5+Math.abs(x)*.3,SMP.W[3]);
+    if(hl>=9){for(const sx of view==='w'?[2]:[-5,4])for(let y=-2;y<=1;y++)H.set(cx+sx+(y%2?0:(sx<0?-0:0)),cy+y,SMP.G[4]);}
     smAdd(F,H);
     if(view!=='n'){const Gr=new SMPart();const gx=view==='s'?cx:cx-4.2;Gr.ell(gx,cy+4.3,view==='s'?3.1:2.6,2.5,SMP.B,3,-1);
       if(view==='s'){for(let y=0;y<3;y++){Gr.set(gx-1.5,cy+3+y,SMP.K[1]);Gr.set(gx+.5,cy+3+y,SMP.K[1]);}}
       else{Gr.set(gx-2,cy+3.6,SMP.K[1]);Gr.set(gx-1,cy+3.6,SMP.K[1]);Gr.set(gx-2,cy+5,SMP.K[1]);Gr.set(gx-1,cy+5,SMP.K[1]);}
       smAdd(F,Gr);}
-    return;}
+    SM_AON=false;return;}
   const sk=smPal(M.palettes.body[K.skin]||M.palettes.body.light),hr=smPal(M.palettes.hair[K.hair]||M.palettes.hair.black);
   H.ell(cx+(view==='w'?-.5:0),cy+1,4.6,5.4,sk,2.2);
   if(view==='s'){H.set(cx-2,cy+1,sk[0]);H.set(cx+1,cy+1,sk[0]);H.set(cx-1,cy+4,sk[1]);H.set(cx,cy+4,sk[1]);}
   if(view==='w'){H.set(cx-3,cy+1,sk[0]);H.set(cx-5,cy+2,sk[3]);}
   for(let y=-5;y<=-1;y++)for(let x=-5;x<=5;x++){const u=x/4.8,v=(y+1.6)/4.2;if(u*u+v*v<=1&&(view==='n'||y<-2||Math.abs(x)>3))H.set(cx+x+(view==='w'?.5:0),cy+y+1,hr[y<-3?3:2]);}
-  smAdd(F,H);}
+  smAdd(F,H);SM_AON=false;}
 /* pose : bob, lift[2] (s/n) ou feet[2] (w), arm R/L {f:[x,y]}, weapon angle wa, wFirst (arme derrière le corps) */
 function smFrame(view,po,K){
-  const F=new Uint32Array(4096),b=po.bob||0,B=SMP.B,G=SMP.G,Kp=SMP.K,add=(P,o=1)=>smAdd(F,P,o),np=()=>new SMPart();
+  const F=new Uint32Array(4096),b=po.bob||0,B=SMP.B,G=SMP.G,Kp=SMP.K,add=(P,o=1)=>smAdd(F,P,o),np=()=>new SMPart(),Lv=K.L,on=sl=>smOn(K,sl),off=()=>SM_AON=false;
+  SM_AU=new Uint8Array(4096);SM_AON=false;
+  const done=()=>{SM_AON=false;smAura(F);return F};
+  const banner=(px,py,dir)=>{if(!K.pack||(Lv.cape||1)<7)return;on('cape');const P=np();for(let y=py-14;y<=py;y++)P.set(px,y,G[y%3?3:4]);P.ell(px,py-15,1.3,1.3,G,2);
+    for(let y=0;y<9;y++)for(let x=1;x<=6;x++){const yy=py-13+y+(y===8&&x%2?-1:0);if(y===8&&x%2)continue;P.set(px+dir*x,yy,y<1||x===6?G[3]:(y===4?SMP.W[3]:(x<3?B[4]:B[3])));}
+    P.set(px+dir*3,py-11,SMP.R[3]);P.set(px+dir*4,py-11,SMP.R[3]);add(P);off();};
   const lp=K.leg?B:Kp,bp=K.boot?B:Kp,ap=K.arm?B:Kp;
-  const weapon=(fx,fy)=>{const P=np();smWeapon(P,fx,fy,po.wa,K);add(P)};
+  const weapon=(fx,fy)=>{on('arme');const P=np();smWeapon(P,fx,fy,po.wa,K);add(P);off()};
+  const kneeDeco=(P,x,y,lp)=>{const jl=Lv.jambes||1;if(!K.leg)return;if(jl>=3){P.set(x,y-1,SMP.W[3]);P.set(x-1,y,SMP.W[3]);P.set(x,y,SMP.W[4]);P.set(x+1,y,SMP.W[3]);P.set(x,y+1,SMP.W[2]);}};
+  const bootDeco=(P,x,y,w)=>{const bl=Lv.bottes||1;if(!K.boot)return;if(bl>=4)for(let i=-w;i<=w;i++)P.set(x+i,y+2,G[i<0?4:3]);if(bl>=8)for(let i=-w+1;i<w;i++)P.set(x+i,y-2,G[3]);};
   if(view==='w'){
-    const pack=()=>{if(!K.pack)return;const P=np();P.cap(43.5,17+b,43.5,8+b,2.3,2.3,B,-1);P.ell(43.5,7.8+b,2.2,1,Kp,2);add(P);
+    const pack=()=>{if(!K.pack)return;banner(45,8+b,1);on('cape');const P=np();P.cap(43.5,17+b,43.5,8+b,2.3,2.3,B,-1);P.ell(43.5,7.8+b,2.2,1,Kp,2);add(P);
       const Q=np();Q.ell(39.8,22.5+b,4.8,9.6,B,4,-1);Q.cap(40.2,15+b,40.2,5.5+b,2.6,2.6,B);Q.ell(40.2,5.3+b,2.4,1.1,Kp,2);
-      for(let y=24;y<=30;y+=2)for(let x=41;x<=43;x++)Q.set(x,y+b,Kp[1]);Q.set(38,14+b,G[4]);Q.set(38,15+b,G[3]);add(Q);};
+      for(let y=24;y<=30;y+=2)for(let x=41;x<=43;x++)Q.set(x,y+b,Kp[1]);Q.set(38,14+b,G[4]);Q.set(38,15+b,G[3]);if((Lv.cape||1)>=4){Q.ell(40.2,5.3+b,2.6,1.3,G,2);Q.ell(40.2,5.4+b,1.6,.8,Kp,2);}add(Q);off();};
     const leg=(i,bias)=>{const fx=po.feet[i][0],lift=po.feet[i][1],hx=32,hy=39+b,ay=55.5-lift,kx=(hx+fx)/2-2.3,ky=(hy+ay)/2;
-      const T=np();T.cap(hx,hy,kx,ky,4.6,4,lp,bias);add(T);const S=np();S.cap(kx,ky,fx,ay,3.9,3.3,lp,bias);add(S);
-      const Bt=np();Bt.ell(fx-1.3,58-lift,4.9,2.7,bp,3,bias);add(Bt);
-      const Kn=np();Kn.ell(kx-1.8,ky,2.8,3.6,lp,2,bias);add(Kn);};
-    const farArm=()=>{const[fx,fy]=smArm(F,30.5,24+b,po.R[0],po.R[1]+b,po.att?-1:1,B,ap,-1);if(K.wpn)weapon(fx,fy+.5)};
+      on('jambes');const Ak=np();Ak.cap(fx-.3,55.6-lift,fx-.3,55.6-lift,2.6,2.6,Kp,bias-1);add(Ak);const T=np();T.cap(hx,hy,kx,ky,4.6,4,lp,bias);add(T);const S=np();S.cap(kx,ky,fx,ay,3.9,3.3,lp,bias);for(let y=-2;y<=2;y++)S.set((kx+fx)/2-2.6,(ky+ay)/2+y,lp[5]);add(S);off();
+      on('bottes');const Bt=np();Bt.ell(fx-1.3,58-lift,4.9,2.7,bp,3,bias);bootDeco(Bt,Math.round(fx-1.3),Math.round(58-lift),3);add(Bt);off();
+      on('jambes');const Kn=np();if((Lv.jambes||1)>=6&&K.leg)Kn.ell(kx-1.8,ky,3.4,4.2,G,2,bias);Kn.ell(kx-1.8,ky,2.8,3.6,lp,2,bias);kneeDeco(Kn,Math.round(kx-2),Math.round(ky),lp);add(Kn);off();};
+    const farArm=()=>{const[fx,fy]=smArm(F,30.5,24+b,po.R[0],po.R[1]+b,po.att?-1:1,B,ap,-1,K);if(K.wpn)weapon(fx,fy+.5)};
     if(!po.att)farArm();
     pack();leg(1,-1);
     const Ab=np();Ab.ell(32.5,33.5+b,5.6,4.3,Kp,3);for(const yy of[31.2,33.8])Ab.ell(31.5,yy+b,5,1.2,B,4);add(Ab);
     const Bl=np();Bl.ell(32.5,37.3+b,6.6,1.8,Kp,6);Bl.ell(27,37.3+b,1.6,2,G,2);add(Bl);
     leg(0,0);
-    const Ch=np();Ch.ell(30.6,25.4+b,8,8,B,3);add(Ch);
+    on('torse');const Ch=np();if((Lv.torse||1)>=3)Ch.ell(30.6,25.9+b,8.4,8.2,G,3);Ch.ell(30.6,25.4+b,8,8,B,3);if((Lv.torse||1)>=7){Ch.spr(23.5,23+b,['GG','HG','GG'],{G:G[3],H:G[5]});}add(Ch);off();
     const Co=np();Co.ell(33,18.6+b,5.6,3,B,3,-1);add(Co);
     if(po.att)farArm();
     smHead(F,'w',31.5,12+b,K);
-    smPauld(F,33.2,21.4+b,K.emb?SM_EMB.chap:null);smSeal(F,36,28.5+b);
-    const[nx,ny]=smArm(F,33.5,25.5+b,po.L[0],po.L[1]+b,1,B,ap);
-    if(K.shield){const P=np();P.ell(nx-4.6,ny-3,3.4,12.2,G,6);P.ell(nx-4.9,ny-3.1,2.3,11,B,6);add(P);}
-    return F;}
+    on('torse');smPauld(F,33.2,21.4+b,K.emb?SM_EMB.chap:null,0,Lv.torse||1);off();smSeal(F,36,28.5+b);if((Lv.torse||1)>=5)smSeal(F,29,30+b);
+    const[nx,ny]=smArm(F,33.5,25.5+b,po.L[0],po.L[1]+b,1,B,ap,0,K);
+    if(K.shield){on('bouclier');const sl=Lv.bouclier||1,P=np();P.ell(nx-4.6,ny-3,3.4+(sl>=3?.6:0),12.2+(sl>=3?.6:0),G,6);P.ell(nx-4.9,ny-3.1,2.3,11,B,6);if(sl>=6)for(let y=-10;y<=8;y++)P.set(nx-5.5,ny-3+y,SMP.R[3]);add(P);off();}
+    return done();}
   const front=view==='s',sR=front?1:-1;  // s : bras d'arme à gauche de l'écran ; n : à droite
   const xR=32-12.2*sR,xL=32+12.2*sR;
   const legs=()=>{for(const i of[0,1]){const x=i?37.6:26.4,l=po.lift[i];
-    const T=np();T.cap(x,39+b,x,46-l,4.6,4.1,lp);add(T);const S=np();S.cap(x,47-l,x,55-l,3.9,3.4,lp);add(S);
-    const Bt=np();Bt.ell(x,57.6-Math.max(0,l),5,3.1,bp,3);add(Bt);
-    if(front){const Kn=np();Kn.ell(x,47.3-l,3.9,3.1,lp,2);Kn.set(x,46.5-l,lp[2]);Kn.set(x,47.5-l,lp[2]);add(Kn);}}
-    const Gp=np();Gp.ell(32,40.4+b,3.6,3,lp,3,front?0:-1);add(Gp);};
-  const shield=()=>{if(!K.shield)return;const sx=po.L[0]+(front?-.5:.5),sy=po.L[1]+b-3;const P=np();
-    if(front){P.ell(sx,sy,7.6,12.2,G,5);P.ell(sx,sy-.4,6.4,10.9,B,5);P.spr(sx-2.5,sy-3,SM_EMB.bolt,{W:SMP.W[4]});P.ell(sx,sy+6.2,1.6,1.4,SMP.R,2);}
+    on('jambes');const T=np();T.cap(x,39+b,x,46-l,4.6,4.1,lp);add(T);const S=np();S.cap(x,47-l,x,55-l,3.9,3.4,lp);if(front)for(let y=50;y<=54;y++)S.set(x-1,y-l,lp[5]);add(S);off();
+    on('bottes');const Bt=np();Bt.cap(x,55.6-l,x,55.6-l,2.8,2.8,Kp,-1);Bt.ell(x,57.6-Math.max(0,l),5,3.1,bp,3);if(front)bootDeco(Bt,Math.round(x-.5),Math.round(57.6-Math.max(0,l)),4);add(Bt);off();
+    if(front){on('jambes');const Kn=np();if((Lv.jambes||1)>=6&&K.leg)Kn.ell(x,47.5-l,4.6,3.8,G,2);Kn.ell(x,47.3-l,3.9,3.1,lp,2);Kn.set(x,46.5-l,lp[2]);Kn.set(x,47.5-l,lp[2]);kneeDeco(Kn,Math.round(x-.5),Math.round(47-l),lp);add(Kn);off();}}
+    on('jambes');const Gp=np();Gp.ell(32,40.4+b,3.6,3,lp,3,front?0:-1);add(Gp);off();};
+  const shield=()=>{if(!K.shield)return;on('bouclier');const sl=Lv.bouclier||1,sx=po.L[0]+(front?-.5:.5),sy=po.L[1]+b-3;const P=np();
+    if(front){const t=sl>=3?.7:0;P.ell(sx,sy,7.6+t,12.2+t,G,5);P.ell(sx,sy-.4,6.4,10.9,B,5);
+      if(sl>=6){for(let y=-10;y<=9;y++){P.set(sx-.5,sy+y,SMP.R[y<-4?4:3]);}for(let x=-5;x<=5;x++)P.set(sx+x,sy-4,SMP.R[3]);}
+      P.spr(sx-2.5,sy-3,SM_EMB.bolt,{W:SMP.W[4]});P.ell(sx,sy+6.2,1.6,1.4,SMP.R,2);
+      if(sl>=9){for(let i=-3;i<=3;i++){P.set(sx+i,sy-11.6+Math.abs(i)*.5,G[4]);}P.set(sx-6,sy+9,G[4]);P.set(sx+5,sy+9,G[4]);}}
     else{P.ell(sx,sy,7.6,12.2,G,5,-1);P.ell(sx,sy-.4,6.4,10.9,Kp,5);for(let y=-3;y<=3;y++)P.set(sx,sy+y,Kp[4]);}
-    add(P);};
-  const wR=()=>{const[fx,fy]=smArm(F,xR,24.5+b,po.R[0],po.R[1]+b,sR*(po.att?1:-1),B,ap);return[fx,fy]};
+    add(P);off();};
+  const wR=()=>{const[fx,fy]=smArm(F,xR,24.5+b,po.R[0],po.R[1]+b,sR*(po.att?1:-1),B,ap,0,K);return[fx,fy]};
   if(!front)shield();
   let wDone=false;
   if(!front&&po.wFirst&&K.wpn){weapon(po.R[0],po.R[1]+b+.5);wDone=true}
   legs();
   const Ab=np();Ab.ell(32,33.6+b,7.6,4.6,Kp,3);if(front)for(const yy of[31.2,33.8])Ab.ell(32,yy+b,6.3,1.25,B,4);add(Ab);
   const Bl=np();Bl.ell(32,37.4+b,10.4,1.9,Kp,6);if(front){Bl.ell(32,37.3+b,2.5,2.4,G,2);Bl.set(32,37+b,SMP.R[3]);}add(Bl);
-  const Ch=np();Ch.ell(32,25.2+b,11.6,8.3,B,3,front?0:-1);
-  if(front)Ch.spr(25.5,25+b,SM_EMB.eagle,{G:G[3],H:G[5]});else for(let y=19;y<=31;y++)Ch.set(32,y+b,B[2]);add(Ch);
-  if(front&&K.pack){const P=np();P.cap(22.6,15+b,22.6,5.4+b,2.5,2.5,B,-1);P.cap(41.4,15+b,41.4,5.4+b,2.5,2.5,B,-1);P.ell(22.6,5.3+b,2.3,1.1,Kp,2);P.ell(41.4,5.3+b,2.3,1.1,Kp,2);add(P,1);}
-  const Co=np();Co.ell(32,18.6+b,7,3,B,3,-1);add(Co);
+  const tl=Lv.torse||1;on('torse');const Ch=np();if(tl>=3)Ch.ell(32,25.8+b,12,8.6,G,3,front?0:-1);Ch.ell(32,25.2+b,11.6,8.3,B,3,front?0:-1);
+  if(front){Ch.spr(25.5,25+b,SM_EMB.eagle,{G:G[tl>=5?4:3],H:G[5]});if(tl>=7)Ch.spr(31,30+b,['WW','ww'],{W:SMP.W[4],w:SMP.W[2]});}else for(let y=19;y<=31;y++)Ch.set(32,y+b,B[2]);add(Ch);off();
+  if(front&&K.pack){banner(45,14+b,1);on('cape');const P=np();P.cap(22.6,15+b,22.6,5.4+b,2.5,2.5,B,-1);P.cap(41.4,15+b,41.4,5.4+b,2.5,2.5,B,-1);if((Lv.cape||1)>=4){P.ell(22.6,5.3+b,2.7,1.4,G,2);P.ell(41.4,5.3+b,2.7,1.4,G,2);}P.ell(22.6,5.3+b,2.3,1.1,Kp,2);P.ell(41.4,5.3+b,2.3,1.1,Kp,2);add(P,1);off();}
+  on('torse');const Co=np();Co.ell(32,18.6+b,7,3,B,3,-1);add(Co);off();
   // bras
-  const[lx,ly]=smArm(F,xL,24.5+b,po.L[0],po.L[1]+b,-sR,B,ap);
+  const[lx,ly]=smArm(F,xL,24.5+b,po.L[0],po.L[1]+b,-sR,B,ap,0,K);
   const[rx,ry]=wR();
   if(K.wpn&&!wDone&&!po.wTop)weapon(rx,ry+.5);
   if(front)smHead(F,'s',32,12+b,K);
   else smHead(F,'n',32,12+b,K);
-  smPauld(F,xR+ (front?0:0),21+b,front&&K.emb?SM_EMB.squad:null);
-  smPauld(F,xL,21+b,front&&K.emb?SM_EMB.chap:null);
-  if(front){smSeal(F,xL+4,28+b);smSeal(F,26.5,41+b);}
-  if(!front&&K.pack){const P=np();P.cap(26,17+b,26,5+b,2.6,2.6,B,-1);P.cap(38,17+b,38,5+b,2.6,2.6,B,-1);P.ell(26,4.9+b,2.4,1.1,Kp,2);P.ell(38,4.9+b,2.4,1.1,Kp,2);add(P);
-    const Q=np();Q.ell(32,25+b,8.8,10,B,4);for(const yy of[27,29,31])for(let x=28;x<=36;x++)Q.set(x,yy+b,Kp[1]);Q.ell(32,19.5+b,2.2,1.8,G,2);add(Q);}
+  on('torse');smPauld(F,xR,21+b,front&&K.emb?SM_EMB.squad:null,0,tl);
+  smPauld(F,xL,21+b,front&&K.emb?SM_EMB.chap:null,0,tl);off();
+  if(front){smSeal(F,xL+4,28+b);smSeal(F,26.5,41+b);if(tl>=5)smSeal(F,xR-3,28+b);if((Lv.jambes||1)>=9)smSeal(F,38.5,41+b);}
+  if(!front&&K.pack){banner(43,14+b,1);on('cape');const P=np();P.cap(26,17+b,26,5+b,2.6,2.6,B,-1);P.cap(38,17+b,38,5+b,2.6,2.6,B,-1);P.ell(26,4.9+b,2.4,1.1,Kp,2);P.ell(38,4.9+b,2.4,1.1,Kp,2);add(P);
+    const Q=np();Q.ell(32,25+b,8.8,10,B,4);for(const yy of[27,29,31])for(let x=28;x<=36;x++)Q.set(x,yy+b,Kp[1]);Q.ell(32,19.5+b,2.2,1.8,G,2);if((Lv.cape||1)>=4){Q.ell(26,4.9+b,2.8,1.4,G,2);Q.ell(38,4.9+b,2.8,1.4,G,2);Q.ell(26,4.9+b,1.8,.8,Kp,2);Q.ell(38,4.9+b,1.8,.8,Kp,2);for(let x=25;x<=39;x++)Q.set(x,34.5+b,G[3]);}add(Q);off();}
   if(front)shield();
   if(K.wpn&&!wDone&&po.wTop)weapon(rx,ry+.5);
-  return F;
+  return done();
 }
 function smPose(anim,dir,f,K){
   const view=dir===2?'s':dir===0?'n':'w',ph=(f-1)/8*Math.PI*2,mv=anim==='walk'&&f>0;
@@ -832,11 +855,16 @@ function smPose(anim,dir,f,K){
     else{const s=view==='s'?1:-1;P.R=lerp(P.R,[32-17*s,15]);P.L=lerp(P.L,[32+17*s,15]);P.wa=-1.57-.3*s*k+(1-k)*(P.wa+1.57);P.wTop=1}}
   return[view,P];
 }
+function smAura(F){const A=SM_AU,c0=((230<<24)|(0xff<<16)|(0xf0<<8)|0xd8)>>>0,c1=((150<<24)|(0xff<<16)|(0xd0<<8)|0x90)>>>0,c2=((80<<24)|(0xff<<16)|(0xc0<<8)|0x70)>>>0;let any=0;for(let i=0;i<4096;i++)if(A[i]){any=1;break}if(!any)return;
+  const D=new Uint8Array(4096);for(let i=0;i<4096;i++)if(A[i])D[i]=1;
+  for(let r=2;r<=4;r++){const prev=D.slice();for(let y=0;y<64;y++)for(let x=0;x<64;x++){const i=y*64+x;if(prev[i])continue;if((x>0&&prev[i-1])||(x<63&&prev[i+1])||(y>0&&prev[i-64])||(y<63&&prev[i+64]))D[i]=r;}}
+  for(let i=0;i<4096;i++){if(F[i]||!D[i]||D[i]===1)continue;const x=i&63,y=i>>6;if(D[i]===2)F[i]=c0;else if(D[i]===3)F[i]=c1;else if((x+y)%2===0)F[i]=c2;}}
 const SMC={};
 function marineChar(L,E){
   const lv=E.arme&&E.arme.set==='pa'?lvOf(E.arme):0;
   const K={helm:E.casque?.set==='pa',leg:E.jambes?.set==='pa',boot:E.bottes?.set==='pa',arm:E.gants?.set==='pa',pack:E.cape?.set==='pa',shield:E.bouclier?.set==='pa',
-    wpn:1,wt:L.weapon,lv,emb:1,skin:L.skin,hair:L.hair};
+    wpn:1,wt:L.weapon,lv,emb:1,skin:L.skin,hair:L.hair,L:{}};
+  for(const[sl,it]of Object.entries(E))if(it&&it.set==='pa')K.L[sl]=lvOf(it);
   const key=JSON.stringify(K);if(SMC[key])return SMC[key];
   const c=document.createElement('canvas');c.width=576;c.height=17*64;const g=c.getContext('2d'),id=g.createImageData(64,64),u32=new Uint32Array(id.data.buffer);
   const tmp=document.createElement('canvas');tmp.width=tmp.height=64;const tg=tmp.getContext('2d');
