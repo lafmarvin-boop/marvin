@@ -692,30 +692,32 @@ function buildRegion(){
 function spawnEnemies(){
   const ri=save.region,m=1+.28*ri;enemies=[];proj=[];parts=[];texts=[];drops=[];portal=null;vacuum=false;
   // plus d'ennemis à chaque région, en groupes de plus en plus gros
-  const n=Math.round(Math.min(110,(26+ri*7)*(MW*MH)/(72*50)));let tries=0;
+  // densité selon le sol praticable (un donjon a beaucoup de murs)
+  let walk=0;for(let i=0;i<MW*MH;i++)if(!solid[i])walk++;
+  const n=Math.round(Math.min(110,(26+ri*7)*(walk/.75)/(72*50)));let tries=0;
   while(enemies.length<n&&tries++<4000){
     const x=2+Math.floor(Math.random()*(MW-4)),y=2+Math.floor(Math.random()*(MH-4));
     if(solid[idx(x,y)]||Math.hypot(x-spawnPt.x,y-spawnPt.y)<11||Math.hypot(x-bossPt.x,y-bossPt.y)<7)continue;
     const t=pick(regPool(ri));const grp=1+Math.floor(Math.random()*Math.min(4,2+ri*.5));
-    for(let k=0;k<grp;k++)addEnemy(t,x*TS+16+k*14,y*TS+16+k*6,m);
+    for(let k=0;k<grp;k++){const ex=x*TS+16+k*14,ey=y*TS+16+k*6;if(k&&blocked(ex,ey,EN[t].r))continue;addEnemy(t,ex,ey,m);}
   }
   bossRef=addEnemy(REG.boss,bossPt.x*TS+16,bossPt.y*TS+16,m*(1+.1*ri));
   if(isLordRegion(ri)){const b=bossRef;b.lord=1;b.hp=b.max=Math.round(b.max*1.8);b.atk*=1.2;b.sc*=1.3;b.r=Math.round(b.r*1.3);b.rage=1;b.name=LORD[REG.boss];enemies.forEach(e=>{if(!e.rage){e.rage=1;e.atk*=1.25}});}
   reveal(spawnPt.x,spawnPt.y,9);
   objs.forEach(o=>{if(o.k==='chest')o.open=false});
 }
-function expectedHero(ri){const l=1+4*ri;return{atk:10+2*(l-1)+4*ri,hp:100+12*(l-1)+15*ri,def:5+(l-1)+3*ri}}
+function expectedHero(ri){const l=1+4*ri;return{atk:10+2*(l-1)+2*ri,hp:100+12*(l-1)+8*ri,def:5+(l-1)+1.5*ri}}
 function addEnemy(t,x,y,m){const D=EN[t],ri=save.region;
   // Puissance progressive : courbe fixe selon la région (ne dépend pas du héros).
   // Elle suit un héros « attendu » (≈ 4 niveaux et un peu d'équipement par région) + 7 % de difficulté en plus par région.
   const base=1+.28*ri,extra=m/base,EX=expectedHero(ri),hard=1+.07*ri;
-  const bh=D.boss?.6:1,ba=D.boss?.75:1;   // boss : déjà forts de base, on modère
+  const bh=(D.boss?.6:1)*(DUNGEON?.85:1),ba=(D.boss?.75:1)*(DUNGEON?.8:1);   // boss modérés ; donjon plus serré => ennemis un peu moins forts
   const hpM=Math.max(base,(EX.atk/10)*hard*bh)*extra;
   const atkV=Math.max(D.atk*base,D.atk*(EX.hp/100)*hard*ba)*extra+EX.def*.5;
   const e={t,D,x,y,r:D.r,hp:Math.round(D.hp*hpM),max:Math.round(D.hp*hpM),atk:atkV,dir:2,fr:0,act:null,cd:rnd(.5,2),cd2:3,hurt:0,kx:0,ky:0,ph:rnd(0,9),sc:D.sc||1,home:{x,y},wt:0,wx:0,wy:0,charge:0};
   if(D.kind==='hum')e.C=spec(D.spec);
   // plus de défi à chaque région : vitesse, portée, réactivité
-  e.spdM=1+Math.min(.6,.045*ri);e.cdM=Math.max(.55,1-.045*ri);e.reachM=1+Math.min(.4,.03*ri);e.aggro=Math.min(330,200+12*ri);
+  e.spdM=1+Math.min(.6,.045*ri);e.cdM=Math.max(.55,1-.045*ri);e.reachM=1+Math.min(.4,.03*ri);e.aggro=Math.min(330,200+12*ri)*(DUNGEON?.75:1);
   if(D.rage){e.rage=1}if(e.rage)e.atk*=1.25;
   enemies.push(e);return e;}
 
@@ -1564,8 +1566,11 @@ function bfsPath(sx,sy,tx,ty){
 }
 function autoPilot(dt){
   const A=AUTO,st=stats();A.t+=dt;A.floorT+=dt;
+  // repos hors combat : aucun ennemi proche depuis 2 s => +3 % PV/s
+  if(enemies.some(e=>Math.hypot(e.x-P.x,e.y-P.y)<260))A.calm=0;else A.calm=(A.calm||0)+dt;
+  if(A.calm>2&&P.hp<st.hp){P.hp=Math.min(st.hp,P.hp+st.hp*.03*dt);if(Math.random()<.05)parts.push({x:P.x+rnd(-8,8),y:P.y-rnd(10,40),vx:0,vy:-20,life:.6,c:'#5fd36b'});}
   // soins
-  if(P.hp<st.hp*.35&&save.potions>0)hit.KeyR=true;
+  if(P.hp<st.hp*.45&&save.potions>0)hit.KeyR=true;
   save.slots.forEach((id,i)=>{if(!id||i>=save.maxSlots)return;const S=SKILLS[id];if((P.cds[id]||0)>0||P.mp<S.mp)return;
     const ne=nearestEnemy(id==='thunder'?200:id==='whirl'?60:id==='dash'?120:id==='vampire'?50:210),n2=enemies.filter(e=>Math.hypot(e.x-P.x,e.y-P.y)<70).length;
     if(id==='heal'?P.hp<st.hp*.55:id==='shield'?(ne&&P.hp<st.hp*.7):id==='whirl'?n2>=2:!!ne)useSkill(i);});
@@ -1575,7 +1580,10 @@ function autoPilot(dt){
   if(portal&&portalOpen())tgt={x:portal.x,y:portal.y,k:'portal'};
   else if(drops.length){const d=drops.reduce((a,b)=>Math.hypot(a.x-P.x,a.y-P.y)<Math.hypot(b.x-P.x,b.y-P.y)?a:b);tgt={x:d.x,y:d.y,k:'drop'}}
   else{
-    const cands=enemies.filter(e=>!A.ban.has(e)&&(e!==bossRef||enemies.length===1||enemies.every(x=>x===bossRef||A.ban.has(x))));
+    // un ennemi proche n'est jamais ignoré (il pourrait nous frapper de loin)
+    enemies.forEach(e=>{if(A.ban.has(e)&&Math.hypot(e.x-P.x,e.y-P.y)<110)A.ban.delete(e)});
+    const close=enemies.filter(e=>Math.hypot(e.x-P.x,e.y-P.y)<90).sort((a,b)=>Math.hypot(a.x-P.x,a.y-P.y)-Math.hypot(b.x-P.x,b.y-P.y))[0];
+    const cands=close?[close]:enemies.filter(e=>!A.ban.has(e)&&(e!==bossRef||enemies.length===1||enemies.every(x=>x===bossRef||A.ban.has(x))));
     const ch=objs.filter(o=>o.k==='chest'&&!o.open&&!A.ban.has(o));
     let best=null,bd=1e9;for(const e of cands){const d=Math.hypot(e.x-P.x,e.y-P.y);if(d<bd){bd=d;best=e}}
     for(const o of ch){const d=Math.hypot(o.x-P.x,o.y-P.y)*1.3;if(d<bd){bd=d;best=o}}
@@ -1586,7 +1594,10 @@ function autoPilot(dt){
   // proche : aller droit au but
   const d=Math.hypot(tgt.x-P.x,tgt.y-P.y);
   if(A.tgt!==tgt){A.tgt=tgt;A.path=null;A.tgtT=0}A.tgtT=(A.tgtT||0)+dt;
-  if(A.tgtT>12&&tgt.k!=='portal'&&tgt!==bossRef){A.ban.add(tgt);A.tgt=null;return[0,0]}   // inatteignable : on passe
+  if(A.tgtT>12&&tgt.k!=='portal'&&tgt!==bossRef&&d>110){A.ban.add(tgt);A.tgt=null;return[0,0]}   // inatteignable (et loin) : on passe
+  if(tgt.D&&d<110)A.tgtT=0;
+  // en danger sans potion : on recule pour se reposer
+  if(tgt.D&&P.hp<st.hp*.25&&!save.potions&&!tgt.D.boss){const ux=(P.x-tgt.x)/(d||1),uy=(P.y-tgt.y)/(d||1);return[ux,uy];}
   if(d<26&&tgt.k!=='portal')return[0,0];
   if(d<40)return[(tgt.x-P.x)/d,(tgt.y-P.y)/d];
   A.pathT-=dt;
