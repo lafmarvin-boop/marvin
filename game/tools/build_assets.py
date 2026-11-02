@@ -160,6 +160,12 @@ for v in ['medium', 'light', 'red', 'dark', 'brass', 'bronze', 'ceramic', 'coppe
     LAYERS[f'spear_{v}_fg'] = ('weapon/polearm/spear/foreground/', 140, v, None, None)
     LAYERS[f'spear_{v}_bg'] = ('weapon/polearm/spear/background/', 9, v, None, None)
 
+# --- tetes des nouveaux ennemis ---
+for k, path in [('boarman', 'boarman/adult'), ('frankenstein', 'frankenstein/adult'), ('jack', 'jack/adult'), ('lizard', 'lizard/male'),
+                ('pig', 'pig/adult'), ('rabbit', 'rabbit/adult'), ('rat', 'rat/adult'), ('sheep', 'sheep/adult'), ('troll', 'troll/adult'),
+                ('vampire', 'vampire/adult'), ('wartotaur', 'wartotaur/adult'), ('mouse', 'mouse/adult')]:
+    LAYERS['head_' + k] = (f'head/heads/{path}/', 100, None, 'body', 'light')
+
 files = set(subprocess.check_output(['git', '-C', LPC, 'ls-tree', '-r', '--name-only', 'HEAD'], text=True).split('\n'))
 
 def resolve(d, anim, var):

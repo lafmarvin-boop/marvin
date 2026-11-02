@@ -220,6 +220,13 @@ Source : https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Characte
 - **head/ears/elven** — JaidynReiman, bluecarrot16, Thane Brimhall (pennomi), laetissima, Matthew Krohn (makrohn), JaidynReiman — GPL 3.0, CC-BY-SA 3.0
   - https://opengameart.org/content/lpc-base-character-expressions
   - http://opengameart.org/content/lpc-clothing-updates
+- **head/heads/boarman** — Benjamin K. Smith (BenCreating), Daniel Eddeland (daneeklu) — CC-BY 3.0, GPL 2.0
+  - https://opengameart.org/content/lpc-style-farm-animals
+  - https://opengameart.org/content/lpc-wild-boar
+  - https://opengameart.org/content/lpc-boarman
+- **head/heads/frankenstein** — Stephen Challener (Redshrike), bluecarrot16 — OGA-BY 3.0, CC-BY-SA 3.0, GPL 3.0
+  - https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
+  - https://opengameart.org/content/lpc-folk
 - **head/heads/goblin** — bluecarrot16, Stephen Challener (Redshrike), William.Thomsponj — OGA-BY 3.0, CC-BY 4.0, GPL 2.0, GPL 3.0
   - https://opengameart.org/content/lpc-goblin
   - https://opengameart.org/content/lpc-folk
@@ -229,10 +236,19 @@ Source : https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Characte
 - **head/heads/human/male** — bluecarrot16, Benjamin K. Smith (BenCreating), Stephen Challener (Redshrike) — OGA-BY 3.0, CC-BY-SA 3.0, GPL 3.0
   - https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
   - https://opengameart.org/content/lpc-character-bases
+- **head/heads/jack** — bluecarrot16, Joshua Taylor — CC-BY-SA 3.0, GPL 3.0
+  - https://opengameart.org/content/fruit-and-veggie-inventory
+  - https://opengameart.org/content/lpc-folk
+- **head/heads/lizard/male** — bluecarrot16, Benjamin K. Smith (BenCreating), Nila122 — OGA-BY 3.0, CC-BY-SA 3.0, GPL 3.0
+  - https://opengameart.org/content/drakes-and-lizardfolk
+  - https://opengameart.org/content/lpc-character-bases
 - **head/heads/minotaur** — Evert, Nila122, Daniel Eddeland (daneeklu) — CC-BY-SA 3.0, GPL 3.0
   - https://opengameart.org/content/lpc-style-farm-animals
   - https://opengameart.org/content/lpc-lizard-headgear
   - https://opengameart.org/content/lpc-faun-and-minotaur
+- **head/heads/mouse** — bluecarrot16, Stephen Challener (Redshrike), Napsio (Vitruvian Studio), JaidynReiman — OGA-BY 3.0, CC-BY 3.0, CC-BY-SA 3.0
+  - https://opengameart.org/content/bunny-rabbit-lpc-style-for-pixelfarm
+  - http://opengameart.org/content/lpc-folk
 - **head/heads/orc/female** — bluecarrot16, Matthew Krohn (makrohn), Marcel van de Steeg (MadMarcel), Stephen Challener (Redshrike) — OGA-BY 3.0, CC-BY-SA 3.0, GPL 3.0
   - https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
   - https://opengameart.org/content/lpc-female-orcogregoblintroll-base-walkcycle
@@ -243,11 +259,34 @@ Source : https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Characte
   - https://opengameart.org/content/sinbad-the-ogre
   - https://opengameart.org/content/lpc-male-sheets
   - https://opengameart.org/content/lpc-character-bases
+- **head/heads/pig** — bluecarrot16, Daniel Eddeland (daneeklu) — CC-BY 3.0, GPL 3.0
+  - https://opengameart.org/content/lpc-style-farm-animals
+  - http://opengameart.org/content/lpc-folk
+- **head/heads/rabbit** — bluecarrot16, Stephen Challener (Redshrike), Napsio (Vitruvian Studio), JaidynReiman — OGA-BY 3.0, CC-BY 3.0, CC-BY-SA 3.0
+  - https://opengameart.org/content/bunny-rabbit-lpc-style-for-pixelfarm
+  - http://opengameart.org/content/lpc-folk
+- **head/heads/rat** — bluecarrot16, Stephen Challener (Redshrike), Napsio (Vitruvian Studio), JaidynReiman — OGA-BY 3.0, CC-BY 3.0, CC-BY-SA 3.0
+  - https://opengameart.org/content/bunny-rabbit-lpc-style-for-pixelfarm
+  - http://opengameart.org/content/lpc-folk
+- **head/heads/sheep** — bluecarrot16, Daniel Eddeland (daneeklu), Napsio (Vitruvian Studio), JaidynReiman — CC-BY 3.0, GPL 3.0
+  - https://opengameart.org/content/lpc-style-farm-animals
+  - http://opengameart.org/content/lpc-folk
 - **head/heads/skeleton** — bluecarrot16, Napsio, JaidynReiman, Johannes Sjölund (wulax), Stephen Challener (Redshrike) — OGA-BY 3.0, CC-BY-SA 3.0, GPL 3.0
   - https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
   - https://opengameart.org/content/lpc-medieval-fantasy-character-sprites
   - https://opengameart.org/content/lpc-skeleton
   - https://opengameart.org/content/lpc-character-bases
+- **head/heads/troll** — bluecarrot16, AntumDeluge, Tuomo Untinen (reemax) — CC-BY 3.0
+  - https://opengameart.org/content/musclemanogreminotaur
+  - https://opengameart.org/content/trolls-0
+  - https://opengameart.org/content/lpc-folk
+- **head/heads/vampire** — Stephen Challener (Redshrike), bluecarrot16 — OGA-BY 3.0, CC-BY-SA 3.0, GPL 3.0
+  - https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
+  - https://opengameart.org/content/lpc-folk
+- **head/heads/wartotaur** — bluecarrot16, Evert, Stephen Challener (Redshrike) — OGA-BY 3.0, CC-BY 3.0
+  - https://opengameart.org/content/tower-defense-prototyping-assets-4-monsters-some-tiles-a-background-image
+  - https://opengameart.org/content/wartotaur-4-directions
+  - https://opengameart.org/content/lpc-folk
 - **head/heads/wolf/male** — bluecarrot16, Sander Frenken (castelonia), Benjamin K. Smith (BenCreating), William.Thompsonj, Stephen Challener (Redshrike) — CC-BY-SA 3.0, GPL 3.0
   - https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles
   - https://opengameart.org/content/lpc-wolf-animation
