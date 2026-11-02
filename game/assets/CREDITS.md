@@ -438,3 +438,6 @@ Source : https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Characte
 - **weapon/sword/saber** — Daniel Eddeland (daneeklu), Johannes Sjölund (wulax), gr3yh47, bluecarrot16 — CC-BY-SA 3.0
   - https://opengameart.org/content/lpc-medieval-fantasy-character-sprites
   - https://opengameart.org/content/lpc-extended-weapon-animations
+
+## Space marine (Armure d'Azur)
+- Images du modèle fournies par le joueur (assets/char/marine_*.png).
