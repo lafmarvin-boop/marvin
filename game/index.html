@@ -670,12 +670,14 @@ function spawnEnemies(){
   reveal(spawnPt.x,spawnPt.y,9);
   objs.forEach(o=>{if(o.k==='chest')o.open=false});
 }
+function expectedHero(ri){const l=1+4*ri;return{atk:10+2*(l-1)+4*ri,hp:100+12*(l-1)+15*ri,def:5+(l-1)+3*ri}}
 function addEnemy(t,x,y,m){const D=EN[t],ri=save.region;
-  // Force adaptée au héros : les ennemis suivent ton ATQ, tes PV et ta DEF (équipement compris), jamais sous le niveau de la région
-  const base=1+.28*ri,extra=m/base,st=stats(),hard=1+.05*ri;
+  // Puissance progressive : courbe fixe selon la région (ne dépend pas du héros).
+  // Elle suit un héros « attendu » (≈ 4 niveaux et un peu d'équipement par région) + 7 % de difficulté en plus par région.
+  const base=1+.28*ri,extra=m/base,EX=expectedHero(ri),hard=1+.07*ri;
   const bh=D.boss?.6:1,ba=D.boss?.75:1;   // boss : déjà forts de base, on modère
-  const hpM=Math.max(base,(st.atk/10)*1.15*hard*bh)*extra;
-  const atkV=Math.max(D.atk*base,D.atk*(st.hp/100)*1.1*hard*ba)*extra+st.def*.55;
+  const hpM=Math.max(base,(EX.atk/10)*hard*bh)*extra;
+  const atkV=Math.max(D.atk*base,D.atk*(EX.hp/100)*hard*ba)*extra+EX.def*.5;
   const e={t,D,x,y,r:D.r,hp:Math.round(D.hp*hpM),max:Math.round(D.hp*hpM),atk:atkV,dir:2,fr:0,act:null,cd:rnd(.5,2),cd2:3,hurt:0,kx:0,ky:0,ph:rnd(0,9),sc:D.sc||1,home:{x,y},wt:0,wx:0,wy:0,charge:0};
   if(D.kind==='hum')e.C=spec(D.spec);
   // plus de défi à chaque région : vitesse, portée, réactivité
