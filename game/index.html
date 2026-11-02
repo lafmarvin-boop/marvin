@@ -48,6 +48,16 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 .item p{margin:0 0 6px;color:var(--dim)}
 .gold{color:var(--gold)}
 #msg{color:var(--ok);min-height:18px;margin:6px 0}
+.floors{border:3px solid var(--gold);background:linear-gradient(#2a1a10,#1a0f08);color:#f0dca0;padding:10px;margin:8px 0 12px;box-shadow:inset 0 0 20px rgba(0,0,0,.6)}
+.fmode{font-family:'Cinzel',Georgia,serif;font-weight:800;letter-spacing:3px;text-align:center;color:var(--hi);text-transform:uppercase;margin-bottom:6px}
+.fsel{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:8px}
+.fsel>button{font-size:22px;width:52px;height:52px;padding:0;background:#3a2414;color:#f0dca0;border-color:var(--gold)}
+.fcard{flex:1;max-width:340px;text-align:center;border:2px solid #6b5323;background:rgba(0,0,0,.35);padding:8px}
+.fnum{font-family:'Cinzel Decorative','Cinzel',Georgia,serif;font-weight:900;font-size:24px;color:var(--hi)}
+.fname{font-family:'Cinzel',Georgia,serif;font-weight:800;font-size:15px}
+.fstate{font-size:13px;margin-top:2px}.fstate.ok{color:#8fe08a}.fstate.new{color:#ffcf4a}
+.fsub{font-size:12px;color:#c8b890;margin-top:2px}
+.floors .btns button{background:#3a2414;color:#f0dca0;border-color:var(--gold)}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:3px solid var(--line);margin:4px 0 10px}
 .tabs button{border-bottom:0;margin-bottom:-3px;padding:9px 14px;font-family:'Cinzel',Georgia,serif;font-weight:800;letter-spacing:1px;background:linear-gradient(#8a1c1c,#5a0e0e);color:#f0d890;border-color:var(--gold)}
 .tabs button.notif::after{content:" ●";color:var(--acc)}
@@ -159,6 +169,15 @@ footer a{color:#c8c0d8}
     </div>
     <div class="opts">
       <h3 style="margin:0">🔥 Camp — <span class="gold" id="campGold"></span></h3>
+      <div class="floors">
+        <div class="fmode">⚔ Mode Aventure</div>
+        <div class="fsel">
+          <button id="fPrev" aria-label="Étage précédent">◀</button>
+          <div class="fcard" id="fCard"></div>
+          <button id="fNext" aria-label="Étage suivant">▶</button>
+        </div>
+        <div class="btns" style="justify-content:center"><button id="fLast">⏭ Dernier étage</button></div>
+      </div>
       <div id="msg"></div>
       <div class="tabs" role="tablist">
         <button role="tab" data-tab="equip">🛡 Équipement</button>
@@ -866,8 +885,9 @@ function die(){
 }
 function clearRegion(){
   for(const d of drops){if(d.k==='gold')save.gold+=d.v;else if(d.k==='potion')save.potions++}drops=[];
-  state='clear';save.region++;save.best=Math.max(save.best,save.region);store();
-  const dk=darkness();$('#ovlT').textContent=dk<.4?'RÉGION LIBÉRÉE !':'RÉGION PURIFIÉE';$('#ovlS').textContent=dk<.3?'Le portail t\'emmène vers la région suivante… le ciel s\'assombrit un peu.':'Le portail s\'ouvre sur des terres encore plus sombres…';$('#ovlB').textContent='Aller au camp';
+  const was=save.region;if(save.region>=save.best)save.best=save.region+1;save.region=save.best;store();state='clear';
+  $('#ovlS').dataset.floor=was;
+  const dk=darkness();$('#ovlT').textContent=(dk<.4?'ÉTAGE TERMINÉ !':'ÉTAGE PURIFIÉ');$('#ovlS').textContent=dk<.3?'Le portail t\'emmène vers la région suivante… le ciel s\'assombrit un peu.':'Le portail s\'ouvre sur des terres encore plus sombres…';$('#ovlB').textContent='Aller au camp';
   $('#ovl').classList.add('on');
 }
 $('#ovlB').onclick=()=>{if(state==='dead'){spawnEnemies();P=null}else if(state==='clear'){buildRegion();P=null}openCamp()};
@@ -1239,7 +1259,7 @@ function hud(){
     cx.save();cx.translate(ex,ey);cx.rotate(a);cx.fillStyle='rgba(255,60,60,'+(.55+.35*Math.sin(T*6))+')';cx.beginPath();cx.moveTo(9,0);cx.lineTo(-6,-7);cx.lineTo(-3,0);cx.lineTo(-6,7);cx.fill();cx.restore();
     text('BOSS',ex,ey-10,'#ff8080','center',7);}}
   text('OR '+save.gold,mx-8,14,'#ffcf4a','right');
-  text(regName(save.region),mx-8,24,'#fff','right');
+  text('Étage '+(save.region+1)+' · '+regName(save.region),mx-8,24,'#fff','right');
   text('Ennemis '+enemies.length,mx-8,34,'#ccc','right');
   if(touchUI){updateTouch();}else for(let i=0;i<save.maxSlots;i++){const id=save.slots[i],x=6+i*26,y=VH-28;
     cx.fillStyle='#000';cx.fillRect(x-1,y-1,24,24);cx.fillStyle='#2e2445';cx.fillRect(x,y,22,22);
@@ -1253,7 +1273,7 @@ function hud(){
   if(portal&&state==='play')text(T>portal.ready&&!drops.length?'Le portail est ouvert ! Entre dedans.':'Ramassage du butin…',VW/2,60,'#c8b0ff','center');
   if(joy.on){cx.globalAlpha=.55;cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(joy.ox,joy.oy,joy.R,0,7);cx.stroke();
     cx.fillStyle='#fff';cx.beginPath();const[jx,jy]=[joy.x-joy.ox,joy.y-joy.oy],d=Math.hypot(jx,jy),k=d>joy.R?joy.R/d:1;cx.arc(joy.ox+jx*k,joy.oy+jy*k,13,0,7);cx.fill();cx.globalAlpha=1;}
-  if(banner>0){cx.globalAlpha=Math.min(1,banner);const dkk=darkness();if(isLordRegion(save.region))text('⚠ ANTRE DU SEIGNEUR — ennemis enragés !',VW/2,82,'#ff4040','center',10);text(regName(save.region),VW/2,100,dkk<.5?'#ffd040':'#c0101e','center',20);text((dkk<.5?'Trouve et bats le boss ':'Abats le boss ')+bossDir()+' — explore la carte',VW/2,120,'#f0e8d8','center',9);cx.globalAlpha=1;}
+  if(banner>0){cx.globalAlpha=Math.min(1,banner);const dkk=darkness();if(isLordRegion(save.region))text('⚠ ANTRE DU SEIGNEUR — ennemis enragés !',VW/2,82,'#ff4040','center',10);text('Étage '+(save.region+1)+' — '+regName(save.region),VW/2,100,dkk<.5?'#ffd040':'#c0101e','center',18);text((dkk<.5?'Trouve et bats le boss ':'Abats le boss ')+bossDir()+' — explore la carte',VW/2,120,'#f0e8d8','center',9);cx.globalAlpha=1;}
 }
 
 function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;pollPad();
@@ -1271,7 +1291,7 @@ function openCamp(msg){applyTheme();
   const st=stats(),R=RACES[save.look.race];
   $('#campGold').textContent=save.gold+' or';
   $('#msg').textContent=msg||'';
-  $('#campStats').innerHTML=`<b>${save.look.name}</b> — ${R.name}<br>Niveau ${save.lvl} (${save.xp}/${xpNeed(save.lvl)} XP)<br>PV ${st.hp} · PM ${st.mp}<br>ATQ ${st.atk} · DEF ${st.def}<br>VIT ${Math.round(st.spd*100)}%<br>Potions ${save.potions}<br>Régions libérées : ${save.best}<br><small>${R.passive}</small>`;
+  $('#campStats').innerHTML=`<b>${save.look.name}</b> — ${R.name}<br>Niveau ${save.lvl} (${save.xp}/${xpNeed(save.lvl)} XP)<br>PV ${st.hp} · PM ${st.mp}<br>ATQ ${st.atk} · DEF ${st.def}<br>VIT ${Math.round(st.spd*100)}%<br>Potions ${save.potions}<br>Étages terminés : ${save.best}<br><small>${R.passive}</small>`;
   renderGear();
   document.querySelectorAll('.tabs [data-tab]').forEach(b=>{const on=b.dataset.tab===campTab;b.classList.toggle('sel',on);b.setAttribute('aria-selected',on)});
   document.querySelectorAll('#sCamp .tab').forEach(t=>t.hidden=t.id!=='t-'+campTab);
@@ -1302,7 +1322,8 @@ function openCamp(msg){applyTheme();
     if(slot>=0)b.classList.add('sel');
     b.onclick=()=>{if(slot>=0)save.slots.splice(slot,1);else if(save.slots.length<save.maxSlots)save.slots.push(id);else{save.slots.shift();save.slots.push(id)}openCamp();};
     cs.appendChild(b);});
-  $('#bGo').textContent=P?'Reprendre l\'aventure ▶':`Partir — ${regName(save.region)} ▶`;
+  renderFloor();
+  $('#bGo').textContent=P?`Reprendre l'étage ${save.region+1} ▶`:`Partir — Étage ${save.region+1} ▶`;
 }
 /* Icône d'objet : le sprite de l'objet seul, recadré */
 const iconCache={};
@@ -1358,6 +1379,18 @@ function showLoot(it){
   L.classList.remove('pop');void L.offsetWidth;L.classList.add('pop');
 }
 $('#bGo').onclick=()=>startPlay(!P);
+/* ---- étages : le dernier par défaut, les étages terminés peuvent être rejoués ---- */
+function renderFloor(){
+  const f=save.region,last=save.best,done=f<last;
+  $('#fCard').innerHTML=`<div class="fnum">Étage ${f+1}</div><div class="fname">${regName(f)}</div>
+    <div class="fstate ${done?'ok':'new'}">${done?'✓ Terminé — rejouable':'★ Nouvel étage'}${isLordRegion(f)?' · ⚠ Seigneur':''}</div>
+    <div class="fsub">Étages terminés : ${last}</div>`;
+  $('#fPrev').disabled=f<=0;$('#fNext').disabled=f>=last;$('#fLast').disabled=f===last;
+}
+function pickFloor(f){f=clamp(f,0,save.best);if(f===save.region)return;save.region=f;P=null;buildRegion();store();openCamp(`Étage ${f+1} sélectionné : ${regName(f)}`);}
+$('#fPrev').onclick=()=>pickFloor(save.region-1);
+$('#fNext').onclick=()=>pickFloor(save.region+1);
+$('#fLast').onclick=()=>pickFloor(save.best);
 $('#bNew').onclick=()=>{if(confirm('Effacer ton héros et en créer un nouveau ?')){save=null;P=null;try{localStorage.removeItem(KEY)}catch(e){}applyTheme();show('sCreate');renderCreator();state='menu'}};
 
 /* ================= DÉMARRAGE ================= */
