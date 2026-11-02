@@ -680,7 +680,8 @@ function stats(s=save){
     atk:Math.round(rm('matk',.08)*(1+.1*rb('atk'))*(R.atk+l*2+(s.weaponLvl||0)*3+b.atk)*(P_('force')?1.15:1)),def:Math.round(rm('mdef',.12)*(1+.15*rb('def'))*(R.def+l+(s.armorLvl||0)*2+b.def)*(P_('fer')?1.2:1)*(R.defM||1)),
     spd:R.spd*(1+b.spd)*(P_('celerite')?1.12:1)*(1+.06*rb('spd'))*rm('mspd',.05)*(s===save?1+IP('spd'):1)};
 }
-const xpNeed=l=>20+l*15;
+// XP demandée : de plus en plus grande à chaque niveau (croissance accélérée)
+const xpNeed=l=>Math.round((20+l*15)*(1+.06*(l-1)+.0015*(l-1)**2));
 
 /* ================= SPRITES LPC : RECOLORATION + ASSEMBLAGE ================= */
 const hexInt=h=>parseInt(h.replace('#',''),16);
