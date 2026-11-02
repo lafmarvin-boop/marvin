@@ -184,7 +184,7 @@ footer a{color:#c8c0d8}
         <div class="btns" style="justify-content:center"><button id="fLast">⏭ Dernier étage</button></div>
         </div>
         <div id="expBox" hidden>
-          <p class="edesc">Ton héros part seul : il cherche les ennemis, se bat, ouvre les coffres, ramasse le butin, puis prend le portail vers l'étage suivant. L'expédition continue jusqu'à ce qu'il tombe. Tout le butin est gardé, sans perte d'or.</p>
+          <p class="edesc">Ton héros part seul : il cherche les ennemis, se bat, ouvre les coffres, ramasse le butin, puis prend le portail vers l'étage suivant. L'expédition continue jusqu'à ce qu'il tombe. Tout le butin est gardé, sans perte d'or.<br><b style="color:#ffcf4a">Or et XP réduits à 40 %. Les trésors du Seigneur (étages 10, 20…) sont réservés à l'Aventure.</b></p>
           <div class="fsel"><button id="ePrev">◀</button><div class="fcard" id="eCard"></div><button id="eNext">▶</button></div>
           <div class="btns" style="justify-content:center"><button id="eSpeed">Vitesse x1</button></div>
           <div class="fsub" id="eBest" style="text-align:center"></div>
@@ -865,14 +865,17 @@ function kill(e){if(AUTO)AUTO.kills++;
   if(D.split)for(let i=0;i<2;i++){const s_=addEnemy('slime',e.x+rnd(-12,12),e.y+rnd(-8,8),1+.28*ri);s_.kx=rnd(-120,120);s_.ky=rnd(-120,120)}
   const dk=darkness();if(dk<.2){fx(e.x,e.y-12,'#ffffff',14,90);fx(e.x,e.y-12,'#ffe070',8,50)}
   else{gore(e.x,e.y-12*e.sc,Math.round((D.boss?80:30)*dk));if(e.D.ai!=='ghost')bloodStamp(ground.getContext('2d'),e.x,e.y,(D.boss?26:8+e.r*.6)*dk);}
-  gainXp(Math.round(D.xp*(1+.25*ri)*bon*(hasP('erudit')?1.25:1)));
-  const g=Math.round(rnd(D.gold[0],D.gold[1])*(1+.2*ri)*bon*(hasP('fortune')?1.25:1)),coins=Math.min(8,Math.ceil(g/4));
+  const expM=AUTO?EXP_GAIN:1;   // expédition : gains réduits
+  gainXp(Math.max(1,Math.round(D.xp*(1+.25*ri)*bon*(hasP('erudit')?1.25:1)*expM)));
+  const g=Math.max(1,Math.round(rnd(D.gold[0],D.gold[1])*(1+.2*ri)*bon*(hasP('fortune')?1.25:1)*expM)),coins=Math.min(8,Math.ceil(g/4));
   for(let i=0;i<coins;i++)drops.push({x:e.x,y:e.y,z:0,vz:rnd(80,140),vx:rnd(-50,50),vy:rnd(-50,50),k:'gold',v:Math.ceil(g/coins)});
   if(Math.random()<(D.boss?1:.07))drops.push({x:e.x,y:e.y,z:0,vz:120,vx:rnd(-30,30),vy:rnd(-30,30),k:'potion'});
   if(D.boss){bossRef=null;vacuum=true;portal={x:e.x,y:e.y,ready:T+2.5};
-    const bcs=e.lord?[{k:'chest',x:e.x+44,y:e.y,open:false,boss:1,lord:1},{k:'chest',x:e.x-44,y:e.y,open:false,boss:1,lord:1},{k:'chest',x:e.x,y:e.y+40,open:false,boss:1,lord:1}]:[{k:'chest',x:e.x+40,y:e.y,open:false,boss:1}];
+    const lordLoot=e.lord&&!AUTO;   // trésors du Seigneur : réservés à l'Aventure
+    const bcs=lordLoot?[{k:'chest',x:e.x+44,y:e.y,open:false,boss:1,lord:1},{k:'chest',x:e.x-44,y:e.y,open:false,boss:1,lord:1},{k:'chest',x:e.x,y:e.y+40,open:false,boss:1,lord:1}]:[{k:'chest',x:e.x+40,y:e.y,open:false,boss:1}];
     bcs.forEach((bc,i)=>{objs.push(bc);setTimeout(()=>{if(!bc.open)openChest(bc)},800+i*400)});
-    if(e.lord){for(let i=0;i<16;i++)drops.push({x:e.x,y:e.y,z:0,vz:rnd(80,160),vx:rnd(-80,80),vy:rnd(-80,80),k:'gold',v:Math.round(20*(1+.2*ri))});txt(e.x,e.y-80,'SEIGNEUR VAINCU !','#ffb020');}
+    if(e.lord&&AUTO)txt(e.x,e.y-96,'Trésors du Seigneur : seulement en Aventure','#ffcf4a');
+    if(lordLoot){for(let i=0;i<16;i++)drops.push({x:e.x,y:e.y,z:0,vz:rnd(80,160),vx:rnd(-80,80),vy:rnd(-80,80),k:'gold',v:Math.round(20*(1+.2*ri))});txt(e.x,e.y-80,'SEIGNEUR VAINCU !','#ffb020');}
     txt(e.x,e.y-60,darkness()<.4?'BOSS VAINCU !':'BOSS ABATTU !',darkness()<.4?'#ffcf4a':'#ff3040');}
 }
 function gainXp(v){
@@ -936,7 +939,7 @@ function interact(){
 }
 function openChest(o){
   o.open=true;const ri=save.region;fx(o.x,o.y-14,'#ffcf4a',24,80);
-  const g=Math.round(rnd(12,25)*(1+.3*ri));for(let i=0;i<5;i++)drops.push({x:o.x,y:o.y+6,z:10,vz:rnd(80,150),vx:rnd(-60,60),vy:rnd(10,60),k:'gold',v:Math.ceil(g/5)});
+  const g=Math.max(1,Math.round(rnd(12,25)*(1+.3*ri)*(AUTO?EXP_GAIN:1)));for(let i=0;i<5;i++)drops.push({x:o.x,y:o.y+6,z:10,vz:rnd(80,150),vx:rnd(-60,60),vy:rnd(10,60),k:'gold',v:Math.ceil(g/5)});
   if(Math.random()<.4)drops.push({x:o.x,y:o.y+8,z:10,vz:140,vx:rnd(-30,30),vy:30,k:'potion'});
   if(o.lord){const it=makeItem(pick(SLOT_ORDER),rollRarity([0,0,30,70]));if(gainItem(it))txt(o.x,o.y-52,it.n+' !',RAR[it.r].c);}
   if(o.boss||Math.random()<.15){const it=makeItem(pick(SLOT_ORDER),rollRarity(o.boss?[0,50,38,12]:[75,25,0,0]));
@@ -1397,6 +1400,7 @@ function showLoot(it){
 $('#bGo').onclick=()=>{if(gameMode==='exp')startExpedition();else startPlay(!P)};
 /* ---- étages : le dernier par défaut, les étages terminés peuvent être rejoués ---- */
 /* =============== MODE EXPÉDITION (automatique) =============== */
+const EXP_GAIN=.4;
 let gameMode='adv',expStart=0,AUTO=null,simSpeed=1;
 $('#mAdv').onclick=()=>{gameMode='adv';openCamp()};
 /* points de reprise : étage 1, puis 10, 20, 30… dès que leur boss est vaincu en expédition */
