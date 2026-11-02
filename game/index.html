@@ -345,7 +345,9 @@ const regPool=ri=>{const R=REGIONS[ri%3],v=Math.floor(ri/3);return[...R.pool,...
 const isLordRegion=ri=>ri%10===9;   // toutes les 10 régions : le Seigneur
 const LORD={orcboss:'Grokk le Fléau',pumpking:'Roi Citrouille Éternel',minotaur:'Minotaure Primordial'};
 let LIQ='water';
-const regName=ri=>{const R=REGIONS[ri%3],d=Math.min(1,ri/DARK_FULL);return R.names[d<.34?0:d<.67?1:2]};
+let DUNGEON=false;
+const dungeonName=ri=>{const d=Math.min(1,ri/DARK_FULL);return['Cachots oubliés','Salles effondrées','Crypte du roi déchu'][d<.34?0:d<.67?1:2]};
+const regName=ri=>{if(DUNGEON&&AUTO)return dungeonName(ri);const R=REGIONS[ri%3],d=Math.min(1,ri/DARK_FULL);return R.names[d<.34?0:d<.67?1:2]};
 const REGIONS=[
   {names:["Prairie d'Émeraude",'Plaine des Corbeaux','Plaine des Pendus'],floor:'grass',patch:'dirt',liquid:'water',deco:'round',pool:['slime','bee','snake','goblin'],pool1:['rat','rabbit','boar','worm'],pool2:['lizard','redslime','ram','pig','flower'],boss:'orcboss',bg:'#2c3a22',grade:'#7a6470',night:.62,gore:1},
   {names:['Marais Brumeux','Marais Hanté','Marais des Noyés'],floor:'grass',patch:'dirt2',liquid:'brackish',deco:'pine',pool:['zombie','ghost','bat','wolf','eyeball'],pool1:['bigworm','jack','mouse','deadguard'],pool2:['vampbat','alpha','necro','franken'],boss:'pumpking',bg:'#1d2a24',grade:'#4e6a62',night:.74,gore:1.3,fog:1},
@@ -619,6 +621,7 @@ const idx=(x,y)=>y*MW+x;
 function buildRegion(){
   const ri=save.region;REG=REGIONS[ri%3];const R=rng(ri*7919+11);
   LIQ=darkness()>=.5?'lava':REG.liquid;   // zones sombres : l'eau devient de la lave
+  DUNGEON=!!AUTO;if(DUNGEON){LIQ=darkness()>=.5?'lava':'hole';buildDungeon(ri,R);return;}
   // cartes plus grandes à chaque région (max 100 x 72 tuiles)
   MW=Math.min(100,72+ri*6);MH=Math.min(72,50+ri*4);terr=new Uint8Array(MW*MH);solid=new Uint8Array(MW*MH);objs=[];
   const clear=new Uint8Array(MW*MH);
@@ -743,6 +746,93 @@ function goreDecor(g,R,dk){
     const X=x*TS+R()*32,Y=y*TS+R()*32,k=R();
     if(k<.45)bloodStamp(g,X,Y,3+R()*8,R);else if(k<.75)boneAt(g,Math.round(X),Math.round(Y),R);else if(k<.9){skullAt(g,Math.round(X),Math.round(Y));if(R()<.6)bloodStamp(g,X+2,Y+6,3,R)}
     else{for(let j=0;j<4;j++)boneAt(g,Math.round(X+R()*12),Math.round(Y+R()*8),R);skullAt(g,Math.round(X+4),Math.round(Y-2));bloodStamp(g,X+6,Y+4,8,R)}}
+}
+/* ================= DONJON DE CHÂTEAU EN RUINE (mode Expédition) ================= */
+function buildDungeon(ri,R){
+  MW=Math.min(96,60+ri*3);MH=Math.min(72,44+ri*2);
+  terr=new Uint8Array(MW*MH);solid=new Uint8Array(MW*MH).fill(1);objs=[];
+  const carve=(x,y)=>{if(x<2||y<2||x>=MW-2||y>=MH-2)return;solid[idx(x,y)]=0;terr[idx(x,y)]=1};
+  const rooms=[],ri_=n=>Math.floor(R()*n);
+  for(let t=0;t<400&&rooms.length<10+Math.min(8,ri);t++){
+    const w=7+ri_(8),h=6+ri_(6),x=3+ri_(MW-w-6),y=3+ri_(MH-h-6);
+    if(rooms.some(r=>x<r.x+r.w+3&&x+w+3>r.x&&y<r.y+r.h+3&&y+h+3>r.y))continue;
+    rooms.push({x,y,w,h,cx:x+(w>>1),cy:y+(h>>1)});}
+  rooms.forEach(r=>{for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++)carve(x,y)});
+  const corridor=(a,b)=>{let x=a.cx,y=a.cy;const wid=R()<.5?2:3,hz=R()<.5;
+    const hx=()=>{while(x!==b.cx){x+=Math.sign(b.cx-x);for(let k=0;k<wid;k++)carve(x,y+k)}};
+    const vy=()=>{while(y!==b.cy){y+=Math.sign(b.cy-y);for(let k=0;k<wid;k++)carve(x+k,y)}};
+    if(hz){hx();vy()}else{vy();hx()}};
+  const linked=[rooms[0]],rest=rooms.slice(1);
+  while(rest.length){let bi=0,bj=0,bd=1e9;rest.forEach((r,i)=>linked.forEach((l,j)=>{const d=Math.hypot(r.cx-l.cx,r.cy-l.cy);if(d<bd){bd=d;bi=i;bj=j}}));corridor(linked[bj],rest[bi]);linked.push(rest.splice(bi,1)[0]);}
+  for(let i=0;i<2+ri_(3);i++)corridor(rooms[ri_(rooms.length)],rooms[ri_(rooms.length)]);
+  const start=rooms[0];let boss=start,bd=0;rooms.forEach(r=>{const d=Math.hypot(r.cx-start.cx,r.cy-start.cy);if(d>bd){bd=d;boss=r}});
+  for(let y=boss.y-1;y<boss.y+boss.h+1;y++)for(let x=boss.x-1;x<boss.x+boss.w+1;x++)carve(x,y);
+  boss.bossRoom=1;spawnPt={x:start.cx,y:start.cy};bossPt={x:boss.cx,y:boss.cy};
+  // ruines : murs effondrés
+  for(let i=0;i<MW*MH/55;i++){const x=2+ri_(MW-4),y=2+ri_(MH-4);if(!solid[idx(x,y)])continue;
+    let n=0;for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]])if(!solid[idx(x+dx,y+dy)])n++;if(n>=2){carve(x,y);terr[idx(x,y)]=1;}}
+  // fosses (ou lave) dans certaines salles
+  const pits=[];
+  rooms.forEach(r=>{if(r===start||r===boss||R()>.5)return;const pw=2+ri_(2),ph=2+ri_(2),px=r.x+2+ri_(Math.max(1,r.w-pw-4)),py=r.y+2+ri_(Math.max(1,r.h-ph-4));
+    for(let y=py;y<py+ph;y++)for(let x=px;x<px+pw;x++){terr[idx(x,y)]=2;solid[idx(x,y)]=1;pits.push(idx(x,y))}});
+  const ok=bfsPath(spawnPt.x,spawnPt.y,bossPt.x,bossPt.y);if(!ok)pits.forEach(k=>{terr[k]=1;solid[k]=0});
+  const free=(x,y)=>!solid[idx(x,y)]&&terr[idx(x,y)]===1&&Math.hypot(x-spawnPt.x,y-spawnPt.y)>3&&Math.hypot(x-bossPt.x,y-bossPt.y)>4;
+  // colonnes (certaines brisées)
+  rooms.forEach(r=>{if(r===start||r.w<10||r.h<8)return;[[r.x+2,r.y+2],[r.x+r.w-3,r.y+2],[r.x+2,r.y+r.h-3],[r.x+r.w-3,r.y+r.h-3]].forEach(([x,y])=>{
+    if(!free(x,y))return;solid[idx(x,y)]=1;objs.push({k:'pillar',v:R()<.35?1:0,x:x*TS+16,y:y*TS+28})})});
+  // torches murales sur les murs face aux salles
+  for(let y=2;y<MH-2;y++)for(let x=2;x<MW-2;x++)if(solid[idx(x,y)]&&terr[idx(x,y)]===0&&!solid[idx(x,y+1)]&&terr[idx(x,y+1)]===1&&(x*7+y*3)%6===0)objs.push({k:'wtorch',x:x*TS+16,y:y*TS+30});
+  // braseros dans la salle du boss
+  [[boss.x,boss.y],[boss.x+boss.w-1,boss.y],[boss.x,boss.y+boss.h-1],[boss.x+boss.w-1,boss.y+boss.h-1]].forEach(([x,y])=>{if(!solid[idx(x,y)]){solid[idx(x,y)]=1;objs.push({k:'torch',x:x*TS+16,y:y*TS+28})}});
+  camp={x:spawnPt.x*TS+16,y:spawnPt.y*TS+16};
+  for(let i=0,n=0,nc=Math.min(10,5+ri);i<500&&n<nc;i++){const r=rooms[ri_(rooms.length)];if(r===start)continue;const x=r.x+1+ri_(r.w-2),y=r.y+1+ri_(r.h-2);
+    if(free(x,y)){objs.push({k:'chest',x:x*TS+16,y:y*TS+24,open:false});solid[idx(x,y)]=1;n++}}
+  DROOMS=rooms;renderDungeon();spawnEnemies();
+}
+let DROOMS=[];
+function brickFace(g,X,Y,R){
+  g.fillStyle='#3e4452';g.fillRect(X,Y,32,32);
+  const cols=['#7e8a96','#76828f','#6b7684','#727e8c'];
+  for(let row=0;row<4;row++){const off=(row%2)*8;for(let bx=-off;bx<32;bx+=16){
+    const x0=Math.max(X,X+bx),x1=Math.min(X+32,X+bx+15),y0=Y+row*8+1;if(x1<=x0)continue;
+    if(R()<.06){g.fillStyle='#24212d';g.fillRect(x0,y0,x1-x0,7);continue}
+    g.fillStyle=cols[Math.floor(R()*4)];g.fillRect(x0,y0,x1-x0,7);g.fillStyle='#98a4ae';g.fillRect(x0,y0,x1-x0,1);g.fillStyle='#5a6474';g.fillRect(x0,y0+6,x1-x0,1);}}
+  if(R()<.35){g.fillStyle='#2a2733';let cx_=X+4+R()*24,cy_=Y+2;for(let i=0;i<10;i++){g.fillRect(Math.round(cx_),Math.round(cy_),1,2);cx_+=R()*2-1;cy_+=2}}
+  if(R()<.4){g.fillStyle='#4f6b48';for(let i=0;i<6;i++)g.fillRect(X+Math.floor(R()*32),Y+26+Math.floor(R()*6),2,1)}
+  g.fillStyle='#24212d';g.fillRect(X,Y,32,3);
+}
+function renderDungeon(){
+  ground=document.createElement('canvas');ground.width=MW*TS;ground.height=MH*TS;const g=ground.getContext('2d');
+  topC=document.createElement('canvas');topC.width=MW*TS;topC.height=MH*TS;
+  const R=rng(save.region*31+9),CF=IMG['tiles/castlefloors.png'],dk=darkness();
+  const flo=(x,y)=>x>=0&&y>=0&&x<MW&&y<MH&&terr[idx(x,y)]>=1;
+  const inBoss=(x,y)=>DROOMS.some(r=>r.bossRoom&&x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h);
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const X=x*TS,Y=y*TS;
+    if(flo(x,y)){if(inBoss(x,y))g.drawImage(CF,96,96,32,32,X,Y,32,32);else g.drawImage(CF,160+Math.floor(R()*4)*32,160+Math.floor(R()*2)*32,32,32,X,Y,32,32);}
+    else{g.fillStyle='#17141e';g.fillRect(X,Y,32,32);g.fillStyle='#201c28';for(let i=0;i<5;i++)g.fillRect(X+Math.floor(R()*30),Y+Math.floor(R()*30),2,2);}}
+  const has2=(x,y)=>x<0||y<0||x>=MW||y>=MH||terr[idx(x,y)]>=2;
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)if(terr[idx(x,y)]===2)autotile(g,IMG['tiles/'+LIQ+'.png'],x,y,has2);
+  // faces de murs, rebords, ombres
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const X=x*TS,Y=y*TS;
+    if(!flo(x,y)){
+      if(flo(x,y+1)){brickFace(g,X,Y,R);if(y>0&&!flo(x,y-1)){brickFace(g,X,Y-32,R);g.fillStyle='#2a2733';g.fillRect(X,Y-32,32,4);g.fillStyle='#4a4656';g.fillRect(X,Y-32,32,1);}
+        g.fillStyle='rgba(0,0,0,.25)';g.fillRect(X,Y+28,32,4);}
+      g.fillStyle='#3a3646';if(flo(x-1,y)&&!flo(x,y+1))g.fillRect(X,Y,3,32);if(flo(x+1,y)&&!flo(x,y+1))g.fillRect(X+29,Y,3,32);if(flo(x,y-1))g.fillRect(X,Y,32,3);}
+    else{if(!flo(x,y-1)){g.fillStyle='rgba(0,0,0,.35)';g.fillRect(X,Y,32,6);g.fillStyle='rgba(0,0,0,.18)';g.fillRect(X,Y+6,32,4)}
+      if(!flo(x-1,y)){g.fillStyle='rgba(0,0,0,.25)';g.fillRect(X,Y,4,32)}
+      // toiles d'araignée dans les coins
+      if(!flo(x,y-1)&&!flo(x-1,y)&&R()<.5){g.strokeStyle='rgba(220,220,230,.45)';g.lineWidth=1;for(let i=1;i<=3;i++){g.beginPath();g.arc(X,Y,i*5,0,Math.PI/2);g.stroke()}g.beginPath();g.moveTo(X,Y);g.lineTo(X+14,Y+14);g.moveTo(X,Y);g.lineTo(X+16,Y+4);g.moveTo(X,Y);g.lineTo(X+4,Y+16);g.stroke()}}}
+  // décombres, fissures, os
+  for(let i=0;i<MW*MH/18;i++){const x=Math.floor(R()*MW),y=Math.floor(R()*MH);if(terr[idx(x,y)]!==1)continue;const X=x*TS,Y=y*TS,k=R();
+    if(k<.35){for(let j=0;j<3;j++){const v=Math.floor(R()*3);g.drawImage(IMG['tiles/rock.png'],32+(v%2)*16,(v>1?16:0),16,16,X+R()*18,Y+R()*18,16,16)}}
+    else if(k<.6){g.strokeStyle='rgba(20,16,26,.8)';g.lineWidth=1;g.beginPath();let cx_=X+R()*32,cy_=Y+R()*32;g.moveTo(cx_,cy_);for(let j=0;j<4;j++){cx_+=R()*14-7;cy_+=R()*14-7;g.lineTo(cx_,cy_)}g.stroke()}
+    else if(k<.8)boneAt(g,Math.round(X+R()*24),Math.round(Y+R()*24),R);else skullAt(g,Math.round(X+R()*24),Math.round(Y+R()*24));}
+  if(dk>0)goreDecor(g,R,dk);
+  g.globalCompositeOperation='multiply';g.fillStyle=mixHex('#d8d0e0','#8a6a74',dk);g.fillRect(0,0,ground.width,ground.height);g.globalCompositeOperation='source-over';
+  mini=document.createElement('canvas');mini.width=MW;mini.height=MH;const gm=mini.getContext('2d');
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){const t=terr[idx(x,y)];gm.fillStyle=t===2?(LIQ==='lava'?'#a0301a':'#2a1a14'):t===1?(solid[idx(x,y)]?'#3a3442':'#6a6472'):'#121018';gm.fillRect(x,y,1,1);}
+  explored=new Uint8Array(MW*MH);miniVis=document.createElement('canvas');miniVis.width=MW;miniVis.height=MH;
+  {const gv=miniVis.getContext('2d');gv.fillStyle='#07070c';gv.fillRect(0,0,MW,MH);}lastTile=-1;
 }
 function renderGround(){
   ground=document.createElement('canvas');ground.width=MW*TS;ground.height=MH*TS;const g=ground.getContext('2d');
@@ -1131,6 +1221,11 @@ function drawMonster(g,e){
 function drawObj(g,o){
   if(o.k==='tree'){g.drawImage(IMG['tiles/trunk.png'],o.v*96,0,96,96,o.x-48,o.y-70,96,96);}
   else if(o.k==='rock'){shadow(g,o.x,o.y+2,15);g.drawImage(IMG['tiles/rock.png'],0,0,32,32,o.x-16,o.y-26,32,32);}
+  else if(o.k==='pillar'){const CW=IMG['tiles/castlewalls.png'];shadow(g,o.x,o.y+2,13);
+    if(o.v){g.drawImage(CW,0,96,32,64,o.x-16,o.y-58,32,64);g.drawImage(IMG['tiles/rock.png'],0,0,32,32,o.x-6,o.y-16,24,24);}
+    else g.drawImage(CW,0,32,32,128,o.x-16,o.y-122,32,128);}
+  else if(o.k==='wtorch'){g.drawImage(IMG['tiles/castle_lightsources.png'],26,4,14,28,o.x-7,o.y-34,14,28);
+    if(Math.random()<.25)parts.push({x:o.x+rnd(-2,2),y:o.y-34,vx:rnd(-4,4),vy:rnd(-24,-10),life:.35,c:Math.random()<.5?'#ffd040':'#ff7020'});}
   else if(o.k==='torch'){g.drawImage(IMG['tiles/castle_lightsources.png'],224,0,64,128,o.x-32,o.y-118,64,128);
     if(Math.random()<.3)parts.push({x:o.x+rnd(-3,3),y:o.y-104,vx:rnd(-6,6),vy:rnd(-30,-10),life:.4,c:Math.random()<.5?'#ffd040':'#ff7020'});}
   else if(o.k==='chest'){g.drawImage(IMG['tiles/chests.png'],o.boss?32:0,o.open?64:32,32,32,o.x-16,o.y-26,32,32);
@@ -1217,11 +1312,12 @@ function render(){
   // brume du marais
   if(REG.fog){g.globalAlpha=.05+.07*darkness();g.fillStyle='#9ab0a8';for(let i=0;i<7;i++){const fx_=((i*173-camX*.6+T*12*(i%2?1:-1))%(VW+200)+VW+200)%(VW+200)-100,fy=((i*97-camY*.6)%(VH+80)+VH+80)%(VH+80)-40;g.beginPath();g.ellipse(fx_,fy,90,22,0,0,7);g.fill();}g.globalAlpha=1;}
   // ténèbres : lumière autour du héros, torches, feu, projectiles, lave
-  if(REG.night*darkness()>.02){if(!dark){dark=document.createElement('canvas');dark.width=VW;dark.height=VH}
-    const d=dark.getContext('2d');d.globalCompositeOperation='source-over';d.fillStyle='rgba(6,1,4,'+(REG.night*darkness())+')';d.fillRect(0,0,VW,VH);d.globalCompositeOperation='destination-out';
+  const nightA=DUNGEON?.5+.36*darkness():REG.night*darkness();
+  if(nightA>.02){if(!dark){dark=document.createElement('canvas');dark.width=VW;dark.height=VH}
+    const d=dark.getContext('2d');d.globalCompositeOperation='source-over';d.fillStyle='rgba(6,1,4,'+nightA+')';d.fillRect(0,0,VW,VH);d.globalCompositeOperation='destination-out';
     const hole=(x,y,r)=>{const gr=d.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,'rgba(0,0,0,1)');gr.addColorStop(.6,'rgba(0,0,0,.8)');gr.addColorStop(1,'rgba(0,0,0,0)');d.fillStyle=gr;d.beginPath();d.arc(x,y,r,0,7);d.fill();};
     hole(P.x-ox,P.y-20-oy,150+Math.sin(T*8)*3);
-    objs.forEach(o=>{if(o.k==='torch')hole(o.x-ox,o.y-100-oy,90+Math.sin(T*9+o.x)*4)});hole(camp.x-ox,camp.y-oy,110);
+    objs.forEach(o=>{if(o.k==='torch')hole(o.x-ox,o.y-100-oy,90+Math.sin(T*9+o.x)*4);else if(o.k==='wtorch'&&Math.abs(o.x-ox-VW/2)<VW&&Math.abs(o.y-oy-VH/2)<VH)hole(o.x-ox,o.y-30-oy,72+Math.sin(T*11+o.x)*4)});hole(camp.x-ox,camp.y-oy,110);
     proj.forEach(p=>hole(p.x-ox,p.y-oy,40));if(portal)hole(portal.x-ox,portal.y-oy,80);
     if(LIQ==='lava'){let n=0;for(let ty=Math.floor(oy/TS);ty<Math.min(MH,(oy+VH)/TS+1)&&n<24;ty+=2)for(let tx=Math.floor(ox/TS);tx<Math.min(MW,(ox+VW)/TS+1)&&n<24;tx+=2)if(terr[idx(tx,ty)]===2){hole(tx*TS+16-ox,ty*TS+16-oy,46);n++}}
     g.drawImage(dark,0,0);}
@@ -1502,7 +1598,7 @@ function renderFloor(){
   $('#mAdv').classList.toggle('sel',gameMode==='adv');$('#mExp').classList.toggle('sel',gameMode==='exp');
   $('#advBox').hidden=gameMode!=='adv';$('#expBox').hidden=gameMode!=='exp';
   if(gameMode==='exp'){const L=expCheckpoints();if(!L.includes(expStart))expStart=L[L.length-1];
-    $('#eCard').innerHTML=`<div class="fnum">Départ : étage ${expStart+1}</div><div class="fname">${regName(expStart)}</div><div class="fsub">Points de reprise : ${L.map(f=>f+1).join(', ')}</div><div class="fsub">Bats le boss de l'étage ${(Math.floor(((save.expTop??-1)+1)/10)+1)*10} pour débloquer le suivant</div>`;
+    $('#eCard').innerHTML=`<div class="fnum">Départ : étage ${expStart+1}</div><div class="fname">${dungeonName(expStart)}</div><div class="fsub">Points de reprise : ${L.map(f=>f+1).join(', ')}</div><div class="fsub">Bats le boss de l'étage ${(Math.floor(((save.expTop??-1)+1)/10)+1)*10} pour débloquer le suivant</div>`;
     $('#ePrev').disabled=L.indexOf(expStart)<=0;$('#eNext').disabled=L.indexOf(expStart)>=L.length-1;$('#eSpeed').textContent='Vitesse x'+simSpeed;
     $('#eBest').textContent=save.bestExp?`Record d'expédition : étage ${save.bestExp+1}`:'';
     $('#bGo').textContent=`Lancer l'expédition — étage ${expStart+1} ▶`;return;}

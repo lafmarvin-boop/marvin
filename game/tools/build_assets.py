@@ -215,7 +215,7 @@ json.dump(manifest, open(f'{OUT}/char/manifest.json', 'w'), separators=(',', ':'
 # Base assets : tuiles + monstres
 os.makedirs(f'{OUT}/tiles', exist_ok=True); os.makedirs(f'{OUT}/monsters', exist_ok=True)
 for t in ['grass', 'grassalt', 'dirt', 'dirt2', 'water', 'watergrass', 'brackish', 'treetop', 'trunk', 'rock', 'chests',
-          'castlefloors', 'castlefloors_outside', 'lava', 'lavarock', 'hole', 'signs', 'barrel', 'castle_lightsources', 'cement']:
+          'castlefloors', 'castlefloors_outside', 'castlewalls', 'lava', 'lavarock', 'hole', 'signs', 'barrel', 'castle_lightsources', 'cement']:
     shutil.copy(f'{BASE}/tiles/{t}.png', f'{OUT}/tiles/{t}.png')
 for m in ['slime', 'bat', 'snake', 'bee', 'eyeball', 'ghost', 'pumpking', 'man_eater_flower', 'small_worm', 'big_worm']:
     shutil.copy(f'{BASE}/sprites/monsters/{m}.png', f'{OUT}/monsters/{m}.png')
