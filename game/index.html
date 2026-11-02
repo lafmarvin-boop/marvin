@@ -2116,7 +2116,7 @@ function autoPilot(dt){
   const pt=(x,y)=>[clamp(Math.floor(x/TS),1,MW-2),clamp(Math.floor(y/TS),1,MH-2)];
   let tgt=null;
   if(portal&&portalOpen())tgt={x:portal.x,y:portal.y,k:'portal'};
-  else if(drops.length){const d=drops.reduce((a,b)=>Math.hypot(a.x-P.x,a.y-P.y)<Math.hypot(b.x-P.x,b.y-P.y)?a:b);tgt={x:d.x,y:d.y,k:'drop'}}
+  else if(drops.length&&!(A.rift&&enemies.length)){const d=drops.reduce((a,b)=>Math.hypot(a.x-P.x,a.y-P.y)<Math.hypot(b.x-P.x,b.y-P.y)?a:b);tgt={x:d.x,y:d.y,k:'drop'}}
   else{
     // un ennemi proche n'est jamais ignoré (il pourrait nous frapper de loin)
     const banned=o=>o._banT>A.t;
@@ -2136,7 +2136,7 @@ function autoPilot(dt){
   if(A.tgtT>12&&tgt.k!=='portal'&&tgt!==bossRef&&d>110){tgt._banT=A.t+15;A.tgt=null;return[0,0]}   // difficile à atteindre : on revient plus tard
   if(tgt.D&&d<110)A.tgtT=0;
   // en danger sans potion : on recule pour se reposer
-  if(tgt.D&&P.hp<st.hp*.25&&!save.potions&&!tgt.D.boss){const ux=(P.x-tgt.x)/(d||1),uy=(P.y-tgt.y)/(d||1);return[ux,uy];}
+  if(!A.rift&&tgt.D&&P.hp<st.hp*.25&&!save.potions&&!tgt.D.boss){const ux=(P.x-tgt.x)/(d||1),uy=(P.y-tgt.y)/(d||1);return[ux,uy];}
   if(d<26&&tgt.k!=='portal')return[0,0];
   if(d<40)return[(tgt.x-P.x)/d,(tgt.y-P.y)/d];
   A.pathT-=dt;
@@ -2163,7 +2163,7 @@ function buildArena(f){
   for(let x=2;x<MW-2;x++)for(let y=1;y<MH-2;y++)if(solid[idx(x,y)]&&!solid[idx(x,y+1)]&&terr[idx(x,y+1)]===1&&x%4===1)objs.push({k:'wtorch',x:x*TS+16,y:y*TS+30});
   DROOMS=[{x:1,y:1,w:MW-2,h:MH-2,bossRoom:f%10===9}];renderDungeon();
   enemies=[];proj=[];parts=[];texts=[];drops=[];portal=null;vacuum=false;bossRef=null;
-  const m=1+.28*f,boss=f%10===9,pool=regPool(f),n=boss?2:Math.min(14,3+Math.floor(f*.7));
+  const m=(1+.28*f)*.85,boss=f%10===9,pool=regPool(f),n=boss?2:Math.min(10,3+Math.floor(f*.45));   // arène : tous attaquent en même temps -> un peu moins forts
   for(let i=0;i<n;i++){const t=pick(pool),x=(cx0-6+((i*37)%13))*TS+16,y=(3+(i%3)*1.5)*TS+16;const e=addEnemy(t,x,y,m);e.aggro=9999;}
   if(boss){bossRef=addEnemy(REGIONS[Math.floor(f/10)%3].boss,bossPt.x*TS+16,bossPt.y*TS+16,m*1.15);bossRef.aggro=9999;
     if(f>=19){bossRef.rage=1;bossRef.atk*=1.15;}}
