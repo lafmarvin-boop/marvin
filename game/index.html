@@ -70,6 +70,7 @@ footer a{color:var(--dim)}
       <div class="row"><b>Corps</b><div class="btns" id="oSex"></div></div>
       <div class="row"><b>Race</b><div class="btns" id="oRace"></div><small id="raceDesc" style="color:var(--dim)"></small></div>
       <div class="row"><b>Peau</b><div class="btns" id="oSkin"></div></div>
+      <div class="row" id="rowBeard"><b>Barbe</b><div class="btns" id="oBeard"></div></div>
       <div class="row"><b>Coiffure</b><div class="btns" id="oHairS"></div></div>
       <div class="row"><b>Cheveux</b><div class="btns" id="oHair"></div></div>
       <div class="row"><b>Tunique</b><div class="btns" id="oArmor"></div></div>
@@ -129,17 +130,18 @@ const DIRV=[[0,-1],[-1,0],[0,1],[1,0]]; // haut, gauche, bas, droite (ordre LPC)
 
 /* ================= DONNÉES ================= */
 const RACES={
-  humain:{name:'Humain',hp:100,mp:40,atk:10,def:5,spd:1.0,passive:'Ambitieux : +20% XP et or',head:'human',
+  humain:{name:'Humain',hp:100,mp:40,atk:10,def:5,spd:1.0,passive:'Ambitieux : +20% XP et or',head:'human',sx:1,sy:1,
     skins:['light','amber','olive','taupe','bronze','brown','black']},
-  elfe:{name:'Elfe',hp:85,mp:60,atk:9,def:4,spd:1.15,passive:'Arcane : régénération de mana x1.6',head:'human',
+  elfe:{name:'Elfe',hp:85,mp:60,atk:9,def:4,spd:1.15,passive:'Arcane : régénération de mana x1.6',head:'human',sx:.94,sy:1.06,
     skins:['light','amber','olive','lavender','pale_green','blue']},
-  nain:{name:'Nain',hp:120,mp:30,atk:11,def:8,spd:0.88,passive:'Robuste : -20% dégâts reçus, potions +33%',head:'human',
+  nain:{name:'Nain',hp:120,mp:30,atk:11,def:8,spd:0.88,passive:'Robuste : -20% dégâts reçus, potions +33%',head:'human',sx:1.06,sy:.8,
     skins:['light','amber','olive','taupe','bronze','brown']},
-  orc:{name:'Orc',hp:115,mp:25,atk:13,def:5,spd:0.95,passive:'Brute : +20% dégâts physiques',head:'orc',
+  orc:{name:'Orc',hp:115,mp:25,atk:13,def:5,spd:0.95,passive:'Brute : +20% dégâts physiques',head:'orc',sx:1.25,sy:1.25,
     skins:['green','dark_green','bright_green','pale_green','zombie_green','taupe']},
 };
 const HAIRC=['black','dark_brown','chestnut','light_brown','blonde','platinum','white','redhead','carrot','rose','purple','blue','green'];
 const CLOTH=['leather','brown','red','maroon','blue','navy','green','forest','purple','teal','black','white','gray','yellow'];
+const BEARDS={none:'Aucune',beard_5oclock:'Naissante',beard_trimmed:'Taillée',beard_basic:'Courte',beard_medium:'Moyenne',beard:'Longue',stache_basic:'Moustache',stache_big:'Grosse moustache',stache_handlebar:'Guidon',stache_walrus:'Morse'};
 const HSTYLES={plain:'Court',messy1:'Ébouriffé',shorthawk:'Crête',pixie:'Pixie',bob:'Carré',long:'Long',ponytail:'Queue',none:'Chauve'};
 const WEAPONS={
   epee:{name:'Épée',reach:40,cd:.42,dur:.3,mult:1,desc:'Équilibrée'},
@@ -218,17 +220,19 @@ function compose(layers,weapon){
 }
 function heroLayers(L,eq){
   const f=L.sex==='f',R=RACES[L.race],out=[];
-  out.push([f?'body_female':'body_male',L.skin]);
+  const slim=!f&&L.race==='elfe',musc=!f&&!slim,thin=f||slim;
+  out.push([f?'body_female':slim?'body_teen':'body_muscular',L.skin]);
   out.push(['head_'+R.head+(f?'_female':'_male'),L.skin]);
   if(R.head==='human')out.push(['eyes']);
   if(L.race==='elfe')out.push(['ears_elven',L.skin]);
-  if(L.race==='nain'&&!f)out.push(['beard',L.hair]);
+  if(!f&&L.beard&&L.beard!=='none')out.push([L.beard,L.hair]);
   if(L.hairStyle==='ponytail'){out.push(['hair_ponytail_fg',L.hair]);out.push(['hair_ponytail_bg',L.hair]);}
   else if(L.hairStyle!=='none')out.push(['hair_'+L.hairStyle,L.hair]);
-  out.push([f?'pants_thin':'pants_male',L.pants]);
-  out.push([f?'boots_thin':'boots_male','brown']);
-  if(eq.armorLvl>=3)out.push([f?'plate_female':'plate_male',eq.armorLvl>=6?'gold':'steel']);
-  else out.push([f?'leather_female':'leather_male',L.armor]);
+  out.push([thin?'pants_thin':'pants_male',L.pants]);
+  out.push([thin?'boots_thin':'boots_male','brown']);
+  const tor=f?'_female':slim?'_teen':'_male';
+  if(eq.armorLvl>=3)out.push(['plate'+tor,eq.armorLvl>=6?'gold':'steel']);
+  else if(L.armor!=='none')out.push(['leather'+tor,L.armor]);
   if(eq.cape){out.push(['cape_fg','maroon']);out.push(['cape_bg','maroon']);}
   if(eq.helmet)out.push(['helmet',eq.armorLvl>=6?'gold':'iron']);
   if(L.weapon==='epee'){out.push(['sword_fg']);out.push(['sword_bg']);}
@@ -248,36 +252,38 @@ const SPECS={
 const SPC={};
 function spec(id){return SPC[id]||(SPC[id]=compose(...SPECS[id]));}
 
-function drawChar(g,C,anim,dir,frame,x,y,sc=1){
-  const an=M.anims[anim],row=an.row+(an.dirs>1?dir:0),f=Math.min(frame,an.frames-1);
-  const s=64*sc,dx=Math.round(x-32*sc),dy=Math.round(y-60*sc);
+function drawChar(g,C,anim,dir,frame,x,y,sc=1,syy){
+  const sx=sc,sy=syy||sc,an=M.anims[anim],row=an.row+(an.dirs>1?dir:0),f=Math.min(frame,an.frames-1);
+  const dx=Math.round(x-32*sx),dy=Math.round(y-60*sy);
   const ov=anim==='slash'&&C.atk;
-  if(ov)g.drawImage(C.atk.bg,f*192,dir*192,192,192,dx-64*sc,dy-64*sc,192*sc,192*sc);
-  g.drawImage(C.sheet,f*64,row*64,64,64,dx,dy,s,s);
-  if(ov)g.drawImage(C.atk.fg,f*192,dir*192,192,192,dx-64*sc,dy-64*sc,192*sc,192*sc);
+  if(ov)g.drawImage(C.atk.bg,f*192,dir*192,192,192,dx-64*sx,dy-64*sy,192*sx,192*sy);
+  g.drawImage(C.sheet,f*64,row*64,64,64,dx,dy,64*sx,64*sy);
+  if(ov)g.drawImage(C.atk.fg,f*192,dir*192,192,192,dx-64*sx,dy-64*sy,192*sx,192*sy);
 }
 function shadow(g,x,y,rx){g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(Math.round(x),Math.round(y),rx,rx*.42,0,0,7);g.fill();}
 
 /* ================= CRÉATION ================= */
-let look={name:'Héros',sex:'m',race:'humain',skin:'light',hairStyle:'messy1',hair:'chestnut',armor:'leather',pants:'brown',weapon:'epee'};
+let look={name:'Héros',sex:'m',beard:'beard_trimmed',race:'humain',skin:'light',hairStyle:'messy1',hair:'chestnut',armor:'leather',pants:'brown',weapon:'epee'};
 let pickedSkills=['fireball','heal'],pvDir=2,pvAtk=0,pvChar=null,pvKey='';
 const sw=(mat,p)=>M.palettes[mat][p][3];
 function optRow(el,items,cur,pickf,swmat){
   el.innerHTML='';
   items.forEach(([v,l])=>{const b=document.createElement('button');
-    if(swmat){b.className='sw';b.style.background=sw(swmat,v);b.title=v}else b.textContent=l;
+    if(swmat&&!l){b.className='sw';b.style.background=sw(swmat,v);b.title=v}else b.textContent=l;
     if(v===cur)b.classList.add('sel');b.onclick=()=>{pickf(v);renderCreator()};el.appendChild(b);});
 }
 function renderCreator(){
   const R=RACES[look.race];
   if(!R.skins.includes(look.skin))look.skin=R.skins[0];
   optRow($('#oSex'),[['m','Homme'],['f','Femme']],look.sex,v=>look.sex=v);
-  optRow($('#oRace'),Object.entries(RACES).map(([k,r])=>[k,r.name]),look.race,v=>look.race=v);
+  optRow($('#oRace'),Object.entries(RACES).map(([k,r])=>[k,r.name]),look.race,v=>{look.race=v;if(v==='nain'&&look.beard==='none'||v==='nain'&&look.beard==='beard_trimmed')look.beard='beard'});
   $('#raceDesc').textContent=R.passive;
   optRow($('#oSkin'),R.skins.map(c=>[c]),look.skin,v=>look.skin=v,'body');
+  $('#rowBeard').hidden=look.sex!=='m';
+  optRow($('#oBeard'),Object.entries(BEARDS),look.beard,v=>look.beard=v);
   optRow($('#oHairS'),Object.entries(HSTYLES),look.hairStyle,v=>look.hairStyle=v);
   optRow($('#oHair'),HAIRC.map(c=>[c]),look.hair,v=>look.hair=v,'hair');
-  optRow($('#oArmor'),CLOTH.map(c=>[c]),look.armor,v=>look.armor=v,'cloth');
+  optRow($('#oArmor'),[['none','Torse nu'],...CLOTH.map(c=>[c])],look.armor,v=>look.armor=v,'cloth');
   optRow($('#oPants'),CLOTH.map(c=>[c]),look.pants,v=>look.pants=v,'cloth');
   optRow($('#oWeapon'),Object.entries(WEAPONS).map(([k,w])=>[k,w.name+' ('+w.desc+')']),look.weapon,v=>look.weapon=v);
   const sk=$('#oSkills');sk.innerHTML='';
@@ -305,8 +311,9 @@ function animPreview(){
     const C=getChar(L,eq),g=c.getContext('2d');g.imageSmoothingEnabled=false;g.clearRect(0,0,128,128);
     shadow(g,64,112,16);
     const at=(performance.now()-pvAtk)/1000;
-    if(at<.5){const an=C.atkAnim;drawChar(g,C,an,pvDir,Math.floor(at/.5*M.anims[an].frames),64,112,1.6)}
-    else drawChar(g,C,'walk',pvDir,1+Math.floor(t*9)%8,64,112,1.6);
+    const Rr=RACES[L.race],k=1.45;
+    if(at<.5){const an=C.atkAnim;drawChar(g,C,an,pvDir,Math.floor(at/.5*M.anims[an].frames),64,116,k*Rr.sx,k*Rr.sy)}
+    else drawChar(g,C,'walk',pvDir,1+Math.floor(t*9)%8,64,116,k*Rr.sx,k*Rr.sy);
   }
   requestAnimationFrame(animPreview);
 }
@@ -697,7 +704,7 @@ function render(){
   L.push({y:P.y,f:()=>{
     shadow(g,P.x,P.y,10);
     if(P.shield>0){g.strokeStyle='rgba(80,200,255,.7)';g.lineWidth=2;g.beginPath();g.ellipse(P.x,P.y-22,20,26,0,0,7);g.stroke();}
-    if(!(P.inv>0&&Math.floor(T*20)%2)){const[an,d,f]=heroFrame();drawChar(g,heroC,an,d,f,P.x,P.y);}
+    if(!(P.inv>0&&Math.floor(T*20)%2)){const[an,d,f]=heroFrame(),Rr=RACES[save.look.race];drawChar(g,heroC,an,d,f,P.x,P.y,Rr.sx,Rr.sy);}
     if(P.whirl>0){g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=3;g.beginPath();g.ellipse(P.x,P.y-10,64*(1-P.whirl/.35)+8,(64*(1-P.whirl/.35)+8)*.6,0,0,7);g.stroke();}
   }});
   L.sort((a,b)=>a.y-b.y).forEach(o=>o.f());
@@ -794,6 +801,7 @@ Promise.all(Object.keys(ASSETS.files).map(k=>new Promise(r=>{const i=new Image()
   $('#loading').remove();
   renderCreator();
   save=load();
+  if(save&&save.look&&!save.look.beard)save.look.beard=save.look.race==='nain'?'beard':'none';
   if(save&&save.look){buildRegion();openCamp('Bon retour, '+save.look.name+' !');}else{save=null;show('sCreate');}
   requestAnimationFrame(animPreview);
   requestAnimationFrame(loop);
