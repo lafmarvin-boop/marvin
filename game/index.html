@@ -87,9 +87,17 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 .slot.empty{border-style:dashed;opacity:.6}
 .slot .x{position:absolute;top:4px;right:4px;padding:0 6px;font-size:11px}
 @media (max-width:620px){.doll{grid-template-columns:1fr 110px 1fr;gap:6px}.slot{font-size:11px;padding:4px;grid-template-columns:36px 1fr;gap:4px}.slot .ic{width:36px;height:36px}.slot .nm{font-size:11px}}
-#loot{border:4px solid var(--rc);background:#000a;padding:10px;margin:8px 0;box-shadow:0 0 24px var(--rc)}
-#loot .lootT{font-size:22px;font-weight:bold;color:var(--rc);text-align:center;margin-bottom:6px;text-shadow:2px 2px 0 #000}
-#loot.pop{animation:pop .5s ease-out}
+#loot,#fuseBox{border:4px solid var(--rc);background:#000a;padding:10px;margin:8px 0;box-shadow:0 0 24px var(--rc)}
+#fuseBox .lootT,#loot .lootT{font-size:22px;font-weight:bold;color:var(--rc);text-align:center;margin-bottom:6px;text-shadow:2px 2px 0 #000}
+#loot.pop,#fuseBox.pop{animation:pop .5s ease-out}
+.icw{position:relative;display:inline-block;line-height:0}
+.lvb{position:absolute;right:-4px;bottom:-4px;font-size:10px;line-height:1;padding:2px 3px;background:#1a0f08;color:#ffcf4a;border:1px solid var(--rc);border-radius:3px}
+.icw.max .ic{animation:aura 1.6s ease-in-out infinite;box-shadow:0 0 10px var(--rc)}
+@keyframes aura{0%,100%{box-shadow:0 0 6px var(--rc),0 0 0 1px var(--rc)}50%{box-shadow:0 0 18px var(--rc),0 0 6px #fff}}
+@media (prefers-reduced-motion:reduce){.icw.max .ic{animation:none}}
+.item.canfuse{box-shadow:0 0 0 2px #ffcf4a inset,0 0 10px rgba(255,200,60,.5)}
+.fz{color:#8a5208;font-weight:700}
+.fbtn{margin-top:4px;font-size:11px;padding:2px 6px;background:#ffd98a}
 @keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){#loot.pop{animation:none}}
 #touch{position:absolute;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;align-items:center}
@@ -198,6 +206,7 @@ footer a{color:#c8c0d8}
         <button role="tab" data-tab="shop">🧪 Boutique</button>
       </div>
       <div class="tab" id="t-equip" role="tabpanel">
+        <div id="fuseBox" class="lootbox" hidden></div>
         <div class="row"><b>Équipement porté <small>(clique sur un emplacement pour filtrer l'inventaire)</small></b>
           <div class="doll">
             <div class="col" id="dollL"></div>
@@ -429,7 +438,33 @@ function makeItem(s,r){
   for(const [a,v] of Object.entries(SLOTS[s].st))st[a]=a==='spd'?Math.round(v*(1+r)*100)/100:Math.max(1,Math.round(v*k*rnd(.85,1.15)));
   if(r===3)st.mp=(st.mp||0)+10;
   const d=Math.floor(Math.random()*3);
-  return{id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),s,r,d,n:s==='arme'?WDES[save.look.weapon][r][d][0]:DESIGNS[s][r][d][0],st};
+  return{id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),s,r,d,lv:1,st0:{...st},n:s==='arme'?WDES[save.look.weapon][r][d][0]:DESIGNS[s][r][d][0],st};
+}
+/* ===== Évolution des objets : niveau 1 à 10, fusion de 3 objets identiques ===== */
+const LV_MAX=10;
+const lvOf=it=>it.lv||1;
+const itemKey=it=>[it.s,it.r,it.d||0,lvOf(it)].join('|');
+function lvStats(base,lv){const st={};for(const[k,v]of Object.entries(base))st[k]=k==='spd'?Math.round(v*(1+.1*(lv-1))*100)/100:Math.round(v*(1+.35*(lv-1)));return st}
+const lvName=it=>it.n+(lvOf(it)>1?' ★'+lvOf(it):'');
+/* détail visuel par niveau (cumulatif) appliqué à la planche de l'objet */
+const fxCache={};
+function levelFx(src,lv,col,key){
+  if(fxCache[key])return fxCache[key];
+  const c=document.createElement('canvas');c.width=src.width;c.height=src.height;const g=c.getContext('2d');g.drawImage(src,0,0);
+  const W=c.width,H=c.height,id=g.getImageData(0,0,W,H),a=id.data,o=new Uint8ClampedArray(a),C=hexInt(col),cr=C>>16,cg=(C>>8)&255,cb=C&255;
+  const op=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&o[(y*W+x)*4+3]>0;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=(y*W+x)*4;
+    if(o[i+3]){let r=a[i],gg=a[i+1],b=a[i+2];
+      if(lv>=2){const f=1+.035*(lv-1);r*=f;gg*=f;b*=f}                                  // 2 : métal plus brillant
+      if(lv>=3&&!op(x,y-1)){r+=50;gg+=50;b+=50}                                          // 3 : liseré de lumière
+      if(lv>=4){const t=Math.min(.38,.06*(lv-3));r=r*(1-t)+cr*t;gg=gg*(1-t)+cg*t;b=b*(1-t)+cb*t}  // 4 : teinte de la rareté
+      if(lv>=7&&(x+y)%4===0){r+=22;gg+=22;b+=22}                                         // 7 : gravures
+      if(lv>=5&&(x*7+y*13)%(lv>=9?23:37)===0){r=255;gg=255;b=255}                        // 5 : éclats (9 : plus nombreux)
+      a[i]=Math.min(255,r);a[i+1]=Math.min(255,gg);a[i+2]=Math.min(255,b);}
+    else if(lv>=6){let n=op(x-1,y)||op(x+1,y)||op(x,y-1)||op(x,y+1);                    // 6 : contour sombre doré, 8 : contour de la rareté
+      if(n){if(lv>=8){a[i]=cr;a[i+1]=cg;a[i+2]=cb;a[i+3]=lv>=10?255:200}else{a[i]=90;a[i+1]=64;a[i+2]=16;a[i+3]=220}}
+      else if(lv>=9&&(op(x-2,y)||op(x+2,y)||op(x,y-2)||op(x,y+2))){a[i]=cr;a[i+1]=cg;a[i+2]=cb;a[i+3]=lv>=10?150:90}}}  // 9-10 : double halo
+  g.putImageData(id,0,0);return fxCache[key]=c;
 }
 function statTxt(st){return Object.entries(st).map(([k,v])=>'+'+(k==='spd'?Math.round(v*100)+'%':v)+' '+STN[k]).join(' · ')}
 function equippedOf(s){const o={};if(s&&s.eq&&s.inv)for(const [k,id] of Object.entries(s.eq)){const it=s.inv.find(i=>i.id===id);if(it)o[k]=it}return o}
@@ -466,20 +501,24 @@ const onHead=l=>/^(hair_|beard|stache_|helmet)/.test(l);
 function compose(layers,weapon,o={}){
   const c=document.createElement('canvas');c.width=576;c.height=17*64;const g=c.getContext('2d');
   const Ls=layers.filter(Boolean).sort((a,b)=>M.layers[a[0]].z-M.layers[b[0]].z);
-  const put=(gg,[l,p])=>{const src=recolor(l,p);
+  const put=(gg,[l,p,fx])=>{const src=fx?levelFx(recolor(l,p),fx.lv,fx.col,l+'|'+p+'|'+fx.lv):recolor(l,p);
     if(o.orc&&onHead(l)){for(const an of Object.values(M.anims))for(let d=0;d<an.dirs;d++){const y=(an.row+d)*64,dy=an.dirs>1?ORC_DY[d]:3;gg.drawImage(src,0,y,576,64,0,y+dy,576,64)}}
     else gg.drawImage(src,0,0);};
   Ls.forEach(x=>put(g,x));
-  const mt=o.metal||undefined,wm=o.wmodel||{epee:'sword',hache:'axe'}[weapon],atk=wm&&M.oversize[wm+'_atk_fg']?{bg:recolor(wm+'_atk_bg',mt),fg:recolor(wm+'_atk_fg',mt)}:null;
+  const mt=o.metal||undefined,wm=o.wmodel||{epee:'sword',hache:'axe'}[weapon],wf=o.wfx,
+    ov=k=>{const s_=recolor(k,mt);return wf?levelFx(s_,wf.lv,wf.col,k+'|'+mt+'|'+wf.lv):s_},
+    atk=wm&&M.oversize[wm+'_atk_fg']?{bg:ov(wm+'_atk_bg'),fg:ov(wm+'_atk_fg')}:null;
   return{sheet:c,atk,atkAnim:weapon==='lance'?'thrust':'slash'};
 }
 // Muscles : homme = corps de base / athlétique / athlétique élargi ; femme = corps féminin de plus en plus large
 function heroScale(L){const R=RACES[L.race],b=L.build??1;
   const k=L.sex==='f'?[[1,1],[1.06,1.01],[1.12,1.03]][b]:b===2?[1.12,1.03]:[1,1];return[R.sx*k[0],R.sy*k[1]];}
-function heroChar(L,eq){const W=weaponOf(L,equippedOf(eq));return compose(heroLayers(L,eq),L.weapon,{orc:RACES[L.race].head==='orc',metal:W.met,wmodel:W.model});}
+function heroChar(L,eq){const E=equippedOf(eq),W=weaponOf(L,E);return compose(heroLayers(L,eq),L.weapon,{orc:RACES[L.race].head==='orc',metal:W.met,wmodel:W.model,wfx:itemFx(E.arme)});}
+const itemFx=it=>it&&lvOf(it)>1?{lv:lvOf(it),col:RAR[it.r].c}:null;
 function itemLook(it,ctx){
   const des=DESIGNS[it.s]&&DESIGNS[it.s][it.r][it.d||0];if(!des)return[];
-  return des[1].map(([id,p])=>[id.replace('{t}',ctx.thin?'_thin':'_male').replace('{f}',ctx.f?'_female':'_male').replace('{tor}',ctx.tor),p==='$m'?RAR[it.r].metal:p]).filter(([id])=>M.layers[id]);
+  const fx=itemFx(it);
+  return des[1].map(([id,p])=>[id.replace('{t}',ctx.thin?'_thin':'_male').replace('{f}',ctx.f?'_female':'_male').replace('{tor}',ctx.tor),p==='$m'?RAR[it.r].metal:p,fx]).filter(([id])=>M.layers[id]);
 }
 function weaponOf(L,E){
   const it=E.arme;if(!it)return{model:{epee:'sword',hache:'axe',lance:'spear'}[L.weapon]};
@@ -502,7 +541,7 @@ function heroLayers(L,eq){
   if(E.bottes)add(itemLook(E.bottes,ctx));else out.push([thin?'boots_thin':'boots_male','brown']);
   if(E.torse)add(itemLook(E.torse,ctx));else if(L.armor!=='none')out.push(['leather'+tor,L.armor]);
   for(const sl of ['casque','gants','bouclier','cape'])if(E[sl])add(itemLook(E[sl],ctx));
-  const W=weaponOf(L,E);out.push([W.model+'_fg',W.met]);out.push([W.model+'_bg',W.met]);
+  const W=weaponOf(L,E),wfx=itemFx(E.arme);out.push([W.model+'_fg',W.met,wfx]);out.push([W.model+'_bg',W.met,wfx]);
   return out;
 }
 const SPECS={
@@ -590,7 +629,7 @@ $('#iName').oninput=e=>look.name=e.target.value||'Héros';
 $('#bStart').onclick=()=>{save=newSave({...look},pickedSkills,pickedPassive);store();buildRegion();startPlay();};
 $('#bTurn').onclick=()=>pvDir=(pvDir+1)%4;
 $('#bAnim').onclick=()=>pvAtk=performance.now();
-function getChar(L,eq){const k=JSON.stringify([L,Object.values(equippedOf(eq)).map(i=>i.s+i.r+(i.d||0))]);if(k!==pvKey){pvKey=k;pvChar=heroChar(L,eq)}return pvChar;}
+function getChar(L,eq){const k=JSON.stringify([L,Object.values(equippedOf(eq)).map(i=>i.s+i.r+(i.d||0)+'L'+lvOf(i))]);if(k!==pvKey){pvKey=k;pvChar=heroChar(L,eq)}return pvChar;}
 function animPreview(){
   const t=performance.now()/1000;
   for(const id of ['#pv','#pv2','#pv3']){
@@ -603,6 +642,8 @@ function animPreview(){
     const[hx,hy]=heroScale(L),k=1.45;
     if(at<.5){const an=C.atkAnim;drawChar(g,C,an,pvDir,Math.floor(at/.5*M.anims[an].frames),64,116,k*hx,k*hy)}
     else drawChar(g,C,'walk',pvDir,1+Math.floor(t*9)%8,64,116,k*hx,k*hy);
+    if(id!=='#pv')for(const it of Object.values(equippedOf(save)))if(lvOf(it)>=LV_MAX){const c=RAR[it.r].c;g.globalAlpha=.3+.15*Math.sin(t*4);g.strokeStyle=c;g.lineWidth=2;g.beginPath();g.ellipse(64,80,30+3*Math.sin(t*3),44,0,0,7);g.stroke();g.globalAlpha=1;
+      for(let i=0;i<3;i++){const a=t*2+i*2.1+SLOT_ORDER.indexOf(it.s);g.fillStyle=Math.random()<.5?c:'#fff';g.fillRect(64+Math.cos(a)*30,80+Math.sin(a)*44,2,2)}}
   }
   requestAnimationFrame(animPreview);
 }
@@ -1297,6 +1338,10 @@ function render(){
   L.push({y:P.y,f:()=>{
     shadow(g,P.x,P.y,10);
     if(P.shield>0){g.strokeStyle='rgba(80,200,255,.7)';g.lineWidth=2;g.beginPath();g.ellipse(P.x,P.y-22,20,26,0,0,7);g.stroke();}
+    for(const it of Object.values(equippedOf(save)))if(lvOf(it)>=LV_MAX){   // aura des objets niveau 10
+      const c=RAR[it.r].c,yy={casque:-46,torse:-30,gants:-22,jambes:-14,bottes:-4,bouclier:-24,cape:-30,arme:-28}[it.s]||-24;
+      if(Math.random()<.5)parts.push({x:P.x+rnd(-14,14),y:P.y+yy+rnd(-6,6),vx:rnd(-8,8),vy:rnd(-30,-12),life:.7,c:Math.random()<.6?c:'#ffffff'});
+      g.globalAlpha=.22+.12*Math.sin(T*4+yy);const gr=g.createRadialGradient(P.x,P.y+yy,1,P.x,P.y+yy,20);gr.addColorStop(0,c);gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.beginPath();g.arc(P.x,P.y+yy,20,0,7);g.fill();g.globalAlpha=1;}
     if(Object.values(equippedOf(save)).some(i=>i.r===3)&&Math.random()<.35)parts.push({x:P.x+rnd(-12,12),y:P.y-rnd(4,44),vx:0,vy:-18,life:.6,c:Math.random()<.5?'#ffcf4a':'#fff3b0'});
     if(!(P.inv>0&&Math.floor(T*20)%2)){const[an,d,f]=heroFrame(),[hx,hy]=heroScale(save.look);drawBloodyHero(g,an,d,f,hx,hy);}
     if(P.whirl>0){g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=3;g.beginPath();g.ellipse(P.x,P.y-10,64*(1-P.whirl/.35)+8,(64*(1-P.whirl/.35)+8)*.6,0,0,7);g.stroke();}
@@ -1476,23 +1521,33 @@ function openCamp(msg){applyTheme();
 /* Icône d'objet : le sprite de l'objet seul, recadré */
 const iconCache={};
 function itemIcon(it){
-  const L=save.look,key=[it.s,it.r,it.d||0,L.weapon,L.sex].join('|');if(iconCache[key])return iconCache[key];
+  const L=save.look,key=[it.s,it.r,it.d||0,L.weapon,L.sex,lvOf(it)].join('|');if(iconCache[key])return iconCache[key];
   const f=L.sex==='f';
-  const layers=it.s==='arme'?(()=>{const W=weaponOf(L,{arme:it});return[[W.model+'_bg',W.met],[W.model+'_fg',W.met]]})():itemLook(it,{tor:f?'_female':'_male',thin:f,f});
+  const layers=it.s==='arme'?(()=>{const W=weaponOf(L,{arme:it}),fx=itemFx(it);return[[W.model+'_bg',W.met,fx],[W.model+'_fg',W.met,fx]]})():itemLook(it,{tor:f?'_female':'_male',thin:f,f});
   const dir={cape:0,bouclier:1,arme:3}[it.s]??2,row=M.anims.walk.row+dir;
   const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');
-  layers.filter(x=>M.layers[x[0]]).sort((a,b)=>M.layers[a[0]].z-M.layers[b[0]].z).forEach(([l,p])=>g.drawImage(recolor(l,p),0,row*64,64,64,0,0,64,64));
+  layers.filter(x=>M.layers[x[0]]).sort((a,b)=>M.layers[a[0]].z-M.layers[b[0]].z).forEach(([l,p,fx])=>g.drawImage(fx?levelFx(recolor(l,p),fx.lv,fx.col,l+'|'+p+'|'+fx.lv):recolor(l,p),0,row*64,64,64,0,0,64,64));
   const a=g.getImageData(0,0,64,64).data;let x0=64,y0=64,x1=-1,y1=-1;
   for(let y=0;y<64;y++)for(let x=0;x<64;x++)if(a[(y*64+x)*4+3]){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}
   const o=document.createElement('canvas');o.width=o.height=48;const go=o.getContext('2d');go.imageSmoothingEnabled=false;
   if(x1>=0){const w=x1-x0+1,h=y1-y0+1,k=Math.max(1,Math.floor(Math.min(46/w,46/h)*2)/2);go.drawImage(c,x0,y0,w,h,Math.round((48-w*k)/2),Math.round((48-h*k)/2),w*k,h*k);}
   return iconCache[key]=o.toDataURL();
 }
-const iconHTML=it=>`<img class="ic" alt="" src="${itemIcon(it)}" style="border-color:${RAR[it.r].c}">`;
+const iconHTML=it=>`<span class="icw${lvOf(it)>=LV_MAX?' max':''}" style="--rc:${RAR[it.r].c}"><img class="ic" alt="" src="${itemIcon(it)}" style="border-color:${RAR[it.r].c}">${lvOf(it)>1?`<b class="lvb">★${lvOf(it)}</b>`:''}</span>`;
 function itemCard(it,btns){
   const d=document.createElement('div');d.className='item';d.style.borderColor=RAR[it.r].c;
-  d.innerHTML=`<div class="ihead">${iconHTML(it)}<div><h4 style="color:${RAR[it.r].c}">${it.n}</h4><p>${SLOTS[it.s].n} · ${RAR[it.r].n}<br>${statTxt(it.st)}</p></div></div>`;
+  d.innerHTML=`<div class="ihead">${iconHTML(it)}<div><h4 style="color:${RAR[it.r].c}">${lvName(it)}</h4><p>${SLOTS[it.s].n} · ${RAR[it.r].n} · Niv ${lvOf(it)}/${LV_MAX}<br>${statTxt(it.st)}</p></div></div>`;
   const w=document.createElement('div');w.className='btns';btns.forEach(([t,f,dis])=>{const b=document.createElement('button');b.textContent=t;b.disabled=!!dis;b.onclick=f;w.appendChild(b)});d.appendChild(w);return d;
+}
+function fuseGroup(it){const k=itemKey(it);return save.inv.filter(x=>itemKey(x)===k)}
+function fuse(it){
+  const g=fuseGroup(it);if(g.length<3||lvOf(it)>=LV_MAX)return;
+  const eqIds=new Set(Object.values(save.eq));
+  const pickd=[...g.filter(x=>eqIds.has(x.id)),...g.filter(x=>!eqIds.has(x.id))].slice(0,3);   // l'objet porté est gardé en priorité
+  const keep=pickd[0],base=pickd.map(x=>x.st0||x.st).reduce((a,b)=>Object.values(b).reduce((s,v)=>s+v,0)>Object.values(a).reduce((s,v)=>s+v,0)?b:a);
+  keep.lv=lvOf(keep)+1;keep.st0={...base};keep.st=lvStats(base,keep.lv);
+  save.inv=save.inv.filter(x=>x===keep||!pickd.includes(x));heroC=null;
+  openCamp(`Fusion réussie : ${lvName(keep)} (niveau ${keep.lv}/${LV_MAX})`);showLoot(keep,'FUSION !');
 }
 function equip(it){save.eq[it.s]=it.id;heroC=null;openCamp('Équipé : '+it.n);}
 function renderGear(res){
@@ -1501,8 +1556,9 @@ function renderGear(res){
   for(const [col,list] of Object.entries(side)){const el=$('#'+col);el.innerHTML='';
     list.forEach(sl=>{const it=E[sl],d=document.createElement('div');d.className='slot'+(it?'':' empty')+(invFilter===sl?' on':'');
       if(it){d.style.borderColor=invFilter===sl?'':RAR[it.r].c;
-        d.innerHTML=`<button class="x" title="Retirer">✕</button>${iconHTML(it)}<div><div class="lab">${SLOTS[sl].n} · ${RAR[it.r].n}</div><div class="nm" style="color:${RAR[it.r].c}">${it.n}</div><div class="st">${statTxt(it.st)}</div></div>`;
-        d.querySelector('.x').onclick=e=>{e.stopPropagation();delete save.eq[sl];openCamp('Retiré : '+it.n)};}
+        d.innerHTML=`<button class="x" title="Retirer">✕</button>${iconHTML(it)}<div><div class="lab">${SLOTS[sl].n} · ${RAR[it.r].n}</div><div class="nm" style="color:${RAR[it.r].c}">${lvName(it)}</div><div class="st">${statTxt(it.st)}</div></div>`;
+        d.querySelector('.x').onclick=e=>{e.stopPropagation();delete save.eq[sl];openCamp('Retiré : '+it.n)};
+        if(fuseGroup(it).length>=3&&lvOf(it)<LV_MAX){const fb=document.createElement('button');fb.className='fbtn';fb.textContent='⚒ Fusion → ★'+(lvOf(it)+1);fb.onclick=e=>{e.stopPropagation();fuse(it)};d.lastElementChild.appendChild(fb);}}
       else d.innerHTML=`<div class="ic"></div><div><div class="lab">${SLOTS[sl].n}</div><div class="st">Vide</div></div>`;
       d.onclick=()=>{invFilter=invFilter===sl?null:sl;openCamp()};el.appendChild(d);});}
   $('#bAll').hidden=!invFilter;
@@ -1517,12 +1573,18 @@ function renderGear(res){
   if(!bag.length)inv.innerHTML=`<p style="color:var(--dim)">${invFilter?'Aucun objet de ce type.':'Vide.'} Ouvre un coffre !</p>`;
   bag.forEach(it=>{const cur=E[it.s];
     const cmp=cur?' ('+Object.keys({...it.st,...cur.st}).map(k=>{const d=(it.st[k]||0)-(cur.st[k]||0);return d?(d>0?'+':'')+(k==='spd'?Math.round(d*100)+'%':d)+' '+STN[k]:''}).filter(Boolean).join(', ')+')':'';
-    const c=itemCard(it,[['Équiper',()=>equip(it)],[`Vendre ${RAR[it.r].sell} or`,()=>{save.inv=save.inv.filter(x=>x!==it);save.gold+=RAR[it.r].sell;openCamp('Vendu : '+it.n)}]]);
+    const grp=fuseGroup(it),canF=grp.length>=3&&lvOf(it)<LV_MAX,sell=RAR[it.r].sell*lvOf(it);
+    const btns=[['Équiper',()=>equip(it)],[`Vendre ${sell} or`,()=>{save.inv=save.inv.filter(x=>x!==it);save.gold+=sell;openCamp('Vendu : '+lvName(it))}]];
+    if(canF)btns.unshift([`⚒ Fusionner 3 → ★${lvOf(it)+1}`,()=>fuse(it)]);
+    const c=itemCard(it,btns);
+    if(grp.length>1)c.querySelector('p').insertAdjacentHTML('beforeend',`<br><small class="fz">${grp.length} exemplaire${grp.length>1?'s':''} ${lvOf(it)>=LV_MAX?'· niveau max':canF?'· fusion possible !':'· encore '+(3-grp.length)+' pour fusionner'}</small>`);
+    if(canF)c.classList.add('canfuse');
     if(cmp.length>3)c.querySelector('p').insertAdjacentHTML('beforeend',`<br><small>vs équipé${cmp}</small>`);inv.appendChild(c);});
 }
-function showLoot(it){
-  const L=$('#loot');L.hidden=false;L.innerHTML='';L.style.setProperty('--rc',RAR[it.r].c);
-  L.insertAdjacentHTML('beforeend',`<div class="lootT">${RAR[it.r].n} !</div>`);
+function showLoot(it,title){
+  if(title){campTab='equip';}
+  const L=title?$('#fuseBox'):$('#loot');L.hidden=false;L.innerHTML='';L.style.setProperty('--rc',RAR[it.r].c);
+  L.insertAdjacentHTML('beforeend',`<div class="lootT">${title||RAR[it.r].n+' !'}</div>`);
   L.appendChild(itemCard(it,[['Équiper',()=>{L.hidden=true;equip(it)}],['Garder',()=>{L.hidden=true}]]));
   L.classList.remove('pop');void L.offsetWidth;L.classList.add('pop');
 }
@@ -1644,6 +1706,7 @@ Promise.all(Object.keys(ASSETS.files).map(k=>new Promise(r=>{const i=new Image()
   if(save&&save.look&&save.look.build===undefined)save.look.build=1;
   if(save&&save.expHome!==undefined){save.region=save.expHome;delete save.expHome;}
   if(save&&save.look&&!save.passives)save.passives=[];
+  if(save&&save.inv)save.inv.forEach(it=>{if(!it.st0)it.st0={...it.st};if(!it.lv)it.lv=1;});
   if(save&&save.look&&!save.inv){save.inv=[];save.eq={};
     if(save.cape){const it=makeItem('cape',0);save.inv.push(it);save.eq.cape=it.id}
     if(save.helmet){const it=makeItem('casque',0);save.inv.push(it);save.eq.casque=it.id}
