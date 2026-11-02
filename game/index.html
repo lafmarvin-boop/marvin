@@ -70,7 +70,7 @@ footer a{color:var(--dim)}
       <div class="row"><b>Corps</b><div class="btns" id="oSex"></div></div>
       <div class="row"><b>Race</b><div class="btns" id="oRace"></div><small id="raceDesc" style="color:var(--dim)"></small></div>
       <div class="row"><b>Peau</b><div class="btns" id="oSkin"></div></div>
-      <div class="row"><b>Silhouette</b><div class="btns" id="oBuild"></div></div>
+      <div class="row"><b>Muscles</b><div class="btns" id="oBuild"></div></div>
       <div class="row" id="rowBeard"><b>Barbe</b><div class="btns" id="oBeard"></div></div>
       <div class="row"><b>Coiffure</b><div class="btns" id="oHairS"></div></div>
       <div class="row"><b>Cheveux</b><div class="btns" id="oHair"></div></div>
@@ -218,53 +218,17 @@ const onHead=l=>/^(hair_|beard|stache_|helmet)/.test(l);
 function compose(layers,weapon,o={}){
   const c=document.createElement('canvas');c.width=576;c.height=17*64;const g=c.getContext('2d');
   const Ls=layers.filter(Boolean).sort((a,b)=>M.layers[a[0]].z-M.layers[b[0]].z);
-  const torso=l=>/^(body_|pants_|boots_|leather_|plate_)/.test(l);
   const put=(gg,[l,p])=>{const src=recolor(l,p);
     if(o.orc&&onHead(l)){for(const an of Object.values(M.anims))for(let d=0;d<an.dirs;d++){const y=(an.row+d)*64,dy=an.dirs>1?ORC_DY[d]:3;gg.drawImage(src,0,y,576,64,0,y+dy,576,64)}}
     else gg.drawImage(src,0,0);};
-  if(o.curve){ // corps + vêtements déformés à part, puis tête, cheveux, armes par-dessus
-    const b=document.createElement('canvas');b.width=c.width;b.height=c.height;const gb=b.getContext('2d');
-    Ls.filter(x=>torso(x[0])).forEach(x=>put(gb,x));curvify(b,recolor(Ls.find(x=>/^body_/.test(x[0]))[0],Ls.find(x=>/^body_/.test(x[0]))[1]),o.curve);
-    let done=false;Ls.forEach(x=>{if(torso(x[0])){if(!done){g.drawImage(b,0,0);done=true}}else put(g,x)});
-  }else Ls.forEach(x=>put(g,x));
+  Ls.forEach(x=>put(g,x));
   const atk=weapon==='epee'?{bg:recolor('sword_atk_bg'),fg:recolor('sword_atk_fg')}:weapon==='hache'?{bg:recolor('axe_atk_bg'),fg:recolor('axe_atk_fg')}:null;
   return{sheet:c,atk,atkAnim:weapon==='lance'?'thrust':'slash'};
 }
-/* Silhouette féminine : déformation ligne par ligne (poitrine, hanches) sur le sprite assemblé */
-function curvify(c,body,lvl){
-  const g=c.getContext('2d'),W=c.width,id=g.getImageData(0,0,W,c.height),a=id.data,src=new Uint8ClampedArray(a);
-  const bd=body.getContext('2d').getImageData(0,0,W,c.height).data;
-  const amp=lvl>0?{ch:1.05,hp:.95}:{ch:-.22,hp:-.25};
-  const gau=(y,m,s)=>Math.exp(-((y-m)*(y-m))/(2*s*s));
-  for(const [name,an] of Object.entries(M.anims)){if(an.dirs<4)continue;
-    for(let d=0;d<4;d++)for(let f=0;f<an.frames;f++){
-      const ox=f*64,oy=(an.row+d)*64;let top=-1,minx=64,maxx=0;
-      for(let y=0;y<64&&top<0;y++)for(let x=0;x<64;x++)if(bd[((oy+y)*W+ox+x)*4+3]){top=y;break}
-      if(top<0)continue;
-      for(let y=top;y<Math.min(64,top+20);y++)for(let x=0;x<64;x++)if(bd[((oy+y)*W+ox+x)*4+3]){minx=Math.min(minx,x);maxx=Math.max(maxx,x)}
-      const cxm=(minx+maxx+1)/2,face=d===3?1:d===1?-1:0;
-      for(let y=top+3;y<Math.min(64,top+20);y++){
-        const wc=gau(y,top+7.5,2.3)*(d===0?.25:1),wh=gau(y,top+14,2.8);
-        const kc=1+amp.ch*wc,kh=1+amp.hp*wh;if(Math.abs(kc-1)<.02&&Math.abs(kh-1)<.02)continue;
-        const row=(oy+y)*W*4,line=src.subarray(row+ox*4,row+ox*4+256);
-        const CORE=face?7:8;
-        for(let x=0;x<64;x++){
-          const rel=x+.5-cxm,ar=Math.abs(rel);let k=1;
-          if(face===0)k=Math.max(kc,kh)>1?Math.max(kc,kh):Math.min(kc,kh);
-          else k=(rel*face>0?kc:1)*(rel*face<0?kh:1);
-          if(k===1)continue;
-          const di=row+(ox+x)*4,origA=line[x*4+3];
-          if(ar>CORE*Math.max(k,1))continue;               // hors du tronc : on garde (bras, mains)
-          if(ar>CORE&&origA)continue;                      // bras par-dessus le tronc élargi
-          if(k<1&&ar>CORE*k){if(ar<=CORE){a[di+3]=0}continue} // tronc affiné
-          const sx=Math.floor(cxm+rel/k);if(sx<0||sx>63)continue;
-          if(!line[sx*4+3])continue;
-          a[di]=line[sx*4];a[di+1]=line[sx*4+1];a[di+2]=line[sx*4+2];a[di+3]=line[sx*4+3];}
-      }}}
-  g.putImageData(id,0,0);
-}
-function heroScale(L){const R=RACES[L.race],b=L.sex==='m'&&L.build===2?[1.12,1.03]:[1,1];return[R.sx*b[0],R.sy*b[1]];}
-function heroChar(L,eq){return compose(heroLayers(L,eq),L.weapon,{orc:RACES[L.race].head==='orc',curve:L.sex==='f'?(L.build===0?-1:L.build===2?1:0):0});}
+// Muscles : homme = corps de base / athlétique / athlétique élargi ; femme = corps féminin de plus en plus large
+function heroScale(L){const R=RACES[L.race],b=L.build??1;
+  const k=L.sex==='f'?[[1,1],[1.06,1.01],[1.12,1.03]][b]:b===2?[1.12,1.03]:[1,1];return[R.sx*k[0],R.sy*k[1]];}
+function heroChar(L,eq){return compose(heroLayers(L,eq),L.weapon,{orc:RACES[L.race].head==='orc'});}
 function heroLayers(L,eq){
   const f=L.sex==='f',R=RACES[L.race],out=[];
   const b=L.build??1,slim=!f&&L.race==='elfe'&&b<2,thin=f||slim,musc=!f&&!slim&&b>=1;
@@ -327,7 +291,7 @@ function renderCreator(){
   $('#raceDesc').textContent=R.passive;
   optRow($('#oSkin'),R.skins.map(c=>[c]),look.skin,v=>look.skin=v,'body');
   $('#rowBeard').hidden=look.sex!=='m';
-  optRow($('#oBuild'),look.sex==='m'?[[0,'Pas musclé'],[1,'Musclé'],[2,'Très musclé']]:[[0,'Pas féminine'],[1,'Féminine'],[2,'Très féminine']],look.build,v=>look.build=v);
+  optRow($('#oBuild'),look.sex==='m'?[[0,'Pas musclé'],[1,'Musclé'],[2,'Très musclé']]:[[0,'Pas musclée'],[1,'Musclée'],[2,'Très musclée']],look.build,v=>look.build=v);
   optRow($('#oBeard'),Object.entries(BEARDS),look.beard,v=>look.beard=v);
   optRow($('#oHairS'),Object.entries(HSTYLES),look.hairStyle,v=>look.hairStyle=v);
   optRow($('#oHair'),HAIRC.map(c=>[c]),look.hair,v=>look.hair=v,'hair');
