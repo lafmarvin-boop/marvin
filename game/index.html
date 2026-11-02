@@ -870,10 +870,10 @@ function kill(e){if(AUTO)AUTO.kills++;
   const g=Math.max(1,Math.round(rnd(D.gold[0],D.gold[1])*(1+.2*ri)*bon*(hasP('fortune')?1.25:1)*expM)),coins=Math.min(8,Math.ceil(g/4));
   for(let i=0;i<coins;i++)drops.push({x:e.x,y:e.y,z:0,vz:rnd(80,140),vx:rnd(-50,50),vy:rnd(-50,50),k:'gold',v:Math.ceil(g/coins)});
   if(Math.random()<(D.boss?1:.07))drops.push({x:e.x,y:e.y,z:0,vz:120,vx:rnd(-30,30),vy:rnd(-30,30),k:'potion'});
-  if(D.boss){bossRef=null;vacuum=true;portal={x:e.x,y:e.y,ready:T+2.5};
+  if(D.boss){bossRef=null;vacuum=true;portal={x:e.x,y:e.y,ready:T+2.5,born:T};
     const lordLoot=e.lord&&!AUTO;   // trésors du Seigneur : réservés à l'Aventure
-    const bcs=lordLoot?[{k:'chest',x:e.x+44,y:e.y,open:false,boss:1,lord:1},{k:'chest',x:e.x-44,y:e.y,open:false,boss:1,lord:1},{k:'chest',x:e.x,y:e.y+40,open:false,boss:1,lord:1}]:[{k:'chest',x:e.x+40,y:e.y,open:false,boss:1}];
-    bcs.forEach((bc,i)=>{objs.push(bc);setTimeout(()=>{if(!bc.open)openChest(bc)},800+i*400)});
+    const bcs=lordLoot?[{k:'chest',x:e.x+64,y:e.y+18,open:false,boss:1,lord:1},{k:'chest',x:e.x-64,y:e.y+18,open:false,boss:1,lord:1},{k:'chest',x:e.x,y:e.y+56,open:false,boss:1,lord:1}]:[{k:'chest',x:e.x+64,y:e.y+18,open:false,boss:1}];
+    bcs.forEach((bc,i)=>{bc.openAt=T+.8+i*.4;objs.push(bc)});   // ouverture en temps de jeu (fiable en vitesse x4)
     if(e.lord&&AUTO)txt(e.x,e.y-96,'Trésors du Seigneur : seulement en Aventure','#ffcf4a');
     if(lordLoot){for(let i=0;i<16;i++)drops.push({x:e.x,y:e.y,z:0,vz:rnd(80,160),vx:rnd(-80,80),vy:rnd(-80,80),k:'gold',v:Math.round(20*(1+.2*ri))});txt(e.x,e.y-80,'SEIGNEUR VAINCU !','#ffb020');}
     txt(e.x,e.y-60,darkness()<.4?'BOSS VAINCU !':'BOSS ABATTU !',darkness()<.4?'#ffcf4a':'#ff3040');}
@@ -899,7 +899,9 @@ function die(){
   state='dead';P.deadT=0;const lost=Math.floor(save.gold*.3);save.gold-=lost;store();
   setTimeout(()=>{const dk=darkness();$('#ovlT').textContent=dk<.5?'VAINCU…':'TU ES MORT';$('#ovlS').textContent=dk<.5?`Tu perds ${lost} or. Les monstres reviennent. Améliore-toi et réessaie !`:`Les charognards t'arrachent ${lost} or. Les morts se relèvent… Reviens plus fort.`;$('#ovlB').textContent='Retour au camp';$('#ovl').classList.add('on')},900);
 }
-function clearRegion(){
+const portalOpen=()=>portal&&T>portal.ready&&!drops.length&&!objs.some(o=>o.openAt&&!o.open);
+function lootAll(){objs.forEach(o=>{if(o.openAt&&!o.open)openChest(o)});for(const d of drops){if(d.k==='gold')save.gold+=d.v;else if(d.k==='potion')save.potions++}drops=[];}
+function clearRegion(){lootAll();
   if(AUTO){nextExpFloor();return}
   for(const d of drops){if(d.k==='gold')save.gold+=d.v;else if(d.k==='potion')save.potions++}drops=[];
   const was=save.region;if(save.region>=save.best)save.best=save.region+1;save.region=save.best;store();state='clear';
@@ -985,7 +987,8 @@ function update(dt){
     if(hasP('regen'))P.hp=Math.min(st.hp,P.hp+st.hp*.01*dt);
     P.inv-=dt;P.shield-=dt;P.whirl-=dt;
     {const tt=idx(Math.floor(P.x/TS),Math.floor(P.y/TS));if(tt!==lastTile){lastTile=tt;reveal(Math.floor(P.x/TS),Math.floor(P.y/TS));}}
-    if(portal&&T>portal.ready&&!drops.length&&Math.hypot(P.x-portal.x,P.y-portal.y)<22)clearRegion();
+    for(const o of objs)if(o.openAt&&!o.open&&T>=o.openAt)openChest(o);
+    if(portal&&portalOpen()&&Math.hypot(P.x-portal.x,P.y-portal.y)<22)clearRegion();
   }else if(state==='dead'){P.deadT+=dt;}
   // ennemis
   for(const e of enemies){
@@ -1092,6 +1095,34 @@ function darkSprite(k,tint){const kk=k+'|'+darkness()+'|'+(tint||'');if(darkCach
   let src=IMG[k];if(tint){const c=document.createElement('canvas');c.width=src.width;c.height=src.height;const g=c.getContext('2d');g.drawImage(src,0,0);
     g.globalCompositeOperation='multiply';g.fillStyle=tint;g.fillRect(0,0,c.width,c.height);g.globalCompositeOperation='destination-in';g.drawImage(src,0,0);src=c;}
   return darkCache[kk]=darkTint(src)}
+/* Porte des ténèbres : surgit du sol à la mort du boss */
+function drawDarkGate(g,p){
+  const t=T-p.born,rise=clamp(t/1.8,0,1),e=1-Math.pow(1-rise,3),x=Math.round(p.x),y=Math.round(p.y+8),H=64,oy=Math.round(H*(1-e)),open=portalOpen();
+  // sol fissuré + lueur rouge
+  const gl=g.createRadialGradient(x,y,2,x,y,46);gl.addColorStop(0,'rgba(160,0,20,'+(.55*e)+')');gl.addColorStop(1,'rgba(60,0,10,0)');g.fillStyle=gl;g.beginPath();g.ellipse(x,y,46,18,0,0,7);g.fill();
+  g.strokeStyle='rgba(15,0,6,.9)';g.lineWidth=2;for(let i=0;i<9;i++){const a=i/9*Math.PI*2+.3,l=(18+(i*7)%16)*Math.min(1,t*2);g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*l*.6,y+Math.sin(a)*l*.25);g.lineTo(x+Math.cos(a+.2)*l,y+Math.sin(a+.2)*l*.4);g.stroke();}
+  g.fillStyle='rgba(255,40,20,'+(.5+.3*Math.sin(T*6))*e+')';for(let i=0;i<9;i++){const a=i/9*Math.PI*2+.3,l=10+(i*5)%12;g.fillRect(Math.round(x+Math.cos(a)*l),Math.round(y+Math.sin(a)*l*.4),2,1);}
+  // la porte sort du sol (découpe au niveau du sol)
+  g.save();g.beginPath();g.rect(x-40,y-H-30,80,H+30);g.clip();g.translate(0,oy);
+  const arch=(w,top)=>{g.beginPath();g.moveTo(x-w,y);g.lineTo(x-w,y-top);g.arc(x,y-top,w,Math.PI,0);g.lineTo(x+w,y);g.closePath();};
+  // cadre de pierre noire avec cornes
+  g.fillStyle='#16121c';arch(25,44);g.fill();
+  g.fillStyle='#16121c';g.beginPath();g.moveTo(x-22,y-58);g.lineTo(x-34,y-80);g.lineTo(x-14,y-64);g.fill();g.beginPath();g.moveTo(x+22,y-58);g.lineTo(x+34,y-80);g.lineTo(x+14,y-64);g.fill();
+  g.fillStyle='#2c2634';for(let k=0;k<6;k++){g.fillRect(x-25,y-8-k*8,6,6);g.fillRect(x+19,y-8-k*8,6,6);}
+  g.fillStyle='#3c3446';for(let k=0;k<6;k++){g.fillRect(x-25,y-8-k*8,6,1);g.fillRect(x+19,y-8-k*8,6,1);}
+  // crâne au sommet
+  g.fillStyle='#d8cfb8';g.fillRect(x-4,y-72,8,6);g.fillRect(x-3,y-66,6,2);g.fillStyle='#ff2020';g.fillRect(x-3,y-70,2,2);g.fillRect(x+1,y-70,2,2);
+  // runes rouges qui pulsent
+  g.fillStyle='rgba(255,30,30,'+(.45+.45*Math.sin(T*5))+')';for(let k=0;k<5;k++){g.fillRect(x-23,y-12-k*9,2,3);g.fillRect(x+21,y-16-k*9,2,3);}
+  // vide intérieur tourbillonnant
+  arch(17,38);g.save();g.clip();
+  const v=g.createRadialGradient(x,y-26,1,x,y-26,34);v.addColorStop(0,open?'#000':'#100008');v.addColorStop(.5,'#2a0430');v.addColorStop(1,'#5a0018');g.fillStyle=v;g.fillRect(x-20,y-60,40,62);
+  g.lineWidth=2;for(let i=0;i<4;i++){g.strokeStyle=i%2?'rgba(170,20,60,.6)':'rgba(110,30,160,.55)';g.beginPath();const r0=4+i*5;g.arc(x,y-26,r0,T*(2+i*.6)+i,T*(2+i*.6)+i+3.6);g.stroke();}
+  g.restore();g.restore();
+  // fumée sombre et braises
+  if(rise<1&&Math.random()<.6){parts.push({x:x+rnd(-26,26),y:y-rnd(0,4),vx:rnd(-30,30),vy:rnd(-60,-20),g:200,life:.6,c:'#3a2a20',sz:2});camX+=rnd(-1,1)}
+  if(Math.random()<.35)parts.push({x:x+rnd(-14,14),y:y-rnd(10,50)+oy,vx:rnd(-6,6),vy:rnd(-30,-12),life:.9,c:Math.random()<.5?'#1a0a14':'#ff3020'});
+}
 function drawMonster(g,e){
   const D=e.D,im=darkSprite('monsters/'+D.img+'.png',D.tint),sc=e.sc,w=D.fw*sc,h=D.fh*sc;
   const f=Math.floor(T*7+e.ph)%3;
@@ -1145,9 +1176,7 @@ function render(){
   g.drawImage(ground,ox,oy,VW,VH,0,0,VW,VH);
   g.save();g.translate(-ox,-oy);
   // portail
-  if(portal){const r=16+Math.sin(T*4)*2;const gr=g.createRadialGradient(portal.x,portal.y-8,2,portal.x,portal.y-8,r+10);
-    gr.addColorStop(0,'#fff');gr.addColorStop(.4,'#b090ff');gr.addColorStop(1,'rgba(90,40,200,0)');g.fillStyle=gr;g.beginPath();g.ellipse(portal.x,portal.y-8,r+10,r+14,0,0,7);g.fill();
-    if(Math.random()<.5)parts.push({x:portal.x+rnd(-14,14),y:portal.y+rnd(-20,4),vx:0,vy:-30,life:.5,c:'#d8c8ff'});}
+  if(portal)drawDarkGate(g,portal);
   // entités triées par y
   const L=[];
   for(const o of objs)if(o.x>ox-100&&o.x<ox+VW+100&&o.y>oy-40&&o.y<oy+VH+140)L.push({y:o.y,f:()=>drawObj(g,o)});
@@ -1288,7 +1317,7 @@ function hud(){
   if(!touchUI){const px=6+save.maxSlots*26;skillIcon('potion');cx.fillStyle='#000';cx.fillRect(px-1,VH-29,24,24);cx.drawImage(skCanvas.potion,px+1,VH-27);
   text('x'+save.potions,px+24,VH-10,'#fff');}
   if(bossRef&&bossRef.hp>0&&Math.hypot(bossRef.x-P.x,bossRef.y-P.y)<320){text(bossRef.name||bossRef.D.name,VW/2,VH-24,bossRef.lord?'#ffb020':'#ff8080','center');bar(VW/2-100,VH-18,200,7,bossRef.hp/bossRef.max,'#c03030');}
-  if(portal&&state==='play')text(T>portal.ready&&!drops.length?'Le portail est ouvert ! Entre dedans.':'Ramassage du butin…',VW/2,60,'#c8b0ff','center');
+  if(portal&&state==='play')text(portalOpen()?'La porte des ténèbres est ouverte ! Entre dedans.':'Ramassage du butin…',VW/2,60,'#c8b0ff','center');
   if(joy.on){cx.globalAlpha=.55;cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(joy.ox,joy.oy,joy.R,0,7);cx.stroke();
     cx.fillStyle='#fff';cx.beginPath();const[jx,jy]=[joy.x-joy.ox,joy.y-joy.oy],d=Math.hypot(jx,jy),k=d>joy.R?joy.R/d:1;cx.arc(joy.ox+jx*k,joy.oy+jy*k,13,0,7);cx.fill();cx.globalAlpha=1;}
   if(AUTO){text('🤖 EXPÉDITION AUTO · Étage '+(AUTO.floor+1)+' · '+AUTO.kills+' ennemis vaincus',VW/2,50,'#7fd0ff','center',8);}
@@ -1424,7 +1453,7 @@ function endExpedition(reason){
   $('#ovlB').textContent='Retour au camp';$('#ovl').classList.add('on');
 }
 function nextExpFloor(){
-  const A=AUTO;for(const d of drops){if(d.k==='gold')save.gold+=d.v;else if(d.k==='potion')save.potions++}drops=[];
+  const A=AUTO;lootAll();
   if((A.floor+1)%10===0&&A.floor>(save.expTop??-1)){save.expTop=A.floor;txt(P.x,P.y-80,'Point de reprise : étage '+(A.floor+1)+' !','#7fd0ff');}
   A.floor++;A.floorT=0;A.path=null;A.tgt=null;A.ban.clear();save.region=A.floor;store();
   const keep=P.hp/stats().hp;buildRegion();P=null;startPlay(true);P.hp=Math.min(stats().hp,stats().hp*Math.min(1,keep+.25));
@@ -1447,7 +1476,7 @@ function autoPilot(dt){
   // choix de la cible : ennemis, coffres, boss, butin, portail
   const pt=(x,y)=>[clamp(Math.floor(x/TS),1,MW-2),clamp(Math.floor(y/TS),1,MH-2)];
   let tgt=null;
-  if(portal&&!drops.length&&A.floorT>0)tgt={x:portal.x,y:portal.y,k:'portal'};
+  if(portal&&portalOpen())tgt={x:portal.x,y:portal.y,k:'portal'};
   else if(drops.length){const d=drops.reduce((a,b)=>Math.hypot(a.x-P.x,a.y-P.y)<Math.hypot(b.x-P.x,b.y-P.y)?a:b);tgt={x:d.x,y:d.y,k:'drop'}}
   else{
     const cands=enemies.filter(e=>!A.ban.has(e)&&(e!==bossRef||enemies.length===1||enemies.every(x=>x===bossRef||A.ban.has(x))));
