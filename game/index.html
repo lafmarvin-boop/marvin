@@ -1399,9 +1399,11 @@ $('#bGo').onclick=()=>{if(gameMode==='exp')startExpedition();else startPlay(!P)}
 /* =============== MODE EXPÉDITION (automatique) =============== */
 let gameMode='adv',expStart=0,AUTO=null,simSpeed=1;
 $('#mAdv').onclick=()=>{gameMode='adv';openCamp()};
-$('#mExp').onclick=()=>{gameMode='exp';expStart=Math.min(expStart,save.best);openCamp()};
-$('#ePrev').onclick=()=>{expStart=Math.max(0,expStart-1);renderFloor()};
-$('#eNext').onclick=()=>{expStart=Math.min(save.best,expStart+1);renderFloor()};
+/* points de reprise : étage 1, puis 10, 20, 30… dès que leur boss est vaincu en expédition */
+const expCheckpoints=()=>{const L=[0];for(let f=9;f<=(save.expTop??-1);f+=10)L.push(f);return L};
+$('#mExp').onclick=()=>{gameMode='exp';const L=expCheckpoints();if(!L.includes(expStart))expStart=L[L.length-1];openCamp()};
+$('#ePrev').onclick=()=>{const L=expCheckpoints(),i=L.indexOf(expStart);expStart=L[Math.max(0,i-1)];renderFloor()};
+$('#eNext').onclick=()=>{const L=expCheckpoints(),i=L.indexOf(expStart);expStart=L[Math.min(L.length-1,i+1)];renderFloor()};
 const SPEEDS=[1,2,4];
 $('#eSpeed').onclick=()=>{simSpeed=SPEEDS[(SPEEDS.indexOf(simSpeed)+1)%3];renderFloor()};
 $('#bSpeed').onclick=()=>{simSpeed=SPEEDS[(SPEEDS.indexOf(simSpeed)+1)%3];$('#bSpeed').textContent='⏩ x'+simSpeed};
@@ -1411,6 +1413,7 @@ function startExpedition(){
 }
 function endExpedition(reason){
   const A=AUTO;if(!A)return;AUTO=null;save.region=A.home;delete save.expHome;save.bestExp=Math.max(save.bestExp||0,A.floor);store();
+  {const L=expCheckpoints();expStart=L[L.length-1];}
   $('#bSpeed').hidden=true;state='expEnd';
   $('#ovlT').textContent='EXPÉDITION TERMINÉE';
   $('#ovlS').innerHTML=`${reason}<br>Étages : ${A.start+1} → ${A.floor+1} · Ennemis vaincus : ${A.kills}<br>Or gagné : +${save.gold-A.gold} · Objets trouvés : +${save.inv.length-A.items} · Niveaux : ${A.xp0} → ${save.lvl}`;
@@ -1418,6 +1421,7 @@ function endExpedition(reason){
 }
 function nextExpFloor(){
   const A=AUTO;for(const d of drops){if(d.k==='gold')save.gold+=d.v;else if(d.k==='potion')save.potions++}drops=[];
+  if((A.floor+1)%10===0&&A.floor>(save.expTop??-1)){save.expTop=A.floor;txt(P.x,P.y-80,'Point de reprise : étage '+(A.floor+1)+' !','#7fd0ff');}
   A.floor++;A.floorT=0;A.path=null;A.tgt=null;A.ban.clear();save.region=A.floor;store();
   const keep=P.hp/stats().hp;buildRegion();P=null;startPlay(true);P.hp=Math.min(stats().hp,stats().hp*Math.min(1,keep+.25));
   txt(P.x,P.y-60,'Étage '+(A.floor+1)+' !','#ffcf4a');
@@ -1464,8 +1468,9 @@ function autoPilot(dt){
 function renderFloor(){
   $('#mAdv').classList.toggle('sel',gameMode==='adv');$('#mExp').classList.toggle('sel',gameMode==='exp');
   $('#advBox').hidden=gameMode!=='adv';$('#expBox').hidden=gameMode!=='exp';
-  if(gameMode==='exp'){$('#eCard').innerHTML=`<div class="fnum">Départ : étage ${expStart+1}</div><div class="fname">${regName(expStart)}</div><div class="fsub">Étages débloqués : 1 à ${save.best+1}</div>`;
-    $('#ePrev').disabled=expStart<=0;$('#eNext').disabled=expStart>=save.best;$('#eSpeed').textContent='Vitesse x'+simSpeed;
+  if(gameMode==='exp'){const L=expCheckpoints();if(!L.includes(expStart))expStart=L[L.length-1];
+    $('#eCard').innerHTML=`<div class="fnum">Départ : étage ${expStart+1}</div><div class="fname">${regName(expStart)}</div><div class="fsub">Points de reprise : ${L.map(f=>f+1).join(', ')}</div><div class="fsub">Bats le boss de l'étage ${(Math.floor(((save.expTop??-1)+1)/10)+1)*10} pour débloquer le suivant</div>`;
+    $('#ePrev').disabled=L.indexOf(expStart)<=0;$('#eNext').disabled=L.indexOf(expStart)>=L.length-1;$('#eSpeed').textContent='Vitesse x'+simSpeed;
     $('#eBest').textContent=save.bestExp?`Record d'expédition : étage ${save.bestExp+1}`:'';
     $('#bGo').textContent=`Lancer l'expédition — étage ${expStart+1} ▶`;return;}
   const f=save.region,last=save.best,done=f<last;
