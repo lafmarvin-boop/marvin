@@ -40,6 +40,12 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 #msg{color:var(--ok);min-height:18px;margin:6px 0}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:3px solid var(--line);margin:4px 0 10px}
 .tabs button{border-bottom:0;margin-bottom:-3px;padding:8px 12px}
+.tabs button.notif::after{content:" ●";color:var(--acc)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px}
+.pgrid .skill{margin:0}
+#campPassives .item{margin-bottom:4px;padding:6px 10px}
+.pn{font-weight:bold;color:var(--gold)}
+.pic{display:inline-block;width:1.4em;text-align:center;color:var(--gold)}
 .tabs button.sel{background:var(--panel);border-color:var(--gold);color:var(--gold)}
 .item.empty{opacity:.45;border-style:dashed}
 .doll{display:grid;grid-template-columns:1fr minmax(140px,260px) 1fr;gap:10px;align-items:center}
@@ -105,6 +111,7 @@ footer a{color:var(--dim)}
       <div class="row"><b>Pantalon</b><div class="btns" id="oPants"></div></div>
       <div class="row"><b>Arme</b><div class="btns" id="oWeapon"></div></div>
       <div class="row"><b>Compétences de base (choisis 2)</b><div id="oSkills"></div></div>
+      <div class="row"><b>Compétence passive (choisis 1 — une de plus tous les 10 niveaux)</b><div class="pgrid" id="oPassive"></div></div>
       <button class="big" id="bStart">Commencer l'aventure ▶</button>
     </div>
   </div>
@@ -156,6 +163,7 @@ footer a{color:var(--dim)}
         <div class="row"><b>Coffres d'équipement</b><div class="grid" id="chests"></div></div>
       </div>
       <div class="tab" id="t-skills" role="tabpanel">
+        <div class="row"><b>Compétences passives <span id="pCount"></span></b><div id="campPassives"></div></div>
         <div class="row"><b>Compétences équipées (clique pour équiper / retirer)</b><div id="campSkills"></div></div>
         <div class="row"><b>Apprendre</b><div class="grid" id="learn"></div></div>
       </div>
@@ -213,6 +221,23 @@ const SKILLS={
   thunder:{name:'Foudre',ic:'ϟ',mp:22,cd:6,desc:'Frappe 6 ennemis proches, x2.2',col:'#b8a0ff',rare:1},
   vampire:{name:'Drain',ic:'♥',mp:16,cd:5,desc:'Frappe x1.8 et vole 50% en PV',col:'#e0305a',rare:1},
 };
+/* Compétences passives : 1 au départ, +1 tous les 10 niveaux */
+const PASSIVES={
+  vigueur:{n:'Vigueur',ic:'❤',d:'+20% PV max'},
+  sagesse:{n:'Sagesse',ic:'✦',d:'+30% PM max et régénération de mana'},
+  force:{n:'Force brute',ic:'⚔',d:'+15% ATQ'},
+  fer:{n:'Peau de fer',ic:'◼',d:'+20% DEF'},
+  celerite:{n:'Célérité',ic:'➤',d:'+12% vitesse de déplacement'},
+  critique:{n:'Œil du chasseur',ic:'✸',d:'15% de chance de coup critique (x2)'},
+  vampire:{n:'Soif de sang',ic:'♥',d:'Vole 6% des dégâts infligés en PV'},
+  regen:{n:'Régénération',ic:'✚',d:'Rend 1% des PV chaque seconde'},
+  epines:{n:'Épines',ic:'✳',d:'Renvoie 40% des dégâts reçus à l’attaquant'},
+  esprit:{n:'Esprit vif',ic:'⌛',d:'-20% de recharge des compétences'},
+  fortune:{n:'Fortune',ic:'¤',d:'+25% d’or ramassé'},
+  erudit:{n:'Érudit',ic:'✎',d:'+25% d’XP gagnée'},
+};
+const hasP=(id,s=save)=>!!(s&&s.passives&&s.passives.includes(id));
+const passiveSlots=(s=save)=>1+Math.floor(s.lvl/10);
 const BASE_SKILLS=['fireball','heal','dash','shield','whirl','arrow'];
 
 /* Ennemis : 'mon' = monstre (planche 3x4), 'hum' = humanoïde LPC */
@@ -241,7 +266,7 @@ const REGIONS=[
 /* ================= SAUVEGARDE ================= */
 const KEY='pixelRealm2';
 let save=null;
-function newSave(look,skills){return{look,skills:[...skills],slots:[...skills],maxSlots:2,lvl:1,xp:0,gold:0,region:0,best:0,weaponLvl:0,armorLvl:0,potions:2,inv:[],eq:{}};}
+function newSave(look,skills,passive){return{look,passives:[passive],skills:[...skills],slots:[...skills],maxSlots:2,lvl:1,xp:0,gold:0,region:0,best:0,weaponLvl:0,armorLvl:0,potions:2,inv:[],eq:{}};}
 function store(){try{localStorage.setItem(KEY,JSON.stringify(save))}catch(e){}}
 function load(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}}
 /* ================= ÉQUIPEMENT ================= */
@@ -321,7 +346,10 @@ function gainItem(it){if(save.inv.length>=INV_MAX)return false;save.inv.push(it)
 function stats(s=save){
   const R=RACES[s.look.race],l=s.lvl-1,b={atk:0,def:0,hp:0,mp:0,spd:0};
   for(const it of Object.values(equippedOf(s)))for(const [k,v] of Object.entries(it.st))b[k]+=v;
-  return{hp:R.hp+l*12+b.hp,mp:R.mp+l*5+b.mp,atk:R.atk+l*2+(s.weaponLvl||0)*3+b.atk,def:R.def+l+(s.armorLvl||0)*2+b.def,spd:R.spd*(1+b.spd)};
+  const P_=id=>hasP(id,s);
+  return{hp:Math.round((R.hp+l*12+b.hp)*(P_('vigueur')?1.2:1)),mp:Math.round((R.mp+l*5+b.mp)*(P_('sagesse')?1.3:1)),
+    atk:Math.round((R.atk+l*2+(s.weaponLvl||0)*3+b.atk)*(P_('force')?1.15:1)),def:Math.round((R.def+l+(s.armorLvl||0)*2+b.def)*(P_('fer')?1.2:1)),
+    spd:R.spd*(1+b.spd)*(P_('celerite')?1.12:1)};
 }
 const xpNeed=l=>20+l*15;
 
@@ -410,7 +438,7 @@ function shadow(g,x,y,rx){g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(
 
 /* ================= CRÉATION ================= */
 let look={name:'Héros',sex:'m',build:1,beard:'beard_trimmed',race:'humain',skin:'light',hairStyle:'messy1',hair:'chestnut',armor:'leather',pants:'brown',weapon:'epee'};
-let pickedSkills=['fireball','heal'],pvDir=2,pvAtk=0,pvChar=null,pvKey='';
+let pickedPassive='vigueur',pickedSkills=['fireball','heal'],pvDir=2,pvAtk=0,pvChar=null,pvKey='';
 const sw=(mat,p)=>M.palettes[mat][p][3];
 function optRow(el,items,cur,pickf,swmat){
   el.innerHTML='';
@@ -441,12 +469,16 @@ function renderCreator(){
     b.onclick=()=>{if(pickedSkills.includes(id))pickedSkills=pickedSkills.filter(x=>x!==id);
       else{pickedSkills.push(id);if(pickedSkills.length>2)pickedSkills.shift();}renderCreator();};
     sk.appendChild(b);});
-  const st=stats({look,lvl:1,weaponLvl:0,armorLvl:0});
+  const pp=$('#oPassive');pp.innerHTML='';
+  Object.entries(PASSIVES).forEach(([id,Pa])=>{const b=document.createElement('button');b.className='skill';
+    b.innerHTML=`<span class="pic">${Pa.ic}</span> ${Pa.n} <small>— ${Pa.d}</small>`;if(id===pickedPassive)b.classList.add('sel');
+    b.onclick=()=>{pickedPassive=id;renderCreator()};pp.appendChild(b);});
+  const st=stats({look,lvl:1,weaponLvl:0,armorLvl:0,passives:[pickedPassive]});
   $('#pvStats').innerHTML=`<b>${R.name}</b><br>PV ${st.hp} · PM ${st.mp}<br>ATQ ${st.atk} · DEF ${st.def}<br>VIT ${Math.round(st.spd*100)}%`;
   $('#bStart').disabled=pickedSkills.length!==2;
 }
 $('#iName').oninput=e=>look.name=e.target.value||'Héros';
-$('#bStart').onclick=()=>{save=newSave({...look},pickedSkills);store();buildRegion();startPlay();};
+$('#bStart').onclick=()=>{save=newSave({...look},pickedSkills,pickedPassive);store();buildRegion();startPlay();};
 $('#bTurn').onclick=()=>pvDir=(pvDir+1)%4;
 $('#bAnim').onclick=()=>pvAtk=performance.now();
 function getChar(L,eq){const k=JSON.stringify([L,Object.values(equippedOf(eq)).map(i=>i.s+i.r+(i.d||0))]);if(k!==pvKey){pvKey=k;pvChar=heroChar(L,eq)}return pvChar;}
@@ -641,18 +673,20 @@ function txt(x,y,s,c){texts.push({x,y,s,c,life:.9});}
 
 function hitEnemy(e,mult,phys,kb=120){
   if(e.hp<=0)return 0;
-  const st=stats();const d=Math.max(1,Math.round(st.atk*mult*(phys&&save.look.race==='orc'?1.2:1)*rnd(.9,1.1)));
+  const st=stats(),crit=hasP('critique')&&Math.random()<.15;
+  const d=Math.max(1,Math.round(st.atk*mult*(phys&&save.look.race==='orc'?1.2:1)*rnd(.9,1.1)*(crit?2:1)));
   e.hp-=d;e.hurt=.15;
   if(!e.D.boss){const a=Math.atan2(e.y-P.y,e.x-P.x);e.kx=Math.cos(a)*kb;e.ky=Math.sin(a)*kb;}
-  txt(e.x,e.y-28*e.sc,d,'#fff');fx(e.x,e.y-12,'#ff5050',5);
+  if(hasP('vampire')&&P.hp>0)P.hp=Math.min(st.hp,P.hp+d*.06);
+  txt(e.x,e.y-28*e.sc,crit?d+'!':d,crit?'#ffd040':'#fff');fx(e.x,e.y-12,'#ff5050',5);
   if(e.hp<=0)kill(e);
   return d;
 }
 function kill(e){
   const D=e.D,bon=save.look.race==='humain'?1.2:1,ri=save.region;
   fx(e.x,e.y-12,'#ffffff',14,90);fx(e.x,e.y-12,'#a0a0a0',8,40);
-  gainXp(Math.round(D.xp*(1+.25*ri)*bon));
-  const g=Math.round(rnd(D.gold[0],D.gold[1])*(1+.2*ri)*bon),coins=Math.min(8,Math.ceil(g/4));
+  gainXp(Math.round(D.xp*(1+.25*ri)*bon*(hasP('erudit')?1.25:1)));
+  const g=Math.round(rnd(D.gold[0],D.gold[1])*(1+.2*ri)*bon*(hasP('fortune')?1.25:1)),coins=Math.min(8,Math.ceil(g/4));
   for(let i=0;i<coins;i++)drops.push({x:e.x,y:e.y,z:0,vz:rnd(80,140),vx:rnd(-50,50),vy:rnd(-50,50),k:'gold',v:Math.ceil(g/coins)});
   if(Math.random()<(D.boss?1:.07))drops.push({x:e.x,y:e.y,z:0,vz:120,vx:rnd(-30,30),vy:rnd(-30,30),k:'potion'});
   if(D.boss){bossRef=null;vacuum=true;portal={x:e.x,y:e.y,ready:T+2.5};const bc={k:'chest',x:e.x+40,y:e.y,open:false,boss:1};objs.push(bc);setTimeout(()=>{if(!bc.open)openChest(bc)},800);
@@ -661,13 +695,16 @@ function kill(e){
 function gainXp(v){
   save.xp+=v;
   while(save.xp>=xpNeed(save.lvl)){save.xp-=xpNeed(save.lvl);save.lvl++;const st=stats();P.hp=st.hp;P.mp=st.mp;
-    txt(P.x,P.y-50,'NIVEAU '+save.lvl+' !','#ffcf4a');fx(P.x,P.y-20,'#ffcf4a',24,90);}
+    txt(P.x,P.y-50,'NIVEAU '+save.lvl+' !','#ffcf4a');
+    if(save.lvl%10===0)setTimeout(()=>txt(P.x,P.y-62,'Nouvelle passive au camp !','#b8a0ff'),500);fx(P.x,P.y-20,'#ffcf4a',24,90);}
 }
 function hurtPlayer(raw,sx,sy){
   if(P.inv>0||P.dash>0||state!=='play')return;
   const st=stats(),def=st.def*(P.shield>0?3:1);
   let d=Math.max(1,raw*rnd(.9,1.1)-def*.6);if(save.look.race==='nain')d*=.8;d=Math.round(d);
-  P.hp-=d;P.inv=.8;const a=Math.atan2(P.y-sy,P.x-sx);P.kx=Math.cos(a)*160;P.ky=Math.sin(a)*160;
+  P.hp-=d;P.inv=.8;
+  if(hasP('epines')){const e=enemies.filter(e=>e.hp>0).sort((a,b)=>Math.hypot(a.x-sx,a.y-sy)-Math.hypot(b.x-sx,b.y-sy))[0];
+    if(e&&Math.hypot(e.x-sx,e.y-sy)<30){const r=Math.max(1,Math.round(d*.4));e.hp-=r;e.hurt=.15;txt(e.x,e.y-28*e.sc,r,'#c8ff80');if(e.hp<=0)kill(e);}}const a=Math.atan2(P.y-sy,P.x-sx);P.kx=Math.cos(a)*160;P.ky=Math.sin(a)*160;
   txt(P.x,P.y-44,'-'+d,'#ff4040');fx(P.x,P.y-20,'#ff4040',6);
   if(P.hp<=0){P.hp=0;die();}
 }
@@ -688,7 +725,7 @@ function useSkill(i){
   const id=save.slots[i];if(!id)return;const S=SKILLS[id],st=stats();
   if((P.cds[id]||0)>0)return;
   if(P.mp<S.mp){txt(P.x,P.y-50,'PM !','#4cc8ff');return}
-  P.mp-=S.mp;P.cds[id]=S.cd;
+  P.mp-=S.mp;P.cds[id]=S.cd*(hasP('esprit')?.8:1);
   // vise l'ennemi le plus proche devant, sinon la direction du regard
   let [ax,ay]=P.aim;const tgt=nearestEnemy(220);
   if(tgt&&(id==='fireball'||id==='arrow')){const a=Math.atan2(tgt.y-12-(P.y-20),tgt.x-P.x);ax=Math.cos(a);ay=Math.sin(a);P.dir=dirOf(ax,ay);}
@@ -753,7 +790,8 @@ function update(dt){
     if(tap('KeyR','KeyQ')){if(save.potions>0&&P.hp<st.hp){save.potions--;const h=Math.round(st.hp*(save.look.race==='nain'?.6:.45));P.hp=Math.min(st.hp,P.hp+h);txt(P.x,P.y-50,'+'+h,'#5fd36b');fx(P.x,P.y-20,'#e05080',14)}}
     if(tap('KeyE','Enter'))interact();
     for(const k in P.cds)P.cds[k]=Math.max(0,P.cds[k]-dt);
-    P.mp=Math.min(st.mp,P.mp+dt*3*(save.look.race==='elfe'?1.6:1));
+    P.mp=Math.min(st.mp,P.mp+dt*3*(save.look.race==='elfe'?1.6:1)*(hasP('sagesse')?1.3:1));
+    if(hasP('regen'))P.hp=Math.min(st.hp,P.hp+st.hp*.01*dt);
     P.inv-=dt;P.shield-=dt;P.whirl-=dt;
     if(portal&&T>portal.ready&&!drops.length&&Math.hypot(P.x-portal.x,P.y-portal.y)<22)clearRegion();
   }else if(state==='dead'){P.deadT+=dt;}
@@ -932,7 +970,7 @@ function hud(){
   for(let i=0;i<save.maxSlots;i++){const id=save.slots[i],x=6+i*26,y=VH-28;
     cx.fillStyle='#000';cx.fillRect(x-1,y-1,24,24);cx.fillStyle='#2e2445';cx.fillRect(x,y,22,22);
     if(id){const S=SKILLS[id];text(S.ic,x+11,y+16,S.col,'center',12);
-      const c=P.cds[id]||0;if(c>0){cx.fillStyle='rgba(0,0,0,.65)';cx.fillRect(x,y+22-22*c/S.cd,22,22*c/S.cd)}
+      const c=P.cds[id]||0,cd=S.cd*(hasP('esprit')?.8:1);if(c>0){cx.fillStyle='rgba(0,0,0,.65)';cx.fillRect(x,y+22-22*c/cd,22,22*c/cd)}
       if(P.mp<S.mp){cx.fillStyle='rgba(0,60,255,.3)';cx.fillRect(x,y,22,22)}}
     text(String(i+1),x+2,y+8,'#aaa','left',7);}
   const px=8+save.maxSlots*26;cx.fillStyle='#ddd';cx.fillRect(px+5,VH-25,4,3);cx.fillStyle='#d0305a';cx.fillRect(px+3,VH-22,8,9);
@@ -976,6 +1014,14 @@ function openCamp(msg){
     b.textContent=it.ok?`Acheter — ${it.c} or`:'Acquis';b.disabled=!it.ok||save.gold<it.c;
     b.onclick=()=>{save.gold-=it.c;it.f();openCamp('Acheté : '+it.n)};d.appendChild(b);sh.appendChild(d);});};
   fill($('#shop'),items);fill($('#learn'),learn);
+  const free=passiveSlots()-save.passives.length,cp=$('#campPassives');cp.innerHTML='';
+  $('#pCount').textContent=`(${save.passives.length}/${passiveSlots()}) — prochaine au niveau ${(Math.floor(save.lvl/10)+1)*10}`;
+  save.passives.forEach(id=>{const Pa=PASSIVES[id],d=document.createElement('div');d.className='skill item';d.innerHTML=`<span class="pic">${Pa.ic}</span> <span class="pn">${Pa.n}</span> <small>— ${Pa.d}</small>`;cp.appendChild(d)});
+  if(free>0){cp.insertAdjacentHTML('beforeend',`<p class="gold">Choisis ${free>1?free+' nouvelles passives':'une nouvelle passive'} :</p>`);
+    const g=document.createElement('div');g.className='pgrid';
+    Object.entries(PASSIVES).filter(([id])=>!save.passives.includes(id)).forEach(([id,Pa])=>{const b=document.createElement('button');b.className='skill';
+      b.innerHTML=`<span class="pic">${Pa.ic}</span> ${Pa.n} <small>— ${Pa.d}</small>`;b.onclick=()=>{save.passives.push(id);openCamp('Passive acquise : '+Pa.n)};g.appendChild(b)});cp.appendChild(g);}
+  document.querySelector('[data-tab=skills]').classList.toggle('notif',free>0);
   const cs=$('#campSkills');cs.innerHTML='';
   save.skills.forEach(id=>{const S=SKILLS[id],b=document.createElement('button');b.className='skill';const slot=save.slots.indexOf(id);
     b.innerHTML=`${slot>=0?'['+(slot+1)+']':'[ ]'} <span style="color:${S.col}">${S.ic}</span> ${S.name} <small>— ${S.desc} · ${S.mp} PM</small>`;
@@ -1046,6 +1092,7 @@ Promise.all(Object.keys(ASSETS.files).map(k=>new Promise(r=>{const i=new Image()
   renderCreator();
   save=load();
   if(save&&save.look&&save.look.build===undefined)save.look.build=1;
+  if(save&&save.look&&!save.passives)save.passives=[];
   if(save&&save.look&&!save.inv){save.inv=[];save.eq={};
     if(save.cape){const it=makeItem('cape',0);save.inv.push(it);save.eq.cape=it.id}
     if(save.helmet){const it=makeItem('casque',0);save.inv.push(it);save.eq.casque=it.id}
