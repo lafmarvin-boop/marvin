@@ -1825,7 +1825,7 @@ function render(){
   // brume du marais
   if(REG.fog){g.globalAlpha=.05+.07*darkness();g.fillStyle='#9ab0a8';for(let i=0;i<7;i++){const fx_=((i*173-camX*.6+T*12*(i%2?1:-1))%(VW+200)+VW+200)%(VW+200)-100,fy=((i*97-camY*.6)%(VH+80)+VH+80)%(VH+80)-40;g.beginPath();g.ellipse(fx_,fy,90,22,0,0,7);g.fill();}g.globalAlpha=1;}
   // ténèbres : lumière autour du héros, torches, feu, projectiles, lave
-  const nightA=DUNGEON?.5+.36*darkness():REG.night*darkness();
+  const nightA=AUTO&&AUTO.rift?0:DUNGEON?.5+.36*darkness():REG.night*darkness();
   if(nightA>.02){if(!dark){dark=document.createElement('canvas');dark.width=VW;dark.height=VH}
     const d=dark.getContext('2d');d.globalCompositeOperation='source-over';d.fillStyle='rgba(6,1,4,'+nightA+')';d.fillRect(0,0,VW,VH);d.globalCompositeOperation='destination-out';
     const hole=(x,y,r)=>{const gr=d.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,'rgba(0,0,0,1)');gr.addColorStop(.6,'rgba(0,0,0,.8)');gr.addColorStop(1,'rgba(0,0,0,0)');d.fillStyle=gr;d.beginPath();d.arc(x,y,r,0,7);d.fill();};
@@ -1837,7 +1837,7 @@ function render(){
   // lueur rouge de la lave
   // vignette sanglante (bords) + flash de dégâts + PV bas
   {const st=stats(),low=state==='dead'?1:clamp(1-P.hp/st.hp/.4,0,1),pulse=low*(.55+.45*Math.sin(T*(4+low*4)));
-    const gr=g.createRadialGradient(VW/2,VH/2,VH*.35,VW/2,VH/2,VW*.72);gr.addColorStop(0,'rgba(0,0,0,0)');const hv=Math.max(pulse,hurtFlash*2);gr.addColorStop(1,'rgba('+Math.round(40+120*hv)+',0,6,'+(.55*darkness()+.3*hv)+')');
+    const gr=g.createRadialGradient(VW/2,VH/2,VH*.35,VW/2,VH/2,VW*.72);gr.addColorStop(0,'rgba(0,0,0,0)');const hv=Math.max(pulse,hurtFlash*2);gr.addColorStop(1,'rgba('+Math.round(40+120*hv)+',0,6,'+((AUTO&&AUTO.rift?0:.55*darkness())+.3*hv)+')');
     g.fillStyle=gr;g.fillRect(0,0,VW,VH);}
   hud();
 }
@@ -2155,7 +2155,7 @@ const RBON={
 function buildArena(f){
   MW=24;MH=22;terr=new Uint8Array(MW*MH);solid=new Uint8Array(MW*MH).fill(1);objs=[];
   const cx0=12,cy0=11,rx=9.6,ry=8.6;
-  for(let y=1;y<MH-1;y++)for(let x=1;x<MW-1;x++){const u=(x+.5-cx0)/rx,v=(y+.5-cy0)/ry;if(u*u+v*v<=1){terr[idx(x,y)]=1;solid[idx(x,y)]=0}}
+  for(let y=2;y<MH-1;y++)for(let x=1;x<MW-1;x++){terr[idx(x,y)]=1;solid[idx(x,y)]=0}
   spawnPt={x:12,y:17};bossPt={x:12,y:5};camp={x:spawnPt.x*TS+16,y:spawnPt.y*TS+16};
   // piliers d'arène et braseros
   [[6,7],[17,7],[6,15],[17,15]].forEach(([x,y],i)=>{solid[idx(x,y)]=1;objs.push({k:'pillar',v:(f+i)%5===0?1:0,x:x*TS+16,y:y*TS+28})});
