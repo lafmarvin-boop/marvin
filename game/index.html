@@ -968,8 +968,7 @@ const skIconCache={};
 function skillIcon(id){
   if(skIconCache[id])return skIconCache[id];
   const c=document.createElement('canvas');c.width=c.height=48;const g=c.getContext('2d'),C=24;
-  const bg=g.createRadialGradient(C,C,4,C,C,30);bg.addColorStop(0,'#3a2c5a');bg.addColorStop(1,'#140e22');g.fillStyle=bg;g.fillRect(0,0,48,48);
-  const glow=(col,r)=>{const gr=g.createRadialGradient(C,C,0,C,C,r);gr.addColorStop(0,col);gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,48,48)};
+  const glow=()=>{};
   g.lineCap='round';g.lineJoin='round';
   switch(id){
     case 'fireball':glow('rgba(255,140,30,.9)',22);g.fillStyle='#ff5a10';g.beginPath();g.moveTo(14,30);g.quadraticCurveTo(16,8,30,6);g.quadraticCurveTo(26,16,36,18);g.quadraticCurveTo(40,34,26,38);g.quadraticCurveTo(12,38,14,30);g.fill();
@@ -988,9 +987,23 @@ function skillIcon(id){
       g.fillStyle='#ff8098';g.beginPath();g.arc(17,18,3,0,7);g.fill();break;
     case 'potion':glow('rgba(224,80,128,.6)',20);g.fillStyle='#ddd';g.fillRect(20,6,8,8);g.fillStyle='#8a5a30';g.fillRect(19,4,10,4);
       g.fillStyle='#d0305a';g.beginPath();g.arc(24,28,13,0,7);g.fill();g.fillStyle='#ff90a8';g.beginPath();g.arc(19,24,4,0,7);g.fill();g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.arc(24,28,13,0,7);g.stroke();break;
-    default:g.fillStyle='#555';g.font='bold 26px monospace';g.textAlign='center';g.fillText('🔒',C,34);
+    default:g.fillStyle='#8a8296';g.fillRect(14,22,20,16);g.strokeStyle='#8a8296';g.lineWidth=4;g.beginPath();g.arc(24,20,7,Math.PI,0);g.stroke();g.fillStyle='#2a2238';g.fillRect(22,27,4,6);
   }
-  return skIconCache[id]=c.toDataURL();
+  return skIconCache[id]=pixelize(c,id);
+}
+/* Pixel art : réduction 48 -> 20 px, alpha net, couleurs limitées, contour sombre, fond de case */
+const PX=20,skCanvas={};
+function pixelize(src,id){
+  const t=document.createElement('canvas');t.width=t.height=PX;const g=t.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(src,0,0,PX,PX);
+  const d=g.getImageData(0,0,PX,PX),a=d.data,on=new Uint8Array(PX*PX);
+  for(let k=0;k<PX*PX;k++){const o=k*4;if(a[o+3]>90){on[k]=1;const f=255/a[o+3];for(let c=0;c<3;c++)a[o+c]=Math.min(255,Math.round(a[o+c]*f/36)*36);a[o+3]=255}else a[o+3]=0}
+  const out=document.createElement('canvas');out.width=out.height=PX;const go=out.getContext('2d');
+  go.fillStyle='#1d1530';go.fillRect(0,0,PX,PX);go.fillStyle='#2a2040';go.fillRect(1,1,PX-2,PX-2);go.fillStyle='#352a50';go.fillRect(1,1,PX-2,1);go.fillRect(1,1,1,PX-2);
+  const od=go.getImageData(0,0,PX,PX),b=od.data;
+  for(let y=0;y<PX;y++)for(let x=0;x<PX;x++){const k=y*PX+x,o=k*4;
+    if(on[k]){b[o]=a[o];b[o+1]=a[o+1];b[o+2]=a[o+2];b[o+3]=255}
+    else if((x>0&&on[k-1])||(x<PX-1&&on[k+1])||(y>0&&on[k-PX])||(y<PX-1&&on[k+PX])){b[o]=14;b[o+1]=8;b[o+2]=22;b[o+3]=255}}
+  go.putImageData(od,0,0);skCanvas[id]=out;return out.toDataURL();
 }
 let touchKey='';
 function updateTouch(){
@@ -1019,12 +1032,12 @@ function hud(){
   text('Ennemis '+enemies.length,mx-8,34,'#ccc','right');
   if(touchUI){updateTouch();}else for(let i=0;i<save.maxSlots;i++){const id=save.slots[i],x=6+i*26,y=VH-28;
     cx.fillStyle='#000';cx.fillRect(x-1,y-1,24,24);cx.fillStyle='#2e2445';cx.fillRect(x,y,22,22);
-    if(id){const S=SKILLS[id];text(S.ic,x+11,y+16,S.col,'center',12);
+    if(id){const S=SKILLS[id];skillIcon(id);cx.drawImage(skCanvas[id],x+1,y+1);
       const c=P.cds[id]||0,cd=S.cd*(hasP('esprit')?.8:1);if(c>0){cx.fillStyle='rgba(0,0,0,.65)';cx.fillRect(x,y+22-22*c/cd,22,22*c/cd)}
       if(P.mp<S.mp){cx.fillStyle='rgba(0,60,255,.3)';cx.fillRect(x,y,22,22)}}
     text(String(i+1),x+2,y+8,'#aaa','left',7);}
-  if(!touchUI){const px=8+save.maxSlots*26;cx.fillStyle='#ddd';cx.fillRect(px+5,VH-25,4,3);cx.fillStyle='#d0305a';cx.fillRect(px+3,VH-22,8,9);
-  text('x'+save.potions,px+15,VH-13,'#fff');}
+  if(!touchUI){const px=6+save.maxSlots*26;skillIcon('potion');cx.fillStyle='#000';cx.fillRect(px-1,VH-29,24,24);cx.drawImage(skCanvas.potion,px+1,VH-27);
+  text('x'+save.potions,px+24,VH-10,'#fff');}
   if(bossRef&&bossRef.hp>0&&Math.hypot(bossRef.x-P.x,bossRef.y-P.y)<320){text(bossRef.D.name,VW/2,VH-24,'#ff8080','center');bar(VW/2-100,VH-18,200,7,bossRef.hp/bossRef.max,'#c03030');}
   if(portal&&state==='play')text(T>portal.ready&&!drops.length?'Le portail est ouvert ! Entre dedans.':'Ramassage du butin…',VW/2,60,'#c8b0ff','center');
   if(joy.on){cx.globalAlpha=.55;cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(joy.ox,joy.oy,joy.R,0,7);cx.stroke();
