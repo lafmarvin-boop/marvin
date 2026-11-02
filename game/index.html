@@ -277,7 +277,7 @@ const darkness=()=>save?Math.min(1,save.region/DARK_FULL):0;
 function mixHex(a,b,t){const A=hexInt(a),B=hexInt(b),m=s=>Math.round(((A>>s)&255)*(1-t)+((B>>s)&255)*t);return'#'+((1<<24)|(m(16)<<16)|(m(8)<<8)|m(0)).toString(16).slice(1)}
 const THEME_L={bg:'#9fd4f0',bgtop:'#e9f8ff',panel:'#fff6e2',panel2:'#ffe9c4',line:'#d0a060',txt:'#3b2a18',dim:'#7c6448',gold:'#b8740c',acc:'#e0564a',ok:'#2f8a3a',hi:'#f2a516',glow:'#ffffff',big1:'#ff8a3c',big2:'#e0503a',pv1:'#bfe8a8',pv2:'#5ea24a',sel:'#ffd98a',inset:'#ffffff'};
 const THEME_D={bg:'#070304',bgtop:'#2a0a0e',panel:'#140809',panel2:'#1f0d0e',line:'#4a1518',txt:'#e6d6c6',dim:'#9a7d76',gold:'#c9a24a',acc:'#9e0f1c',ok:'#c8584a',hi:'#b0101e',glow:'#5a0008',big1:'#8a0c18',big2:'#4a0408',pv1:'#3a1418',pv2:'#0a0304',sel:'#4a3a18',inset:'#5a000a'};
-function applyTheme(){const d=darkness(),r=document.documentElement.style;
+function applyTheme(){const d=1,r=document.documentElement.style; // menus : thème fixe et lisible (seul le monde du jeu s'assombrit)
   for(const k in THEME_L)r.setProperty('--'+k,k==='inset'?(d<.5?'rgba(255,255,255,'+(.4*(1-d*2))+')':'rgba(90,0,10,'+(.35*(d-.5)*2)+')'):mixHex(THEME_L[k],THEME_D[k],d<.5?d*.6:.3+(d-.5)*1.4));
   r.setProperty('--drip',d>=.5?(d-.5)*2:0);r.setProperty('--tfont',d>=.5?"'Pirata One'":"'Fredoka'");r.setProperty('color-scheme',d>=.5?'dark':'light');
   $('#loading')&&($('#loading').style.color=d>=.5?'#c9a24a':'#b8740c');}
