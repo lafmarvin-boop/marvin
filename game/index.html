@@ -446,25 +446,116 @@ const lvOf=it=>it.lv||1;
 const itemKey=it=>[it.s,it.r,it.d||0,lvOf(it)].join('|');
 function lvStats(base,lv){const st={};for(const[k,v]of Object.entries(base))st[k]=k==='spd'?Math.round(v*(1+.1*(lv-1))*100)/100:Math.round(v*(1+.35*(lv-1)));return st}
 const lvName=it=>it.n+(lvOf(it)>1?' ★'+lvOf(it):'');
-/* détail visuel par niveau (cumulatif) appliqué à la planche de l'objet */
+/* Évolution visuelle de l'objet (cumulatif) : l'objet garde sa base et gagne des éléments de plus en plus « badass »
+   ★2 rivets · ★3 liseré doré · ★4 petites pointes · ★5 gemme · ★6 grandes pointes + contour · ★7 runes gravées
+   ★8 cornes · ★9 braises sur les arêtes · ★10 contour lumineux double (+ aura en jeu)                                   */
 const fxCache={};
 function levelFx(src,lv,col,key){
   if(fxCache[key])return fxCache[key];
   const c=document.createElement('canvas');c.width=src.width;c.height=src.height;const g=c.getContext('2d');g.drawImage(src,0,0);
   const W=c.width,H=c.height,id=g.getImageData(0,0,W,H),a=id.data,o=new Uint8ClampedArray(a),C=hexInt(col),cr=C>>16,cg=(C>>8)&255,cb=C&255;
-  const op=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&o[(y*W+x)*4+3]>0;
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=(y*W+x)*4;
-    if(o[i+3]){let r=a[i],gg=a[i+1],b=a[i+2];
-      if(lv>=2){const f=1+.035*(lv-1);r*=f;gg*=f;b*=f}                                  // 2 : métal plus brillant
-      if(lv>=3&&!op(x,y-1)){r+=50;gg+=50;b+=50}                                          // 3 : liseré de lumière
-      if(lv>=4){const t=Math.min(.38,.06*(lv-3));r=r*(1-t)+cr*t;gg=gg*(1-t)+cg*t;b=b*(1-t)+cb*t}  // 4 : teinte de la rareté
-      if(lv>=7&&(x+y)%4===0){r+=22;gg+=22;b+=22}                                         // 7 : gravures
-      if(lv>=5&&(x*7+y*13)%(lv>=9?23:37)===0){r=255;gg=255;b=255}                        // 5 : éclats (9 : plus nombreux)
-      a[i]=Math.min(255,r);a[i+1]=Math.min(255,gg);a[i+2]=Math.min(255,b);}
-    else if(lv>=6){let n=op(x-1,y)||op(x+1,y)||op(x,y-1)||op(x,y+1);                    // 6 : contour sombre doré, 8 : contour de la rareté
-      if(n){if(lv>=8){a[i]=cr;a[i+1]=cg;a[i+2]=cb;a[i+3]=lv>=10?255:200}else{a[i]=90;a[i+1]=64;a[i+2]=16;a[i+3]=220}}
-      else if(lv>=9&&(op(x-2,y)||op(x+2,y)||op(x,y-2)||op(x,y+2))){a[i]=cr;a[i+1]=cg;a[i+2]=cb;a[i+3]=lv>=10?150:90}}}  // 9-10 : double halo
+  const op=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&o[(y*W+x)*4+3]>0&&((x>>6)===(x0c>>6))&&((y>>6)===(y0c>>6));
+  let x0c=0,y0c=0;   // cellule courante (évite de déborder sur la frame voisine)
+  const put=(x,y,r,gg,b,al=255,over=false)=>{if(x<0||y<0||x>=W||y>=H||(x>>6)!==(x0c>>6)||(y>>6)!==(y0c>>6))return;const i=(y*W+x)*4;if(o[i+3]&&!over)return;a[i]=r;a[i+1]=gg;a[i+2]=b;a[i+3]=al;};
+  const lum=(i)=>(o[i]+o[i+1]+o[i+2])/3;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){x0c=x;y0c=y;const i=(y*W+x)*4;if(!o[i+3])continue;
+    let r=a[i],gg=a[i+1],b=a[i+2];
+    if(lv>=2){const f=1+.03*(lv-1);r*=f;gg*=f;b*=f}
+    if(lv>=4){const t=Math.min(.3,.05*(lv-3));r=r*(1-t)+cr*t;gg=gg*(1-t)+cg*t;b=b*(1-t)+cb*t}
+    const up=!op(x,y-1),lf=!op(x-1,y),rt=!op(x+1,y),dn=!op(x,y+1),edge=up||lf||rt||dn,inner=!edge;
+    if(lv>=2&&edge&&(x*3+y*5)%11===0){r=g_(r,90);gg=g_(gg,90);b=g_(b,90)}                       // rivets
+    if(lv>=3&&up){r=232;gg=192;b=80}                                                              // liseré doré
+    if(lv>=7&&inner&&x%6===2&&y%3===0){r=cr;gg=cg;b=cb}                                           // runes
+    a[i]=Math.min(255,r);a[i+1]=Math.min(255,gg);a[i+2]=Math.min(255,b);
+    // pointes
+    if(lv>=4){const L=lv>=6?3:2,step=lv>=6?5:7;
+      if(up&&x%step===0)for(let k=1;k<=L;k++)put(x,y-k,215-k*15,215-k*15,225-k*10);
+      if(lf&&y%(step+2)===0)for(let k=1;k<=L-1;k++)put(x-k,y,200,200,212);
+      if(rt&&y%(step+2)===0)for(let k=1;k<=L-1;k++)put(x+k,y,200,200,212);}
+    if(lv>=9&&up&&x%3===1){put(x,y-1,255,150,30);put(x,y-2,255,220,90,200);}                      // braises
+  }
+  // par frame : gemme, cornes
+  if(lv>=5)for(let cy=0;cy<H;cy+=64)for(let cx=0;cx<W;cx+=64){let X0=64,Y0=64,X1=-1,Y1=-1;
+    for(let y=0;y<64;y++)for(let x=0;x<64;x++)if(o[((cy+y)*W+cx+x)*4+3]){X0=Math.min(X0,x);Y0=Math.min(Y0,y);X1=Math.max(X1,x);Y1=Math.max(Y1,y)}
+    if(X1<0)continue;x0c=cx;y0c=cy;
+    const mx=cx+((X0+X1)>>1),my=cy+((Y0+Y1)>>1);
+    if((X1-X0)>=4&&(Y1-Y0)>=4){put(mx,my,cr,cg,cb,255,true);put(mx+1,my,cr,cg,cb,255,true);put(mx,my+1,cr*.7,cg*.7,cb*.7,255,true);put(mx+1,my+1,cr,cg,cb,255,true);put(mx,my,255,255,255,255,true);}
+    if(lv>=8&&(X1-X0)>=6){const ty=cy+Y0;let lx=-1,rx=-1;for(let x=X0;x<=X1;x++)if(o[(ty*W+cx+x)*4+3]){if(lx<0)lx=cx+x;rx=cx+x}
+      if(lx>=0){[[lx,-1],[rx,1]].forEach(([hx,sd])=>{for(let k=0;k<6;k++){const px_=hx+sd*Math.round(k*.6),py_=ty-1-k;put(px_,py_,230-k*10,220-k*10,200-k*12);if(k<3)put(px_+sd,py_,170,160,150);}});}}
+  }
+  // contours
+  if(lv>=6){const b2=new Uint8ClampedArray(a);for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=(y*W+x)*4;if(b2[i+3])continue;x0c=x;y0c=y;
+    const n=(xx,yy)=>xx>=0&&yy>=0&&xx<W&&yy<H&&(xx>>6)===(x>>6)&&(yy>>6)===(y>>6)&&b2[(yy*W+xx)*4+3]>0;
+    if(n(x-1,y)||n(x+1,y)||n(x,y-1)||n(x,y+1)){if(lv>=8){a[i]=cr;a[i+1]=cg;a[i+2]=cb;a[i+3]=lv>=10?255:190}else{a[i]=70;a[i+1]=50;a[i+2]=14;a[i+3]=220}}
+    else if(lv>=10&&(n(x-2,y)||n(x+2,y)||n(x,y-2)||n(x,y+2))){a[i]=cr;a[i+1]=cg;a[i+2]=cb;a[i+3]=120}}}
   g.putImageData(id,0,0);return fxCache[key]=c;
+}
+const g_=(v,d)=>Math.min(255,v+d);
+/* ================= ARMURES ASSISTÉES (sets légendaires, style science-fiction) ================= */
+const PA={
+  azur:{n:'Bastion d\'Azur',pal:['#0b1630','#12285a','#1d4290','#2e62c4','#5a8ee6','#a8c8ff'],trim:'#e8c050',emb:'#ffffff'},
+  sable:{n:'Ordre de Sable',pal:['#050507','#0e0e14','#1c1c26','#2c2c3a','#464658','#7a7a90'],trim:'#d8d8e0',emb:'#c01818'},
+  ecarlate:{n:'Légion Écarlate',pal:['#1a0204','#4a060c','#7e0e16','#b01c22','#d8443a','#ff8a70'],trim:'#d8a040',emb:'#101010'},
+};
+function paPalettes(){for(const[k,v]of Object.entries(PA)){M.palettes.metal['pa_'+k]=v.pal;M.palettes.cloth['pa_'+k]=v.pal;}}
+/* épaissit la pièce (look massif), ajoute un liseré et un emblème */
+function powerFx(src,fx,key){
+  if(fxCache[key])return fxCache[key];
+  const c=document.createElement('canvas');c.width=src.width;c.height=src.height;const g=c.getContext('2d');g.drawImage(src,0,0);
+  const W=c.width,H=c.height,id=g.getImageData(0,0,W,H),a=id.data,T_=hexInt(fx.trim),tr=T_>>16,tg=(T_>>8)&255,tb=T_&255;
+  const same=(x,y,x2,y2)=>(x>>6)===(x2>>6)&&(y>>6)===(y2>>6);
+  for(let it=0;it<(fx.bulk||0);it++){const o=new Uint8ClampedArray(a);
+    for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=(y*W+x)*4;if(o[i+3])continue;
+      for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const j=((y+dy)*W+x+dx)*4;if(o[j+3]&&same(x,y,x+dx,y+dy)){a[i]=o[j]*.78;a[i+1]=o[j+1]*.78;a[i+2]=o[j+2]*.78;a[i+3]=255;break}}}}
+  const o=new Uint8ClampedArray(a);
+  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=(y*W+x)*4;if(!o[i+3])continue;
+    const up=!o[((y-1)*W+x)*4+3]||!same(x,y,x,y-1);
+    if(fx.trim&&up){a[i]=tr;a[i+1]=tg;a[i+2]=tb}
+    if(fx.teeth&&(up||!o[(y*W+x+1)*4+3])&&(x+y)%2===0){const k=((y-1)*W+x)*4;if(!o[k+3]&&same(x,y,x,y-1)){a[k]=60;a[k+1]=60;a[k+2]=66;a[k+3]=255}}}
+  if(fx.emb){const E=hexInt(fx.emb),er=E>>16,eg=(E>>8)&255,eb=E&255;
+    for(let cy=0;cy<H;cy+=64)for(let cx=0;cx<W;cx+=64){const sides=[[0,32],[32,64]];
+      for(const[x0,x1]of sides){let sx=0,sy=0,n=0;for(let y=0;y<64;y++)for(let x=x0;x<x1;x++)if(o[((cy+y)*W+cx+x)*4+3]){sx+=x;sy+=y;n++}
+        if(n<14)continue;const mx=cx+Math.round(sx/n),my=cy+Math.round(sy/n);
+        for(const[dx,dy]of[[0,0],[1,0],[-1,0],[0,1],[0,-1]]){const i=((my+dy)*W+mx+dx)*4;if(o[i+3]){a[i]=er;a[i+1]=eg;a[i+2]=eb}}}}}
+  g.putImageData(id,0,0);return fxCache[key]=c;
+}
+/* sac dorsal à tuyères, dessiné image par image à partir du corps */
+function makePack(bodyId,v){
+  const kf='pa_pack_front_'+bodyId,kb='pa_pack_back_'+bodyId,kp='pa_pauld_'+bodyId,ke='pa_eyes_'+bodyId;
+  if(recCache[kf+'|pa_'+v])return;
+  M.layers[kf]={z:95};M.layers[kb]={z:4};M.layers[kp]={z:76};M.layers[ke]={z:136};
+  const P_=PA[v].pal,body=recolor(bodyId,'light'),bd=body.getContext('2d').getImageData(0,0,body.width,body.height).data,W=body.width;
+  const mk=()=>{const c_=document.createElement('canvas');c_.width=W;c_.height=body.height;return c_};
+  const F=mk(),B=mk(),PD=mk(),EY=mk(),gf=F.getContext('2d'),gb=B.getContext('2d'),gp=PD.getContext('2d'),ge=EY.getContext('2d');
+  const EYE=v==='sable'?'#ff2020':v==='ecarlate'?'#40ff60':'#ff3030';
+  // épaulière massive (dôme) avec liseré et emblème
+  const pauld=(cx_,cy_,rx,ry)=>{gp.fillStyle=P_[0];gp.beginPath();gp.ellipse(cx_,cy_,rx+1,ry+1,0,Math.PI,0);gp.lineTo(cx_+rx+1,cy_+3);gp.lineTo(cx_-rx-1,cy_+3);gp.fill();
+    gp.fillStyle=P_[3];gp.beginPath();gp.ellipse(cx_,cy_,rx,ry,0,Math.PI,0);gp.lineTo(cx_+rx,cy_+2);gp.lineTo(cx_-rx,cy_+2);gp.fill();
+    gp.fillStyle=P_[4];gp.fillRect(cx_-rx+2,cy_-ry+1,rx,2);gp.fillStyle=PA[v].trim;gp.fillRect(cx_-rx,cy_+1,rx*2+1,2);
+    gp.fillStyle=PA[v].emb;gp.fillRect(cx_-1,cy_-3,3,1);gp.fillRect(cx_,cy_-4,1,3);};
+  const box=(g,x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x,y,w,h)};
+  const pack=(g,x,y,w,h,vents)=>{box(g,x-1,y-1,w+2,h+2,P_[0]);box(g,x,y,w,h,P_[3]);box(g,x,y,w,2,P_[4]);box(g,x,y+h-3,w,3,P_[2]);box(g,x,y+Math.floor(h/2),w,1,PA[v].trim);
+    vents.forEach(vx=>{box(g,vx-2,y-5,5,6,P_[0]);box(g,vx-1,y-4,3,4,'#5a5a62');box(g,vx-1,y-6,3,1,'#2a2a30')});};
+  for(const an of Object.values(M.anims)){if(an.dirs<4)continue;for(let d=0;d<4;d++)for(let f=0;f<an.frames;f++){
+    const ox=f*64,oy=(an.row+d)*64;let top=-1;for(let y=0;y<64&&top<0;y++)for(let x=0;x<64;x++)if(bd[((oy+y)*W+ox+x)*4+3]){top=y;break}
+    if(top<0)continue;let l=64,r=0;const ry=oy+top+6;for(let x=0;x<64;x++)if(bd[(ry*W+ox+x)*4+3]){l=Math.min(l,x);r=Math.max(r,x)}const cx=ox+((l+r)>>1),ty=oy+top;
+    const hw=Math.max(7,(r-l)>>1);
+    if(d===0){pack(gf,cx-10,ty-2,20,18,[cx-6,cx+6]);pauld(cx-hw-3,ty+4,9,8);pauld(cx+hw+3,ty+4,9,8);}
+    else if(d===2){pack(gb,cx-13,ty-8,26,18,[cx-11,cx+11]);pauld(cx-hw-3,ty+4,9,8);pauld(cx+hw+3,ty+4,9,8);
+      ge.fillStyle=EYE;ge.fillRect(cx-4,ty-10,3,2);ge.fillRect(cx+2,ty-10,3,2);ge.fillStyle='rgba(255,255,255,.9)';ge.fillRect(cx-3,ty-10,1,1);ge.fillRect(cx+3,ty-10,1,1);}
+    else if(d===1){pack(gb,cx+1,ty-4,13,19,[cx+4,cx+11]);pauld(cx-1,ty+4,10,9);ge.fillStyle=EYE;ge.fillRect(cx-7,ty-10,3,2);}
+    else{pack(gb,cx-14,ty-4,13,19,[cx-11,cx-4]);pauld(cx+1,ty+4,10,9);ge.fillStyle=EYE;ge.fillRect(cx+4,ty-10,3,2);}}}
+  recCache[kf+'|pa_'+v]=F;recCache[kb+'|pa_'+v]=B;recCache[kp+'|pa_'+v]=PD;recCache[ke+'|pa_'+v]=EY;
+}
+function powerArmorLayers(L,v){
+  paPalettes();const f=L.sex==='f',slim=!f&&L.race==='elfe'&&(L.build??1)<2,thin=f||slim,b=L.build??1,musc=!f&&!slim&&b>=1;
+  const bodyId=f?'body_female':slim?'body_teen':musc?'body_muscular':'body_male';makePack(bodyId,v);
+  const t=thin?'_thin':'_male',fe=f?'_female':'_male',tor=f?'_female':slim?'_teen':'_male',pal='pa_'+v,tr=PA[v].trim;
+  const fx=(bulk,extra={})=>({pa:1,bulk,trim:tr,...extra});
+  return[['plate'+tor,pal,fx(2)],['armplate'+t,pal,fx(1)],['gloves'+t,pal,fx(2)],['legplate'+t,pal,fx(2)],['feetplate'+t,pal,fx(2)],
+    ['helm_greathelm'+fe,pal,fx(1)],
+    ['pa_pack_front_'+bodyId,pal],['pa_pack_back_'+bodyId,pal],['pa_pauld_'+bodyId,pal],['pa_eyes_'+bodyId,pal],
+    ['shield_scutum'+fe,pal,fx(1,{emb:PA[v].emb})]];
 }
 function statTxt(st){return Object.entries(st).map(([k,v])=>'+'+(k==='spd'?Math.round(v*100)+'%':v)+' '+STN[k]).join(' · ')}
 function equippedOf(s){const o={};if(s&&s.eq&&s.inv)for(const [k,id] of Object.entries(s.eq)){const it=s.inv.find(i=>i.id===id);if(it)o[k]=it}return o}
@@ -501,7 +592,7 @@ const onHead=l=>/^(hair_|beard|stache_|helmet)/.test(l);
 function compose(layers,weapon,o={}){
   const c=document.createElement('canvas');c.width=576;c.height=17*64;const g=c.getContext('2d');
   const Ls=layers.filter(Boolean).sort((a,b)=>M.layers[a[0]].z-M.layers[b[0]].z);
-  const put=(gg,[l,p,fx])=>{const src=fx?levelFx(recolor(l,p),fx.lv,fx.col,l+'|'+p+'|'+fx.lv):recolor(l,p);
+  const put=(gg,[l,p,fx])=>{const src=fx?(fx.pa?powerFx(recolor(l,p),fx,'pa|'+l+'|'+p+'|'+JSON.stringify(fx)):levelFx(recolor(l,p),fx.lv,fx.col,l+'|'+p+'|'+fx.lv)):recolor(l,p);
     if(o.orc&&onHead(l)){for(const an of Object.values(M.anims))for(let d=0;d<an.dirs;d++){const y=(an.row+d)*64,dy=an.dirs>1?ORC_DY[d]:3;gg.drawImage(src,0,y,576,64,0,y+dy,576,64)}}
     else gg.drawImage(src,0,0);};
   Ls.forEach(x=>put(g,x));
