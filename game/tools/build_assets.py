@@ -160,6 +160,21 @@ for v in ['medium', 'light', 'red', 'dark', 'brass', 'bronze', 'ceramic', 'coppe
     LAYERS[f'spear_{v}_fg'] = ('weapon/polearm/spear/foreground/', 140, v, None, None)
     LAYERS[f'spear_{v}_bg'] = ('weapon/polearm/spear/background/', 9, v, None, None)
 
+# --- armes a distance : arbalete et batons magiques (chemins differents selon l'animation) ---
+def per_anim(walk, thrust, hurt):
+    return {'walk': walk, 'thrust': thrust, 'hurt': hurt}
+CB = 'weapon/ranged/crossbow/'
+LAYERS['crossbow_fg'] = (per_anim(CB + 'foreground/walk/crossbow.png', CB + 'foreground/thrust/crossbow.png', CB + 'foreground/hurt/crossbow.png'), 140, None, None, None)
+LAYERS['crossbow_bg'] = (per_anim(CB + 'background/walk/crossbow.png', CB + 'background/thrust/crossbow.png', CB + 'background/hurt/crossbow.png'), 9, None, None, None)
+for st in ['gnarled', 'loop', 'diamond']:
+    for v in [st, 'iron', 'gold', 'silver', 'dark', 'red']:
+        M_ = f'weapon/magic/{st}/'
+        LAYERS[f'staff_{st}_{v}_fg'] = (per_anim(M_ + f'universal/foreground/walk/{v}.png', None, M_ + f'universal/foreground/hurt/{v}.png'), 140, None, None, None)
+        LAYERS[f'staff_{st}_{v}_bg'] = (per_anim(M_ + f'universal/background/walk/{v}.png', None, M_ + f'universal/background/hurt/{v}.png'), 9, None, None, None)
+        # le coup de baton est en grand format (192 px), comme les attaques d'epee
+        OVERSIZE[f'staff_{st}_{v}_atk_fg'] = (M_ + 'thrust/foreground/', 150, v, 'thrust')
+        OVERSIZE[f'staff_{st}_{v}_atk_bg'] = (M_ + 'thrust/background/', -1, v, 'thrust')
+
 # --- tetes des nouveaux ennemis ---
 for k, path in [('boarman', 'boarman/adult'), ('frankenstein', 'frankenstein/adult'), ('jack', 'jack/adult'), ('lizard', 'lizard/male'),
                 ('pig', 'pig/adult'), ('rabbit', 'rabbit/adult'), ('rat', 'rat/adult'), ('sheep', 'sheep/adult'), ('troll', 'troll/adult'),
@@ -169,6 +184,9 @@ for k, path in [('boarman', 'boarman/adult'), ('frankenstein', 'frankenstein/adu
 files = set(subprocess.check_output(['git', '-C', LPC, 'ls-tree', '-r', '--name-only', 'HEAD'], text=True).split('\n'))
 
 def resolve(d, anim, var):
+    if isinstance(d, dict):
+        p = 'spritesheets/' + d[anim] if d.get(anim) else None
+        return p if p in files else None
     for c in [f'spritesheets/{d}{anim}/{var}.png', f'spritesheets/{d}{anim}.png']:
         if c in files: return c
     sub = sorted(f for f in files if f.startswith(f'spritesheets/{d}{anim}/') and f.count('/') == (f'spritesheets/{d}{anim}/').count('/'))
@@ -178,7 +196,7 @@ need = {}
 for lid, (d, z, var, *_) in LAYERS.items():
     for a, *_ in ANIMS:
         need[(lid, a)] = resolve(d, a, var)
-for lid, (d, z, var) in OVERSIZE.items():
+for lid, (d, z, var, *an) in OVERSIZE.items():
     need[(lid, 'slash')] = f'spritesheets/{d}{var}.png' if f'spritesheets/{d}{var}.png' in files else None
 paths = sorted({p for p in need.values() if p})
 subprocess.check_call(['git', '-C', LPC, 'checkout', 'HEAD', '--'] + paths)
@@ -203,11 +221,12 @@ for lid, (d, z, var, mat, base) in LAYERS.items():
         y += r * FS
     sheet.save(f'{OUT}/char/{lid}.png', optimize=True)
     manifest['layers'][lid] = {'z': z, 'mat': mat, 'base': base}
-for lid, (d, z, var) in OVERSIZE.items():
+for lid, (d, z, var, *an) in OVERSIZE.items():
     p = need[(lid, 'slash')]
-    im = Image.open(f'{LPC}/{p}').convert('RGBA').crop((0, 0, 6 * 192, 4 * 192))
+    anim = an[0] if an else 'slash'; nf = 8 if anim == 'thrust' else 6
+    im = Image.open(f'{LPC}/{p}').convert('RGBA').crop((0, 0, nf * 192, 4 * 192))
     im.save(f'{OUT}/char/{lid}.png', optimize=True); used.append(p)
-    manifest['oversize'][lid] = {'z': z, 'frame': 192, 'mat': 'metal', 'base': 'steel'}
+    manifest['oversize'][lid] = {'z': z, 'frame': 192, 'mat': None if an else 'metal', 'base': None if an else 'steel', 'anim': anim}
 for mat, f in [('body', 'body/body_ulpc'), ('hair', 'hair/hair_ulpc'), ('cloth', 'cloth/cloth_ulpc'), ('metal', 'metal/metal_ulpc')]:
     manifest['palettes'][mat] = json.loads(subprocess.check_output(['git', '-C', LPC, 'show', f'HEAD:palette_definitions/{f}.json'], text=True))
 json.dump(manifest, open(f'{OUT}/char/manifest.json', 'w'), separators=(',', ':'))

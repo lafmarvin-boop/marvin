@@ -420,11 +420,19 @@ Source : https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Characte
   - https://opengameart.org/content/lpc-extended-weapon-animations
 - **weapon/blunt/waraxe** — Benjamin K. Smith (BenCreating), bluecarrot16, Sander Frenken (castelonia) — CC-BY-SA 3.0, GPL 3.0
   - https://opengameart.org/content/lpc-medieval-weapons
+- **weapon/magic/diamond** — bluecarrot16 — OGA-BY 3.0+, GPL 3.0, CC-BY 4.0
+  - https://opengameart.org/content/lpc-more-weapons
+- **weapon/magic/gnarled** — bluecarrot16 — OGA-BY 3.0+, GPL 3.0, CC-BY 4.0
+  - https://opengameart.org/content/lpc-more-weapons
+- **weapon/magic/loop** — bluecarrot16 — OGA-BY 3.0+, GPL 3.0, CC-BY 4.0
+  - https://opengameart.org/content/lpc-more-weapons
 - **weapon/polearm/scythe** — bluecarrot16 — CC-BY-SA 3.0
   - https://opengameart.org/content/lpc-extended-weapon-animations
 - **weapon/polearm/spear** — Pierre Vigier (pvigier), Johannes Sjölund (wulax), Inboxninja — CC-BY-SA 3.0
   - https://opengameart.org/content/lpc-medieval-fantasy-character-sprites
   - https://opengameart.org/content/lpc-spear-and-shovel-reworked
+- **weapon/ranged/crossbow** — bluecarrot16, drjamgo@hotmail.com — CC0
+  - https://opengameart.org/content/lpc-crossbow-final
 - **weapon/sword/glowsword** — bluecarrot16, tskaufma, Johannes Sjölund (wulax) — OGA-BY 3.0, CC-BY-SA 3.0
   - https://opengameart.org/content/lpc-medieval-fantasy-character-sprites
   - https://opengameart.org/content/lpc-glow-sword
