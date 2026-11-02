@@ -99,6 +99,67 @@ OVERSIZE = {  # attaques 192 px
  'axe_atk_bg': ('weapon/blunt/waraxe/attack_slash/behind/', -1, 'waraxe'),
 }
 
+# --- 3 designs par rareté (coffres) ---
+def mt(base, m, t, z, mat, b, var=None, fem=None):
+    LAYERS[base + '_male'] = (m, z, var, mat, b)
+    LAYERS[base + '_thin'] = (t, z, var, mat, b)
+    if fem: LAYERS[base + '_female'] = (fem, z, var, mat, b)
+for k, path in [('helm_nasal', 'nasal'), ('helm_norman', 'norman'), ('helm_spangenhelm', 'spangenhelm'), ('helm_barbnasal', 'barbarian_nasal'),
+                ('helm_bascinet', 'bascinet'), ('helm_maximus', 'maximus')]:
+    LAYERS[k] = (f'hat/helmet/{path}/adult/', 130, None, 'metal', 'steel')
+for k, path in [('helm_barbuta', 'barbuta'), ('helm_greathelm', 'greathelm')]:
+    LAYERS[k + '_male'] = (f'hat/helmet/{path}/male/', 130, None, 'metal', 'steel')
+    LAYERS[k + '_female'] = (f'hat/helmet/{path}/female/', 130, None, 'metal', 'steel')
+LAYERS['chainmail_male'] = ('torso/chainmail/male/', 50, None, 'metal', 'steel')
+LAYERS['chainmail_female'] = ('torso/chainmail/female/', 50, None, 'metal', 'steel')
+for c in ['black', 'blue']:
+    LAYERS[f'tabard_{c}_male'] = ('torso/jacket/tabard/male/', 55, c, None, None)
+    LAYERS[f'tabard_{c}_female'] = ('torso/jacket/tabard/female/', 55, c, None, None)
+LAYERS['shlegion_male'] = ('shoulders/legion/male/', 62, None, 'metal', 'steel')
+LAYERS['shlegion_female'] = ('shoulders/legion/female/', 62, None, 'metal', 'steel')
+mt('bracers', 'arms/bracers/male/', 'arms/bracers/thin/', 70, 'metal', 'steel')
+mt('cuffs', 'arms/wrists/cuffs/male/', 'arms/wrists/cuffs/thin/', 70, 'cloth', 'white')
+mt('pauldrons', 'shoulders/pauldrons/male/', 'shoulders/pauldrons/thin/', 62, 'cloth', 'white')
+mt('epaulets', 'shoulders/epaulets/male/', 'shoulders/epaulets/thin/', 62, 'cloth', 'white')
+mt('mantal', 'shoulders/mantal/male/', 'shoulders/mantal/thin/', 75, 'cloth', 'white')
+mt('bauldron', 'shoulders/bauldron/male/', 'shoulders/bauldron/thin/', 65, 'cloth', 'white')
+for k in ['pants2', 'pantaloons', 'cuffed', 'leggings', 'hose']:
+    mt(k, f'legs/{k}/male/', f'legs/{k}/thin/', 20, 'cloth', 'white')
+mt('skirtlegion', 'legs/skirts/legion/male/', 'legs/skirts/legion/thin/', 22, 'cloth', 'white')
+mt('boots_fold', 'feet/boots/fold/male/', 'feet/boots/fold/thin/', 25, 'cloth', 'white')
+mt('boots_revised', 'feet/boots/revised/male/', 'feet/boots/revised/thin/', 25, 'cloth', 'white')
+mt('ghillies', 'feet/shoes/ghillies/male/', 'feet/shoes/ghillies/thin/', 15, 'cloth', 'white')
+mt('sandals', 'feet/sandals/male/', 'feet/sandals/thin/', 15, 'cloth', 'white')
+LAYERS['cape_tattered_fg'] = ('cape/tattered/fg/', 85, None, 'cloth', 'white')
+LAYERS['cape_tattered_bg'] = ('cape/tattered/bg/', 5, None, 'cloth', 'white')
+LAYERS['cape_trim'] = ('cape/trim/', 90, None, 'cloth', 'brown')
+for c in ['black', 'green', 'silver']:
+    LAYERS[f'shield_round_{c}'] = ('shield/round/', 110, c, None, None)
+for v in ['gray_gray', 'red_gray', 'orange']:
+    LAYERS[f'shield_kite{v}_male'] = ('shield/kite/male/', 110, 'kite_' + v, None, None)
+    LAYERS[f'shield_kite{v}_female'] = ('shield/kite/female/', 110, 'kite_' + v, None, None)
+LAYERS['shield_spartan_bg'] = ('shield/spartan/bg/', 2, 'spartan', None, None)
+LAYERS['shield_spartan_fg'] = ('shield/spartan/fg/', 110, 'spartan', None, None)
+LAYERS['shield_scutum_bg'] = ('shield/scutum/paint/bg/', 2, 'scutum', 'cloth', 'white')
+LAYERS['shield_scutum_male'] = ('shield/scutum/paint/fg/male/', 110, 'scutum', 'cloth', 'white')
+LAYERS['shield_scutum_female'] = ('shield/scutum/paint/fg/female/', 110, 'scutum', 'cloth', 'white')
+LAYERS['shield_engr_bg'] = ('shield/two_engrailed/paint/bg/', 2, 'two_engrailed', 'cloth', 'white')
+LAYERS['shield_engr_male'] = ('shield/two_engrailed/paint/fg/male/', 110, 'two_engrailed', 'cloth', 'white')
+LAYERS['shield_engr_female'] = ('shield/two_engrailed/paint/fg/female/', 110, 'two_engrailed', 'cloth', 'white')
+# armes
+WPN = {'saber': ('sword/saber', 'saber', 'universal_behind/'), 'rapier': ('sword/rapier', 'rapier', 'universal_behind/'),
+       'glowblue': ('sword/glowsword', 'blue', 'universal_behind/'), 'glowred': ('sword/glowsword', 'red', 'universal_behind/'),
+       'mace': ('blunt/mace', 'mace', 'universal_behind/'), 'flail': ('blunt/flail', 'flail', 'behind/'),
+       'scythe': ('polearm/scythe', 'scythe', 'universal_behind/')}
+for k, (path, var, beh) in WPN.items():
+    LAYERS[k + '_fg'] = (f'weapon/{path}/', 140, var, 'metal', 'steel')
+    LAYERS[k + '_bg'] = (f'weapon/{path}/{beh}', 9, var, 'metal', 'steel')
+    OVERSIZE[k + '_atk_fg'] = (f'weapon/{path}/attack_slash/', 150, var)
+    OVERSIZE[k + '_atk_bg'] = (f'weapon/{path}/attack_slash/behind/', -1, var)
+for v in ['medium', 'light', 'red', 'dark', 'brass', 'bronze', 'ceramic', 'copper', 'gold', 'iron', 'silver', 'steel']:
+    LAYERS[f'spear_{v}_fg'] = ('weapon/polearm/spear/foreground/', 140, v, None, None)
+    LAYERS[f'spear_{v}_bg'] = ('weapon/polearm/spear/background/', 9, v, None, None)
+
 files = set(subprocess.check_output(['git', '-C', LPC, 'ls-tree', '-r', '--name-only', 'HEAD'], text=True).split('\n'))
 
 def resolve(d, anim, var):
@@ -112,7 +173,7 @@ for lid, (d, z, var, *_) in LAYERS.items():
     for a, *_ in ANIMS:
         need[(lid, a)] = resolve(d, a, var)
 for lid, (d, z, var) in OVERSIZE.items():
-    need[(lid, 'slash')] = resolve(d, '', var) or (f'spritesheets/{d}{var}.png' if f'spritesheets/{d}{var}.png' in files else None)
+    need[(lid, 'slash')] = f'spritesheets/{d}{var}.png' if f'spritesheets/{d}{var}.png' in files else None
 paths = sorted({p for p in need.values() if p})
 subprocess.check_call(['git', '-C', LPC, 'checkout', 'HEAD', '--'] + paths)
 

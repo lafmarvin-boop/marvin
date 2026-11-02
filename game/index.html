@@ -218,15 +218,52 @@ const SLOTS={
   bouclier:{n:'Bouclier',st:{def:3}},cape:{n:'Cape',st:{hp:10,mp:6}},
 };
 const SLOT_ORDER=Object.keys(SLOTS);
-const NAMES={
-  arme:{epee:["Épée de fer","Épée d'acier","Lame d'argent","Excalibur"],hache:['Hache de fer','Hache de guerre','Hache runique','Fendeuse des Rois'],lance:['Lance de fer',"Pique d'acier","Lance d'argent",'Lance du Dragon']},
-  torse:['Veste de cuir','Cuirasse de légion','Armure de plates','Armure du Paladin'],
-  casque:['Casque barbare','Chapel de fer','Heaume cornu','Heaume du Roi'],
-  gants:['Gants de cuir',"Gantelets d'acier","Brassards d'argent",'Poings de Titan'],
-  jambes:['Braies de toile','Braies renforcées',"Jambières d'argent",'Jambières dorées'],
-  bottes:['Bottes de marche','Bottes à revers',"Solerets d'argent",'Solerets du Vent'],
-  bouclier:['Rondache en bois','Écu de bataille','Bouclier du Croisé','Égide dorée'],
-  cape:['Cape de voyage','Cape de chevalier','Cape mystique','Cape du Phénix'],
+/* 3 designs par rareté et par emplacement : [nom, couches]. {t}=_thin/_male, {f}=_female/_male, {tor}=torse, $m=métal de la rareté */
+const DESIGNS={
+  casque:[
+    [['Casque barbare',[['helmet','$m']]],['Casque à nasal',[['helm_nasal','$m']]],['Chapel de fer',[['helm_kettle','$m']]]],
+    [['Casque normand',[['helm_norman','$m']]],['Spangenhelm',[['helm_spangenhelm','$m']]],['Casque du raider',[['helm_barbnasal','$m']]]],
+    [['Heaume cornu',[['helm_horned','$m']]],['Bassinet',[['helm_bascinet','$m']]],['Barbute',[['helm_barbuta{f}','$m']]]],
+    [['Heaume du Roi',[['helm_armet','$m']]],['Grand heaume',[['helm_greathelm{f}','$m']]],['Casque du Gladiateur',[['helm_maximus','$m']]]]],
+  torse:[
+    [['Veste de cuir',[['leather{tor}','brown']]],['Tabard noir',[['tabard_black{f}']]],['Gilet de chasse',[['leather{tor}','forest']]]],
+    [['Cotte de mailles',[['chainmail{f}','$m']]],['Cuirasse de légion',[['legion{tor}','$m']]],['Tabard du garde',[['chainmail{f}','iron'],['tabard_blue{f}']]]],
+    [['Armure de plates',[['plate{tor}','$m']]],["Légion d'argent",[['legion{tor}','$m'],['shlegion{f}','$m']]],['Brigandine',[['chainmail{f}','$m'],['leather{tor}','purple']]]],
+    [['Armure du Paladin',[['plate{tor}','$m']]],['Armure impériale',[['legion{tor}','$m'],['shlegion{f}','$m']]],['Plates du Dragon',[['plate{tor}','$m'],['mantal{t}','red']]]]],
+  gants:[
+    [['Gants de cuir',[['gloves{t}','bronze']]],['Manchettes',[['cuffs{t}','brown']]],['Brassards de cuir',[['bracers{t}','copper']]]],
+    [["Gantelets d'acier",[['gloves{t}','$m']]],["Brassards d'acier",[['bracers{t}','$m']]],['Épaulières de cuir',[['pauldrons{t}','brown'],['gloves{t}','$m']]]],
+    [["Brassards d'argent",[['armplate{t}','$m'],['gloves{t}','$m']]],['Épaulettes du mage',[['epaulets{t}','purple'],['bracers{t}','$m']]],['Spalières',[['bauldron{t}','gray'],['gloves{t}','$m']]]],
+    [['Poings de Titan',[['armplate{t}','$m'],['gloves{t}','$m']]],['Gardes royales',[['armplate{t}','$m'],['pauldrons{t}','red']]],['Mantelet du Héros',[['mantal{t}','yellow'],['bracers{t}','$m'],['gloves{t}','$m']]]]],
+  jambes:[
+    [['Braies de toile',[['pants{t}','tan']]],['Pantalon ample',[['pants2{t}','brown']]],['Chausses grises',[['hose{t}','gray']]]],
+    [['Braies renforcées',[['cuffed{t}','blue']]],['Pantalon bouffant',[['pantaloons{t}','navy']]],['Jambières de cuir',[['leggings{t}','teal']]]],
+    [["Jambières d'argent",[['legplate{t}','$m']]],['Jupe de légion',[['pants{t}','purple'],['skirtlegion{t}','purple']]],['Chausses mystiques',[['hose{t}','lavender']]]],
+    [['Jambières dorées',[['legplate{t}','$m']]],['Jupe impériale',[['pants{t}','maroon'],['skirtlegion{t}','red']]],['Cuissards du Dragon',[['legplate{t}','$m'],['skirtlegion{t}','red']]]]],
+  bottes:[
+    [['Bottes de marche',[['boots{t}','brown']]],['Sandales',[['sandals{t}','brown']]],['Souliers de cuir',[['ghillies{t}','tan']]]],
+    [['Bottes à revers',[['boots_rimmed{t}','black']]],['Bottes pliées',[['boots_fold{t}','blue']]],['Bottes de cavalier',[['boots_revised{t}','navy']]]],
+    [["Solerets d'argent",[['feetplate{t}','$m']]],['Bottes mystiques',[['boots_fold{t}','purple']]],["Bottes d'ombre",[['boots_revised{t}','black']]]],
+    [['Solerets du Vent',[['feetplate{t}','$m']]],['Bottes royales',[['boots_rimmed{t}','red']]],['Bottes du Phénix',[['boots_fold{t}','yellow']]]]],
+  bouclier:[
+    [['Rondache en bois',[['shield_round_brown']]],['Rondache noire',[['shield_round_black']]],['Rondache verte',[['shield_round_green']]]],
+    [['Écu de bataille',[['shield_kite{f}']]],['Écu de fer',[['shield_kitegray_gray{f}']]],['Écu écarlate',[['shield_kitered_gray{f}']]]],
+    [['Bouclier du Croisé',[['shield_crusader_bg'],['shield_crusader{f}']]],['Bouclier spartiate',[['shield_spartan_bg'],['shield_spartan_fg']]],['Scutum',[['shield_scutum_bg','maroon'],['shield_scutum{f}','maroon']]]],
+    [['Égide dorée',[['shield_round_gold']]],['Pavois des Lions',[['shield_engr_bg','yellow'],['shield_engr{f}','yellow']]],['Écu du Soleil',[['shield_kiteorange{f}']]]]],
+  cape:[
+    [['Cape de voyage',[['cape_fg','brown'],['cape_bg','brown']]],['Cape usée',[['cape_tattered_fg','gray'],['cape_tattered_bg','gray']]],['Cape de berger',[['cape_fg','tan'],['cape_bg','tan']]]],
+    [['Cape de chevalier',[['cape_fg','navy'],['cape_bg','navy'],['cape_trim','gray']]],['Cape azur',[['cape_fg','blue'],['cape_bg','blue']]],['Cape du rôdeur',[['cape_tattered_fg','forest'],['cape_tattered_bg','forest']]]],
+    [['Cape mystique',[['cape_fg','purple'],['cape_bg','purple'],['cape_trim','yellow']]],["Cape d'ombre",[['cape_tattered_fg','black'],['cape_tattered_bg','black']]],['Cape des marées',[['cape_fg','teal'],['cape_bg','teal'],['cape_trim','white']]]],
+    [['Cape du Phénix',[['cape_fg','red'],['cape_bg','red'],['cape_trim','yellow']]],['Cape du Spectre',[['cape_tattered_fg','maroon'],['cape_tattered_bg','maroon']]],['Cape solaire',[['cape_fg','yellow'],['cape_bg','yellow'],['cape_trim','red']]]]],
+};
+/* armes : [nom, modèle] selon l'arme choisie à la création */
+const WDES={
+  epee:[[['Épée de fer','sword'],['Sabre de fer','saber'],['Rapière de fer','rapier']],[["Épée d'acier",'sword'],["Sabre d'acier",'saber'],["Rapière d'acier",'rapier']],
+        [["Lame d'argent",'sword'],["Sabre d'argent",'saber'],["Rapière d'argent",'rapier']],[['Excalibur','sword'],['Lame de givre','glowblue'],['Lame infernale','glowred']]],
+  hache:[[['Hache de fer','axe'],['Masse de fer','mace'],['Fléau de fer','flail']],[['Hache de guerre','axe'],["Masse d'acier",'mace'],["Fléau d'acier",'flail']],
+         [['Hache runique','axe'],["Masse d'argent",'mace'],["Fléau d'argent",'flail']],[['Fendeuse des Rois','axe'],['Fléau du Jugement','flail'],['Faux de la Mort','scythe']]],
+  lance:[[['Lance en frêne','spear_light'],['Lance de chasse','spear_medium'],['Lance de cuivre','spear_copper']],[['Lance de bronze','spear_bronze'],['Pique de fer','spear_iron'],["Pique d'acier",'spear_steel']],
+         [['Lance sombre','spear_dark'],["Lance d'argent",'spear_silver'],['Lance de céramique','spear_ceramic']],[['Lance écarlate','spear_red'],['Lance de laiton','spear_brass'],['Lance du Dragon','spear_gold']]],
 };
 const CHESTS=[{n:'Coffre en bois',c:80,p:[70,24,5,1]},{n:'Coffre en fer',c:220,p:[30,45,20,5]},{n:'Coffre doré',c:600,p:[0,40,45,15]}];
 const STN={atk:'ATQ',def:'DEF',hp:'PV',mp:'PM',spd:'VIT'};
@@ -236,7 +273,8 @@ function makeItem(s,r){
   const k=RAR[r].m*(1+.3*(save.best||0)),st={};
   for(const [a,v] of Object.entries(SLOTS[s].st))st[a]=a==='spd'?Math.round(v*(1+r)*100)/100:Math.max(1,Math.round(v*k*rnd(.85,1.15)));
   if(r===3)st.mp=(st.mp||0)+10;
-  return{id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),s,r,n:s==='arme'?NAMES.arme[save.look.weapon][r]:NAMES[s][r],st};
+  const d=Math.floor(Math.random()*3);
+  return{id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),s,r,d,n:s==='arme'?WDES[save.look.weapon][r][d][0]:DESIGNS[s][r][d][0],st};
 }
 function statTxt(st){return Object.entries(st).map(([k,v])=>'+'+(k==='spd'?Math.round(v*100)+'%':v)+' '+STN[k]).join(' · ')}
 function equippedOf(s){const o={};if(s&&s.eq&&s.inv)for(const [k,id] of Object.entries(s.eq)){const it=s.inv.find(i=>i.id===id);if(it)o[k]=it}return o}
@@ -274,24 +312,21 @@ function compose(layers,weapon,o={}){
     if(o.orc&&onHead(l)){for(const an of Object.values(M.anims))for(let d=0;d<an.dirs;d++){const y=(an.row+d)*64,dy=an.dirs>1?ORC_DY[d]:3;gg.drawImage(src,0,y,576,64,0,y+dy,576,64)}}
     else gg.drawImage(src,0,0);};
   Ls.forEach(x=>put(g,x));
-  const mt=o.metal||undefined,atk=weapon==='epee'?{bg:recolor('sword_atk_bg',mt),fg:recolor('sword_atk_fg',mt)}:weapon==='hache'?{bg:recolor('axe_atk_bg',mt),fg:recolor('axe_atk_fg',mt)}:null;
+  const mt=o.metal||undefined,wm=o.wmodel||{epee:'sword',hache:'axe'}[weapon],atk=wm&&M.oversize[wm+'_atk_fg']?{bg:recolor(wm+'_atk_bg',mt),fg:recolor(wm+'_atk_fg',mt)}:null;
   return{sheet:c,atk,atkAnim:weapon==='lance'?'thrust':'slash'};
 }
 // Muscles : homme = corps de base / athlétique / athlétique élargi ; femme = corps féminin de plus en plus large
 function heroScale(L){const R=RACES[L.race],b=L.build??1;
   const k=L.sex==='f'?[[1,1],[1.06,1.01],[1.12,1.03]][b]:b===2?[1.12,1.03]:[1,1];return[R.sx*k[0],R.sy*k[1]];}
-function heroChar(L,eq){const E=equippedOf(eq);return compose(heroLayers(L,eq),L.weapon,{orc:RACES[L.race].head==='orc',metal:E.arme?RAR[E.arme.r].metal:null});}
-function itemLook(it,tor,thin,f){
-  const r=it.r,M_=RAR[r].metal,C_=RAR[r].cloth;
-  switch(it.s){
-    case 'torse':return r===0?[['leather'+tor,'brown']]:r===1?[['legion'+tor,'steel']]:[['plate'+tor,M_]];
-    case 'casque':return[[['helmet','helm_kettle','helm_horned','helm_armet'][r],M_]];
-    case 'gants':return r<2?[[thin?'gloves_thin':'gloves_male',M_]]:[[thin?'armplate_thin':'armplate_male',M_],[thin?'gloves_thin':'gloves_male',M_]];
-    case 'jambes':return r<2?[[thin?'pants_thin':'pants_male',C_]]:[[thin?'legplate_thin':'legplate_male',M_]];
-    case 'bottes':return r===0?[[thin?'boots_thin':'boots_male','brown']]:r===1?[[thin?'boots_rimmed_thin':'boots_rimmed_male','black']]:[[thin?'feetplate_thin':'feetplate_male',M_]];
-    case 'bouclier':return r===0?[['shield_round_brown']]:r===1?[[f?'shield_kite_female':'shield_kite_male']]:r===2?[['shield_crusader_bg'],[f?'shield_crusader_female':'shield_crusader_male']]:[['shield_round_gold']];
-    case 'cape':{const c=['brown','navy','purple','red'][r];return[['cape_fg',c],['cape_bg',c]];}
-  }return[];
+function heroChar(L,eq){const W=weaponOf(L,equippedOf(eq));return compose(heroLayers(L,eq),L.weapon,{orc:RACES[L.race].head==='orc',metal:W.met,wmodel:W.model});}
+function itemLook(it,ctx){
+  const des=DESIGNS[it.s]&&DESIGNS[it.s][it.r][it.d||0];if(!des)return[];
+  return des[1].map(([id,p])=>[id.replace('{t}',ctx.thin?'_thin':'_male').replace('{f}',ctx.f?'_female':'_male').replace('{tor}',ctx.tor),p==='$m'?RAR[it.r].metal:p]).filter(([id])=>M.layers[id]);
+}
+function weaponOf(L,E){
+  const it=E.arme;if(!it)return{model:{epee:'sword',hache:'axe',lance:'spear'}[L.weapon]};
+  const model=WDES[L.weapon][it.r][it.d||0][1],plain=/^(spear|glow)/.test(model);
+  return{model,met:plain?undefined:RAR[it.r].metal};
 }
 function heroLayers(L,eq){
   const f=L.sex==='f',R=RACES[L.race],out=[];
@@ -304,14 +339,12 @@ function heroLayers(L,eq){
   if(L.hairStyle==='ponytail'){out.push(['hair_ponytail_fg',L.hair]);out.push(['hair_ponytail_bg',L.hair]);}
   else if(L.hairStyle!=='none')out.push(['hair_'+L.hairStyle,L.hair]);
   const tor=f?'_female':slim?'_teen':'_male',E=equippedOf(eq),add=a=>a.forEach(x=>out.push(x));
-  if(E.jambes)add(itemLook(E.jambes,tor,thin,f));else out.push([thin?'pants_thin':'pants_male',L.pants]);
-  if(E.bottes)add(itemLook(E.bottes,tor,thin,f));else out.push([thin?'boots_thin':'boots_male','brown']);
-  if(E.torse)add(itemLook(E.torse,tor,thin,f));else if(L.armor!=='none')out.push(['leather'+tor,L.armor]);
-  for(const sl of ['casque','gants','bouclier','cape'])if(E[sl])add(itemLook(E[sl],tor,thin,f));
-  const met=E.arme?RAR[E.arme.r].metal:undefined;
-  if(L.weapon==='epee'){out.push(['sword_fg',met]);out.push(['sword_bg',met]);}
-  else if(L.weapon==='hache'){out.push(['axe_fg',met]);out.push(['axe_bg',met]);}
-  else{const g=E.arme&&E.arme.r===3?'spear_gold_':'spear_';out.push([g+'fg']);out.push([g+'bg']);}
+  const ctx={tor,thin,f};
+  if(E.jambes)add(itemLook(E.jambes,ctx));else out.push([thin?'pants_thin':'pants_male',L.pants]);
+  if(E.bottes)add(itemLook(E.bottes,ctx));else out.push([thin?'boots_thin':'boots_male','brown']);
+  if(E.torse)add(itemLook(E.torse,ctx));else if(L.armor!=='none')out.push(['leather'+tor,L.armor]);
+  for(const sl of ['casque','gants','bouclier','cape'])if(E[sl])add(itemLook(E[sl],ctx));
+  const W=weaponOf(L,E);out.push([W.model+'_fg',W.met]);out.push([W.model+'_bg',W.met]);
   return out;
 }
 const SPECS={
@@ -377,7 +410,7 @@ $('#iName').oninput=e=>look.name=e.target.value||'Héros';
 $('#bStart').onclick=()=>{save=newSave({...look},pickedSkills);store();buildRegion();startPlay();};
 $('#bTurn').onclick=()=>pvDir=(pvDir+1)%4;
 $('#bAnim').onclick=()=>pvAtk=performance.now();
-function getChar(L,eq){const k=JSON.stringify([L,Object.values(equippedOf(eq)).map(i=>i.s+i.r)]);if(k!==pvKey){pvKey=k;pvChar=heroChar(L,eq)}return pvChar;}
+function getChar(L,eq){const k=JSON.stringify([L,Object.values(equippedOf(eq)).map(i=>i.s+i.r+(i.d||0))]);if(k!==pvKey){pvKey=k;pvChar=heroChar(L,eq)}return pvChar;}
 function animPreview(){
   const t=performance.now()/1000;
   for(const id of ['#pv','#pv2']){
