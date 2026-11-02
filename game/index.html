@@ -11,7 +11,8 @@ html,body{margin:0;background:var(--bg);color:var(--txt);font-family:"Courier Ne
 #wrap{max-width:1100px;margin:0 auto;padding:8px 16px}
 h1{font-size:22px;letter-spacing:3px;text-align:center;margin:6px 0 10px;color:var(--gold);text-shadow:3px 3px 0 #000}
 canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
-#game{width:100%;aspect-ratio:16/9;background:#000;border:4px solid var(--line)}
+#sPlay.on{position:fixed;inset:0;z-index:50;background:#000;padding:0;border:0}
+#game{width:100%;height:100%;background:#000;touch-action:none}
 .screen{display:none;background:var(--panel);border:4px solid var(--line);padding:14px}
 .screen.on{display:block}
 .cols{display:flex;gap:16px;flex-wrap:wrap}
@@ -37,12 +38,13 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 .item p{margin:0 0 6px;color:var(--dim)}
 .gold{color:var(--gold)}
 #msg{color:var(--ok);min-height:18px;margin:6px 0}
-#touch{display:flex;justify-content:space-between;gap:8px;margin-top:8px}
-#touch .pad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(3,56px);gap:4px}
-#touch .act{display:flex;gap:6px;flex-wrap:wrap;align-content:center;max-width:250px}
-#touch button{width:56px;height:56px;font-size:18px;touch-action:none;padding:0}
-#help{font-size:12px;color:var(--dim);text-align:center;margin-top:6px}
-#over{position:relative}
+#touch{position:absolute;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,58px);gap:8px;align-items:center;justify-items:center}
+#touch button{width:56px;height:56px;font-size:18px;touch-action:none;padding:0;border-radius:50%;background:rgba(30,20,50,.55);border-color:rgba(255,255,255,.35)}
+#touch .atk{grid-column:3;grid-row:1/3;width:76px;height:76px;font-size:30px;background:rgba(160,40,40,.6)}
+#tools{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;gap:6px}
+#tools button{font-size:12px;padding:4px 8px;background:rgba(30,20,50,.6)}
+#help{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(6px + env(safe-area-inset-bottom,0px));font-size:11px;color:#ddd;text-shadow:1px 1px 0 #000;pointer-events:none;white-space:nowrap}
+#over{position:absolute;inset:0}
 #ovl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:#000a;gap:12px;text-align:center}
 #ovl.on{display:flex}
 #ovl h2{color:var(--acc);font-size:28px;margin:0;text-shadow:3px 3px 0 #000}
@@ -50,6 +52,7 @@ input{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--tx
 footer{font-size:11px;color:var(--dim);text-align:center;margin:10px 0}
 footer a{color:var(--dim)}
 @media (pointer:fine){#touch{display:none}}
+@media (pointer:coarse){#help{display:none}}
 </style>
 </head>
 <body>
@@ -84,16 +87,18 @@ footer a{color:var(--dim)}
 </div>
 
 <!-- JEU -->
-<div id="sPlay" class="screen" style="padding:0;border:0;background:none">
+<div id="sPlay" class="screen">
   <div id="over">
     <canvas id="game" width="480" height="270"></canvas>
     <div id="ovl"><h2 id="ovlT"></h2><div id="ovlS"></div><button class="big" id="ovlB">Retour au camp</button></div>
   </div>
-  <div id="touch">
-    <div class="pad"><span></span><button data-k="ArrowUp">▲</button><span></span><button data-k="ArrowLeft">◀</button><button data-k="KeyE">E</button><button data-k="ArrowRight">▶</button><span></span><button data-k="ArrowDown">▼</button><span></span></div>
-    <div class="act"><button data-k="KeyK" style="width:80px;height:80px;font-size:28px">⚔</button><button data-k="Digit1">1</button><button data-k="Digit2">2</button><button data-k="Digit3">3</button><button data-k="KeyQ">🧪</button></div>
+    <div id="tools"><button id="bFull">⛶ Plein écran</button><button id="bCamp">🔥 Camp</button></div>
+    <div id="touch">
+      <button data-k="Digit1">1</button><button data-k="Digit2">2</button><button class="atk" data-k="KeyK">⚔</button>
+      <button data-k="Digit3">3</button><button data-k="KeyQ">🧪</button>
+    </div>
+    <div id="help">Stick : glisse le doigt ou la souris à gauche · Manette : stick gauche, A attaque, X Y B compétences, RB potion, LB interagir · Clavier : ZQSD, K, 1 2 3, R, E</div>
   </div>
-  <div id="help">ZQSD / WASD / flèches : bouger · K, J ou Espace : attaquer · 1 2 3 : compétences · R : potion · E : interagir (feu de camp, coffre)</div>
 </div>
 
 <!-- CAMP -->
@@ -126,7 +131,7 @@ const rnd=(a,b)=>a+Math.random()*(b-a);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const M=ASSETS.manifest, IMG={};
-const TS=32, VW=480, VH=270;
+const TS=32;let VW=480,VH=270;
 const DIRV=[[0,-1],[-1,0],[0,1],[1,0]]; // haut, gauche, bas, droite (ordre LPC)
 
 /* ================= DONNÉES ================= */
@@ -450,6 +455,34 @@ addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
 document.querySelectorAll('#touch button').forEach(b=>{const k=b.dataset.k;
   b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true;hit[k]=true;});
   ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>keys[k]=false));});
+function fitView(){
+  const w=innerWidth,h=innerHeight,S=Math.max(1,Math.min(w/480,h/270));
+  VW=Math.round(w/S);VH=Math.round(h/S);if(cv.width!==VW||cv.height!==VH){cv.width=VW;cv.height=VH;cx.imageSmoothingEnabled=false;dark=null;}
+}
+addEventListener('resize',fitView);
+$('#bFull').onclick=()=>{const d=document,el=d.documentElement;try{if(d.fullscreenElement)d.exitFullscreen();else (el.requestFullscreen||el.webkitRequestFullscreen).call(el).catch?.(()=>{})}catch(e){}};
+$('#bCamp').onclick=()=>{if(state==='play'&&Math.hypot(P.x-camp.x,P.y-camp.y)<48)interact();else{P.x=camp.x+40;P.y=camp.y;txt(P.x,P.y-50,'Retour au camp','#ffcf4a')}};
+/* --- stick virtuel (doigt ou souris, moitié gauche de l'écran) --- */
+const joy={on:false,id:null,ox:0,oy:0,x:0,y:0,R:34};
+function toCanvas(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width*VW,(e.clientY-r.top)/r.height*VH]}
+cv.addEventListener('pointerdown',e=>{const[x,y]=toCanvas(e);
+  if(x>VW*.55||joy.on){hit.KeyK=true;return}
+  joy.on=true;joy.id=e.pointerId;joy.ox=x;joy.oy=y;joy.x=x;joy.y=y;cv.setPointerCapture(e.pointerId);e.preventDefault();});
+cv.addEventListener('pointermove',e=>{if(!joy.on||e.pointerId!==joy.id)return;[joy.x,joy.y]=toCanvas(e);});
+const joyEnd=e=>{if(e.pointerId===joy.id){joy.on=false;joy.id=null}};
+cv.addEventListener('pointerup',joyEnd);cv.addEventListener('pointercancel',joyEnd);
+function joyVec(){if(!joy.on)return[0,0];let dx=joy.x-joy.ox,dy=joy.y-joy.oy;const d=Math.hypot(dx,dy);if(d<5)return[0,0];
+  if(d>joy.R){joy.ox=joy.x-dx/d*joy.R;joy.oy=joy.y-dy/d*joy.R;dx=joy.x-joy.ox;dy=joy.y-joy.oy}return[dx/joy.R,dy/joy.R]}
+/* --- manette (Gamepad API) --- */
+const GPMAP={0:'KeyK',2:'Digit1',3:'Digit2',1:'Digit3',5:'KeyR',7:'KeyR',4:'KeyE',9:'KeyE'};let gpPrev={},gpAxes=[0,0];
+function pollPad(){gpAxes=[0,0];const pads=navigator.getGamepads?navigator.getGamepads():[];
+  for(const gp of pads){if(!gp)continue;let ax=gp.axes[0]||0,ay=gp.axes[1]||0;if(Math.hypot(ax,ay)<.18){ax=0;ay=0}
+    if(gp.buttons[14]?.pressed)ax=-1;if(gp.buttons[15]?.pressed)ax=1;if(gp.buttons[12]?.pressed)ay=-1;if(gp.buttons[13]?.pressed)ay=1;
+    gpAxes=[ax,ay];
+    for(const [i,k] of Object.entries(GPMAP)){const pr=!!gp.buttons[i]?.pressed;if(pr&&!gpPrev[i])hit[k]=true;gpPrev[i]=pr}
+    if(state!=='play'&&gp.buttons[0]?.pressed&&!gpPrev.go){gpPrev.go=1;const b=$('#ovl.on #ovlB')||($('#sCamp.on')&&$('#bGo'));b&&b.click()}else if(!gp.buttons[0]?.pressed)gpPrev.go=0;
+    break;}}
+function keyMove(){return down('ArrowRight','KeyD','ArrowLeft','KeyA','ArrowDown','KeyS','ArrowUp','KeyW')}
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));}
 
 let heroC=null;
@@ -458,7 +491,7 @@ function startPlay(fresh=true){
   heroC=heroChar(save.look,save);
   if(fresh||!P)P={x:camp.x+40,y:camp.y,r:8,dir:2,walkT:0,moving:false,act:null,atkCd:0,inv:0,hp:st.hp,mp:st.mp,shield:0,dash:0,dv:[0,0],whirl:0,cds:{},kx:0,ky:0,aim:[0,1]};
   P.hp=Math.min(P.hp,st.hp);P.mp=Math.min(P.mp,st.mp);
-  state='play';banner=fresh?3:0;$('#ovl').classList.remove('on');show('sPlay');
+  state='play';banner=fresh?3:0;$('#ovl').classList.remove('on');show('sPlay');fitView();
 }
 
 /* collisions */
@@ -562,23 +595,28 @@ function update(dt){
   if(state==='play'){
     let ix=(down('ArrowRight','KeyD')?1:0)-(down('ArrowLeft','KeyA')?1:0);
     let iy=(down('ArrowDown','KeyS')?1:0)-(down('ArrowUp','KeyW')?1:0);
-    const len=Math.hypot(ix,iy);if(len){ix/=len;iy/=len;P.aim=[ix,iy];}
+    const jv=joyVec();ix+=jv[0]+gpAxes[0];iy+=jv[1]+gpAxes[1];
+    let len=Math.hypot(ix,iy);if(len){ix/=len;iy/=len;P.aim=[ix,iy];}
+    const mag=Math.min(1,Math.max(Math.hypot(jv[0],jv[1]),Math.hypot(...gpAxes),keyMove()?1:0));
     P.moving=!!len;
     const sp=86*st.spd*(P.act&&P.act.anim!=='walk'?.35:1);
     if(P.dash>0){P.dash-=dt;moveEnt(P,P.dv[0]*330*dt,P.dv[1]*330*dt);fx(P.x,P.y-16,'#ffe040',1,20);
       enemies.forEach(e=>{if(!P.dashHit.has(e)&&Math.hypot(e.x-P.x,e.y-P.y)<e.r+18){P.dashHit.add(e);hitEnemy(e,1.5,1,220)}});}
-    else if(len){if(!P.act)P.dir=dirOf(ix,iy);moveEnt(P,ix*sp*dt,iy*sp*dt);P.walkT+=dt;}
+    else if(len){if(!P.act)P.dir=dirOf(ix,iy);moveEnt(P,ix*sp*mag*dt,iy*sp*mag*dt);P.walkT+=dt*Math.max(.5,mag);}
     if(P.kx||P.ky){moveEnt(P,P.kx*dt,P.ky*dt);P.kx*=.86;P.ky*=.86;if(Math.hypot(P.kx,P.ky)<5)P.kx=P.ky=0}
     // attaque
     P.atkCd-=dt;
     if(P.act){P.act.t+=dt;
       if(P.act.melee&&!P.act.done&&P.act.t>P.act.dur*.35){P.act.done=1;
-        const [ax,ay]=DIRV[P.dir],cxh=P.x+ax*Wp.reach*.55,cyh=P.y-14+ay*Wp.reach*.55;
-        enemies.forEach(e=>{if(Math.hypot(e.x-cxh,(e.y-10*e.sc)-cyh)<Wp.reach*.6+e.r)hitEnemy(e,Wp.mult,1,save.look.weapon==='hache'?200:140)});
+        const [ax,ay]=P.act.aim||DIRV[P.dir],cxh=P.x+ax*Wp.reach*.5,cyh=P.y-14+ay*Wp.reach*.5;
+        enemies.forEach(e=>{if(Math.hypot(e.x-cxh,(e.y-10*e.sc)-cyh)<Wp.reach*.65+e.r)hitEnemy(e,Wp.mult,1,save.look.weapon==='hache'?200:140)});
         objs.forEach(o=>{if(o.k==='chest'&&!o.open&&Math.hypot(o.x-cxh,o.y-cyh)<Wp.reach*.6+12)openChest(o)});}
       if(P.act.t>=P.act.dur)P.act=null;}
-    if(tap('KeyK','KeyJ','Space')&&P.atkCd<=0&&!P.act){P.atkCd=Wp.cd;P.act={anim:heroC.atkAnim,t:0,dur:Wp.dur,melee:1};
-      const tg=nearestEnemy(Wp.reach+20);if(tg)P.dir=dirOf(tg.x-P.x,tg.y-P.y);}
+    const inReach=enemies.find(e=>Math.hypot(e.x-P.x,(e.y-8*e.sc)-(P.y-8))<=Wp.reach+e.r);
+    const manual=tap('KeyK','KeyJ','Space');
+    if((manual||inReach)&&P.atkCd<=0&&!P.act&&!P.dash){P.atkCd=Wp.cd;P.act={anim:heroC.atkAnim,t:0,dur:Wp.dur,melee:1};
+      const tg=inReach||nearestEnemy(Wp.reach+20);
+      if(tg){const a=Math.atan2(tg.y-8*tg.sc-(P.y-8),tg.x-P.x);P.act.aim=[Math.cos(a),Math.sin(a)];P.dir=dirOf(tg.x-P.x,tg.y-P.y);}}
     if(tap('Digit1','Numpad1'))useSkill(0);if(tap('Digit2','Numpad2'))useSkill(1);if(tap('Digit3','Numpad3'))useSkill(2);
     if(tap('KeyR','KeyQ')){if(save.potions>0&&P.hp<st.hp){save.potions--;const h=Math.round(st.hp*(save.look.race==='nain'?.6:.45));P.hp=Math.min(st.hp,P.hp+h);txt(P.x,P.y-50,'+'+h,'#5fd36b');fx(P.x,P.y-20,'#e05080',14)}}
     if(tap('KeyE','Enter'))interact();
@@ -764,13 +802,15 @@ function hud(){
       if(P.mp<S.mp){cx.fillStyle='rgba(0,60,255,.3)';cx.fillRect(x,y,22,22)}}
     text(String(i+1),x+2,y+8,'#aaa','left',7);}
   const px=8+save.maxSlots*26;cx.fillStyle='#ddd';cx.fillRect(px+5,VH-25,4,3);cx.fillStyle='#d0305a';cx.fillRect(px+3,VH-22,8,9);
-  text('x'+save.potions+' (R)',px+15,VH-13,'#fff');
+  text('x'+save.potions,px+15,VH-13,'#fff');
   if(bossRef&&bossRef.hp>0&&Math.hypot(bossRef.x-P.x,bossRef.y-P.y)<320){text(bossRef.D.name,VW/2,VH-24,'#ff8080','center');bar(VW/2-100,VH-18,200,7,bossRef.hp/bossRef.max,'#c03030');}
   if(portal&&state==='play')text('Le portail est ouvert ! Entre dedans.',VW/2,60,'#c8b0ff','center');
+  if(joy.on){cx.globalAlpha=.55;cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(joy.ox,joy.oy,joy.R,0,7);cx.stroke();
+    cx.fillStyle='#fff';cx.beginPath();const[jx,jy]=[joy.x-joy.ox,joy.y-joy.oy],d=Math.hypot(jx,jy),k=d>joy.R?joy.R/d:1;cx.arc(joy.ox+jx*k,joy.oy+jy*k,13,0,7);cx.fill();cx.globalAlpha=1;}
   if(banner>0){cx.globalAlpha=Math.min(1,banner);text(REG.name,VW/2,100,'#ffcf4a','center',18);text('Trouve et bats le boss à l\'est →',VW/2,118,'#fff','center',9);cx.globalAlpha=1;}
 }
 
-function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;pollPad();
   if(state==='play'||state==='dead'||state==='clear'){update(dt);render();}
   for(const k in hit)hit[k]=false;
   requestAnimationFrame(loop);}
