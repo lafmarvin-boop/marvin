@@ -514,19 +514,37 @@ function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(see
 const idx=(x,y)=>y*MW+x;
 function buildRegion(){
   const ri=save.region;REG=REGIONS[ri%3];const R=rng(ri*7919+11);
-  MW=60;MH=42;terr=new Uint8Array(MW*MH);solid=new Uint8Array(MW*MH);objs=[];
+  // cartes plus grandes à chaque région (max 100 x 72 tuiles)
+  MW=Math.min(100,72+ri*6);MH=Math.min(72,50+ri*4);terr=new Uint8Array(MW*MH);solid=new Uint8Array(MW*MH);objs=[];
   const clear=new Uint8Array(MW*MH);
-  spawnPt={x:5,y:MH>>1};bossPt={x:MW-9,y:MH>>1};
+  // camp et boss à des endroits différents : 8 positions sur les bords, boss loin du camp
+  const spots=[[.08,.5],[.92,.5],[.5,.1],[.5,.9],[.1,.12],[.9,.12],[.1,.88],[.9,.88]].map(([a,b])=>({x:Math.round(a*MW),y:Math.round(b*MH)}));
+  spawnPt=spots[Math.floor(R()*spots.length)];
+  const far=spots.filter(p=>Math.hypot(p.x-spawnPt.x,(p.y-spawnPt.y)*1.4)>Math.max(MW,MH)*.55);
+  const bp=far[Math.floor(R()*far.length)];
+  bossPt={x:clamp(bp.x+Math.round(R()*8-4),9,MW-10),y:clamp(bp.y+Math.round(R()*6-3),8,MH-9)};
+  spawnPt={x:clamp(spawnPt.x,6,MW-7),y:clamp(spawnPt.y,6,MH-7)};
   const near=(x,y,p,d)=>Math.hypot(x-p.x,y-p.y)<d;
   const blob=(t,n,minS,maxS,avoid)=>{for(let i=0;i<n;i++){const cx0=3+Math.floor(R()*(MW-6)),cy0=3+Math.floor(R()*(MH-6));
     for(let k=0;k<3;k++){const w=minS+Math.floor(R()*(maxS-minS)),h=minS+Math.floor(R()*(maxS-minS)),ox=cx0+Math.floor(R()*5-2),oy=cy0+Math.floor(R()*5-2);
       for(let y=oy;y<oy+h;y++)for(let x=ox;x<ox+w;x++){if(x<2||y<2||x>=MW-2||y>=MH-2)continue;if(avoid&&(clear[idx(x,y)]||near(x,y,spawnPt,7)||near(x,y,bossPt,8)))continue;terr[idx(x,y)]=t}}}};
-  blob(1,9,3,7,false);
-  // chemin du camp au boss
-  let py=spawnPt.y;for(let x=spawnPt.x;x<=bossPt.x;x++){if(R()<.3)py=clamp(py+(R()<.5?-1:1),6,MH-7);
-    for(let y=py-1;y<=py+1;y++){terr[idx(x,y)]=1;for(let yy=y-1;yy<=y+1;yy++)clear[idx(x,yy)]=1}}
+  blob(1,Math.round(MW*MH/330),3,7,false);
+  // chemins sinueux : camp -> points de passage -> boss, plus des embranchements
+  const carve=(a,b,wid=1)=>{let x=a.x,y=a.y,guard=0;
+    while((x!==b.x||y!==b.y)&&guard++<4000){
+      const dx=b.x-x,dy=b.y-y;
+      if(R()<.25){if(R()<.5&&dx)x+=Math.sign(dx);else if(dy)y+=Math.sign(dy);else x+=Math.sign(dx);}
+      else if(R()<.15){x=clamp(x+(R()<.5?-1:1),4,MW-5);}else if(R()<.15){y=clamp(y+(R()<.5?-1:1),4,MH-5);}
+      else if(Math.abs(dx)>Math.abs(dy))x+=Math.sign(dx);else y+=Math.sign(dy);
+      for(let yy=y-wid;yy<=y+wid;yy++)for(let xx=x-wid;xx<=x+wid;xx++){if(xx<2||yy<2||xx>=MW-2||yy>=MH-2)continue;terr[idx(xx,yy)]=1;
+        for(let k=-1;k<=1;k++){if(yy+k>=0&&yy+k<MH)clear[idx(xx,yy+k)]=1;if(xx+k>=0&&xx+k<MW)clear[idx(xx+k,yy)]=1}}}};
+  const way=[spawnPt];const nw=1+Math.floor(R()*3);
+  for(let i=0;i<nw;i++)way.push({x:6+Math.floor(R()*(MW-12)),y:6+Math.floor(R()*(MH-12))});
+  way.push(bossPt);for(let i=0;i<way.length-1;i++)carve(way[i],way[i+1]);
+  const branches=2+Math.floor(R()*3)+Math.min(3,ri);
+  for(let i=0;i<branches;i++){const from=way[Math.floor(R()*way.length)];carve(from,{x:6+Math.floor(R()*(MW-12)),y:6+Math.floor(R()*(MH-12))},R()<.5?1:0);}
   for(let y=bossPt.y-3;y<=bossPt.y+3;y++)for(let x=bossPt.x-3;x<=bossPt.x+3;x++)terr[idx(x,y)]=1;
-  blob(2,7,3,6,true);
+  blob(2,Math.round(MW*MH/360),3,6,true);
   // nettoyage pour l'autotile
   for(let pass=0;pass<6;pass++)for(const t of [2,1]){
     const has=(x,y)=>x<0||y<0||x>=MW||y>=MH||terr[idx(x,y)]>=t;
@@ -544,28 +562,33 @@ function buildRegion(){
   for(let x=0;x<MW;x+=2){place(x,0,big,R()<.5?0:1);place(x,MH-1,big,R()<.5?0:1);place(x+1<MW?x+1:x,1,big,R()<.5?0:1);}
   for(let y=0;y<MH;y+=2){place(0,y,big,R()<.5?0:1);place(MW-1,y,big,R()<.5?0:1);}
   for(let y=0;y<MH;y++){solid[idx(0,y)]=1;solid[idx(MW-1,y)]=1;}for(let x=0;x<MW;x++){solid[idx(x,0)]=1;solid[idx(x,MH-1)]=1;}
-  for(let i=0;i<90;i++){const x=1+Math.floor(R()*(MW-2)),y=1+Math.floor(R()*(MH-2));
+  for(let i=0,nt=Math.round(MW*MH/26);i<nt;i++){const x=1+Math.floor(R()*(MW-2)),y=1+Math.floor(R()*(MH-2));
     if(!free(x,y)||terr[idx(x,y)]===1)continue;
     let ok=true;for(const o of objs)if(Math.abs(o.x-(x*TS+16))<56&&Math.abs(o.y-(y*TS+26))<40){ok=false;break}
     if(ok)place(x,y,R()<.25?'rock':big,R()<.5?0:1);}
   // torches
   const torch=(x,y)=>{solid[idx(x,y)]=1;objs.push({k:'torch',x:x*TS+16,y:y*TS+28})};
+  for(let y=spawnPt.y-2;y<=spawnPt.y+2;y++)for(let x=spawnPt.x-2;x<=spawnPt.x+3;x++){solid[idx(x,y)]=0;if(terr[idx(x,y)]===2)terr[idx(x,y)]=1}
+  objs=objs.filter(o=>Math.hypot(o.x/TS-spawnPt.x,o.y/TS-spawnPt.y)>3.5||o.k!=='tree'&&o.k!=='rock');
+  for(let y=bossPt.y-5;y<=bossPt.y+5;y++)for(let x=bossPt.x-5;x<=bossPt.x+5;x++)if(terr[idx(x,y)]!==2)solid[idx(x,y)]=0;
+  objs=objs.filter(o=>Math.hypot(o.x/TS-bossPt.x,o.y/TS-bossPt.y)>5.5||o.k!=='tree'&&o.k!=='rock');
   torch(spawnPt.x-1,spawnPt.y-2);torch(spawnPt.x-1,spawnPt.y+2);
   torch(bossPt.x-4,bossPt.y-4);torch(bossPt.x-4,bossPt.y+4);torch(bossPt.x+4,bossPt.y-4);torch(bossPt.x+4,bossPt.y+4);
   camp={x:spawnPt.x*TS+16,y:spawnPt.y*TS+16};
   // coffres
-  for(let i=0,n=0;i<200&&n<5;i++){const x=2+Math.floor(R()*(MW-4)),y=2+Math.floor(R()*(MH-4));
+  for(let i=0,n=0,nc=Math.min(10,5+ri);i<400&&n<nc;i++){const x=2+Math.floor(R()*(MW-4)),y=2+Math.floor(R()*(MH-4));
     if(free(x,y)&&!near(x,y,spawnPt,12)){objs.push({k:'chest',x:x*TS+16,y:y*TS+24,open:false});solid[idx(x,y)]=1;n++}}
   renderGround();
   spawnEnemies();
 }
 function spawnEnemies(){
   const ri=save.region,m=1+.28*ri;enemies=[];proj=[];parts=[];texts=[];drops=[];portal=null;vacuum=false;
-  const n=18+ri*3;let tries=0;
-  while(enemies.length<n&&tries++<2000){
+  // plus d'ennemis à chaque région, en groupes de plus en plus gros
+  const n=Math.round(Math.min(110,(26+ri*7)*(MW*MH)/(72*50)));let tries=0;
+  while(enemies.length<n&&tries++<4000){
     const x=2+Math.floor(Math.random()*(MW-4)),y=2+Math.floor(Math.random()*(MH-4));
     if(solid[idx(x,y)]||Math.hypot(x-spawnPt.x,y-spawnPt.y)<11||Math.hypot(x-bossPt.x,y-bossPt.y)<7)continue;
-    const t=pick(REG.pool);const grp=Math.random()<.4?2:1;
+    const t=pick(REG.pool);const grp=1+Math.floor(Math.random()*Math.min(4,2+ri*.5));
     for(let k=0;k<grp;k++)addEnemy(t,x*TS+16+k*14,y*TS+16+k*6,m);
   }
   bossRef=addEnemy(REG.boss,bossPt.x*TS+16,bossPt.y*TS+16,m*(1+.1*ri));
@@ -1034,6 +1057,8 @@ function updateTouch(){
     b.style.setProperty('--cd',(P.cds[id]||0)/cd);b.classList.toggle('nomp',P.mp<S.mp);}
   $('#tbP .cnt').textContent=save.potions;$('#tbP').classList.toggle('off',!save.potions);
 }
+function bossDir(){const a=Math.atan2(bossPt.y-spawnPt.y,bossPt.x-spawnPt.x)*180/Math.PI;
+  return['à l\'est','au sud-est','au sud','au sud-ouest','à l\'ouest','au nord-ouest','au nord','au nord-est'][((Math.round(a/45)%8)+8)%8];}
 function hud(){
   const st=stats();
   cx.fillStyle='rgba(20,14,30,.75)';cx.fillRect(4,4,150,40);
@@ -1041,11 +1066,18 @@ function hud(){
   bar(9,18,110,7,P.hp/st.hp,'#e04040');text(Math.ceil(P.hp)+'/'+st.hp,123,25,'#fff');
   bar(9,29,90,5,P.mp/st.mp,'#4c8cff');bar(9,38,90,2,save.xp/xpNeed(save.lvl),'#ffcf4a');
   // mini-carte
-  const mx=VW-MW-6,my=6;cx.fillStyle='#000';cx.fillRect(mx-2,my-2,MW+4,MH+4);cx.drawImage(mini,mx,my);
-  cx.fillStyle='#ff4040';for(const e of enemies)cx.fillRect(mx+Math.floor(e.x/TS),my+Math.floor(e.y/TS),e.D.boss?3:1,e.D.boss?3:1);
-  cx.fillStyle='#ffd040';for(const o of objs)if(o.k==='chest'&&!o.open)cx.fillRect(mx+Math.floor(o.x/TS),my+Math.floor(o.y/TS),2,2);
-  if(portal){cx.fillStyle='#c0a0ff';cx.fillRect(mx+Math.floor(portal.x/TS)-1,my+Math.floor(portal.y/TS)-1,3,3)}
-  cx.fillStyle=Math.floor(T*4)%2?'#fff':'#4cf';cx.fillRect(mx+Math.floor(P.x/TS)-1,my+Math.floor(P.y/TS)-1,3,3);
+  const mk=Math.min(1,80/MW),mw=Math.round(MW*mk),mh=Math.round(MH*mk),mx=VW-mw-6,my=6,m2=v=>Math.floor(v/TS*mk);
+  cx.fillStyle='#000';cx.fillRect(mx-2,my-2,mw+4,mh+4);cx.drawImage(mini,mx,my,mw,mh);
+  cx.fillStyle='#ff4040';for(const e of enemies)if(!e.D.boss)cx.fillRect(mx+m2(e.x),my+m2(e.y),1,1);
+  if(bossRef&&bossRef.hp>0){cx.fillStyle=Math.floor(T*3)%2?'#ff2020':'#ffffff';cx.fillRect(mx+m2(bossRef.x)-2,my+m2(bossRef.y)-2,5,5)}
+  cx.fillStyle='#ffd040';for(const o of objs)if(o.k==='chest'&&!o.open)cx.fillRect(mx+m2(o.x),my+m2(o.y),2,2);
+  if(portal){cx.fillStyle='#c0a0ff';cx.fillRect(mx+m2(portal.x)-1,my+m2(portal.y)-1,3,3)}
+  cx.fillStyle=Math.floor(T*4)%2?'#fff':'#4cf';cx.fillRect(mx+m2(P.x)-1,my+m2(P.y)-1,3,3);
+  // flèche vers le boss au bord de l'écran
+  if(bossRef&&bossRef.hp>0){const bx=bossRef.x-camX,by=bossRef.y-20-camY;if(bx<0||by<0||bx>VW||by>VH){
+    const a=Math.atan2(by-VH/2,bx-VW/2),ex=clamp(VW/2+Math.cos(a)*VW,14,VW-14),ey=clamp(VH/2+Math.sin(a)*VH,my+mh+20,VH-44);
+    cx.save();cx.translate(ex,ey);cx.rotate(a);cx.fillStyle='rgba(255,60,60,'+(.55+.35*Math.sin(T*6))+')';cx.beginPath();cx.moveTo(9,0);cx.lineTo(-6,-7);cx.lineTo(-3,0);cx.lineTo(-6,7);cx.fill();cx.restore();
+    text('BOSS',ex,ey-10,'#ff8080','center',7);}}
   text('OR '+save.gold,mx-8,14,'#ffcf4a','right');
   text(REG.name+(save.region>=3?' +'+Math.floor(save.region/3):''),mx-8,24,'#fff','right');
   text('Ennemis '+enemies.length,mx-8,34,'#ccc','right');
@@ -1061,7 +1093,7 @@ function hud(){
   if(portal&&state==='play')text(T>portal.ready&&!drops.length?'Le portail est ouvert ! Entre dedans.':'Ramassage du butin…',VW/2,60,'#c8b0ff','center');
   if(joy.on){cx.globalAlpha=.55;cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(joy.ox,joy.oy,joy.R,0,7);cx.stroke();
     cx.fillStyle='#fff';cx.beginPath();const[jx,jy]=[joy.x-joy.ox,joy.y-joy.oy],d=Math.hypot(jx,jy),k=d>joy.R?joy.R/d:1;cx.arc(joy.ox+jx*k,joy.oy+jy*k,13,0,7);cx.fill();cx.globalAlpha=1;}
-  if(banner>0){cx.globalAlpha=Math.min(1,banner);text(REG.name,VW/2,100,'#ffcf4a','center',18);text('Trouve et bats le boss à l\'est →',VW/2,118,'#fff','center',9);cx.globalAlpha=1;}
+  if(banner>0){cx.globalAlpha=Math.min(1,banner);text(REG.name,VW/2,100,'#ffcf4a','center',18);text('Trouve et bats le boss '+bossDir()+' (flèche rouge)',VW/2,118,'#fff','center',9);cx.globalAlpha=1;}
 }
 
 function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;pollPad();
