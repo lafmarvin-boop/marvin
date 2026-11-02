@@ -339,7 +339,7 @@ function animPreview(){
 /* ================= MONDE ================= */
 const cv=$('#game'),cx=cv.getContext('2d');cx.imageSmoothingEnabled=false;
 let MW=60,MH=42,terr,solid,objs,ground,topC,mini,REG,spawnPt,bossPt,camp;
-let state='menu',P,enemies,proj,parts,texts,drops,camX=0,camY=0,T=0,last=0,banner=0,bossRef=null,portal=null,dark;
+let vacuum=false,state='menu',P,enemies,proj,parts,texts,drops,camX=0,camY=0,T=0,last=0,banner=0,bossRef=null,portal=null,dark;
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const idx=(x,y)=>y*MW+x;
 function buildRegion(){
@@ -390,7 +390,7 @@ function buildRegion(){
   spawnEnemies();
 }
 function spawnEnemies(){
-  const ri=save.region,m=1+.28*ri;enemies=[];proj=[];parts=[];texts=[];drops=[];portal=null;
+  const ri=save.region,m=1+.28*ri;enemies=[];proj=[];parts=[];texts=[];drops=[];portal=null;vacuum=false;
   const n=18+ri*3;let tries=0;
   while(enemies.length<n&&tries++<2000){
     const x=2+Math.floor(Math.random()*(MW-4)),y=2+Math.floor(Math.random()*(MH-4));
@@ -525,7 +525,7 @@ function kill(e){
   const g=Math.round(rnd(D.gold[0],D.gold[1])*(1+.2*ri)*bon),coins=Math.min(8,Math.ceil(g/4));
   for(let i=0;i<coins;i++)drops.push({x:e.x,y:e.y,z:0,vz:rnd(80,140),vx:rnd(-50,50),vy:rnd(-50,50),k:'gold',v:Math.ceil(g/coins)});
   if(Math.random()<(D.boss?1:.07))drops.push({x:e.x,y:e.y,z:0,vz:120,vx:rnd(-30,30),vy:rnd(-30,30),k:'potion'});
-  if(D.boss){bossRef=null;portal={x:e.x,y:e.y};objs.push({k:'chest',x:e.x+40,y:e.y,open:false,boss:1});
+  if(D.boss){bossRef=null;vacuum=true;portal={x:e.x,y:e.y,ready:T+2.5};const bc={k:'chest',x:e.x+40,y:e.y,open:false,boss:1};objs.push(bc);setTimeout(()=>{if(!bc.open)openChest(bc)},800);
     txt(e.x,e.y-60,'BOSS VAINCU !','#ffcf4a');fx(e.x,e.y-20,'#ffcf4a',40,140);}
 }
 function gainXp(v){
@@ -546,6 +546,7 @@ function die(){
   setTimeout(()=>{$('#ovlT').textContent='VAINCU…';$('#ovlS').textContent=`Tu perds ${lost} or. La région se réveille. Améliore-toi et réessaie !`;$('#ovlB').textContent='Retour au camp';$('#ovl').classList.add('on')},900);
 }
 function clearRegion(){
+  for(const d of drops){if(d.k==='gold')save.gold+=d.v;else if(d.k==='potion')save.potions++}drops=[];
   state='clear';save.region++;save.best=Math.max(save.best,save.region);store();
   $('#ovlT').textContent='RÉGION LIBÉRÉE !';$('#ovlS').textContent='Le portail t\'emmène vers la région suivante.';$('#ovlB').textContent='Aller au camp';
   $('#ovl').classList.add('on');
@@ -623,7 +624,7 @@ function update(dt){
     for(const k in P.cds)P.cds[k]=Math.max(0,P.cds[k]-dt);
     P.mp=Math.min(st.mp,P.mp+dt*3*(save.look.race==='elfe'?1.6:1));
     P.inv-=dt;P.shield-=dt;P.whirl-=dt;
-    if(portal&&Math.hypot(P.x-portal.x,P.y-portal.y)<22)clearRegion();
+    if(portal&&T>portal.ready&&!drops.length&&Math.hypot(P.x-portal.x,P.y-portal.y)<22)clearRegion();
   }else if(state==='dead'){P.deadT+=dt;}
   // ennemis
   for(const e of enemies){
@@ -687,7 +688,8 @@ function update(dt){
     d.x+=d.vx*dt;d.y+=d.vy*dt;
     if(state!=='play')continue;
     const dx=P.x-d.x,dy=(P.y-6)-d.y,dd=Math.hypot(dx,dy);
-    if(dd<56&&d.z===0){d.x+=dx*dt*7;d.y+=dy*dt*7}
+    if(vacuum&&d.z===0){const sp=Math.min(1,dt*8);d.x+=dx*sp;d.y+=dy*sp}       // butin du boss : aspiré vers le héros
+    else if(dd<56&&d.z===0){d.x+=dx*dt*7;d.y+=dy*dt*7}
     if(dd<10&&d.z<4){d.got=1;
       if(d.k==='gold')save.gold+=d.v;
       else if(d.k==='potion'){save.potions++;txt(P.x,P.y-50,'+1 Potion','#e05080')}}}
@@ -804,7 +806,7 @@ function hud(){
   const px=8+save.maxSlots*26;cx.fillStyle='#ddd';cx.fillRect(px+5,VH-25,4,3);cx.fillStyle='#d0305a';cx.fillRect(px+3,VH-22,8,9);
   text('x'+save.potions,px+15,VH-13,'#fff');
   if(bossRef&&bossRef.hp>0&&Math.hypot(bossRef.x-P.x,bossRef.y-P.y)<320){text(bossRef.D.name,VW/2,VH-24,'#ff8080','center');bar(VW/2-100,VH-18,200,7,bossRef.hp/bossRef.max,'#c03030');}
-  if(portal&&state==='play')text('Le portail est ouvert ! Entre dedans.',VW/2,60,'#c8b0ff','center');
+  if(portal&&state==='play')text(T>portal.ready&&!drops.length?'Le portail est ouvert ! Entre dedans.':'Ramassage du butin…',VW/2,60,'#c8b0ff','center');
   if(joy.on){cx.globalAlpha=.55;cx.strokeStyle='#fff';cx.lineWidth=2;cx.beginPath();cx.arc(joy.ox,joy.oy,joy.R,0,7);cx.stroke();
     cx.fillStyle='#fff';cx.beginPath();const[jx,jy]=[joy.x-joy.ox,joy.y-joy.oy],d=Math.hypot(jx,jy),k=d>joy.R?joy.R/d:1;cx.arc(joy.ox+jx*k,joy.oy+jy*k,13,0,7);cx.fill();cx.globalAlpha=1;}
   if(banner>0){cx.globalAlpha=Math.min(1,banner);text(REG.name,VW/2,100,'#ffcf4a','center',18);text('Trouve et bats le boss à l\'est →',VW/2,118,'#fff','center',9);cx.globalAlpha=1;}
