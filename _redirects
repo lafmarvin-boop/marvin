@@ -10,5 +10,9 @@
 /package.json          /404.html   404!
 /package-lock.json     /404.html   404!
 /netlify.toml          /404.html   404!
+/marketing/*           /404.html   404!
+/security-reports/*    /404.html   404!
+/graphify/*            /404.html   404!
+/blog/_topics.md       /404.html   404!
 
 /*        /404.html                      404
